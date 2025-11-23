@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="account-form">
+  <h1>Account</h1>
+  <form method="post" enctype="multipart/form-data">{% csrf_token %}
+    <label>First name</label><input name="first_name" value="{{ user.profile.first_name }}">
+    <label>Last name</label><input name="last_name" value="{{ user.profile.last_name }}">
+    <label>Time zone</label><input name="time_zone" value="{{ user.profile.time_zone }}">
+    <label>Profile picture</label><input type="file" name="profile_picture">
+    <h3>Credentials</h3>
+    <!-- for now simple textarea for JSON / comma separated titles -->
+    <textarea name="credentials">{{ user.profile.credentials|default:"[]" }}</textarea>
+    <button type="submit">Save</button>
+  </form>
+</div>
+{% endblock %}

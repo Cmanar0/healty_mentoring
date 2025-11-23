@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>{% block title %}Healthy Mentoring{% endblock %}</title>
+  {% load static %}
+  <link rel="stylesheet" href="{% static 'css/main.css' %}">
+</head>
+<body>
+  <header class="site-header">
+    <nav class="top-nav">
+      <div class="brand">
+        <img src="{% static 'images/logo.png' %}" alt="logo" class="logo">
+        <a href="/">Healthy Mentoring</a>
+      </div>
+      <div class="top-actions">
+        {% if user.is_authenticated %}
+          <a href="{% url 'accounts:logout' %}">Logout</a>
+        {% else %}
+          <a href="{% url 'accounts:login' %}">Login</a>
+        {% endif %}
+      </div>
+    </nav>
+  </header>
+
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+
+</body>
+</html>

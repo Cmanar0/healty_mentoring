@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% load widget_tweaks %}
+{% block title %}Register{% endblock %}
+{% block content %}
+<div class="auth-card">
+  <h1>Register</h1>
+  <form method="post">{% csrf_token %}
+    {{ form.non_field_errors }}
+    <label>First name</label>{{ form.first_name }}
+    <label>Last name</label>{{ form.last_name }}
+    <label>Email</label>{{ form.email }}
+    <label>Password</label>{{ form.password1 }}
+    <label>Confirm Password</label>{{ form.password2 }}
+    <button type="submit">Register</button>
+  </form>
+</div>
+{% endblock %}

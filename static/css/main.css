@@ -1,0 +1,57 @@
+:root{
+  --color-bg: #0f172a;
+  --color-card: #0b1220;
+  --color-accent: #7c3aed;
+  --color-text: #e6eef8;
+  --max-width: 1100px;
+  --sidebar-width: 220px;
+  --sidebar-collapsed-width: 72px;
+}
+
+/* reset + basics */
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;color:var(--color-text);background:linear-gradient(180deg,#071024, var(--color-bg));}
+
+/* header */
+.site-header{background:transparent;padding:12px 24px}
+.top-nav{display:flex;align-items:center;justify-content:space-between;max-width:var(--max-width);margin:0 auto}
+.brand{display:flex;align-items:center;gap:12px}
+.logo{height:34px}
+
+/* auth card */
+.auth-card{max-width:420px;margin:40px auto;padding:24px;background:var(--color-card);border-radius:12px}
+
+/* landing */
+.hero{padding:80px 16px;text-align:center}
+.hero .cta{display:inline-block;padding:12px 20px;border-radius:8px;text-decoration:none;background:var(--color-accent);color:white;}
+
+/* dashboard layout */
+.dashboard-layout{display:flex;min-height:80vh}
+.sidebar{width:var(--sidebar-width);background:#061020;padding:16px;transition:width .25s}
+.sidebar.closed{width:var(--sidebar-collapsed-width)}
+.sidebar nav ul{list-style:none;padding:0;margin:0}
+.sidebar nav li{margin:12px 0}
+.sidebar .icon{display:inline-block;width:28px;text-align:center}
+.sidebar .label{margin-left:8px}
+.sidebar.closed .label{display:none}
+.content-area{flex:1;padding:24px}
+
+.account-form{max-width:900px;margin:20px auto;padding:18px;background:var(--color-card);border-radius:8px}
+
+input, textarea, button {
+  display: block;
+  width: 100%;
+  padding: 8px;
+  margin-bottom: 12px;
+  border-radius: 4px;
+  border: 1px solid #334;
+  background: #1e293b;
+  color: white;
+}
+button {
+  background: var(--color-accent);
+  border: none;
+  cursor: pointer;
+  font-weight: bold;
+}
+a { color: var(--color-accent); text-decoration: none; }

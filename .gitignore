@@ -1,0 +1,9 @@
+*.pyc
+__pycache__/
+.env
+.env.example
+.venv/
+venv/
+db.sqlite3
+/media/
+.DS_Store

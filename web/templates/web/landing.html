@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Healthy Mentoring — Mentors platform{% endblock %}
+{% block content %}
+<section class="hero">
+  <div class="hero-inner">
+    <h1>Modern mentoring, powered by AI</h1>
+    <p>Track client goals, schedule meetings, integrate calendars and accelerate progress.</p>
+    <a class="cta" href="{% url 'accounts:register' %}">Become a mentor</a>
+  </div>
+</section>
+
+<section class="features">
+  <h2>Why mentors love Healthy Mentoring</h2>
+  <ul>
+    <li>Space-efficient dashboard</li>
+    <li>Client tracking & progress</li>
+    <li>Calendar sync & automation</li>
+    <li>AI-powered suggestions</li>
+  </ul>
+</section>
+
+<section class="footer-cta">
+  <a class="cta" href="{% url 'accounts:register' %}">Start for free</a>
+</section>
+{% endblock %}
