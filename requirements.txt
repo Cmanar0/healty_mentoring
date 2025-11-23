@@ -6,3 +6,4 @@ Pillow
 whitenoise
 django-crispy-forms
 django-widget-tweaks
+dj-database-url
