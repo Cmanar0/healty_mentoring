@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% load widget_tweaks %}
 {% block title %}Register{% endblock %}
+{% block navbar %}{% endblock %}
 {% block content %}
 <div class="auth-card">
   <h1>Register</h1>
@@ -13,5 +14,6 @@
     <label>Confirm Password</label>{{ form.password2 }}
     <button type="submit">Register</button>
   </form>
+  <p>Already have an account? <a href="{% url 'accounts:login' %}">Login</a></p>
 </div>
 {% endblock %}
