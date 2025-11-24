@@ -118,7 +118,7 @@ DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "no-reply@example.com")
 # Additional settings
 LOGIN_URL = "/accounts/login/"
 LOGIN_REDIRECT_URL = "/dashboard/"
-LOGOUT_REDIRECT_URL = "/"
+LOGOUT_REDIRECT_URL = "/accounts/login/"
 
 # API allowed keys
 API_ALLOWED_KEYS = os.getenv("API_ALLOWED_KEYS", "sample_api_key_12345").split(",")

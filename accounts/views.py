@@ -16,6 +16,8 @@ import os
 
 class RegisterView(View):
     def get(self, request):
+        if request.user.is_authenticated:
+            return redirect("dashboard:index")
         form = RegisterForm()
         return render(request, "accounts/register.html", {"form": form})
 
