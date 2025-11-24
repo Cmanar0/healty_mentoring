@@ -1,0 +1,11 @@
+mentoring.marianadamus.com {
+    reverse_proxy web:8000
+}
+
+n8n.marianadamus.com {
+    reverse_proxy n8n:5678
+}
+
+ai.marianadamus.com {
+    reverse_proxy openwebui:8080
+}

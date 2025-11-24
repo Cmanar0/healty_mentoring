@@ -1,6 +1,38 @@
 version: '3.8'
 
 services:
+  caddy:
+    image: caddy:2
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - app_network
+
+  web:
+    build: .
+    restart: always
+    depends_on:
+      - db
+    env_file:
+      - .env
+    environment:
+      - DATABASE_NAME=${DATABASE_NAME}
+      - DATABASE_USER=${DATABASE_USER}
+      - DATABASE_PASSWORD=${DATABASE_PASSWORD}
+      - DATABASE_HOST=db
+      - DATABASE_PORT=5432
+    volumes:
+      - static_volume:/srv/static
+      - media_volume:/app/media
+    networks:
+      - app_network
+
   db:
     image: postgres:15
     restart: always
@@ -11,31 +43,53 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     networks:
-      - backend
+      - app_network
 
-  web:
-    build: .
-    depends_on:
-      - db
-    env_file:
-      - .env
-    environment:
-      - DATABASE_NAME=${DATABASE_NAME}
-      - DATABASE_USER=${DATABASE_USER}
-      - DATABASE_PASSWORD=${DATABASE_PASSWORD}
-      - DATABASE_HOST=db
-      - DATABASE_PORT=${DATABASE_PORT}
-    ports:
-      - "8001:8000"
-    volumes:
-      - static_volume:/srv/static
-    networks:
-      - backend
+  n8n:
+    image: docker.n8n.io/n8nio/n8n
     restart: always
+    environment:
+      - N8N_HOST=n8n.marianadamus.com
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=https
+      - NODE_ENV=production
+      - WEBHOOK_URL=https://n8n.marianadamus.com/
+      - GENERIC_TIMEZONE=Europe/Prague
+    volumes:
+      - n8n_data:/home/node/.n8n
+    networks:
+      - app_network
+
+  ollama:
+    image: ollama/ollama:latest
+    restart: always
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - app_network
+
+  openwebui:
+    image: ghcr.io/open-webui/open-webui:main
+    restart: always
+    depends_on:
+      - ollama
+    environment:
+      - OLLAMA_BASE_URL=http://ollama:11434
+    volumes:
+      - openwebui_data:/app/backend/data
+    networks:
+      - app_network
 
 volumes:
+  caddy_data:
+  caddy_config:
   pgdata:
   static_volume:
+  media_volume:
+  n8n_data:
+  ollama_data:
+  openwebui_data:
 
 networks:
-  backend:
+  app_network:
+    driver: bridge

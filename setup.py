@@ -1,5 +1,4 @@
 # setup.py - orchestrates build & deploy behavior based on DEVELOPMENT_MODE env variable
-# The file should be runnable from CI or local machine to choose dev vs prod build steps.
 import os
 import sys
 from pathlib import Path
@@ -19,7 +18,6 @@ def run_command(cmd):
 
 def dev():
     print("Building in development mode (DEVELOPMENT_MODE='dev').")
-    # Create venv, install deps (example), run migrations, and start dev server (sqlite)
     print("Installing requirements...")
     run_command("pip install -r requirements.txt")
     print("Applying migrations...")
@@ -31,9 +29,9 @@ def dev():
 
 def prod():
     print("Prepare production artifacts (DEVELOPMENT_MODE='prod').")
-    # Build Docker images and run docker-compose up -d
-    run_command("docker-compose -f docker-compose.yml build")
-    run_command("docker-compose -f docker-compose.yml up -d")
+    # Simply build and up the unified stack
+    run_command("docker compose -f docker-compose.yml build")
+    run_command("docker compose -f docker-compose.yml up -d")
 
 def main():
     if DEVELOPMENT_MODE == "dev" or DEVELOPMENT_MODE == "development":
