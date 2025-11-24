@@ -24,20 +24,38 @@ class RegisterView(View):
     def post(self, request):
         form = RegisterForm(request.POST)
         if form.is_valid():
-            email = form.cleaned_data["email"].lower()
-            password = form.cleaned_data["password1"]
-            first_name = form.cleaned_data["first_name"]
-            last_name = form.cleaned_data["last_name"]
-            # Create user
-            user = CustomUser.objects.create_user(email=email, password=password)
-            # Add profile data
-            profile = user.profile
-            profile.first_name = first_name
-            profile.last_name = last_name
-            profile.save()
-            # Send verification email
-            send_verification_email(request, user)
-            return render(request, "accounts/email_verify_sent.html", {"email": email})
+            print("DEBUG: Form is valid. Creating user...")
+            try:
+                email = form.cleaned_data["email"].lower()
+                password = form.cleaned_data["password1"]
+                first_name = form.cleaned_data["first_name"]
+                last_name = form.cleaned_data["last_name"]
+                
+                # Create user
+                user = CustomUser.objects.create_user(email=email, password=password)
+                print(f"DEBUG: User {email} created successfully.")
+                
+                # Add profile data
+                profile = user.profile
+                profile.first_name = first_name
+                profile.last_name = last_name
+                profile.save()
+                
+                # Send verification email
+                print("DEBUG: Attempting to send verification email...")
+                send_verification_email(request, user)
+                print("DEBUG: Email sent successfully.")
+                
+                return render(request, "accounts/email_verify_sent.html", {"email": email})
+            except Exception as e:
+                print(f"ERROR during registration: {e}")
+                # If user was created but email failed, we might want to delete the user or warn
+                # For now, just show the error on the form
+                form.add_error(None, f"Registration failed: {e}")
+        else:
+            print("DEBUG: Form is invalid.")
+            print(form.errors)
+            
         return render(request, "accounts/register.html", {"form": form})
 
 def send_verification_email(request, user):

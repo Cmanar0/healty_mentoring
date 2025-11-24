@@ -12,8 +12,40 @@
     <label>Email</label>{{ form.email }}
     <label>Password</label>{{ form.password1 }}
     <label>Confirm Password</label>{{ form.password2 }}
-    <button type="submit">Register</button>
+    <div id="password-error" style="color: red; display: none; margin-bottom: 10px;">Passwords do not match</div>
+    <button type="submit" id="register-btn">Register</button>
   </form>
   <p>Already have an account? <a href="{% url 'accounts:login' %}">Login</a></p>
 </div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('form');
+    const p1 = document.querySelector('input[name="password1"]');
+    const p2 = document.querySelector('input[name="password2"]');
+    const errorDiv = document.getElementById('password-error');
+    const btn = document.getElementById('register-btn');
+
+    function validatePasswords() {
+      if (p1.value && p2.value) {
+        if (p1.value !== p2.value) {
+          errorDiv.style.display = 'block';
+          btn.disabled = true;
+          btn.style.opacity = '0.5';
+        } else {
+          errorDiv.style.display = 'none';
+          btn.disabled = false;
+          btn.style.opacity = '1';
+        }
+      } else {
+        errorDiv.style.display = 'none';
+        btn.disabled = false;
+        btn.style.opacity = '1';
+      }
+    }
+
+    p1.addEventListener('input', validatePasswords);
+    p2.addEventListener('input', validatePasswords);
+  });
+</script>
 {% endblock %}

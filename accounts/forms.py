@@ -21,6 +21,12 @@ class RegisterForm(forms.Form):
     password1 = forms.CharField(widget=forms.PasswordInput, required=True)
     password2 = forms.CharField(widget=forms.PasswordInput, required=True)
 
+    def clean_email(self):
+        email = self.cleaned_data.get("email")
+        if email and CustomUser.objects.filter(email=email).exists():
+            raise forms.ValidationError("A user with this email already exists.")
+        return email
+
     def clean(self):
         cleaned = super().clean()
         p1 = cleaned.get("password1")
