@@ -7,11 +7,26 @@
   <h1>Register</h1>
   <form method="post">{% csrf_token %}
     {{ form.non_field_errors }}
-    <label>First name</label>{{ form.first_name }}
-    <label>Last name</label>{{ form.last_name }}
-    <label>Email</label>{{ form.email }}
-    <label>Password</label>{{ form.password1 }}
-    <label>Confirm Password</label>{{ form.password2 }}
+    
+    <label>First name</label>
+    {{ form.first_name }}
+    {% if form.first_name.errors %}<div style="color: red; font-size: 0.9em;">{{ form.first_name.errors }}</div>{% endif %}
+    
+    <label>Last name</label>
+    {{ form.last_name }}
+    {% if form.last_name.errors %}<div style="color: red; font-size: 0.9em;">{{ form.last_name.errors }}</div>{% endif %}
+    
+    <label>Email</label>
+    {{ form.email }}
+    {% if form.email.errors %}<div style="color: red; font-size: 0.9em;">{{ form.email.errors }}</div>{% endif %}
+    
+    <label>Password</label>
+    {{ form.password1 }}
+    {% if form.password1.errors %}<div style="color: red; font-size: 0.9em;">{{ form.password1.errors }}</div>{% endif %}
+    
+    <label>Confirm Password</label>
+    {{ form.password2 }}
+    {% if form.password2.errors %}<div style="color: red; font-size: 0.9em;">{{ form.password2.errors }}</div>{% endif %}
     <div id="password-error" style="color: red; display: none; margin-bottom: 10px;">Passwords do not match</div>
     <button type="submit" id="register-btn">Register</button>
   </form>
