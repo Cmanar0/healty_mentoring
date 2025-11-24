@@ -12,6 +12,11 @@ DEBUG = DEVELOPMENT_MODE == "dev"
 
 ALLOWED_HOSTS = ["*"] if DEBUG else [os.getenv("SITE_DOMAIN", "").replace("https://", "").replace("http://", "")]
 
+# CSRF & Proxy settings
+if not DEBUG:
+    CSRF_TRUSTED_ORIGINS = [os.getenv("SITE_DOMAIN")]
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
 # Applications
 INSTALLED_APPS = [
     "django.contrib.admin",
