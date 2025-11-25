@@ -177,6 +177,132 @@ h1, h2, h3, h4 {
 }
 .bar.active { background: var(--primary); box-shadow: 0 0 20px rgba(16, 185, 129, 0.4); }
 
+/* Journey Timeline Section */
+.journey-section {
+  padding: 100px 0;
+  background: #f8fafc;
+  position: relative;
+}
+
+.timeline {
+  position: relative;
+  max-width: 1000px;
+  margin: 60px auto 0;
+}
+
+/* The central line */
+.timeline::after {
+  content: '';
+  position: absolute;
+  width: 4px;
+  background-color: #e2e8f0;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  margin-left: -2px;
+  border-radius: 2px;
+}
+
+.timeline-item {
+  padding: 10px 40px;
+  position: relative;
+  background-color: inherit;
+  width: 50%;
+  box-sizing: border-box;
+}
+
+/* Left side items */
+.timeline-item {
+  left: 0;
+  text-align: right;
+}
+
+/* Right side items */
+.timeline-item.right {
+  left: 50%;
+  text-align: left;
+}
+
+/* The icons */
+.timeline-icon {
+  position: absolute;
+  width: 50px;
+  height: 50px;
+  right: -25px;
+  background-color: white;
+  border: 4px solid var(--primary);
+  top: 15px;
+  border-radius: 50%;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary);
+  font-size: 1.2rem;
+  box-shadow: 0 0 0 4px #f8fafc; /* fake spacing */
+}
+
+.timeline-item.right .timeline-icon {
+  left: -25px;
+}
+
+/* Content box */
+.timeline-content {
+  padding: 30px;
+  background-color: white;
+  position: relative;
+  border-radius: 16px;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+  border: 1px solid #e2e8f0;
+  transition: transform 0.3s ease;
+}
+
+.timeline-content:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 15px rgba(0,0,0,0.1);
+  border-color: var(--primary);
+}
+
+.timeline-content h3 {
+  margin-top: 0;
+  color: var(--secondary);
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.timeline-content p {
+  margin-bottom: 0;
+  color: var(--text-dark);
+  line-height: 1.6;
+}
+
+/* Responsive Timeline */
+@media (max-width: 768px) {
+  .timeline::after {
+    left: 31px;
+  }
+  
+  .timeline-item {
+    width: 100%;
+    padding-left: 70px;
+    padding-right: 25px;
+    text-align: left;
+  }
+  
+  .timeline-item.right {
+    left: 0;
+  }
+  
+  .timeline-icon {
+    left: 6px;
+    right: auto;
+  }
+
+  .timeline-item.right .timeline-icon {
+    left: 6px;
+  }
+}
+
 /* Radar Section */
 .radar-section { padding: 100px 0; background: white; }
 .radar-container {
