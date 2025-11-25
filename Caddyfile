@@ -1,11 +1,11 @@
-mentoring.marianadamus.com {
+healthymentoring.com {
     reverse_proxy web:8000
 }
 
-n8n.marianadamus.com {
+n8n.healthymentoring.com {
     reverse_proxy n8n:5678
 }
 
-ai.marianadamus.com {
+ai.healthymentoring.com {
     reverse_proxy openwebui:8080
 }

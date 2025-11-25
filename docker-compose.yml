@@ -49,11 +49,11 @@ services:
     image: docker.n8n.io/n8nio/n8n
     restart: always
     environment:
-      - N8N_HOST=n8n.marianadamus.com
+      - N8N_HOST=n8n.healthymentoring.com
       - N8N_PORT=5678
       - N8N_PROTOCOL=https
       - NODE_ENV=production
-      - WEBHOOK_URL=https://n8n.marianadamus.com/
+      - WEBHOOK_URL=https://n8n.healthymentoring.com/
       - GENERIC_TIMEZONE=Europe/Prague
     volumes:
       - n8n_data:/home/node/.n8n
