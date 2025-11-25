@@ -1,25 +1,108 @@
 {% extends "base.html" %}
 {% block title %}Healthy Mentoring — Mentors platform{% endblock %}
 {% block content %}
+<!-- Hero Section -->
 <section class="hero">
-  <div class="hero-inner">
-    <h1>Modern mentoring, powered by AI</h1>
-    <p>Track client goals, schedule meetings, integrate calendars and accelerate progress.</p>
-    <a class="cta" href="{% url 'accounts:register' %}">Become a mentor</a>
+  <div class="hero-content">
+    <h1>Unlock Your True Potential</h1>
+    <p>Holistic mentoring for life, business, and personal growth. Connect with expert mentors who help you thrive in every area of your life.</p>
+    <a href="{% url 'accounts:register' %}" class="cta">Start Your Journey</a>
   </div>
 </section>
 
-<section class="features">
-  <h2>Why mentors love Healthy Mentoring</h2>
-  <ul>
-    <li>Space-efficient dashboard</li>
-    <li>Client tracking & progress</li>
-    <li>Calendar sync & automation</li>
-    <li>AI-powered suggestions</li>
-  </ul>
+<!-- Search Mockup Section -->
+<section class="search-section">
+  <div class="container">
+    <h2>Find Your Perfect Mentor</h2>
+    <div class="search-bar">
+      <div class="search-input-group">
+        <label>Area of Expertise</label>
+        <select>
+          <option>Business & Startups</option>
+          <option>Life Coaching</option>
+          <option>Health & Fitness</option>
+          <option>Relationships</option>
+        </select>
+      </div>
+      <div class="search-input-group">
+        <label>Language</label>
+        <select>
+          <option>English</option>
+          <option>Czech</option>
+          <option>Spanish</option>
+        </select>
+      </div>
+      <div class="search-input-group">
+        <label>Price Range</label>
+        <select>
+          <option>$50 - $100 / hr</option>
+          <option>$100 - $200 / hr</option>
+          <option>$200+ / hr</option>
+        </select>
+      </div>
+      <button class="search-btn">Search</button>
+    </div>
+  </div>
 </section>
 
-<section class="footer-cta">
-  <a class="cta" href="{% url 'accounts:register' %}">Start for free</a>
+<!-- Features Section -->
+<section class="features">
+  <div class="container">
+    <h2>Why Healthy Mentoring?</h2>
+    <div class="features-grid">
+      <!-- Holistic Growth -->
+      <div class="feature-card">
+        <div class="icon">🌱</div>
+        <h3>Holistic Growth</h3>
+        <p>Track your progress across all life areas—Health, Finance, Relationships, and Spirituality—with our interactive radar charts.</p>
+      </div>
+      
+      <!-- Business Mastery -->
+      <div class="feature-card">
+        <div class="icon">🚀</div>
+        <h3>Business Mastery</h3>
+        <p>Validate your ideas with AI-driven tools. Analyze viability, forecast expenses, and plan your path to profitability.</p>
+      </div>
+      
+      <!-- Smart Tools -->
+      <div class="feature-card">
+        <div class="icon">⚡</div>
+        <h3>Smart Tools</h3>
+        <p>Seamlessly sync meetings with your calendar, get AI-generated session summaries, and track tasks in one place.</p>
+      </div>
+    </div>
+  </div>
 </section>
+
+<!-- Footer -->
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-content">
+      <div class="footer-brand">
+        <h3>Healthy Mentoring</h3>
+        <p>Empowering you to build a balanced and successful life.</p>
+      </div>
+      <div class="footer-contact">
+        <h4>Contact Us</h4>
+        <p id="email-container">
+          <!-- Email will be injected here by JS to prevent bot scraping -->
+          <script>
+            document.addEventListener('DOMContentLoaded', function() {
+              var user = 'info';
+              var domain = 'healthymentoring.com';
+              var element = document.getElementById('email-container');
+              var link = document.createElement('a');
+              link.href = 'mailto:' + user + '@' + domain;
+              link.innerText = user + '@' + domain;
+              element.appendChild(link);
+            });
+          </script>
+        </p>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>&copy; {% now "Y" %} Healthy Mentoring. All rights reserved.</p>
+    </div>
+  </div>
+</footer>
 {% endblock %}
