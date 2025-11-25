@@ -1,74 +1,152 @@
 {% extends "base.html" %}
 {% block title %}Healthy Mentoring — Mentors platform{% endblock %}
+{% load static %}
+{% block navbar %}
+<header class="site-header">
+  <nav class="top-nav">
+    <div class="brand">
+      <img src="{% static 'images/logo.png' %}" alt="logo" class="logo">
+      <a href="/">Healthy Mentoring</a>
+    </div>
+    <div class="nav-links">
+      <a href="#features">Features</a>
+      <a href="#business-lab">Business Lab</a>
+      <a href="#search">Find Mentor</a>
+    </div>
+    <div class="top-actions">
+      {% if user.is_authenticated %}
+        <a href="{% url 'dashboard:index' %}" class="btn btn-sm btn-primary">Profile</a>
+      {% else %}
+        <a href="{% url 'accounts:login' %}">Login</a>
+      {% endif %}
+    </div>
+  </nav>
+</header>
+{% endblock %}
+
 {% block content %}
 <!-- Hero Section -->
-<section class="hero">
-  <div class="hero-content">
-    <h1>Unlock Your True Potential</h1>
-    <p>Holistic mentoring for life, business, and personal growth. Connect with expert mentors who help you thrive in every area of your life.</p>
-    <a href="{% url 'accounts:register' %}" class="cta">Start Your Journey</a>
-  </div>
-</section>
-
-<!-- Search Mockup Section -->
-<section class="search-section">
-  <div class="container">
-    <h2>Find Your Perfect Mentor</h2>
-    <div class="search-bar">
-      <div class="search-input-group">
-        <label>Area of Expertise</label>
-        <select>
-          <option>Business & Startups</option>
-          <option>Life Coaching</option>
-          <option>Health & Fitness</option>
-          <option>Relationships</option>
-        </select>
+<section class="hero-section">
+  <div class="container hero-container">
+    <div class="hero-text" data-aos="fade-right">
+      <span class="badge">Tech-Enhanced Mentoring</span>
+      <h1>Find Your Guide.<br><span class="gradient-text">Achieve Your Goals.</span></h1>
+      <p>Connect with expert mentors who use advanced AI tools to track your progress, automate scheduling, and accelerate your growth. Experience mentoring that actually works.</p>
+      <div class="hero-actions">
+        <a href="#search" class="btn btn-primary">Find a Mentor</a>
+        <a href="#features" class="btn btn-outline">How It Works</a>
       </div>
-      <div class="search-input-group">
-        <label>Language</label>
-        <select>
-          <option>English</option>
-          <option>Czech</option>
-          <option>Spanish</option>
-        </select>
+      <div class="hero-stats">
+        <div class="stat">
+          <span class="stat-number">500+</span>
+          <span class="stat-label">Vetted Mentors</span>
+        </div>
+        <div class="stat">
+          <span class="stat-number">100%</span>
+          <span class="stat-label">Data-Driven</span>
+        </div>
       </div>
-      <div class="search-input-group">
-        <label>Price Range</label>
-        <select>
-          <option>$50 - $100 / hr</option>
-          <option>$100 - $200 / hr</option>
-          <option>$200+ / hr</option>
-        </select>
+    </div>
+    <div class="hero-visual" data-aos="fade-left">
+      <div class="abstract-shape"></div>
+      <div class="glass-card">
+        <div class="card-header">
+          <div class="avatar"></div>
+          <div class="info">
+            <div class="name">Your Progress</div>
+            <div class="status">On Track ✅</div>
+          </div>
+        </div>
+        <div class="chart-preview">
+          <!-- Placeholder for mini chart or visual -->
+          <div class="bar" style="height: 40%"></div>
+          <div class="bar" style="height: 70%"></div>
+          <div class="bar" style="height: 55%"></div>
+          <div class="bar active" style="height: 90%"></div>
+        </div>
       </div>
-      <button class="search-btn">Search</button>
     </div>
   </div>
 </section>
 
-<!-- Features Section -->
-<section class="features">
+<!-- The "Wheel of Life" Interactive Section -->
+<section id="features" class="radar-section">
   <div class="container">
-    <h2>Why Healthy Mentoring?</h2>
-    <div class="features-grid">
-      <!-- Holistic Growth -->
-      <div class="feature-card">
-        <div class="icon">🌱</div>
-        <h3>Holistic Growth</h3>
-        <p>Track your progress across all life areas—Health, Finance, Relationships, and Spirituality—with our interactive radar charts.</p>
+    <div class="section-header text-center" data-aos="fade-up">
+      <h2>Mentoring, Upgrade.</h2>
+      <p>Forget messy notes and forgotten goals. Our platform tracks everything for you.</p>
+    </div>
+    <div class="radar-container" data-aos="zoom-in">
+      <div class="radar-chart-wrapper">
+        <canvas id="lifeBalanceChart"></canvas>
       </div>
-      
-      <!-- Business Mastery -->
-      <div class="feature-card">
-        <div class="icon">🚀</div>
-        <h3>Business Mastery</h3>
-        <p>Validate your ideas with AI-driven tools. Analyze viability, forecast expenses, and plan your path to profitability.</p>
+      <div class="radar-text">
+        <h3>Data-Driven Growth</h3>
+        <p>Your mentor gets a real-time view of your progress across all life areas. We track tasks, habits, and goals so every session is focused on what matters most.</p>
+        <ul class="feature-list">
+          <li><i class="fas fa-check-circle"></i> <strong>Seamless Sync:</strong> Meetings & tasks auto-synced to your calendar.</li>
+          <li><i class="fas fa-check-circle"></i> <strong>AI Summaries:</strong> Never miss a key insight from your sessions.</li>
+          <li><i class="fas fa-check-circle"></i> <strong>Holistic View:</strong> Balance Health, Wealth, and Happiness.</li>
+        </ul>
       </div>
-      
-      <!-- Smart Tools -->
-      <div class="feature-card">
-        <div class="icon">⚡</div>
-        <h3>Smart Tools</h3>
-        <p>Seamlessly sync meetings with your calendar, get AI-generated session summaries, and track tasks in one place.</p>
+    </div>
+  </div>
+</section>
+
+<!-- Business Lab (Dark Mode) -->
+<section id="business-lab" class="business-section">
+  <div class="container">
+    <div class="section-header text-center light-text" data-aos="fade-up">
+      <span class="badge badge-dark">For Entrepreneurs</span>
+      <h2>Build With Confidence</h2>
+      <p>Work with business mentors who have access to powerful AI tools to validate your ideas.</p>
+    </div>
+    <div class="grid-3">
+      <div class="feature-box" data-aos="fade-up" data-aos-delay="100">
+        <div class="icon-box"><i class="fas fa-lightbulb"></i></div>
+        <h3>Idea Validation</h3>
+        <p>Your mentor can stress-test your business concept against real market data to ensure it's viable.</p>
+      </div>
+      <div class="feature-box" data-aos="fade-up" data-aos-delay="200">
+        <div class="icon-box"><i class="fas fa-chart-line"></i></div>
+        <h3>Financial Modeling</h3>
+        <p>Get professional revenue forecasts and expense planning to see your path to profitability.</p>
+      </div>
+      <div class="feature-box" data-aos="fade-up" data-aos-delay="300">
+        <div class="icon-box"><i class="fas fa-bullhorn"></i></div>
+        <h3>Growth Strategy</h3>
+        <p>Leverage AI to generate marketing strategies and campaigns that actually convert.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Mentor Search Mockup -->
+<section id="search" class="search-section">
+  <div class="container">
+    <div class="search-box" data-aos="flip-up">
+      <h2>Find Your Guide</h2>
+      <div class="search-inputs">
+        <div class="input-group">
+          <i class="fas fa-search"></i>
+          <input type="text" placeholder="Try 'Business Coach' or 'Yoga'">
+        </div>
+        <div class="input-group">
+          <i class="fas fa-globe"></i>
+          <select>
+            <option>Language</option>
+            <option>English</option>
+            <option>Czech</option>
+            <option>Spanish</option>
+          </select>
+        </div>
+        <button class="btn btn-primary">Search Mentors</button>
+      </div>
+      <div class="popular-tags">
+        <span>Popular:</span>
+        <a href="#" class="tag">Startup</a>
+        <a href="#" class="tag">Mindfulness</a>
+        <a href="#" class="tag">Fitness</a>
       </div>
     </div>
   </div>
@@ -77,27 +155,27 @@
 <!-- Footer -->
 <footer class="site-footer">
   <div class="container">
-    <div class="footer-content">
+    <div class="footer-grid">
       <div class="footer-brand">
         <h3>Healthy Mentoring</h3>
-        <p>Empowering you to build a balanced and successful life.</p>
+        <p>The holistic platform for the modern achiever.</p>
+        <div class="social-links">
+          <a href="#"><i class="fab fa-twitter"></i></a>
+          <a href="#"><i class="fab fa-linkedin"></i></a>
+          <a href="#"><i class="fab fa-instagram"></i></a>
+        </div>
       </div>
-      <div class="footer-contact">
-        <h4>Contact Us</h4>
-        <p id="email-container">
-          <!-- Email will be injected here by JS to prevent bot scraping -->
-          <script>
-            document.addEventListener('DOMContentLoaded', function() {
-              var user = 'info';
-              var domain = 'healthymentoring.com';
-              var element = document.getElementById('email-container');
-              var link = document.createElement('a');
-              link.href = 'mailto:' + user + '@' + domain;
-              link.innerText = user + '@' + domain;
-              element.appendChild(link);
-            });
-          </script>
-        </p>
+      <div class="footer-links">
+        <h4>Platform</h4>
+        <a href="#">Mentors</a>
+        <a href="#">Business Lab</a>
+        <a href="#">Pricing</a>
+      </div>
+      <div class="footer-links">
+        <h4>Company</h4>
+        <a href="#">About</a>
+        <a href="#">Careers</a>
+        <a href="#" id="contact-link">Contact</a>
       </div>
     </div>
     <div class="footer-bottom">
@@ -105,4 +183,8 @@
     </div>
   </div>
 </footer>
+{% endblock %}
+
+{% block scripts %}
+<script src="{% static 'js/landing.js' %}"></script>
 {% endblock %}
