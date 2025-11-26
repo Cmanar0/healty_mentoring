@@ -116,7 +116,7 @@ h1, h2, h3, h4 {
   padding: 90px 0 100px;
   background: linear-gradient(180deg, 
     #ffffff 0%,
-    #d1fae5 50%,
+    #ecfdf5 50%,
     #ffffff 100%
   );
   position: relative;
@@ -200,7 +200,7 @@ h1, h2, h3, h4 {
   padding: 100px 0;
   background: linear-gradient(180deg, 
     #ffffff 0%,
-    #d1fae5 50%,
+    #ecfdf5 50%,
     #ffffff 100%
   );
   position: relative;
@@ -559,7 +559,7 @@ h1, h2, h3, h4 {
   padding: 80px 0;
   background: linear-gradient(180deg, 
     #ffffff 0%,
-    #bfdbfe 50%,
+    #dbeafe 50%,
     #ffffff 100%
   );
 }
