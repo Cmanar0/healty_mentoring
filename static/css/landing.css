@@ -193,7 +193,8 @@ h1, h2, h3, h4 {
 }
 
 /* The central line */
-.timeline::after {
+/* The central line */
+.timeline::before {
   content: '';
   position: absolute;
   width: 4px;
@@ -203,7 +204,7 @@ h1, h2, h3, h4 {
   left: 50%;
   margin-left: -2px;
   border-radius: 2px;
-  z-index: 2;
+  z-index: 0;
 }
 
 .timeline-item {
@@ -281,7 +282,7 @@ h1, h2, h3, h4 {
 
 /* Responsive Timeline */
 @media (max-width: 768px) {
-  .timeline::after {
+  .timeline::before {
     left: 31px;
   }
   
