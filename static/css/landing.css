@@ -31,6 +31,7 @@ h1, h2, h3, h4 {
 .gradient-text {
   background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 .badge {
@@ -235,7 +236,7 @@ h1, h2, h3, h4 {
   border: 4px solid var(--primary);
   top: 15px;
   border-radius: 50%;
-  z-index: 10;
+  z-index: 2;
   display: flex;
   align-items: center;
   justify-content: center;
