@@ -376,6 +376,16 @@ h1, h2, h3, h4 {
 }
 .light-text h2 { color: white; }
 .light-text p { color: #94a3b8; }
+
+/* Business Lab Header Sizing */
+.business-section .section-header h2 {
+  font-size: 2.5rem;
+}
+
+.business-section .section-header p {
+  font-size: 1.2rem;
+}
+
 /* Business Features Layout */
 .business-features {
   margin-top: 80px;
