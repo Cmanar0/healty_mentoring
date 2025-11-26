@@ -78,6 +78,19 @@ h1, h2, h3, h4 {
   background: var(--text-dark);
   color: white;
 }
+.btn-glass {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(10px);
+  margin-top: 20px;
+}
+.btn-glass:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px);
+  color: white;
+}
+.mt-4 { margin-top: 24px; }
 
   /* Navbar Links */
   .nav-links {
