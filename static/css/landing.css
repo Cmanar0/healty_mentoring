@@ -433,6 +433,42 @@ h1, h2, h3, h4 {
   transform: scale(1.02);
 }
 
+/* Solo Tools CTA */
+.solo-tools-cta {
+  margin-top: 100px;
+  background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 24px;
+  padding: 60px 40px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.solo-tools-cta::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent);
+}
+
+.cta-content h3 {
+  color: white;
+  font-size: 2rem;
+  margin-bottom: 16px;
+}
+
+.cta-content p {
+  color: #94a3b8;
+  font-size: 1.1rem;
+  max-width: 600px;
+  margin: 0 auto 30px;
+  line-height: 1.6;
+}
+
 /* Responsive Business Lab */
 @media (max-width: 768px) {
   .business-feature-row, 
