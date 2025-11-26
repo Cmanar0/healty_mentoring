@@ -627,6 +627,7 @@ h1, h2, h3, h4 {
   color: var(--text-dark);
   padding: 12px 8px;
   min-width: 0;
+  margin: 0 !important;
 }
 
 .search-bar input::placeholder {
@@ -671,6 +672,10 @@ h1, h2, h3, h4 {
   box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4);
 }
 
+.search-bar button {
+ width: auto !important; 
+}
+
 /* Search Filters */
 .search-filters {
   display: grid;
@@ -694,6 +699,9 @@ h1, h2, h3, h4 {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.filter-group label.price-label {
   justify-content: space-between;
 }
 
