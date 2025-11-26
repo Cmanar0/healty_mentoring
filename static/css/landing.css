@@ -668,7 +668,6 @@ h1, h2, h3, h4 {
 
 .search-btn:hover {
   background: var(--primary-dark);
-  transform: scale(1.05);
   box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4);
 }
 
