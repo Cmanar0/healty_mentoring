@@ -11,10 +11,10 @@ document.addEventListener('DOMContentLoaded', function() {
   
   // Custom Chart Data
   const data = {
-    labels: ['Health', 'Finance', 'Career', 'Relationships', 'Spirituality', 'Fun'],
+    labels: ['Health', 'Finance', 'Career', 'Relationships', 'Education', 'Fun'],
     datasets: [{
       label: 'Current Balance',
-      data: [65, 59, 90, 81, 56, 55],
+      data: [15, 39, 36, 35, 26, 55],
       fill: true,
       backgroundColor: 'rgba(16, 185, 129, 0.2)',
       borderColor: '#10b981',

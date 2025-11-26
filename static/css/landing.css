@@ -100,7 +100,7 @@ h1, h2, h3, h4 {
 
   /* Hero Section */
 .hero-section {
-  padding: 140px 0 100px;
+  padding: 90px 0 100px;
   background: radial-gradient(circle at top right, #e0f2fe 0%, #f0fdf4 40%, #ffffff 100%);
   position: relative;
 }
@@ -318,18 +318,42 @@ h1, h2, h3, h4 {
 .radar-chart-wrapper {
   flex: 1;
   max-width: 500px;
+  min-width: 300px;
+  min-height: 300px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .radar-text { flex: 1; }
 .feature-list { list-style: none; padding: 0; margin-top: 30px; }
 .feature-list li {
   display: flex;
-  align-items: center;
-  gap: 12px;
+  align-items: flex-start;
+  gap: 16px;
   font-size: 1.1rem;
-  margin-bottom: 16px;
+  margin-bottom: 24px;
   color: var(--text-dark);
 }
-.feature-list i { color: var(--primary); }
+.feature-list i { 
+  color: var(--primary); 
+  font-size: 1.5rem;
+  margin-top: 4px; /* Visual alignment with title */
+}
+.feature-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.feature-content strong {
+  color: var(--secondary);
+  font-size: 1.15rem;
+}
+.feature-content span {
+  color: var(--text-dark);
+  font-size: 1rem;
+  line-height: 1.5;
+  opacity: 0.9;
+}
 
 /* Business Section */
 .business-section {
@@ -475,4 +499,29 @@ h1, h2, h3, h4 {
   .social-links { justify-content: center; }
   .search-inputs { flex-direction: column; }
   .input-group { width: 100%; }
+  
+  /* Mobile specific adjustments */
+  .btn-outline {
+    margin: 16px 0 0 0;
+    margin-left: 0; /* Reset desktop margin */
+    display: block; /* Ensure it takes full width or breaks line if needed */
+    width: 100%;
+    text-align: center;
+  }
+  .hero-actions {
+    flex-direction: column;
+    width: 100%;
+    padding: 0 20px;
+  }
+  .btn-primary {
+    width: 100%;
+    text-align: center;
+  }
+  
+  .radar-section {
+    padding: 60px 20px;
+  }
+  .radar-text {
+    padding: 0 10px;
+  }
 }
