@@ -115,9 +115,9 @@ h1, h2, h3, h4 {
 .hero-section {
   padding: 90px 0 100px;
   background: linear-gradient(180deg, 
-    #e0f2fe 0%,
+    #ffffff 0%,
     #f0fdf4 50%,
-    #dbeafe 100%
+    #d1fae5 100%
   );
   position: relative;
 }
@@ -199,8 +199,8 @@ h1, h2, h3, h4 {
 .journey-section {
   padding: 100px 0;
   background: linear-gradient(180deg, 
-    #e0f2fe 0%,
-    #f0fdf4 50%,
+    #dbeafe 0%,
+    #d1fae5 50%,
     #ffffff 100%
   );
   position: relative;
@@ -558,9 +558,9 @@ h1, h2, h3, h4 {
 .search-section-new {
   padding: 80px 0;
   background: linear-gradient(180deg, 
-    #dbeafe 0%,
-    #d1fae5 50%,
-    #e0f2fe 100%
+    #d1fae5 0%,
+    #bfdbfe 50%,
+    #dbeafe 100%
   );
 }
 
