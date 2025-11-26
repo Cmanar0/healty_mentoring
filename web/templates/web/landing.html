@@ -75,7 +75,11 @@
     <div class="search-bar-container">
       <div class="search-bar">
         <i class="fas fa-search"></i>
-        <input type="text" placeholder="Search for mentors by name, expertise, or keyword...">
+        <input type="text" id="searchInput" placeholder="Search for mentors by name, expertise, or keyword...">
+        <button class="clear-btn" id="clearBtn" style="display: none;">
+          <i class="fas fa-times"></i>
+        </button>
+        <button class="search-btn">Search</button>
       </div>
     </div>
   </div>
@@ -83,34 +87,40 @@
   <div class="search-filters">
     <div class="filter-group">
       <label><i class="fas fa-tag"></i> Category</label>
-      <select>
-        <option>All Categories</option>
-        <option>Business</option>
-        <option>Health & Fitness</option>
-        <option>Career</option>
-        <option>Mindfulness</option>
-        <option>Finance</option>
-      </select>
+      <div class="custom-select">
+        <select>
+          <option>All Categories</option>
+          <option>Business</option>
+          <option>Health & Fitness</option>
+          <option>Career</option>
+          <option>Mindfulness</option>
+          <option>Finance</option>
+        </select>
+        <i class="fas fa-chevron-down"></i>
+      </div>
     </div>
     
     <div class="filter-group">
       <label><i class="fas fa-dollar-sign"></i> Session Price</label>
       <div class="price-slider-container">
-        <input type="range" min="0" max="200" value="100" class="price-slider">
-        <span class="price-value">$0 - $100</span>
+        <input type="range" min="0" max="200" value="100" class="price-slider" id="priceSlider">
+        <span class="price-value" id="priceValue">$0 - $100</span>
       </div>
     </div>
     
     <div class="filter-group">
       <label><i class="fas fa-globe"></i> Language</label>
-      <select>
-        <option>All Languages</option>
-        <option>English</option>
-        <option>Czech</option>
-        <option>Spanish</option>
-        <option>German</option>
-        <option>French</option>
-      </select>
+      <div class="custom-select">
+        <select>
+          <option>All Languages</option>
+          <option>English</option>
+          <option>Czech</option>
+          <option>Spanish</option>
+          <option>German</option>
+          <option>French</option>
+        </select>
+        <i class="fas fa-chevron-down"></i>
+      </div>
     </div>
   </div>
   
@@ -379,4 +389,5 @@
 
 {% block scripts %}
 <script src="{% static 'js/landing.js' %}"></script>
+<script src="{% static 'js/search-interactions.js' %}"></script>
 {% endblock %}
