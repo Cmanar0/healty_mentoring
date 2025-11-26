@@ -576,7 +576,7 @@ h1, h2, h3, h4 {
 }
 
 .search-bar-container {
-  max-width: 900px;
+  max-width: 700px;
   margin: 0 auto;
   padding: 0 20px;
 }
@@ -679,6 +679,7 @@ h1, h2, h3, h4 {
   display: flex;
   align-items: center;
   gap: 8px;
+  justify-content: space-between;
 }
 
 .filter-group label i {
@@ -686,68 +687,16 @@ h1, h2, h3, h4 {
   font-size: 1rem;
 }
 
-/* Custom Select Styling */
-.custom-select {
-  position: relative;
-}
-
-.custom-select select {
-  width: 100%;
-  padding: 14px 40px 14px 18px;
-  border: 2px solid #e2e8f0;
-  border-radius: 16px;
-  font-size: 1rem;
-  background: white;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  appearance: none;
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  color: var(--text-dark);
-  font-weight: 500;
-}
-
-.custom-select select:hover {
-  border-color: var(--primary);
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.1);
-}
-
-.custom-select select:focus {
-  border-color: var(--primary);
-  outline: none;
-  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
-}
-
-.custom-select i {
-  position: absolute;
-  right: 16px;
-  top: 50%;
-  transform: translateY(-50%);
+.filter-group label .price-value {
+  margin-left: auto;
+  font-weight: 700;
   color: var(--primary);
-  pointer-events: none;
-  font-size: 0.9rem;
 }
 
-/* Price Slider */
-.price-slider-container {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  background: white;
-  padding: 18px;
-  border-radius: 16px;
-  border: 2px solid #e2e8f0;
-  transition: all 0.3s ease;
-}
-
-.price-slider-container:hover {
-  border-color: var(--primary);
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.1);
-}
-
+/* Price Slider - Simplified */
 .price-slider {
   width: 100%;
-  height: 8px;
+  height: 6px;
   border-radius: 5px;
   background: linear-gradient(to right, 
     var(--primary) 0%, 
@@ -758,13 +707,14 @@ h1, h2, h3, h4 {
   outline: none;
   -webkit-appearance: none;
   appearance: none;
+  cursor: pointer;
 }
 
 .price-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 24px;
-  height: 24px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
   background: white;
   border: 3px solid var(--primary);
@@ -779,20 +729,13 @@ h1, h2, h3, h4 {
 }
 
 .price-slider::-moz-range-thumb {
-  width: 24px;
-  height: 24px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
   background: white;
   border: 3px solid var(--primary);
   cursor: pointer;
   box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-}
-
-.price-value {
-  font-size: 1rem;
-  font-weight: 700;
-  color: var(--primary);
-  text-align: center;
 }
 
 /* Mentors Container */
