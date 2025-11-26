@@ -115,9 +115,8 @@ h1, h2, h3, h4 {
 .hero-section {
   padding: 90px 0 100px;
   background: linear-gradient(180deg, 
-    #ffffff 0%,
-    #ecfdf5 50%,
-    #ffffff 100%
+    #f8fffe 0%,
+    #f0fdf9 100%
   );
   position: relative;
 }
@@ -198,11 +197,7 @@ h1, h2, h3, h4 {
 /* Journey Timeline Section */
 .journey-section {
   padding: 100px 0;
-  background: linear-gradient(180deg, 
-    #ffffff 0%,
-    #e0e7ff 50%,
-    #ffffff 100%
-  );
+  background: #ffffff;
   position: relative;
 }
 
@@ -556,17 +551,28 @@ h1, h2, h3, h4 {
 
 /* New Search Section - Full Width */
 .search-section-new {
-  padding: 80px 0;
-  background: linear-gradient(180deg, 
-    #ffffff 0%,
-    #dbeafe 50%,
-    #ffffff 100%
-  );
+  padding: 100px 0;
+  background: #fafafa;
+}
+
+.search-title {
+  font-size: 3rem;
+  font-weight: 700;
+  color: var(--secondary);
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+.search-subtitle {
+  font-size: 1.3rem;
+  color: var(--text-dark);
+  opacity: 0.8;
+  margin-bottom: 50px;
+  text-align: center;
 }
 
 .search-header {
-  text-align: center;
-  margin-bottom: 50px;
+  margin-bottom: 60px;
 }
 
 .search-bar-container {
@@ -652,20 +658,18 @@ h1, h2, h3, h4 {
 
 /* Search Filters */
 .search-filters {
-  display: flex;
-  justify-content: center;
-  gap: 40px;
-  max-width: 1200px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 30px;
+  max-width: 1100px;
   margin: 0 auto 70px;
   padding: 0 20px;
-  flex-wrap: wrap;
 }
 
 .filter-group {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  min-width: 220px;
 }
 
 .filter-group label {
