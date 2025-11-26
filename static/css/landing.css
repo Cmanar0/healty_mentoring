@@ -188,6 +188,7 @@ h1, h2, h3, h4 {
   position: relative;
   max-width: 1000px;
   margin: 60px auto 0;
+  z-index: 1;
 }
 
 /* The central line */
@@ -201,6 +202,7 @@ h1, h2, h3, h4 {
   left: 50%;
   margin-left: -2px;
   border-radius: 2px;
+  z-index: 2;
 }
 
 .timeline-item {
@@ -233,7 +235,7 @@ h1, h2, h3, h4 {
   border: 4px solid var(--primary);
   top: 15px;
   border-radius: 50%;
-  z-index: 1;
+  z-index: 10;
   display: flex;
   align-items: center;
   justify-content: center;
