@@ -469,6 +469,41 @@ h1, h2, h3, h4 {
   line-height: 1.6;
 }
 
+/* Solo Tools Row - Centered */
+.solo-tools-row {
+  justify-content: center;
+}
+
+.solo-tools-text {
+  text-align: center;
+  max-width: 700px;
+}
+
+.solo-tools-text .icon-box {
+  margin: 0 auto 24px;
+}
+
+.btn-solo-tools {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(10px);
+  display: inline-block;
+  padding: 14px 32px;
+  border-radius: 50px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.3s ease;
+}
+
+.btn-solo-tools:hover {
+  background: var(--primary);
+  border-color: var(--primary);
+  transform: translateY(-2px);
+  color: white;
+  box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
+}
+
 /* Responsive Business Lab */
 @media (max-width: 768px) {
   .business-feature-row, 
