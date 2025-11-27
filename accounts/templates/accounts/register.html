@@ -1,66 +1,171 @@
-{% extends "base.html" %}
-{% load widget_tweaks %}
-{% block title %}Register{% endblock %}
-{% block navbar %}{% endblock %}
-{% block content %}
-<div class="auth-card">
-  <h1>Register</h1>
-  <form method="post">{% csrf_token %}
-    {{ form.non_field_errors }}
-    
-    <label>First name</label>
-    {{ form.first_name }}
-    {% if form.first_name.errors %}<div style="color: red; font-size: 0.9em;">{{ form.first_name.errors }}</div>{% endif %}
-    
-    <label>Last name</label>
-    {{ form.last_name }}
-    {% if form.last_name.errors %}<div style="color: red; font-size: 0.9em;">{{ form.last_name.errors }}</div>{% endif %}
-    
-    <label>Email</label>
-    {{ form.email }}
-    {% if form.email.errors %}<div style="color: red; font-size: 0.9em;">{{ form.email.errors }}</div>{% endif %}
-    
-    <label>Password</label>
-    {{ form.password1 }}
-    {% if form.password1.errors %}<div style="color: red; font-size: 0.9em;">{{ form.password1.errors }}</div>{% endif %}
-    
-    <label>Confirm Password</label>
-    {{ form.password2 }}
-    {% if form.password2.errors %}<div style="color: red; font-size: 0.9em;">{{ form.password2.errors }}</div>{% endif %}
-    <div id="password-error" style="color: red; display: none; margin-bottom: 10px;">Passwords do not match</div>
-    <button type="submit" id="register-btn">Register</button>
-  </form>
-  <p>Already have an account? <a href="{% url 'accounts:login' %}">Login</a></p>
-</div>
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Register{% endblock %} - Healthy Mentoring</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="{% static 'css/auth.css' %}">
+</head>
+<body>
+  <!-- Auth Container -->
+  <div class="auth-container">
+    <div class="auth-card">
+      <!-- Logo -->
+      <a href="{% url 'web:landing' %}" class="auth-logo">
+        <img src="{% static 'images/logo.png' %}" alt="Healthy Mentoring">
+      </a>
+      <h2>Create Your Account</h2>
+      <p class="subtitle">Join our community of mentors and learners</p>
 
-<script>
-  document.addEventListener('DOMContentLoaded', function() {
-    const form = document.querySelector('form');
-    const p1 = document.querySelector('input[name="password1"]');
-    const p2 = document.querySelector('input[name="password2"]');
-    const errorDiv = document.getElementById('password-error');
-    const btn = document.getElementById('register-btn');
+      {% if form.non_field_errors %}
+      <div class="form-errors">
+        {{ form.non_field_errors }}
+      </div>
+      {% endif %}
 
-    function validatePasswords() {
-      if (p1.value && p2.value) {
-        if (p1.value !== p2.value) {
-          errorDiv.style.display = 'block';
-          btn.disabled = true;
-          btn.style.opacity = '0.5';
+      <form method="post" class="auth-form">
+        {% csrf_token %}
+        
+        <!-- Role Selection -->
+        <div class="role-selection">
+          <label>I want to register as:</label>
+          <div class="role-options">
+            <div class="role-option">
+              <input type="radio" name="role" value="user" id="role-user" {% if form.role.value == 'user' or not form.role.value %}checked{% endif %}>
+              <label for="role-user" class="role-label">
+                <div class="role-icon"><i class="fas fa-user"></i></div>
+                <div class="role-title">User</div>
+                <div class="role-description">Find mentors and grow</div>
+              </label>
+            </div>
+            <div class="role-option">
+              <input type="radio" name="role" value="mentor" id="role-mentor" {% if form.role.value == 'mentor' %}checked{% endif %}>
+              <label for="role-mentor" class="role-label">
+                <div class="role-icon"><i class="fas fa-chalkboard-teacher"></i></div>
+                <div class="role-title">Mentor</div>
+                <div class="role-description">Share your expertise</div>
+              </label>
+            </div>
+          </div>
+          {% if form.role.errors %}
+          <ul class="errorlist">
+            {% for error in form.role.errors %}
+            <li>{{ error }}</li>
+            {% endfor %}
+          </ul>
+          {% endif %}
+        </div>
+
+        <!-- First Name -->
+        <div class="form-group">
+          <label for="id_first_name">First Name</label>
+          <input type="text" name="first_name" id="id_first_name" value="{{ form.first_name.value|default:'' }}" required placeholder="Enter your first name">
+          {% if form.first_name.errors %}
+          <ul class="errorlist">
+            {% for error in form.first_name.errors %}
+            <li>{{ error }}</li>
+            {% endfor %}
+          </ul>
+          {% endif %}
+        </div>
+
+        <!-- Last Name -->
+        <div class="form-group">
+          <label for="id_last_name">Last Name</label>
+          <input type="text" name="last_name" id="id_last_name" value="{{ form.last_name.value|default:'' }}" required placeholder="Enter your last name">
+          {% if form.last_name.errors %}
+          <ul class="errorlist">
+            {% for error in form.last_name.errors %}
+            <li>{{ error }}</li>
+            {% endfor %}
+          </ul>
+          {% endif %}
+        </div>
+
+        <!-- Email -->
+        <div class="form-group">
+          <label for="id_email">Email Address</label>
+          <input type="email" name="email" id="id_email" value="{{ form.email.value|default:'' }}" required placeholder="your@email.com">
+          {% if form.email.errors %}
+          <ul class="errorlist">
+            {% for error in form.email.errors %}
+            <li>{{ error }}</li>
+            {% endfor %}
+          </ul>
+          {% endif %}
+        </div>
+
+        <!-- Password -->
+        <div class="form-group">
+          <label for="id_password1">Password</label>
+          <input type="password" name="password1" id="id_password1" required placeholder="Create a strong password">
+          {% if form.password1.errors %}
+          <ul class="errorlist">
+            {% for error in form.password1.errors %}
+            <li>{{ error }}</li>
+            {% endfor %}
+          </ul>
+          {% endif %}
+        </div>
+
+        <!-- Confirm Password -->
+        <div class="form-group">
+          <label for="id_password2">Confirm Password</label>
+          <input type="password" name="password2" id="id_password2" required placeholder="Re-enter your password">
+          {% if form.password2.errors %}
+          <ul class="errorlist">
+            {% for error in form.password2.errors %}
+            <li>{{ error }}</li>
+            {% endfor %}
+          </ul>
+          {% endif %}
+          <div id="password-error" style="color: #ef4444; font-size: 0.875rem; margin-top: 4px; display: none;">Passwords do not match</div>
+        </div>
+
+        <!-- Submit Button -->
+        <button type="submit" class="btn-submit" id="register-btn">Create Account</button>
+      </form>
+
+      <!-- Links -->
+      <div class="auth-links">
+        <p>Already have an account? <a href="{% url 'accounts:login' %}">Login</a></p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const p1 = document.getElementById('id_password1');
+      const p2 = document.getElementById('id_password2');
+      const errorDiv = document.getElementById('password-error');
+      const btn = document.getElementById('register-btn');
+
+      function validatePasswords() {
+        if (p1.value && p2.value) {
+          if (p1.value !== p2.value) {
+            errorDiv.style.display = 'block';
+            btn.disabled = true;
+            btn.style.opacity = '0.5';
+          } else {
+            errorDiv.style.display = 'none';
+            btn.disabled = false;
+            btn.style.opacity = '1';
+          }
         } else {
           errorDiv.style.display = 'none';
           btn.disabled = false;
           btn.style.opacity = '1';
         }
-      } else {
-        errorDiv.style.display = 'none';
-        btn.disabled = false;
-        btn.style.opacity = '1';
       }
-    }
 
-    p1.addEventListener('input', validatePasswords);
-    p2.addEventListener('input', validatePasswords);
-  });
-</script>
-{% endblock %}
+      p1.addEventListener('input', validatePasswords);
+      p2.addEventListener('input', validatePasswords);
+    });
+  </script>
+</body>
+</html>

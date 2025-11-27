@@ -18,6 +18,7 @@
         <a href="{% url 'dashboard:index' %}" class="btn btn-sm btn-primary">Profile</a>
       {% else %}
         <a href="{% url 'accounts:login' %}">Login</a>
+        <a href="{% url 'accounts:register' %}" class="btn btn-sm btn-primary">Register</a>
       {% endif %}
     </div>
   </nav>

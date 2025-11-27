@@ -15,9 +15,15 @@ class CustomUserChangeForm(UserChangeForm):
         fields = ("email",)
 
 class RegisterForm(forms.Form):
+    ROLE_CHOICES = [
+        ('user', 'User'),
+        ('mentor', 'Mentor'),
+    ]
+    
     first_name = forms.CharField(max_length=150, required=True)
     last_name = forms.CharField(max_length=150, required=True)
     email = forms.EmailField(required=True)
+    role = forms.ChoiceField(choices=ROLE_CHOICES, widget=forms.RadioSelect, initial='user', required=True)
     password1 = forms.CharField(widget=forms.PasswordInput, required=True)
     password2 = forms.CharField(widget=forms.PasswordInput, required=True)
 

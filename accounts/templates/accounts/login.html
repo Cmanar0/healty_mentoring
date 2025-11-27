@@ -1,14 +1,72 @@
-{% extends "base.html" %}
-{% block title %}Login{% endblock %}
-{% block navbar %}{% endblock %}
-{% block content %}
-<div class="auth-card">
-  <h1>Login</h1>
-  <form method="post">{% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit">Login</button>
-  </form>
-  <p><a href="{% url 'accounts:password_reset' %}">Forgot password?</a></p>
-  <p>Don't have an account? <a href="{% url 'accounts:register' %}">Register</a></p>
-</div>
-{% endblock %}
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login - Healthy Mentoring</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="{% static 'css/auth.css' %}">
+</head>
+<body>
+  <!-- Auth Container -->
+  <div class="auth-container">
+    <div class="auth-card">
+      <!-- Logo -->
+      <a href="{% url 'web:landing' %}" class="auth-logo">
+        <img src="{% static 'images/logo.png' %}" alt="Healthy Mentoring">
+      </a>
+      <h2>Welcome Back</h2>
+      <p class="subtitle">Login to continue your journey</p>
+
+      {% if form.non_field_errors %}
+      <div class="form-errors">
+        {{ form.non_field_errors }}
+      </div>
+      {% endif %}
+
+      <form method="post" class="auth-form">
+        {% csrf_token %}
+        
+        <!-- Email -->
+        <div class="form-group">
+          <label for="id_username">Email Address</label>
+          <input type="email" name="username" id="id_username" value="{{ form.username.value|default:'' }}" required placeholder="your@email.com" autocomplete="email">
+          {% if form.username.errors %}
+          <ul class="errorlist">
+            {% for error in form.username.errors %}
+            <li>{{ error }}</li>
+            {% endfor %}
+          </ul>
+          {% endif %}
+        </div>
+
+        <!-- Password -->
+        <div class="form-group">
+          <label for="id_password">Password</label>
+          <input type="password" name="password" id="id_password" required placeholder="Enter your password" autocomplete="current-password">
+          {% if form.password.errors %}
+          <ul class="errorlist">
+            {% for error in form.password.errors %}
+            <li>{{ error }}</li>
+            {% endfor %}
+          </ul>
+          {% endif %}
+        </div>
+
+        <!-- Submit Button -->
+        <button type="submit" class="btn-submit">Login</button>
+      </form>
+
+      <!-- Links -->
+      <div class="auth-links">
+        <p><a href="{% url 'accounts:password_reset' %}">Forgot password?</a></p>
+        <p>Don't have an account? <a href="{% url 'accounts:register' %}">Register</a></p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

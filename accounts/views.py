@@ -30,6 +30,7 @@ class RegisterView(View):
                 password = form.cleaned_data["password1"]
                 first_name = form.cleaned_data["first_name"]
                 last_name = form.cleaned_data["last_name"]
+                role = form.cleaned_data["role"]
                 
                 # Create user
                 user = CustomUser.objects.create_user(email=email, password=password)
@@ -39,6 +40,7 @@ class RegisterView(View):
                 profile = user.profile
                 profile.first_name = first_name
                 profile.last_name = last_name
+                profile.role = role
                 profile.save()
                 
                 # Send verification email

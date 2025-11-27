@@ -21,9 +21,15 @@ def credentials_upload_to(instance, filename):
     return f"credentials/{instance.user.id}/{filename}"
 
 class UserProfile(models.Model):
+    ROLE_CHOICES = [
+        ('user', 'User'),
+        ('mentor', 'Mentor'),
+    ]
+    
     user = models.OneToOneField("accounts.CustomUser", on_delete=models.CASCADE, related_name="profile")
     first_name = models.CharField(max_length=150)
     last_name = models.CharField(max_length=150)
+    role = models.CharField(max_length=10, choices=ROLE_CHOICES, default='user')
     # email is stored on user.email; duplicate only if needed:
     time_zone = models.CharField(max_length=64, blank=True, null=True)
     profile_picture = models.ImageField(upload_to="profiles/", blank=True, null=True)
