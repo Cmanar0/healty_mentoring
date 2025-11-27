@@ -43,16 +43,20 @@
               <input type="radio" name="role" value="user" id="role-user" {% if form.role.value == 'user' or not form.role.value %}checked{% endif %}>
               <label for="role-user" class="role-label">
                 <div class="role-icon"><i class="fas fa-user"></i></div>
-                <div class="role-title">User</div>
-                <div class="role-description">Find mentors</div>
+                <div class="role-content">
+                  <div class="role-title">User</div>
+                  <div class="role-description">Find mentors</div>
+                </div>
               </label>
             </div>
             <div class="role-option">
               <input type="radio" name="role" value="mentor" id="role-mentor" {% if form.role.value == 'mentor' %}checked{% endif %}>
               <label for="role-mentor" class="role-label">
                 <div class="role-icon"><i class="fas fa-chalkboard-teacher"></i></div>
-                <div class="role-title">Mentor</div>
-                <div class="role-description">Share expertise</div>
+                <div class="role-content">
+                  <div class="role-title">Mentor</div>
+                  <div class="role-description">Share expertise</div>
+                </div>
               </label>
             </div>
           </div>
