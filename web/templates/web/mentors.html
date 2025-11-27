@@ -89,7 +89,7 @@
     </div>
   </div>
   
-  <div class="mentors-container">
+  <div class="mentors-container list-view">
     <!-- Mentor Card 1 -->
     <div class="mentor-card" data-aos="fade-up">
       <div class="mentor-header-content">
@@ -104,7 +104,7 @@
       
       <div class="mentor-details">
         <p class="mentor-motto">"Turn your vision into a viable business."</p>
-        <p class="mentor-bio">Ex-McKinsey consultant with 10+ years helping startups scale from seed to Series B.</p>
+        <p class="mentor-bio">Ex-McKinsey consultant with 10+ years helping startups scale from seed to Series B. Expert in go-to-market strategy and fundraising.</p>
         <div class="mentor-tags">
           <span class="mentor-tag">Startup</span>
           <span class="mentor-tag">Strategy</span>
@@ -132,7 +132,7 @@
       
       <div class="mentor-details">
         <p class="mentor-motto">"Unlock your potential and lead with confidence."</p>
-        <p class="mentor-bio">Senior HR Director who has coached over 500 professionals to land their dream roles.</p>
+        <p class="mentor-bio">Senior HR Director who has coached over 500 professionals to land their dream roles. Specializing in executive presence and negotiation.</p>
         <div class="mentor-tags">
           <span class="mentor-tag">Leadership</span>
           <span class="mentor-tag">Career</span>
@@ -160,7 +160,7 @@
       
       <div class="mentor-details">
         <p class="mentor-motto">"Find peace in the chaos of success."</p>
-        <p class="mentor-bio">Certified mindfulness practitioner specializing in stress reduction for high-performers.</p>
+        <p class="mentor-bio">Certified mindfulness practitioner specializing in stress reduction for high-performers. Helping you build resilience and mental clarity.</p>
         <div class="mentor-tags">
           <span class="mentor-tag">Mindfulness</span>
           <span class="mentor-tag">Wellness</span>
@@ -188,7 +188,7 @@
       
       <div class="mentor-details">
         <p class="mentor-motto">"Fail fast, learn faster, succeed sooner."</p>
-        <p class="mentor-bio">Serial entrepreneur with 3 exits. I help founders navigate the messy middle of building a company.</p>
+        <p class="mentor-bio">Serial entrepreneur with 3 exits. I help founders navigate the messy middle of building a company. Focus on product-market fit and scaling.</p>
         <div class="mentor-tags">
           <span class="mentor-tag">Fundraising</span>
           <span class="mentor-tag">Product</span>
@@ -241,7 +241,7 @@
 <script src="{% static 'js/landing.js' %}"></script>
 <script src="{% static 'js/search-interactions.js' %}"></script>
 <script>
-  // Script to populate filters from URL parameters
+  // Script to populate filters from URL parameters and handle search
   document.addEventListener('DOMContentLoaded', function() {
     const urlParams = new URLSearchParams(window.location.search);
     
@@ -250,14 +250,13 @@
     const priceSlider = document.getElementById('priceSlider');
     const languageSelect = document.getElementById('languageSelect');
     
+    // Populate filters
     if (urlParams.has('q')) {
       searchInput.value = urlParams.get('q');
-      // Trigger input event to show clear button if needed
       searchInput.dispatchEvent(new Event('input'));
     }
     
     if (urlParams.has('category')) {
-      // Simple matching for now, assuming values match options
       const category = urlParams.get('category').toLowerCase();
       for (let i = 0; i < categorySelect.options.length; i++) {
         if (categorySelect.options[i].text.toLowerCase().includes(category) || 
@@ -272,7 +271,6 @@
       const price = parseInt(urlParams.get('price'));
       if (!isNaN(price)) {
         priceSlider.value = price;
-        // Trigger input event to update price display
         priceSlider.dispatchEvent(new Event('input'));
       }
     }
@@ -286,6 +284,32 @@
           break;
         }
       }
+    }
+
+    // Handle Search Submission
+    const performSearch = function() {
+      const params = new URLSearchParams();
+      
+      if (searchInput && searchInput.value) params.append('q', searchInput.value);
+      if (categorySelect && categorySelect.value) params.append('category', categorySelect.value);
+      if (priceSlider) params.append('price', priceSlider.value);
+      if (languageSelect && languageSelect.value) params.append('language', languageSelect.value);
+      
+      window.location.href = window.location.pathname + "?" + params.toString();
+    };
+
+    const searchBtn = document.querySelector('.search-btn');
+    if (searchBtn) {
+      searchBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        performSearch();
+      });
+    }
+
+    if (searchInput) {
+      searchInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') performSearch();
+      });
     }
   });
 </script>

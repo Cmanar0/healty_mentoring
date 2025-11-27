@@ -448,9 +448,8 @@
 {% block scripts %}
 <script src="{% static 'js/landing.js' %}"></script>
 <script src="{% static 'js/search-interactions.js' %}"></script>
-<script>
   // Script to handle "See More Mentors" button click
-  document.getElementById('seeMoreMentorsBtn').addEventListener('click', function(e) {
+  const redirectToMentors = function(e) {
     e.preventDefault();
     
     const searchInput = document.getElementById('searchInput');
@@ -477,6 +476,27 @@
     }
     
     window.location.href = "{% url 'web:mentors' %}?" + params.toString();
-  });
+  };
+
+  const seeMoreBtn = document.getElementById('seeMoreMentorsBtn');
+  if (seeMoreBtn) {
+    seeMoreBtn.addEventListener('click', redirectToMentors);
+  }
+
+  // Also attach to the main Search button
+  const searchBtn = document.querySelector('.search-btn');
+  if (searchBtn) {
+    searchBtn.addEventListener('click', redirectToMentors);
+  }
+  
+  // And allow pressing Enter in search input
+  const searchInput = document.getElementById('searchInput');
+  if (searchInput) {
+    searchInput.addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        redirectToMentors(e);
+      }
+    });
+  }
 </script>
 {% endblock %}
