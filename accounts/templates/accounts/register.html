@@ -15,12 +15,16 @@
   <!-- Auth Container -->
   <div class="auth-container">
     <div class="auth-card">
-      <!-- Logo -->
-      <a href="{% url 'web:landing' %}" class="auth-logo">
-        <img src="{% static 'images/logo.png' %}" alt="Healthy Mentoring">
-      </a>
-      <h2>Create Your Account</h2>
-      <p class="subtitle">Join our community of mentors and learners</p>
+      <!-- Logo and Header -->
+      <div class="auth-header-wrapper">
+        <a href="{% url 'web:landing' %}" class="auth-logo">
+          <img src="{% static 'images/logo.png' %}" alt="Healthy Mentoring">
+        </a>
+        <div class="auth-header-text">
+          <h2>Create Your Account</h2>
+          <p class="subtitle">Join our community of mentors and learners</p>
+        </div>
+      </div>
 
       {% if form.non_field_errors %}
       <div class="form-errors">
