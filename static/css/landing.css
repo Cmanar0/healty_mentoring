@@ -221,6 +221,7 @@ h1, h2, h3, h4 {
   max-width: 1000px;
   margin: 60px auto 0;
   z-index: 1;
+  margin-bottom: 100px; 
 }
 
 /* The central line */
