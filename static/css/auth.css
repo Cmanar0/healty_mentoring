@@ -11,7 +11,8 @@
 body {
   font-family: 'Inter', sans-serif;
   background: linear-gradient(180deg, #f8fffe 0%, #f0fdf9 100%);
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -154,8 +155,8 @@ body {
 }
 
 .role-label {
-  display: flex;
-  flex-direction: row;
+  display: flex !important;
+  flex-direction: row !important;
   align-items: center;
   padding: 14px 16px;
   border: 2px solid #e2e8f0;
@@ -309,6 +310,9 @@ body {
 @media (max-width: 640px) {
   body {
     padding: 10px;
+    overflow: auto;
+    height: auto;
+    min-height: 100vh;
   }
   
   .auth-card {
