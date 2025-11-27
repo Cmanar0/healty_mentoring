@@ -137,6 +137,14 @@
           </div>
         </div>
 
+        <!-- Terms and Conditions -->
+        <div class="terms-acceptance">
+          <div class="terms-checkbox">
+            <input type="checkbox" name="terms" id="terms" required>
+            <label for="terms">I agree to the <a href="{% url 'web:terms' %}" target="_blank">Terms and Conditions</a></label>
+          </div>
+        </div>
+
         <!-- Submit Button -->
         <button type="submit" class="btn-submit" id="register-btn">Create Account</button>
       </form>
