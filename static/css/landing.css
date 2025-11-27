@@ -850,8 +850,8 @@ input.price-slider {
 }
 
 .mentor-avatar {
-  width: 80px;
-  height: 80px;
+  width: 120px;
+  height: 120px;
   border-radius: 50%;
   overflow: hidden;
   border: 3px solid var(--primary);
@@ -1156,14 +1156,14 @@ input.price-slider {
 /* Mentors List View */
 .mentors-container.list-view {
   grid-template-columns: 1fr;
-  max-width: 1000px;
+  max-width: 1200px;
 }
 
 .mentors-container.list-view .mentor-card {
   flex-direction: row;
   align-items: center;
   text-align: left;
-  padding: 24px 32px;
+  padding: 20px 32px;
   gap: 30px;
 }
 
