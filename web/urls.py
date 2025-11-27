@@ -3,4 +3,5 @@ from . import views
 app_name = "web"
 urlpatterns = [
     path("", views.landing, name="landing"),
+    path("mentors/", views.mentors, name="mentors"),
 ]

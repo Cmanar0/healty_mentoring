@@ -56,12 +56,11 @@ h1, h2, h3 { margin-top: 0; color: #1e293b; }
 .brand {
   display: flex;
   align-items: center;
-  gap: 12px;
   font-weight: 700;
   font-size: 1.25rem;
   color: #1e293b;
 }
-.logo { height: 32px; }
+.logo { height: 48px; }
 
 .top-actions a {
   color: var(--color-text-muted);

@@ -9,9 +9,9 @@
       <a href="/">Healthy Mentoring</a>
     </div>
     <div class="nav-links">
-      <a href="#features">Features</a>
-      <a href="#business-lab">Business Lab</a>
-      <a href="#search">Find Mentor</a>
+      <a href="/#features">Features</a>
+      <a href="/#business-lab">Business Lab</a>
+      <a href="{% url 'web:mentors' %}">Find Mentor</a>
     </div>
     <div class="top-actions">
       {% if user.is_authenticated %}
@@ -90,13 +90,13 @@
     <div class="filter-group">
       <label><i class="fas fa-tag"></i> Category</label>
       <div class="custom-select">
-        <select>
-          <option>All Categories</option>
-          <option>Business</option>
-          <option>Health & Fitness</option>
-          <option>Career</option>
-          <option>Mindfulness</option>
-          <option>Finance</option>
+        <select id="categorySelect">
+          <option value="">All Categories</option>
+          <option value="business">Business</option>
+          <option value="health">Health & Fitness</option>
+          <option value="career">Career</option>
+          <option value="mindfulness">Mindfulness</option>
+          <option value="finance">Finance</option>
         </select>
         <i class="fas fa-chevron-down"></i>
       </div>
@@ -113,13 +113,13 @@
     <div class="filter-group">
       <label><i class="fas fa-globe"></i> Language</label>
       <div class="custom-select">
-        <select>
-          <option>All Languages</option>
-          <option>English</option>
-          <option>Czech</option>
-          <option>Spanish</option>
-          <option>German</option>
-          <option>French</option>
+        <select id="languageSelect">
+          <option value="">All Languages</option>
+          <option value="english">English</option>
+          <option value="czech">Czech</option>
+          <option value="spanish">Spanish</option>
+          <option value="german">German</option>
+          <option value="french">French</option>
         </select>
         <i class="fas fa-chevron-down"></i>
       </div>
@@ -241,7 +241,7 @@
   </div>
 
   <div class="search-footer text-center mt-5" data-aos="fade-up">
-    <a href="#" class="btn btn-outline-primary btn-lg">See More Mentors <i class="fas fa-arrow-right ml-2"></i></a>
+    <a href="{% url 'web:mentors' %}" id="seeMoreMentorsBtn" class="btn btn-outline-primary btn-lg">See More Mentors <i class="fas fa-arrow-right ml-2"></i></a>
   </div>
 </section>
 
@@ -427,8 +427,8 @@
       </div>
       <div class="footer-links">
         <h4>Platform</h4>
-        <a href="#">Mentors</a>
-        <a href="#">Business Lab</a>
+        <a href="{% url 'web:mentors' %}">Mentors</a>
+        <a href="#business-lab">Business Lab</a>
         <a href="#">Pricing</a>
       </div>
       <div class="footer-links">
@@ -448,4 +448,35 @@
 {% block scripts %}
 <script src="{% static 'js/landing.js' %}"></script>
 <script src="{% static 'js/search-interactions.js' %}"></script>
+<script>
+  // Script to handle "See More Mentors" button click
+  document.getElementById('seeMoreMentorsBtn').addEventListener('click', function(e) {
+    e.preventDefault();
+    
+    const searchInput = document.getElementById('searchInput');
+    const categorySelect = document.getElementById('categorySelect');
+    const priceSlider = document.getElementById('priceSlider');
+    const languageSelect = document.getElementById('languageSelect');
+    
+    const params = new URLSearchParams();
+    
+    if (searchInput && searchInput.value) {
+      params.append('q', searchInput.value);
+    }
+    
+    if (categorySelect && categorySelect.value && categorySelect.value !== 'All Categories') {
+      params.append('category', categorySelect.value);
+    }
+    
+    if (priceSlider) {
+      params.append('price', priceSlider.value);
+    }
+    
+    if (languageSelect && languageSelect.value && languageSelect.value !== 'All Languages') {
+      params.append('language', languageSelect.value);
+    }
+    
+    window.location.href = "{% url 'web:mentors' %}?" + params.toString();
+  });
+</script>
 {% endblock %}

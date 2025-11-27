@@ -1019,6 +1019,42 @@ input.price-slider {
   margin-left: 8px;
 }
 
+/* Mentors Page Styles */
+.mentors-page-header {
+  padding: 120px 0 60px;
+  background: linear-gradient(180deg, #f0fdf9 0%, #ffffff 100%);
+  text-align: center;
+}
+
+.mentors-page-header h1 {
+  font-size: 3.5rem;
+  font-weight: 800;
+  color: var(--secondary);
+  margin-bottom: 16px;
+  letter-spacing: -1px;
+}
+
+.mentors-page-header p {
+  font-size: 1.25rem;
+  color: var(--text-light);
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.mentors-page-search {
+  padding-top: 20px;
+  background: white;
+}
+
+.mentors-page-search .search-header {
+  margin-bottom: 40px;
+}
+
+.mentors-page-search .search-title,
+.mentors-page-search .search-subtitle {
+  display: none;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .search-filters {

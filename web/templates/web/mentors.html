@@ -1,0 +1,292 @@
+{% extends "base.html" %}
+{% block title %}Find Your Mentor — Healthy Mentoring{% endblock %}
+{% load static %}
+
+{% block navbar %}
+<header class="site-header">
+  <nav class="top-nav">
+    <div class="brand">
+      <img src="{% static 'images/logo.png' %}" alt="logo" class="logo">
+      <a href="/">Healthy Mentoring</a>
+    </div>
+    <div class="nav-links">
+      <a href="/#features">Features</a>
+      <a href="/#business-lab">Business Lab</a>
+      <a href="{% url 'web:mentors' %}" class="active">Find Mentor</a>
+    </div>
+    <div class="top-actions">
+      {% if user.is_authenticated %}
+        <a href="{% url 'dashboard:index' %}" class="btn btn-sm btn-primary">Profile</a>
+      {% else %}
+        <a href="{% url 'accounts:login' %}">Login</a>
+      {% endif %}
+    </div>
+  </nav>
+</header>
+{% endblock %}
+
+{% block content %}
+<!-- Mentors Page Header -->
+<section class="mentors-page-header">
+  <div class="container text-center">
+    <h1>Browse Mentors</h1>
+    <p>Connect with world-class experts to accelerate your growth.</p>
+  </div>
+</section>
+
+<!-- Search Section (Reused & Adapted) -->
+<section id="search" class="search-section-new mentors-page-search">
+  <div class="search-header">
+    <div class="search-bar-container">
+      <div class="search-bar">
+        <i class="fas fa-search"></i>
+        <input type="text" id="searchInput" placeholder="Search for mentors by name, expertise, or keyword...">
+        <button class="clear-btn" id="clearBtn" style="display: none;">
+          <i class="fas fa-times"></i>
+        </button>
+        <button class="search-btn">Search</button>
+      </div>
+    </div>
+  </div>
+  
+  <div class="search-filters">
+    <div class="filter-group">
+      <label><i class="fas fa-tag"></i> Category</label>
+      <div class="custom-select">
+        <select id="categorySelect">
+          <option value="">All Categories</option>
+          <option value="business">Business</option>
+          <option value="health">Health & Fitness</option>
+          <option value="career">Career</option>
+          <option value="mindfulness">Mindfulness</option>
+          <option value="finance">Finance</option>
+        </select>
+        <i class="fas fa-chevron-down"></i>
+      </div>
+    </div>
+    
+    <div class="filter-group">
+      <label class="price-label">
+        <span><i class="fas fa-dollar-sign" style="margin-right: 5px;"></i> Session Price</span>
+        <span class="price-value" id="priceValue">$0 - $100</span>
+      </label>
+      <input type="range" min="0" max="200" value="100" class="price-slider" id="priceSlider">
+    </div>
+    
+    <div class="filter-group">
+      <label><i class="fas fa-globe"></i> Language</label>
+      <div class="custom-select">
+        <select id="languageSelect">
+          <option value="">All Languages</option>
+          <option value="english">English</option>
+          <option value="czech">Czech</option>
+          <option value="spanish">Spanish</option>
+          <option value="german">German</option>
+          <option value="french">French</option>
+        </select>
+        <i class="fas fa-chevron-down"></i>
+      </div>
+    </div>
+  </div>
+  
+  <div class="mentors-container">
+    <!-- Mentor Card 1 -->
+    <div class="mentor-card" data-aos="fade-up">
+      <div class="mentor-header-content">
+        <div class="mentor-avatar">
+          <img src="https://i.pravatar.cc/150?img=12" alt="Sarah Johnson">
+        </div>
+        <div class="mentor-title">
+          <h4>Sarah Johnson</h4>
+          <p class="mentor-specialty">Business Strategy</p>
+        </div>
+      </div>
+      
+      <div class="mentor-details">
+        <p class="mentor-motto">"Turn your vision into a viable business."</p>
+        <p class="mentor-bio">Ex-McKinsey consultant with 10+ years helping startups scale from seed to Series B.</p>
+        <div class="mentor-tags">
+          <span class="mentor-tag">Startup</span>
+          <span class="mentor-tag">Strategy</span>
+          <span class="mentor-tag">Growth</span>
+        </div>
+      </div>
+      
+      <div class="mentor-footer">
+        <p class="mentor-price">$80<span>/session</span></p>
+        <a href="#" class="btn-mentor">View Profile <i class="fas fa-arrow-right"></i></a>
+      </div>
+    </div>
+    
+    <!-- Mentor Card 2 -->
+    <div class="mentor-card" data-aos="fade-up" data-aos-delay="100">
+      <div class="mentor-header-content">
+        <div class="mentor-avatar">
+          <img src="https://i.pravatar.cc/150?img=33" alt="Michael Chen">
+        </div>
+        <div class="mentor-title">
+          <h4>Michael Chen</h4>
+          <p class="mentor-specialty">Career Development</p>
+        </div>
+      </div>
+      
+      <div class="mentor-details">
+        <p class="mentor-motto">"Unlock your potential and lead with confidence."</p>
+        <p class="mentor-bio">Senior HR Director who has coached over 500 professionals to land their dream roles.</p>
+        <div class="mentor-tags">
+          <span class="mentor-tag">Leadership</span>
+          <span class="mentor-tag">Career</span>
+          <span class="mentor-tag">Interviewing</span>
+        </div>
+      </div>
+      
+      <div class="mentor-footer">
+        <p class="mentor-price">$65<span>/session</span></p>
+        <a href="#" class="btn-mentor">View Profile <i class="fas fa-arrow-right"></i></a>
+      </div>
+    </div>
+    
+    <!-- Mentor Card 3 -->
+    <div class="mentor-card" data-aos="fade-up" data-aos-delay="200">
+      <div class="mentor-header-content">
+        <div class="mentor-avatar">
+          <img src="https://i.pravatar.cc/150?img=44" alt="Emma Rodriguez">
+        </div>
+        <div class="mentor-title">
+          <h4>Emma Rodriguez</h4>
+          <p class="mentor-specialty">Mindfulness Coach</p>
+        </div>
+      </div>
+      
+      <div class="mentor-details">
+        <p class="mentor-motto">"Find peace in the chaos of success."</p>
+        <p class="mentor-bio">Certified mindfulness practitioner specializing in stress reduction for high-performers.</p>
+        <div class="mentor-tags">
+          <span class="mentor-tag">Mindfulness</span>
+          <span class="mentor-tag">Wellness</span>
+          <span class="mentor-tag">Balance</span>
+        </div>
+      </div>
+      
+      <div class="mentor-footer">
+        <p class="mentor-price">$55<span>/session</span></p>
+        <a href="#" class="btn-mentor">View Profile <i class="fas fa-arrow-right"></i></a>
+      </div>
+    </div>
+    
+    <!-- Mentor Card 4 -->
+    <div class="mentor-card" data-aos="fade-up" data-aos-delay="300">
+      <div class="mentor-header-content">
+        <div class="mentor-avatar">
+          <img src="https://i.pravatar.cc/150?img=68" alt="David Kim">
+        </div>
+        <div class="mentor-title">
+          <h4>David Kim</h4>
+          <p class="mentor-specialty">Startup Advisor</p>
+        </div>
+      </div>
+      
+      <div class="mentor-details">
+        <p class="mentor-motto">"Fail fast, learn faster, succeed sooner."</p>
+        <p class="mentor-bio">Serial entrepreneur with 3 exits. I help founders navigate the messy middle of building a company.</p>
+        <div class="mentor-tags">
+          <span class="mentor-tag">Fundraising</span>
+          <span class="mentor-tag">Product</span>
+          <span class="mentor-tag">LeanStartup</span>
+        </div>
+      </div>
+      
+      <div class="mentor-footer">
+        <p class="mentor-price">$90<span>/session</span></p>
+        <a href="#" class="btn-mentor">View Profile <i class="fas fa-arrow-right"></i></a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <h3>Healthy Mentoring</h3>
+        <p>A data-driven platform with a holistic approach—real human connection, powered by AI.</p>
+        <div class="social-links">
+          <a href="#"><i class="fab fa-twitter"></i></a>
+          <a href="#"><i class="fab fa-linkedin"></i></a>
+          <a href="#"><i class="fab fa-instagram"></i></a>
+        </div>
+      </div>
+      <div class="footer-links">
+        <h4>Platform</h4>
+        <a href="{% url 'web:mentors' %}">Mentors</a>
+        <a href="/#business-lab">Business Lab</a>
+        <a href="#">Pricing</a>
+      </div>
+      <div class="footer-links">
+        <h4>Company</h4>
+        <a href="#">About</a>
+        <a href="#">Careers</a>
+        <a href="#" id="contact-link">Contact</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>&copy; {% now "Y" %} Healthy Mentoring. All rights reserved.</p>
+    </div>
+  </div>
+</footer>
+{% endblock %}
+
+{% block scripts %}
+<script src="{% static 'js/landing.js' %}"></script>
+<script src="{% static 'js/search-interactions.js' %}"></script>
+<script>
+  // Script to populate filters from URL parameters
+  document.addEventListener('DOMContentLoaded', function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    
+    const searchInput = document.getElementById('searchInput');
+    const categorySelect = document.getElementById('categorySelect');
+    const priceSlider = document.getElementById('priceSlider');
+    const languageSelect = document.getElementById('languageSelect');
+    
+    if (urlParams.has('q')) {
+      searchInput.value = urlParams.get('q');
+      // Trigger input event to show clear button if needed
+      searchInput.dispatchEvent(new Event('input'));
+    }
+    
+    if (urlParams.has('category')) {
+      // Simple matching for now, assuming values match options
+      const category = urlParams.get('category').toLowerCase();
+      for (let i = 0; i < categorySelect.options.length; i++) {
+        if (categorySelect.options[i].text.toLowerCase().includes(category) || 
+            categorySelect.options[i].value.toLowerCase() === category) {
+          categorySelect.selectedIndex = i;
+          break;
+        }
+      }
+    }
+    
+    if (urlParams.has('price')) {
+      const price = parseInt(urlParams.get('price'));
+      if (!isNaN(price)) {
+        priceSlider.value = price;
+        // Trigger input event to update price display
+        priceSlider.dispatchEvent(new Event('input'));
+      }
+    }
+    
+    if (urlParams.has('language')) {
+      const language = urlParams.get('language').toLowerCase();
+      for (let i = 0; i < languageSelect.options.length; i++) {
+        if (languageSelect.options[i].text.toLowerCase().includes(language) || 
+            languageSelect.options[i].value.toLowerCase() === language) {
+          languageSelect.selectedIndex = i;
+          break;
+        }
+      }
+    }
+  });
+</script>
+{% endblock %}
