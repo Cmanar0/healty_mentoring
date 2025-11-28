@@ -50,9 +50,10 @@
               <span>Subscription</span>
             </a>
             <a href="#" class="dropdown-item">
-              <i class="fas fa-life-ring"></i>
+              <i class="fas fa-headset"></i>
               <span>Support</span>
             </a>
+            <div class="dropdown-divider"></div>
             <form action="{% url 'accounts:logout' %}" method="post" class="dropdown-item-form">
               {% csrf_token %}
               <button type="submit" class="dropdown-item logout-item">
@@ -135,17 +136,22 @@
   cursor: pointer;
   padding: 8px 12px;
   border-radius: 8px;
-  transition: background 0.2s ease;
+  transition: none;
 }
 
 .user-profile-trigger:hover {
-  background: rgba(16, 185, 129, 0.1);
+  background: transparent;
+}
+
+.user-profile-trigger:hover .user-name {
+  color: var(--primary);
 }
 
 .user-name {
   font-weight: 500;
   color: var(--text-dark);
   font-size: 0.95rem;
+  transition: color 0.2s ease;
 }
 
 .user-avatar {
@@ -182,7 +188,7 @@
   border-radius: 12px;
   box-shadow: 0 4px 20px rgba(0,0,0,0.15);
   min-width: 200px;
-  padding: 8px 0;
+  padding: 0;
   opacity: 0;
   visibility: hidden;
   transform: translateY(-10px);
@@ -218,9 +224,19 @@
   font-size: 0.95rem;
 }
 
+/* First button - rounded top corners */
+.dropdown-item:first-child {
+  border-radius: 12px 12px 0 0;
+}
+
 .dropdown-item:hover {
   background: rgba(16, 185, 129, 0.1);
   color: var(--primary);
+}
+
+/* First button hover - maintain top rounded corners */
+.dropdown-item:first-child:hover {
+  border-radius: 12px 12px 0 0;
 }
 
 .dropdown-item i {
@@ -233,10 +249,18 @@
   color: var(--primary);
 }
 
+.dropdown-divider {
+  height: 1px;
+  background: rgba(0,0,0,0.1);
+}
+
 .logout-item {
-  border-top: 1px solid rgba(0,0,0,0.1);
-  margin-top: 4px;
-  padding-top: 12px;
+  margin-top: 0;
+  border-radius: 0 0 12px 12px;
+}
+
+.logout-item:hover {
+  border-radius: 0 0 12px 12px;
 }
 
 .logout-item i {

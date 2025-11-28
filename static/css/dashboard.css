@@ -122,10 +122,17 @@
 }
 
 .sidebar-link i {
-  width: 24px;
+  width: 20px;
   text-align: center;
   font-size: 1.1rem;
   flex-shrink: 0;
+  color: var(--text-light);
+  transition: color 0.2s ease;
+}
+
+.sidebar-link:hover i,
+.sidebar-link.active i {
+  color: var(--primary);
 }
 
 .sidebar-text {
