@@ -56,4 +56,9 @@ def account(request):
             profile.credentials = [{"title": s.strip()} for s in creds.split(",") if s.strip()]
         profile.save()
         return redirect("dashboard:account")
-    return render(request, "dashboard/mentor/account.html")
+    
+    # Determine which template to use based on user role
+    if hasattr(request.user, 'profile') and request.user.profile.role == 'user':
+        return render(request, "dashboard/user/account.html")
+    else:
+        return render(request, "dashboard/mentor/account.html")
