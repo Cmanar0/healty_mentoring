@@ -68,6 +68,12 @@ h1, h2, h3 { margin-top: 0; color: #1e293b; }
   margin-left: 20px;
 }
 .top-actions a:hover { color: var(--color-primary); }
+.top-actions .btn-primary {
+  color: white !important;
+}
+.top-actions .btn-primary:hover {
+  color: white !important;
+}
 
 /* Auth Card */
 .auth-card {
@@ -121,6 +127,23 @@ button {
 }
 button:hover { background: var(--color-primary-hover); }
 
+.nav-logout-btn {
+  background: transparent;
+  border: 1px solid var(--text-dark);
+  color: var(--text-dark);
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 0.9rem;
+}
+
+.nav-logout-btn:hover {
+  background: var(--text-dark);
+  color: white;
+}
 /* Landing Page */
 .hero {
   text-align: center;

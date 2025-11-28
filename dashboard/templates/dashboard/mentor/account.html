@@ -1,0 +1,127 @@
+{% extends "dashboard/mentor/base.html" %}
+{% load static %}
+
+{% block page_title %}Account{% endblock %}
+
+{% block dashboard_content %}
+<div class="account-form">
+  <h1>Account</h1>
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    <div class="form-group">
+      <label>First name</label>
+      <input type="text" name="first_name" value="{{ user.profile.first_name }}" class="form-input">
+    </div>
+    <div class="form-group">
+      <label>Last name</label>
+      <input type="text" name="last_name" value="{{ user.profile.last_name }}" class="form-input">
+    </div>
+    <div class="form-group">
+      <label>Time zone</label>
+      <input type="text" name="time_zone" value="{{ user.profile.time_zone }}" class="form-input">
+    </div>
+    <div class="form-group">
+      <label>Profile picture</label>
+      <input type="file" name="profile_picture" class="form-input">
+    </div>
+    <div class="form-group">
+      <h3>Credentials</h3>
+      <textarea name="credentials" class="form-textarea">{{ user.profile.credentials|default:"[]" }}</textarea>
+      <small>Enter JSON array or comma-separated titles</small>
+    </div>
+    <button type="submit" class="btn-submit">Save</button>
+  </form>
+</div>
+
+<style>
+.account-form {
+  max-width: 600px;
+  background: white;
+  padding: 32px;
+  border-radius: 16px;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+}
+
+.account-form h1 {
+  font-family: 'Outfit', sans-serif;
+  color: var(--secondary);
+  font-size: 2rem;
+  margin-bottom: 24px;
+}
+
+.account-form h3 {
+  font-family: 'Outfit', sans-serif;
+  color: var(--secondary);
+  font-size: 1.2rem;
+  margin: 24px 0 12px 0;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: var(--text-dark);
+}
+
+.form-input {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid rgba(0,0,0,0.1);
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: border-color 0.2s ease;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.form-textarea {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid rgba(0,0,0,0.1);
+  border-radius: 8px;
+  font-size: 1rem;
+  min-height: 120px;
+  font-family: monospace;
+  transition: border-color 0.2s ease;
+}
+
+.form-textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.form-group small {
+  display: block;
+  margin-top: 6px;
+  color: var(--text-light);
+  font-size: 0.85rem;
+}
+
+.btn-submit {
+  background: var(--primary);
+  color: white;
+  padding: 12px 32px;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-top: 8px;
+}
+
+.btn-submit:hover {
+  background: var(--primary-dark);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+</style>
+{% endblock %}
+

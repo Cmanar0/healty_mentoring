@@ -3,7 +3,39 @@ from django.contrib.auth.decorators import login_required
 
 @login_required
 def index(request):
-    return render(request, "dashboard/index.html")
+    user = request.user
+    # Ensure user has a profile
+    if not hasattr(user, 'profile'):
+        return redirect('web:landing')
+        
+    role = user.profile.role
+    
+    if role == 'mentor':
+        return redirect('dashboard:mentor_dashboard')
+    elif role == 'user':
+        return redirect('dashboard:user_dashboard')
+    elif role == 'admin':
+        # Admin role users are redirected to admin panel or landing
+        # Since they shouldn't use the regular dashboard
+        if user.is_staff:
+            return redirect('/admin/')
+        return redirect('web:landing')
+    
+    return redirect('web:landing')
+
+@login_required
+def mentor_dashboard(request):
+    # Access control: only mentors
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        return redirect('dashboard:index')
+    return render(request, "dashboard/mentor/dashboard_mentor.html")
+
+@login_required
+def user_dashboard(request):
+    # Access control: only users
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'user':
+        return redirect('dashboard:index')
+    return render(request, "dashboard/user/dashboard_user.html")
 
 @login_required
 def account(request):
@@ -24,4 +56,4 @@ def account(request):
             profile.credentials = [{"title": s.strip()} for s in creds.split(",") if s.strip()]
         profile.save()
         return redirect("dashboard:account")
-    return render(request, "dashboard/account.html")
+    return render(request, "dashboard/mentor/account.html")

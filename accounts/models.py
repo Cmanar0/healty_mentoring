@@ -29,6 +29,7 @@ class UserProfile(models.Model):
     ROLE_CHOICES = [
         ('user', 'User'),
         ('mentor', 'Mentor'),
+        ('admin', 'Admin'),
     ]
     
     user = models.OneToOneField("accounts.CustomUser", on_delete=models.CASCADE, related_name="profile")
