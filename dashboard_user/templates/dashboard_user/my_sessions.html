@@ -1,0 +1,20 @@
+{% extends "dashboard_user/base.html" %}
+{% load static %}
+
+{% block page_title %}My Sessions{% endblock %}
+
+{% block dashboard_content %}
+<div class="dashboard-content-container">
+    <h1 class="dashboard-page-title">My Sessions</h1>
+
+    <div class="dashboard-grid">
+        <div class="dashboard-card col-span-12">
+            <div class="empty-state">
+                <i class="fas fa-calendar-alt"></i>
+                <p>You have no sessions scheduled.</p>
+                <a href="{% url 'web:mentors' %}" class="btn btn-primary" style="margin-top: 16px;">Find a Mentor</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -27,6 +27,8 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "accounts",
     "dashboard",
+    "dashboard_mentor",
+    "dashboard_user",
     "web",
     "crispy_forms",
     "widget_tweaks",

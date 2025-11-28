@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{% block page_title %}Mentor Dashboard{% endblock %}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/dashboard.css' %}">
+{% endblock %}
+
+{% block navbar %}
+<header class="dashboard-header">
+  <nav class="dashboard-top-nav">
+    <div class="dashboard-nav-left">
+      <button class="hamburger-toggle" id="hamburgerToggle" aria-label="Toggle menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+      <a href="{% url 'web:landing' %}" class="dashboard-logo-link">
+        <img src="{% static 'images/logo.png' %}" alt="logo" class="logo">
+        <span class="dashboard-brand-text">Healthy Mentoring</span>
+      </a>
+    </div>
+    <div class="dashboard-top-actions">
+      {% if user.is_authenticated %}
+        <form action="{% url 'accounts:logout' %}" method="post" style="display: inline;">
+          {% csrf_token %}
+          <button type="submit" class="nav-logout-btn">Logout</button>
+        </form>
+      {% endif %}
+    </div>
+  </nav>
+</header>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-layout">
+  <!-- Left Sidebar -->
+  <aside class="dashboard-sidebar" id="dashboardSidebar">
+    <nav class="sidebar-nav">
+      <ul class="sidebar-menu">
+        <li>
+          <a href="/dashboard/mentor/" class="sidebar-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}" title="Dashboard">
+            <i class="fas fa-home"></i>
+            <span class="sidebar-text">Dashboard</span>
+          </a>
+        </li>
+        <li>
+          <a href="/dashboard/mentor/my-sessions/" class="sidebar-link {% if request.resolver_match.url_name == 'my_sessions' %}active{% endif %}" title="Sessions">
+            <i class="fas fa-calendar"></i>
+            <span class="sidebar-text">Sessions</span>
+          </a>
+        </li>
+        <li>
+          <a href="#" class="sidebar-link" title="Mentees">
+            <i class="fas fa-users"></i>
+            <span class="sidebar-text">Mentees</span>
+          </a>
+        </li>
+        <li>
+          <a href="/dashboard/mentor/account/" class="sidebar-link {% if request.resolver_match.url_name == 'account' %}active{% endif %}" title="Account">
+            <i class="fas fa-user"></i>
+            <span class="sidebar-text">Account</span>
+          </a>
+        </li>
+      </ul>
+    </nav>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="dashboard-main" id="dashboardMain">
+    {% block dashboard_content %}{% endblock %}
+  </main>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ block.super }}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const hamburgerToggle = document.getElementById('hamburgerToggle');
+  const sidebar = document.getElementById('dashboardSidebar');
+  const dashboardLayout = document.querySelector('.dashboard-layout');
+
+  if (hamburgerToggle && sidebar && dashboardLayout) {
+    // Check if sidebar should start collapsed (from localStorage)
+    const isCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+    if (isCollapsed) {
+      sidebar.classList.add('collapsed');
+      // dashboardLayout.classList.add('sidebar-collapsed'); // Removed as per new CSS logic
+      hamburgerToggle.classList.add('active');
+    }
+
+    hamburgerToggle.addEventListener('click', function() {
+      sidebar.classList.toggle('collapsed');
+      // dashboardLayout.classList.toggle('sidebar-collapsed'); // Removed as per new CSS logic
+      hamburgerToggle.classList.toggle('active');
+      
+      // Save state to localStorage
+      localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed'));
+    });
+
+    // Close sidebar when clicking outside on mobile
+    if (window.innerWidth <= 768) {
+      document.addEventListener('click', function(event) {
+        if (!sidebar.contains(event.target) && !hamburgerToggle.contains(event.target)) {
+          sidebar.classList.remove('open');
+          hamburgerToggle.classList.remove('active');
+        }
+      });
+    }
+  }
+});
+</script>
+{% endblock %}

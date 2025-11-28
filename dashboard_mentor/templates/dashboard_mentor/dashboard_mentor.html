@@ -1,0 +1,55 @@
+{% extends "dashboard_mentor/base.html" %}
+{% load static %}
+
+{% block page_title %}Mentor Dashboard{% endblock %}
+
+{% block dashboard_content %}
+<!-- Hero Section -->
+<div class="dashboard-hero">
+    <h1>Welcome back, {{ user.profile.first_name }}! 👋</h1>
+    <p>You're making a difference. Here's what's happening with your mentorships today.</p>
+</div>
+
+<!-- Main Content Container -->
+<div class="dashboard-content-container">
+    <div class="dashboard-grid">
+        
+        <!-- Stats Card (Moved to top for impact) -->
+        <div class="dashboard-card">
+            <h3><i class="fas fa-chart-line"></i> Impact Overview</h3>
+            <div class="stats-row">
+                <div class="stat-item">
+                    <span class="stat-value">0</span>
+                    <span class="stat-label">Total Sessions</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-value">5.0</span>
+                    <span class="stat-label">Avg Rating</span>
+                </div>
+            </div>
+            <a href="/dashboard/mentor/account/" class="btn btn-outline" style="text-align: center; margin-top: auto;">View Full Profile</a>
+        </div>
+
+        <!-- Upcoming Sessions -->
+        <div class="dashboard-card">
+            <h3><i class="fas fa-calendar-check"></i> Upcoming Sessions</h3>
+            <div class="empty-state">
+                <i class="far fa-calendar-times"></i>
+                <p>No sessions scheduled for today.</p>
+            </div>
+            <a href="#" class="btn btn-primary" style="text-align: center; margin-top: 16px;">Manage Schedule</a>
+        </div>
+        
+        <!-- Mentees -->
+        <div class="dashboard-card">
+            <h3><i class="fas fa-users"></i> Active Mentees</h3>
+            <div class="empty-state">
+                <i class="fas fa-user-friends"></i>
+                <p>You have 0 active mentees.</p>
+            </div>
+            <a href="#" class="btn btn-outline" style="text-align: center; margin-top: 16px;">View All Mentees</a>
+        </div>
+        
+    </div>
+</div>
+{% endblock %}
