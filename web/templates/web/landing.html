@@ -1,29 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Healthy Mentoring — Mentors platform{% endblock %}
 {% load static %}
-{% block navbar %}
-<header class="site-header">
-  <nav class="top-nav">
-    <div class="brand">
-      <img src="{% static 'images/logo.png' %}" alt="logo" class="logo">
-      <a href="/">Healthy Mentoring</a>
-    </div>
-    <div class="nav-links">
-      <a href="/#features">Features</a>
-      <a href="/#business-lab">Business Lab</a>
-      <a href="{% url 'web:mentors' %}">Find Mentor</a>
-    </div>
-    <div class="top-actions">
-      {% if user.is_authenticated %}
-        <a href="{% url 'dashboard:index' %}" class="btn btn-sm btn-primary">Profile</a>
-      {% else %}
-        <a href="{% url 'accounts:login' %}">Login</a>
-        <a href="{% url 'accounts:register' %}" class="btn btn-sm btn-primary">Register</a>
-      {% endif %}
-    </div>
-  </nav>
-</header>
-{% endblock %}
 
 {% block content %}
 <!-- Hero Section -->

@@ -106,6 +106,10 @@ h1, h2, h3, h4 {
   .nav-links a:hover {
     color: var(--primary);
   }
+  .nav-links a.active {
+    color: var(--primary);
+    font-weight: 600;
+  }
   .btn-sm {
     padding: 8px 16px;
     font-size: 0.9rem;
