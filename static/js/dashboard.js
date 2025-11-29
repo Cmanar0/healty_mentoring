@@ -1,57 +1,42 @@
 document.addEventListener('DOMContentLoaded', function() {
-    // --- Tab Switching Logic ---
-    window.switchTab = function(tabName) {
-        // Update Tab Buttons
-        const buttons = document.querySelectorAll('.tab-btn');
-        buttons.forEach(btn => btn.classList.remove('active'));
-        event.target.classList.add('active');
-
-        // Update List Content (Mock Logic for Demo)
-        const list = document.getElementById('todo-list');
-        if (tabName === 'todo') {
-            list.innerHTML = `
-                <li class="task-item">
-                    <div class="task-check"><i class="fas fa-check"></i></div>
-                    <div class="task-content">
-                        <span class="task-title">Review Q3 Financials</span>
-                        <span class="task-meta">Due Today • Strategy</span>
-                    </div>
-                </li>
-                <li class="task-item">
-                    <div class="task-check"><i class="fas fa-check"></i></div>
-                    <div class="task-content">
-                        <span class="task-title">Draft Team Restructuring Plan</span>
-                        <span class="task-meta">Due Tomorrow • Leadership</span>
-                    </div>
-                </li>
-                <li class="task-item">
-                    <div class="task-check"><i class="fas fa-check"></i></div>
-                    <div class="task-content">
-                        <span class="task-title">Prepare Pitch Deck</span>
-                        <span class="task-meta">Due Friday • Execution</span>
-                    </div>
-                </li>
-            `;
-        } else {
-            list.innerHTML = `
-                <li class="task-item">
-                    <div class="task-check completed"><i class="fas fa-check"></i></div>
-                    <div class="task-content">
-                        <span class="task-title">Initial Mentor Call</span>
-                        <span class="task-meta">Completed Yesterday</span>
-                    </div>
-                </li>
-                <li class="task-item">
-                    <div class="task-check completed"><i class="fas fa-check"></i></div>
-                    <div class="task-content">
-                        <span class="task-title">Define Q4 Goals</span>
-                        <span class="task-meta">Completed 2 days ago</span>
-                    </div>
-                </li>
-            `;
-        }
+    
+    // --- Dropdown Logic ---
+    window.toggleDropdown = function(btn) {
+        // Close all other dropdowns first
+        const allMenus = document.querySelectorAll('.dropdown-menu');
+        const currentMenu = btn.nextElementSibling;
+        
+        allMenus.forEach(menu => {
+            if (menu !== currentMenu) {
+                menu.classList.remove('show');
+            }
+        });
+        
+        // Toggle current
+        currentMenu.classList.toggle('show');
+        
+        // Prevent event bubbling
+        event.stopPropagation();
     };
 
+    // Close dropdowns when clicking outside
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.dropdown')) {
+            document.querySelectorAll('.dropdown-menu').forEach(menu => {
+                menu.classList.remove('show');
+            });
+        }
+    });
+
+    // --- Task Completion Logic ---
+    window.toggleTask = function(btn) {
+        btn.classList.toggle('completed');
+        // In a real app, this would send an AJAX request
+    };
+
+    // --- Tab Switching Logic (Demo) ---
+    // (Kept simple for now, can be expanded)
+    
     // --- Radar Chart Initialization ---
     const ctx = document.getElementById('startupRadarChart');
     if (ctx) {

@@ -1,16 +1,18 @@
-{% extends "dashboard_user/base.html" %}
+{% extends "dashboard/user/base.html" %}
 {% load static %}
 
 {% block page_title %}User Dashboard{% endblock %}
 
 {% block dashboard_content %}
 <div class="dashboard-content-container">
+    <h1 class="dashboard-page-title">Dashboard</h1>
+
     <!-- PART 1: Actionable Items -->
     <div class="dashboard-part">
         <div class="dashboard-grid">
             
-            <!-- My Mentors (Col 4) -->
-            <div class="dashboard-card col-span-4">
+            <!-- My Mentors (Col 6) -->
+            <div class="dashboard-card col-span-6">
                 <div class="card-header">
                     <h3 class="card-title">My Mentors</h3>
                     <div class="card-actions">
@@ -58,8 +60,8 @@
                 </div>
             </div>
 
-            <!-- Tasks To Do (Col 4) -->
-            <div class="dashboard-card col-span-4">
+            <!-- Tasks To Do (Col 6) -->
+            <div class="dashboard-card col-span-6">
                 <div class="card-header">
                     <h3 class="card-title">Tasks to Do</h3>
                     <div class="tabs">
@@ -108,8 +110,8 @@
                 </div>
             </div>
 
-            <!-- Completed Tasks (Col 4) -->
-            <div class="dashboard-card col-span-4">
+            <!-- Completed Tasks (Col 6) -->
+            <div class="dashboard-card col-span-6">
                 <div class="card-header">
                     <h3 class="card-title">Completed Tasks</h3>
                     <div class="tabs">
@@ -137,145 +139,23 @@
 
             <!-- Sessions (Full Width) -->
             <div class="dashboard-card col-span-12">
-                <div class="card-header" style="align-items: flex-start;">
+                <div class="card-header">
                     <h3 class="card-title">Sessions</h3>
-                    <div style="display: flex; gap: 16px; align-items: center;">
-                        <a href="{% url 'dashboard:dashboard_user:my_sessions' %}" class="btn-link">View Calendar</a>
-                        <a href="#" class="btn-link" style="color: var(--dash-text-muted);">Session History</a>
-                    </div>
+                    <a href="{% url 'dashboard:user:my_sessions' %}" class="btn-link">View Calendar</a>
                 </div>
-                
-                <div class="session-timeline-container">
-                    <!-- Session Item 1: On Track -->
-                    <div class="session-item confirmed">
-                        <div class="session-left">
-                            <div class="session-date">
-                                <span class="date-day">28</span>
-                                <span class="date-month">Nov</span>
-                            </div>
-                            <div class="session-info">
-                                <h4 class="session-title">Strategy Review</h4>
-                                <div class="session-meta-row">
-                                    <span class="session-time"><i class="far fa-clock"></i> 10:00 AM - 11:00 AM</span>
-                                    <span class="conf-tag confirmed">Confirmed</span>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="session-right">
-                            <div class="session-tasks">
-                                <div class="task-status-row">
-                                    <div class="task-dot green"></div>
-                                    <span class="task-status-label">Completed</span>
-                                    <span class="task-status-count">2</span>
-                                </div>
-                                <div class="task-status-row">
-                                    <div class="task-dot orange"></div>
-                                    <span class="task-status-label">Pending</span>
-                                    <span class="task-status-count">0</span>
-                                </div>
-                                <div class="task-status-row">
-                                    <div class="task-dot red"></div>
-                                    <span class="task-status-label">Missed</span>
-                                    <span class="task-status-count">0</span>
-                                </div>
-                                <div class="task-status-row">
-                                    <div class="task-dot grey"></div>
-                                    <span class="task-status-label">Deactivated</span>
-                                    <span class="task-status-count">0</span>
-                                </div>
-                            </div>
-                            <button class="btn-details">View Details</button>
-                        </div>
+                <div class="session-item">
+                    <div class="session-date">
+                        <span class="date-day">28</span>
+                        <span class="date-month">Nov</span>
                     </div>
-
-                    <!-- Session Item 2: Tasks To Do -->
-                    <div class="session-item confirmed">
-                        <div class="session-left">
-                            <div class="session-date">
-                                <span class="date-day">05</span>
-                                <span class="date-month">Dec</span>
-                            </div>
-                            <div class="session-info">
-                                <h4 class="session-title">Leadership Workshop</h4>
-                                <div class="session-meta-row">
-                                    <span class="session-time"><i class="far fa-clock"></i> 2:00 PM - 3:30 PM</span>
-                                    <span class="conf-tag confirmed">Confirmed</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="session-right">
-                            <div class="session-tasks">
-                                <div class="task-status-row">
-                                    <div class="task-dot green"></div>
-                                    <span class="task-status-label">Completed</span>
-                                    <span class="task-status-count">0</span>
-                                </div>
-                                <div class="task-status-row">
-                                    <div class="task-dot orange"></div>
-                                    <span class="task-status-label">Pending</span>
-                                    <span class="task-status-count">1</span>
-                                </div>
-                                <div class="task-status-row">
-                                    <div class="task-dot red"></div>
-                                    <span class="task-status-label">Missed</span>
-                                    <span class="task-status-count">0</span>
-                                </div>
-                                <div class="task-status-row">
-                                    <div class="task-dot grey"></div>
-                                    <span class="task-status-label">Deactivated</span>
-                                    <span class="task-status-count">0</span>
-                                </div>
-                            </div>
-                            <button class="btn-details">View Details</button>
-                        </div>
-                    </div>
-
-                    <!-- Session Item 3: Tasks Missed -->
-                    <div class="session-item tbc">
-                        <div class="session-left">
-                            <div class="session-date">
-                                <span class="date-day">12</span>
-                                <span class="date-month">Dec</span>
-                            </div>
-                            <div class="session-info">
-                                <h4 class="session-title">Q4 Planning</h4>
-                                <div class="session-meta-row">
-                                    <span class="session-time"><i class="far fa-clock"></i> 11:00 AM - 12:30 PM</span>
-                                    <span class="conf-tag tbc">To Be Confirmed</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="session-right">
-                            <div class="session-tasks">
-                                <div class="task-status-row">
-                                    <div class="task-dot green"></div>
-                                    <span class="task-status-label">Completed</span>
-                                    <span class="task-status-count">1</span>
-                                </div>
-                                <div class="task-status-row">
-                                    <div class="task-dot orange"></div>
-                                    <span class="task-status-label">Pending</span>
-                                    <span class="task-status-count">0</span>
-                                </div>
-                                <div class="task-status-row">
-                                    <div class="task-dot red"></div>
-                                    <span class="task-status-label">Missed</span>
-                                    <span class="task-status-count">2</span>
-                                </div>
-                                <div class="task-status-row">
-                                    <div class="task-dot grey"></div>
-                                    <span class="task-status-label">Deactivated</span>
-                                    <span class="task-status-count">0</span>
-                                </div>
-                            </div>
-                            <button class="btn-details">View Details</button>
+                    <div class="session-info">
+                        <h4 style="margin: 0 0 4px;">Strategy Review</h4>
+                        <p style="margin: 0 0 8px; font-size: 0.9rem; color: var(--dash-text-muted);">10:00 AM - 11:00 AM • Dr. Sarah Smith</p>
+                        <div style="display: flex; gap: 8px;">
+                            <span class="badge badge-success">Confirmed</span>
                         </div>
                     </div>
                 </div>
-
             </div>
 
         </div>
@@ -283,11 +163,7 @@
 
     <!-- PART 2: Metrics & Identity -->
     <div class="dashboard-part">
-        <!-- Section Header with Separator -->
-        <div class="section-header">
-            <h2 class="section-title">Progress & Metrics</h2>
-            <span class="mentor-link">Supervised by <a href="#">Dr. Sarah Smith</a></span>
-        </div>
+        <h2 class="dashboard-page-title" style="font-size: 1.5rem; margin-bottom: 24px;">Progress & Metrics</h2>
         
         <!-- Identity Progress Row -->
         <div class="identity-progress-row">

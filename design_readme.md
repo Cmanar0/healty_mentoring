@@ -46,6 +46,25 @@ Our design philosophy is built on three pillars, driven by our cross-functional 
 *   **H2**: `Outfit`, 2rem, Semi-Bold.
 *   **Body**: `Inter`, 1rem, Regular.
 
+### Dropdown Menus
+Universal dropdown component for actions.
+
+**HTML Structure:**
+```html
+<div class="dropdown">
+  <button class="action-btn" onclick="toggleDropdown(this)">...</button>
+  <div class="dropdown-menu">
+    <button class="dropdown-item">Action 1</button>
+    <button class="dropdown-item">Action 2</button>
+  </div>
+</div>
+```
+
+**Features:**
+- **Rounded Corners**: First item has top rounded corners, last item has bottom rounded corners.
+- **No Padding**: Container has no padding; items provide padding.
+- **Hover Effect**: Items change background color on hover.
+
 ---
 
 ## 🚀 Implementation Guide for New Pages
