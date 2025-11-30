@@ -1,32 +1,55 @@
 document.addEventListener('DOMContentLoaded', function() {
     
-    // --- Dropdown Logic ---
-    window.toggleDropdown = function(btn) {
-        // Close all other dropdowns first
-        const allMenus = document.querySelectorAll('.dropdown-menu');
-        const currentMenu = btn.nextElementSibling;
-        
-        allMenus.forEach(menu => {
-            if (menu !== currentMenu) {
-                menu.classList.remove('show');
-            }
-        });
-        
-        // Toggle current
-        currentMenu.classList.toggle('show');
-        
-        // Prevent event bubbling
-        event.stopPropagation();
-    };
-
-    // Close dropdowns when clicking outside
-    document.addEventListener('click', function(e) {
-        if (!e.target.closest('.dropdown')) {
-            document.querySelectorAll('.dropdown-menu').forEach(menu => {
-                menu.classList.remove('show');
-            });
+    // Toggle dropdown menus
+function toggleDropdown(button) {
+    const dropdown = button.nextElementSibling;
+    const allDropdowns = document.querySelectorAll('.dropdown-menu');
+    
+    // Close all other dropdowns
+    allDropdowns.forEach(menu => {
+        if (menu !== dropdown) {
+            menu.classList.remove('show');
         }
     });
+    
+    dropdown.classList.toggle('show');
+}
+
+// Close dropdowns and project lists when clicking outside
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('.dropdown') && !e.target.closest('.project-selector')) {
+        document.querySelectorAll('.dropdown-menu').forEach(menu => menu.classList.remove('show'));
+        document.querySelectorAll('.project-list').forEach(list => list.classList.remove('show'));
+    }
+});
+
+// Handle project item clicks - Only one project selected globally
+window.selectProject = function(projectElement, event) {
+    // Don't select if clicking on dropdown button or menu
+    if (event && (event.target.closest('.dropdown') || event.target.closest('.action-btn'))) {
+        return;
+    }
+    
+    if (event) {
+        event.stopPropagation();
+    }
+    
+    // Remove active from ALL projects globally
+    document.querySelectorAll('.project-item').forEach(p => p.classList.remove('active'));
+    
+    // Add active to clicked project
+    projectElement.classList.add('active');
+};
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Attach click handlers to all project items
+    const projectItems = document.querySelectorAll('.project-item');
+    projectItems.forEach(item => {
+        item.addEventListener('click', function(e) {
+            window.selectProject(this, e);
+        });
+    });
+});
 
     // --- Task Completion Logic ---
     window.toggleTask = function(btn) {

@@ -14,45 +14,100 @@
                 <div class="card-header">
                     <h3 class="card-title">My Mentors</h3>
                     <div class="card-actions">
-                        <button class="action-btn green" title="Create New Project"><i class="fas fa-plus"></i></button>
-                        <button class="action-btn blue" title="Find Mentor"><i class="fas fa-user-plus"></i></button>
+                        <button class="action-btn green" title="Add Mentor"><i class="fas fa-user-plus"></i></button>
+                        <button class="action-btn blue" title="Create Project"><i class="fas fa-plus"></i></button>
                         <div class="dropdown">
                             <button class="action-btn ghost" onclick="toggleDropdown(this)"><i class="fas fa-ellipsis-h"></i></button>
                             <div class="dropdown-menu">
-                                <button class="dropdown-item">Edit Connections</button>
+                                <button class="dropdown-item">Project Details</button>
+                                <button class="dropdown-item">Edit Project</button>
                             </div>
                         </div>
                     </div>
                 </div>
-                
-                <!-- Mentor Row 1 -->
+
+                <!-- Mentor 1: Single Project -->
                 <div class="mentor-row">
-                    <div class="mentor-avatar"><i class="fas fa-user"></i></div>
-                    <div class="mentor-info">
-                        <span class="mentor-name">Dr. Sarah Smith</span>
-                        <span class="mentor-project">Project: Market Entry Strategy</span>
-                    </div>
-                    <div class="dropdown">
-                        <button class="action-btn ghost" onclick="toggleDropdown(this)"><i class="fas fa-ellipsis-v"></i></button>
-                        <div class="dropdown-menu">
-                            <button class="dropdown-item">Mentor Profile</button>
-                            <button class="dropdown-item">Project Details</button>
+                    <a href="#" class="mentor-header">
+                        <div class="mentor-avatar">👨‍💼</div>
+                        <div class="mentor-info">
+                            <span class="mentor-name">Dr. Sarah Smith</span>
+                        </div>
+                    </a>
+                    <div class="project-list-container">
+                        <div class="project-item active">
+                            <span class="project-item-name">HealthTech Startup</span>
+                            <div class="project-actions">
+                                <div class="dropdown">
+                                    <button class="action-btn ghost" onclick="toggleDropdown(this)"><i class="fas fa-ellipsis-h"></i></button>
+                                    <div class="dropdown-menu">
+                                        <button class="dropdown-item">Project Details</button>
+                                        <button class="dropdown-item">Edit Project</button>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Mentor Row 2 (No Project) -->
+                <!-- Mentor 2: Single Project -->
                 <div class="mentor-row">
-                    <div class="mentor-avatar"><i class="fas fa-user"></i></div>
-                    <div class="mentor-info">
-                        <span class="mentor-name">James Wilson</span>
-                        <span class="mentor-project" style="color: var(--status-orange);">No project assigned yet</span>
+                    <a href="#" class="mentor-header">
+                        <div class="mentor-avatar">👩‍💼</div>
+                        <div class="mentor-info">
+                            <span class="mentor-name">Michael Chen</span>
+                        </div>
+                    </a>
+                    <div class="project-list-container">
+                        <div class="project-item">
+                            <span class="project-item-name">E-Commerce Platform</span>
+                            <div class="project-actions">
+                                <span class="project-notification orange">3</span>
+                                <div class="dropdown">
+                                    <button class="action-btn ghost" onclick="toggleDropdown(this)"><i class="fas fa-ellipsis-h"></i></button>
+                                    <div class="dropdown-menu">
+                                        <button class="dropdown-item">Project Details</button>
+                                        <button class="dropdown-item">Edit Project</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <div class="dropdown">
-                        <button class="action-btn ghost" onclick="toggleDropdown(this)"><i class="fas fa-ellipsis-v"></i></button>
-                        <div class="dropdown-menu">
-                            <button class="dropdown-item">Mentor Profile</button>
-                            <button class="dropdown-item">Assign Project</button>
+                </div>
+
+                <!-- Mentor 3: Multiple Projects -->
+                <div class="mentor-row">
+                    <a href="#" class="mentor-header">
+                        <div class="mentor-avatar">👨‍🏫</div>
+                        <div class="mentor-info">
+                            <span class="mentor-name">Prof. James Wilson</span>
+                        </div>
+                    </a>
+                    <div class="project-list-container">
+                        <div class="project-item">
+                            <span class="project-item-name">AI Research Lab</span>
+                            <div class="project-actions">
+                                <div class="dropdown">
+                                    <button class="action-btn ghost" onclick="toggleDropdown(this)"><i class="fas fa-ellipsis-h"></i></button>
+                                    <div class="dropdown-menu">
+                                        <button class="dropdown-item">Project Details</button>
+                                        <button class="dropdown-item">Edit Project</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="project-item">
+                            <span class="project-item-name">EdTech Innovation</span>
+                            <div class="project-actions">
+                                <span class="project-notification red">5</span>
+                                <div class="dropdown">
+                                    <button class="action-btn ghost" onclick="toggleDropdown(this)"><i class="fas fa-ellipsis-h"></i></button>
+                                    <div class="dropdown-menu">
+                                        <button class="dropdown-item">Project Details</button>
+                                        <button class="dropdown-item">Edit Project</button>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
