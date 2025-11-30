@@ -5,13 +5,13 @@ from django.contrib.auth.decorators import login_required
 def dashboard(request):
     # Ensure only mentors can access
     if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
-        return redirect('dashboard:index')
+        return redirect('general:index')
     return render(request, 'dashboard_mentor/dashboard_mentor.html')
 
 @login_required
 def account(request):
     if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
-        return redirect('dashboard:index')
+        return redirect('general:index')
 
     if request.method == "POST":
         profile = request.user.profile
@@ -36,5 +36,5 @@ def account(request):
 @login_required
 def my_sessions(request):
     if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
-        return redirect('dashboard:index')
+        return redirect('general:index')
     return render(request, 'dashboard_mentor/my_sessions.html')

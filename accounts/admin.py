@@ -1,20 +1,22 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
-from .models import CustomUser, UserProfile
+from django.contrib.auth.models import Group
+from django import forms
+from .models import (
+    CustomUser, UserProfile, MentorProfile
+)
 from .forms import CustomUserCreationForm, CustomUserChangeForm
 
-class UserProfileInline(admin.StackedInline):
-    model = UserProfile
-    can_delete = False
-    verbose_name_plural = 'profile'
+# Hide Authentication and Authorization groups
+admin.site.unregister(Group)
 
+# User Admin (no inline profiles since we have separate models)
 class UserAdmin(BaseUserAdmin):
     add_form = CustomUserCreationForm
     form = CustomUserChangeForm
     model = CustomUser
     list_display = ("email", "is_staff", "is_superuser")
     ordering = ("email",)
-    inlines = (UserProfileInline,)
     fieldsets = (
         (None, {"fields": ("email", "password")}),
         ("Permissions", {"fields": ("is_staff","is_superuser", "groups", "user_permissions")}),
@@ -24,5 +26,94 @@ class UserAdmin(BaseUserAdmin):
         (None, {"classes": ("wide",), "fields": ("email", "password1", "password2")}),
     )
 
+# User Profile Admin
+class UserProfileAdmin(admin.ModelAdmin):
+    list_display = ('first_name', 'last_name', 'email_display', 'role')
+    list_filter = ('role',)
+    search_fields = ('first_name', 'last_name', 'user__email')
+    readonly_fields = ('role', 'user_email_display')  # Role is not changeable
+    exclude = ('user',)  # Hide User field from form, but show email in readonly
+    
+    fieldsets = (
+        ('User Information', {
+            'fields': ('user_email_display', 'role')
+        }),
+        ('Personal Information', {
+            'fields': ('first_name', 'last_name', 'time_zone', 'profile_picture')
+        }),
+        ('Relations', {
+            'fields': ('mentors', 'sessions'),
+            'classes': ('collapse',)
+        }),
+    )
+    filter_horizontal = ('mentors', 'sessions')
+    
+    def email_display(self, obj):
+        return obj.user.email
+    email_display.short_description = 'Email'
+    
+    def user_email_display(self, obj):
+        return obj.user.email
+    user_email_display.short_description = 'User Email'
+    
+    class Meta:
+        verbose_name = "User Profile"
+        verbose_name_plural = "User Profiles"
+
+# Mentor Profile Admin
+class MentorProfileAdmin(admin.ModelAdmin):
+    list_display = ('first_name', 'last_name', 'email_display', 'role', 'mentor_type')
+    list_filter = ('role', 'mentor_type')
+    search_fields = ('first_name', 'last_name', 'user__email')
+    readonly_fields = ('role', 'user_email_display')  # Role is not changeable
+    exclude = ('user',)  # Hide User field from form, but show email in readonly
+    
+    fieldsets = (
+        ('User Information', {
+            'fields': ('user_email_display', 'role')
+        }),
+        ('Basic Information', {
+            'fields': ('first_name', 'last_name', 'profile_picture')
+        }),
+        ('Personal Information', {
+            'fields': ('time_zone', 'mentor_type', 'bio', 'quote', 'credentials', 'tags')
+        }),
+        ('Billing', {
+            'fields': ('billing',),
+            'classes': ('collapse',)
+        }),
+        ('Subscription', {
+            'fields': ('subscription',),
+            'classes': ('collapse',)
+        }),
+        ('Promotions', {
+            'fields': ('promotions',),
+            'classes': ('collapse',)
+        }),
+        ('Relations', {
+            'fields': ('sessions', 'clients', 'reviews'),
+            'classes': ('collapse',)
+        }),
+    )
+    filter_horizontal = ('credentials', 'tags', 'sessions', 'clients')
+    
+    def email_display(self, obj):
+        return obj.user.email
+    email_display.short_description = 'Email'
+    
+    def user_email_display(self, obj):
+        return obj.user.email
+    user_email_display.short_description = 'User Email'
+    
+    class Meta:
+        verbose_name = "Mentor Profile"
+        verbose_name_plural = "Mentor Profiles"
+
+# Register models
 admin.site.register(CustomUser, UserAdmin)
-admin.site.register(UserProfile)
+
+# Group User Profile related models
+admin.site.register(UserProfile, UserProfileAdmin)
+
+# Group Mentor Profile related models
+admin.site.register(MentorProfile, MentorProfileAdmin)

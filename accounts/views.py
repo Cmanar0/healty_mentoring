@@ -3,7 +3,7 @@ from django.contrib.auth import login, authenticate, logout
 from django.views import View
 from django.contrib import messages
 from .forms import RegisterForm
-from .models import CustomUser
+from .models import CustomUser, UserProfile, MentorProfile
 from django.template.loader import render_to_string
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, force_str
@@ -17,7 +17,7 @@ import os
 class RegisterView(View):
     def get(self, request):
         if request.user.is_authenticated:
-            return redirect("dashboard:index")
+            return redirect("general:index")
         form = RegisterForm()
         return render(request, "accounts/register.html", {"form": form})
 
@@ -36,12 +36,23 @@ class RegisterView(View):
                 user = CustomUser.objects.create_user(email=email, password=password)
                 print(f"DEBUG: User {email} created successfully.")
                 
-                # Add profile data
-                profile = user.profile
-                profile.first_name = first_name
-                profile.last_name = last_name
-                profile.role = role
-                profile.save()
+                # Create appropriate profile based on role
+                if role == 'mentor':
+                    MentorProfile.objects.create(
+                        user=user,
+                        first_name=first_name,
+                        last_name=last_name,
+                        role='mentor'
+                    )
+                    print(f"DEBUG: MentorProfile created for {email}.")
+                else:  # role == 'user'
+                    UserProfile.objects.create(
+                        user=user,
+                        first_name=first_name,
+                        last_name=last_name,
+                        role='user'
+                    )
+                    print(f"DEBUG: UserProfile created for {email}.")
                 
                 # Send verification email
                 print("DEBUG: Attempting to send verification email...")

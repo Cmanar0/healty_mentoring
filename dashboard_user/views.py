@@ -5,13 +5,13 @@ from django.contrib.auth.decorators import login_required
 def dashboard(request):
     # Ensure only users can access
     if not hasattr(request.user, 'profile') or request.user.profile.role != 'user':
-        return redirect('dashboard:index')
+        return redirect('general:index')
     return render(request, 'dashboard_user/dashboard_user.html')
 
 @login_required
 def account(request):
     if not hasattr(request.user, 'profile') or request.user.profile.role != 'user':
-        return redirect('dashboard:index')
+        return redirect('general:index')
 
     if request.method == "POST":
         profile = request.user.profile
@@ -28,5 +28,5 @@ def account(request):
 @login_required
 def my_sessions(request):
     if not hasattr(request.user, 'profile') or request.user.profile.role != 'user':
-        return redirect('dashboard:index')
+        return redirect('general:index')
     return render(request, 'dashboard_user/my_sessions.html')

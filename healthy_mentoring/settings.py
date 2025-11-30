@@ -26,7 +26,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "accounts",
-    "dashboard",
+    "general",
     "dashboard_mentor",
     "dashboard_user",
     "web",

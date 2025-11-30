@@ -30,7 +30,7 @@
       </div>
       <div class="top-actions">
         {% if user.is_authenticated %}
-          <a href="{% url 'dashboard:index' %}" class="btn btn-sm btn-primary dashboard-btn" style="display: flex; align-items: center; gap: 10px;">
+          <a href="{% url 'general:index' %}" class="btn btn-sm btn-primary dashboard-btn" style="display: flex; align-items: center; gap: 10px;">
             <span>Dashboard</span>
             <div class="dashboard-btn-avatar">
               {% if user.profile.profile_picture %}
