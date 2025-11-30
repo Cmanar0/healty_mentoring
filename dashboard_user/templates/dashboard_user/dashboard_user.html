@@ -194,15 +194,18 @@
             <div class="dashboard-card col-span-12">
                 <div class="card-header" style="align-items: flex-start;">
                     <h3 class="card-title">Sessions</h3>
-                    <div style="display: flex; gap: 16px; align-items: center;">
+                    <div style="display: flex; gap: 16px; align-items: center; white-space: nowrap;">
                         <a href="{% url 'dashboard:dashboard_user:my_sessions' %}" class="btn-link">View Calendar</a>
                         <a href="#" class="btn-link" style="color: var(--dash-text-muted);">Session History</a>
+                        <button class="btn btn-primary btn-sm" style="white-space: nowrap;">
+                            <i class="fas fa-plus"></i> Schedule Session
+                        </button>
                     </div>
                 </div>
                 
                 <div class="session-timeline-container">
-                    <!-- Session Item 1: On Track -->
-                    <div class="session-item confirmed">
+                    <!-- Session Item 1: All Completed -->
+                    <div class="session-item confirmed status-completed">
                         <div class="session-left">
                             <div class="session-date">
                                 <span class="date-day">28</span>
@@ -219,33 +222,25 @@
                         
                         <div class="session-right">
                             <div class="session-tasks">
-                                <div class="task-status-row">
-                                    <div class="task-dot green"></div>
-                                    <span class="task-status-label">Completed</span>
-                                    <span class="task-status-count">2</span>
-                                </div>
-                                <div class="task-status-row">
-                                    <div class="task-dot orange"></div>
-                                    <span class="task-status-label">Pending</span>
-                                    <span class="task-status-count">0</span>
-                                </div>
-                                <div class="task-status-row">
-                                    <div class="task-dot red"></div>
-                                    <span class="task-status-label">Missed</span>
-                                    <span class="task-status-count">0</span>
-                                </div>
-                                <div class="task-status-row">
-                                    <div class="task-dot grey"></div>
-                                    <span class="task-status-label">Deactivated</span>
-                                    <span class="task-status-count">0</span>
+                                <div class="task-badge completed">
+                                    <span class="task-label">Completed</span>
+                                    <span class="task-count">2</span>
                                 </div>
                             </div>
-                            <button class="btn-details">View Details</button>
+                            <div class="dropdown">
+                                <button class="session-action-btn" onclick="toggleDropdown(this)">
+                                    <i class="fas fa-ellipsis-h"></i>
+                                </button>
+                                <div class="dropdown-menu">
+                                    <button class="dropdown-item">View Details</button>
+                                    <button class="dropdown-item">Edit Session</button>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    <!-- Session Item 2: Tasks To Do -->
-                    <div class="session-item confirmed">
+                    <!-- Session Item 2: Tasks Pending -->
+                    <div class="session-item confirmed status-pending">
                         <div class="session-left">
                             <div class="session-date">
                                 <span class="date-day">05</span>
@@ -262,33 +257,25 @@
 
                         <div class="session-right">
                             <div class="session-tasks">
-                                <div class="task-status-row">
-                                    <div class="task-dot green"></div>
-                                    <span class="task-status-label">Completed</span>
-                                    <span class="task-status-count">0</span>
-                                </div>
-                                <div class="task-status-row">
-                                    <div class="task-dot orange"></div>
-                                    <span class="task-status-label">Pending</span>
-                                    <span class="task-status-count">1</span>
-                                </div>
-                                <div class="task-status-row">
-                                    <div class="task-dot red"></div>
-                                    <span class="task-status-label">Missed</span>
-                                    <span class="task-status-count">0</span>
-                                </div>
-                                <div class="task-status-row">
-                                    <div class="task-dot grey"></div>
-                                    <span class="task-status-label">Deactivated</span>
-                                    <span class="task-status-count">0</span>
+                                <div class="task-badge pending">
+                                    <span class="task-label">Pending</span>
+                                    <span class="task-count">1</span>
                                 </div>
                             </div>
-                            <button class="btn-details">View Details</button>
+                            <div class="dropdown">
+                                <button class="session-action-btn" onclick="toggleDropdown(this)">
+                                    <i class="fas fa-ellipsis-h"></i>
+                                </button>
+                                <div class="dropdown-menu">
+                                    <button class="dropdown-item">View Details</button>
+                                    <button class="dropdown-item">Edit Session</button>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
                     <!-- Session Item 3: Tasks Missed -->
-                    <div class="session-item tbc">
+                    <div class="session-item tbc status-missed">
                         <div class="session-left">
                             <div class="session-date">
                                 <span class="date-day">12</span>
@@ -305,28 +292,24 @@
 
                         <div class="session-right">
                             <div class="session-tasks">
-                                <div class="task-status-row">
-                                    <div class="task-dot green"></div>
-                                    <span class="task-status-label">Completed</span>
-                                    <span class="task-status-count">1</span>
+                                <div class="task-badge completed">
+                                    <span class="task-label">Completed</span>
+                                    <span class="task-count">1</span>
                                 </div>
-                                <div class="task-status-row">
-                                    <div class="task-dot orange"></div>
-                                    <span class="task-status-label">Pending</span>
-                                    <span class="task-status-count">0</span>
-                                </div>
-                                <div class="task-status-row">
-                                    <div class="task-dot red"></div>
-                                    <span class="task-status-label">Missed</span>
-                                    <span class="task-status-count">2</span>
-                                </div>
-                                <div class="task-status-row">
-                                    <div class="task-dot grey"></div>
-                                    <span class="task-status-label">Deactivated</span>
-                                    <span class="task-status-count">0</span>
+                                <div class="task-badge missed">
+                                    <span class="task-label">Missed</span>
+                                    <span class="task-count">2</span>
                                 </div>
                             </div>
-                            <button class="btn-details">View Details</button>
+                            <div class="dropdown">
+                                <button class="session-action-btn" onclick="toggleDropdown(this)">
+                                    <i class="fas fa-ellipsis-h"></i>
+                                </button>
+                                <div class="dropdown-menu">
+                                    <button class="dropdown-item">View Details</button>
+                                    <button class="dropdown-item">Edit Session</button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
