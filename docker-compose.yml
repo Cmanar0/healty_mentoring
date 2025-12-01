@@ -11,7 +11,8 @@ services:
       - ./Caddyfile:/etc/caddy/Caddyfile
       - caddy_data:/data
       - caddy_config:/config
-      - media_volume:/app/media
+      - media_volume:/app/media      # serves /media/
+      - static_volume:/srv/static    # serves /static/
     networks:
       - app_network
 
