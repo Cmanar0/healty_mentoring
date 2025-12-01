@@ -1595,8 +1595,8 @@
   background: transparent;
   border: 2px solid var(--dash-border);
   color: var(--dash-text-main);
-  padding: 6px 16px;
-  border-radius: 6px;
+  padding: 12px;
+  border-radius: 999px;
   font-size: 0.9rem;
   font-weight: 500;
   cursor: pointer;
@@ -1664,7 +1664,7 @@
 
 .btn-outline-danger {
   background: transparent;
-  border: 1px solid #dc2626;
+  border: 2px solid #dc2626;
   color: #dc2626;
   transition: all 0.2s ease;
 }
@@ -1811,7 +1811,7 @@
 
 /* Boost Promotion Box */
 .boost-promo-box {
-  margin-top: 32px;
+  margin-top: 42px;
   padding: 24px 20px;
   background: linear-gradient(135deg, #ec4899, #3b82f6);
   border-radius: 16px;
@@ -1892,8 +1892,8 @@
   align-items: center;
   gap: 8px;
   padding: 12px 24px;
-  background: white;
-  color: #1f2937;
+  background: var(--color-text);
+  color: white;
   border: none;
   border-radius: 50px;
   font-weight: 600;
@@ -1903,11 +1903,40 @@
   transition: box-shadow 0.3s ease, background 0.3s ease, color 0.3s ease;
   position: relative;
   z-index: 1;
+  white-space: nowrap;
+  box-sizing: border-box;
 }
 
 .btn-boost:hover {
-  background: #1f2937;
+  background: white;
+  color: #000000;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+}
+
+.btn-view-subscriptions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  background: var(--color-text);
   color: white;
+  border: 2px solid var(--color-text);
+  border-radius: 50px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  text-decoration: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  transition: box-shadow 0.3s ease, background 0.3s ease, color 0.3s ease;
+  position: relative;
+  z-index: 1;
+  white-space: nowrap;
+  box-sizing: border-box;
+}
+
+.btn-view-subscriptions:hover {
+  background: white;
+  color: #000000;
+  border: 2px solid var(--color-text);
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
 }
 
