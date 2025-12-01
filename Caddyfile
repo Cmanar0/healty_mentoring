@@ -1,14 +1,19 @@
 healthymentoring.com {
-    # Serve media files directly
-    handle /media/* {
+
+    # Serve MEDIA files (profile pictures, uploads)
+    handle_path /media/* {
         root * /app/media
         file_server
     }
-    
-    # Proxy everything else to Django
-    handle {
-        reverse_proxy web:8000
+
+    # Serve STATIC files (CSS, JS, images)
+    handle_path /static/* {
+        root * /srv/static
+        file_server
     }
+
+    # Everything else goes to Django
+    reverse_proxy web:8000
 }
 
 n8n.healthymentoring.com {
