@@ -18,12 +18,93 @@
       </button>
       <a href="{% url 'web:landing' %}" class="dashboard-logo-link">
         <img src="{% static 'images/logo.png' %}" alt="logo" class="logo">
-        <span class="dashboard-brand-text">Healthy Mentoring</span>
       </a>
     </div>
     <div class="dashboard-top-actions">
       {% if user.is_authenticated and user.profile.first_name and user.profile.last_name %}
-        <div class="user-profile-dropdown">
+        <div class="dashboard-top-actions-group">
+          <!-- Notification Bell -->
+          <div class="notification-dropdown">
+            <button class="notification-bell" id="notificationBell" aria-label="Notifications">
+              <i class="fas fa-bell"></i>
+              <span class="notification-badge">5</span>
+            </button>
+            <div class="notification-menu" id="notificationMenu">
+            <div class="notification-menu-header">
+              <h3>Notifications</h3>
+              <button class="mark-all-read-btn" style="width: auto;" type="button">Mark all as read</button>
+            </div>
+            <div class="notification-list">
+              <div class="notification-item unread">
+                <div class="notification-icon">
+                  <i class="fas fa-calendar-check"></i>
+                </div>
+                <div class="notification-content">
+                  <p class="notification-title">New session scheduled</p>
+                  <p class="notification-time">2 minutes ago</p>
+                </div>
+              </div>
+              <div class="notification-item unread">
+                <div class="notification-icon">
+                  <i class="fas fa-user-plus"></i>
+                </div>
+                <div class="notification-content">
+                  <p class="notification-title">Mentor accepted your request</p>
+                  <p class="notification-time">15 minutes ago</p>
+                </div>
+              </div>
+              <div class="notification-item">
+                <div class="notification-icon">
+                  <i class="fas fa-comment"></i>
+                </div>
+                <div class="notification-content">
+                  <p class="notification-title">New message from mentor</p>
+                  <p class="notification-time">1 hour ago</p>
+                </div>
+              </div>
+              <div class="notification-item unread">
+                <div class="notification-icon">
+                  <i class="fas fa-check-circle"></i>
+                </div>
+                <div class="notification-content">
+                  <p class="notification-title">Task completed</p>
+                  <p class="notification-time">2 hours ago</p>
+                </div>
+              </div>
+              <div class="notification-item">
+                <div class="notification-icon">
+                  <i class="fas fa-file-alt"></i>
+                </div>
+                <div class="notification-content">
+                  <p class="notification-title">New project document</p>
+                  <p class="notification-time">3 hours ago</p>
+                </div>
+              </div>
+              <div class="notification-item unread">
+                <div class="notification-icon">
+                  <i class="fas fa-exclamation-circle"></i>
+                </div>
+                <div class="notification-content">
+                  <p class="notification-title">Session reminder</p>
+                  <p class="notification-time">5 hours ago</p>
+                </div>
+              </div>
+              <div class="notification-item">
+                <div class="notification-icon">
+                  <i class="fas fa-bullhorn"></i>
+                </div>
+                <div class="notification-content">
+                  <p class="notification-title">Platform update</p>
+                  <p class="notification-time">1 day ago</p>
+                </div>
+              </div>
+            </div>
+            <div class="notification-footer">
+              <a href="#" class="view-all-notifications">View all</a>
+            </div>
+          </div>
+        </div>
+          <div class="user-profile-dropdown">
           <button class="user-profile-trigger" id="userProfileTrigger">
             <span class="user-name">{{ user.profile.first_name }} {{ user.profile.last_name }}</span>
             <div class="user-avatar">
@@ -275,6 +356,220 @@
 .logout-item:hover i {
   color: #ef4444;
 }
+
+/* Dashboard Top Actions Group */
+.dashboard-top-actions-group {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+/* Dashboard Top Actions Group */
+.dashboard-top-actions-group {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+/* Notification Bell */
+.notification-dropdown {
+  position: relative;
+}
+
+.notification-bell {
+  position: relative;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 8px;
+  color: var(--text-dark);
+  font-size: 1.2rem;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+}
+
+.notification-bell:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--primary);
+}
+
+.notification-bell i {
+  display: block;
+}
+
+.notification-badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  background: #ef4444;
+  color: white;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 10px;
+  min-width: 18px;
+  text-align: center;
+  line-height: 1.4;
+  z-index: 2;
+}
+
+.notification-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+  width: 380px;
+  max-width: 90vw;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-10px);
+  transition: all 0.2s ease;
+  z-index: 1001;
+  display: flex;
+  flex-direction: column;
+  height: 500px;
+}
+
+.notification-dropdown.active .notification-menu {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.notification-menu-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(0,0,0,0.1);
+  flex-shrink: 0;
+}
+
+.notification-menu-header h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-dark);
+}
+
+.mark-all-read-btn {
+  background: transparent;
+  border: none;
+  color: var(--primary);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background 0.2s ease;
+}
+
+.mark-all-read-btn:hover {
+  background: rgba(16, 185, 129, 0.1);
+}
+
+.notification-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 0;
+}
+
+.notification-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.notification-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.notification-list::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.1);
+  border-radius: 3px;
+}
+
+.notification-item {
+  display: flex;
+  gap: 12px;
+  padding: 12px 20px;
+  transition: background 0.2s ease;
+  cursor: pointer;
+  border-left: 3px solid transparent;
+}
+
+.notification-item:hover {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+.notification-item.unread {
+  background: rgba(16, 185, 129, 0.05);
+  border-left-color: var(--primary);
+}
+
+.notification-item.unread:hover {
+  background: rgba(16, 185, 129, 0.08);
+}
+
+.notification-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(16, 185, 129, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--primary);
+  font-size: 0.9rem;
+}
+
+.notification-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.notification-title {
+  margin: 0 0 4px 0;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-dark);
+  line-height: 1.4;
+}
+
+.notification-time {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--text-light);
+}
+
+.notification-footer {
+  padding: 12px 20px;
+  border-top: 1px solid rgba(0,0,0,0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.view-all-notifications {
+  color: var(--primary);
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: color 0.2s ease;
+}
+
+.view-all-notifications:hover {
+  color: var(--dash-primary-hover);
+  text-decoration: underline;
+}
 </style>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -311,6 +606,40 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
 
+  // Notification Bell Dropdown
+  const notificationBell = document.getElementById('notificationBell');
+  const notificationMenu = document.getElementById('notificationMenu');
+  const notificationDropdown = document.querySelector('.notification-dropdown');
+
+  if (notificationBell && notificationMenu) {
+    notificationBell.addEventListener('click', function(e) {
+      e.stopPropagation();
+      notificationDropdown.classList.toggle('active');
+      // Close user profile dropdown if open
+      if (userProfileDropdown) {
+        userProfileDropdown.classList.remove('active');
+      }
+    });
+
+    // Mark all as read button
+    const markAllReadBtn = document.querySelector('.mark-all-read-btn');
+    if (markAllReadBtn) {
+      markAllReadBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        const unreadItems = notificationMenu.querySelectorAll('.notification-item.unread');
+        unreadItems.forEach(item => {
+          item.classList.remove('unread');
+        });
+        // Update badge count (mockup - set to 0)
+        const badge = notificationBell.querySelector('.notification-badge');
+        if (badge) {
+          badge.textContent = '0';
+          badge.style.display = 'none';
+        }
+      });
+    }
+  }
+
   // User Profile Dropdown
   const userProfileTrigger = document.getElementById('userProfileTrigger');
   const userDropdownMenu = document.getElementById('userDropdownMenu');
@@ -320,15 +649,22 @@ document.addEventListener('DOMContentLoaded', function() {
     userProfileTrigger.addEventListener('click', function(e) {
       e.stopPropagation();
       userProfileDropdown.classList.toggle('active');
-    });
-
-    // Close dropdown when clicking outside
-    document.addEventListener('click', function(event) {
-      if (userProfileDropdown && !userProfileDropdown.contains(event.target)) {
-        userProfileDropdown.classList.remove('active');
+      // Close notification dropdown if open
+      if (notificationDropdown) {
+        notificationDropdown.classList.remove('active');
       }
     });
   }
+
+  // Close dropdowns when clicking outside
+  document.addEventListener('click', function(event) {
+    if (userProfileDropdown && !userProfileDropdown.contains(event.target)) {
+      userProfileDropdown.classList.remove('active');
+    }
+    if (notificationDropdown && !notificationDropdown.contains(event.target)) {
+      notificationDropdown.classList.remove('active');
+    }
+  });
 });
 </script>
 {% endblock %}

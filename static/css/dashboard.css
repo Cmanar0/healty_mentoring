@@ -1380,7 +1380,7 @@
 
 .create-new-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr); /* Fixed 4 columns */
+  grid-template-columns: repeat(5, 1fr); /* Fixed 5 columns */
   gap: 12px;
 }
 
@@ -1421,17 +1421,24 @@
 }
 
 .btn-project {
-  background: #8b5cf6; /* purple for Project */
+  background: #f43f5e; /* red (swapped from blog) */
 }
 .btn-project:hover {
-  background: #7c3aed; /* slightly darker purple */
+  background: #e11d48; /* slightly darker red */
+}
+
+.btn-marketing {
+  background: #f59e0b; /* orange (same as eye icon in stats) */
+}
+.btn-marketing:hover {
+  background: #d97706; /* slightly darker orange */
 }
 
 .btn-blog {
-  background: #f43f5e;
+  background: #8b5cf6; /* purple (swapped from project) */
 }
 .btn-blog:hover {
-  background: #e11d48; /* slightly darker red */
+  background: #7c3aed; /* slightly darker purple */
 }
 
 .create-icon {
@@ -1917,27 +1924,42 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 12px 24px;
-  background: var(--color-text);
+  padding: 10px 20px;
+  background: var(--dash-primary);
   color: white;
-  border: 2px solid var(--color-text);
+  border: 2px solid var(--dash-primary);
   border-radius: 50px;
   font-weight: 600;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   text-decoration: none;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-  transition: box-shadow 0.3s ease, background 0.3s ease, color 0.3s ease;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   z-index: 1;
   white-space: nowrap;
   box-sizing: border-box;
+  cursor: pointer;
 }
 
 .btn-view-subscriptions:hover {
   background: white;
-  color: #000000;
-  border: 2px solid var(--color-text);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+  color: var(--dash-primary);
+  border: 2px solid var(--dash-primary);
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.35);
+  transform: translateY(-1px);
+}
+
+.btn-view-subscriptions:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);
+}
+
+.btn-view-subscriptions i {
+  transition: transform 0.25s ease;
+}
+
+.btn-view-subscriptions:hover i {
+  transform: translateX(2px);
 }
 
 .btn-boost i {
