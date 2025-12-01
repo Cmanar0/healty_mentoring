@@ -71,17 +71,17 @@
   cursor: pointer;
   padding: 0;
   z-index: 101;
+  transition: transform 0.25s ease;
 }
 .hamburger-toggle span {
   width: 100%;
   height: 2px;
   background: var(--secondary);
   border-radius: 2px;
-  transition: all 0.3s ease;
 }
-.hamburger-toggle.active span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
-.hamburger-toggle.active span:nth-child(2) { opacity: 0; }
-.hamburger-toggle.active span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+.hamburger-toggle.active {
+  transform: rotate(90deg);
+}
 
 .dashboard-layout {
   display: flex;
