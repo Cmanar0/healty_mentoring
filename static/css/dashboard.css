@@ -1518,6 +1518,7 @@
   justify-content: space-between;
   margin-top: 20px;
   min-height: 400px;
+  height: 100%;
 }
 
 .account-settings-group {
@@ -1605,6 +1606,83 @@
 .btn-change-email:hover {
   border-color: var(--dash-text-main);
   background: var(--dash-bg-light);
+}
+
+.btn-fixed-width-email {
+  width: 140px;
+  flex-shrink: 0;
+}
+
+.account-section-no-border {
+  border-bottom: none;
+  padding-top: 0;
+}
+
+.name-password-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+  margin-top: 0;
+}
+
+.name-column,
+.password-column {
+  display: flex;
+  flex-direction: column;
+}
+
+.column-header {
+  margin-bottom: 0;
+}
+
+.column-header h4 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--dash-text-main);
+  line-height: 36px;
+}
+
+.column-header h4 i,
+.email-label-group h4 i,
+.account-section-header h4 i {
+  margin-right: 8px;
+  color: var(--dash-primary);
+  opacity: 0.8;
+}
+
+.account-section-danger .account-section-header h4 i {
+  color: #dc2626;
+}
+
+.btn-disabled {
+  background: #9ca3af !important;
+  color: #ffffff !important;
+  cursor: not-allowed !important;
+  opacity: 0.6;
+}
+
+.btn-outline-danger {
+  background: transparent;
+  border: 1px solid #dc2626;
+  color: #dc2626;
+  transition: all 0.2s ease;
+}
+
+.btn-outline-danger:hover {
+  background: #dc2626;
+  color: white;
+}
+
+.password-error {
+  display: block;
+  color: #dc2626;
+  font-size: 0.85rem;
+  margin-top: 4px;
+}
+
+.password-input:invalid {
+  border-color: #dc2626;
 }
 
 .field-display {

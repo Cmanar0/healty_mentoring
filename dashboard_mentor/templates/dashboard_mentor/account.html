@@ -104,56 +104,78 @@
                 <!-- Account Settings Group -->
                 <div class="account-settings-group">
                     
-                    <!-- Name Section (Inputs Visible) -->
-                    <form method="post" class="account-section" id="nameForm">
-                        {% csrf_token %}
-                        <input type="hidden" name="action" value="update_name">
-                        <div class="account-section-header" style="margin-bottom: 0;">
-                            <h4>Name</h4>
-                            <button type="submit" id="nameSaveBtn" class="btn btn-primary btn-sm btn-fixed-height" disabled>Save</button>
-                        </div>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px;">
-                            <div>
-                                <label>First Name</label>
-                                <input type="text" name="first_name" value="{{ user.profile.first_name }}" class="form-input">
-                            </div>
-                            <div>
-                                <label>Last Name</label>
-                                <input type="text" name="last_name" value="{{ user.profile.last_name }}" class="form-input">
-                            </div>
-                        </div>
-                    </form>
-
-                    <!-- Email Section (Row Layout) -->
+                    <!-- Email Section (First) -->
                     <div class="account-section">
                         <div class="email-row-layout">
                             <div class="email-label-group">
-                                <h4>Email</h4>
+                                <h4><i class="fas fa-envelope"></i> Email</h4>
                                 <span class="field-value">{{ user.email }}</span>
                             </div>
-                            <button type="button" class="btn-change-email" onclick="openEmailModal()">Change email</button>
+                            <button type="button" class="btn-change-email btn-fixed-width-email" onclick="openEmailModal()">Change email</button>
                         </div>
                     </div>
 
-                    <!-- Password Section (Inputs Visible) -->
-                    <form method="post" class="account-section" id="passwordForm">
-                        {% csrf_token %}
-                        <input type="hidden" name="action" value="update_password">
-                        <div class="account-section-header">
-                            <h4>Password</h4>
-                            <button type="submit" id="passwordSaveBtn" class="btn btn-primary btn-fixed-height" disabled>Update Password</button>
-                        </div>
-                        <div style="display: flex; flex-direction: column; gap: 16px; margin-top: 16px;">
-                            <div>
-                                <label>New password</label>
-                                <input type="password" name="new_password" class="form-input" autocomplete="new-password">
+                    <!-- Membership Section (New) -->
+                    <div class="account-section">
+                        <div class="email-row-layout">
+                            <div class="email-label-group">
+                                <h4><i class="fas fa-crown"></i> Membership</h4>
+                                <span class="field-value">Free Plan</span>
                             </div>
-                            <div>
-                                <label>New password again</label>
-                                <input type="password" name="new_password_again" class="form-input" autocomplete="new-password">
-                            </div>
+                            <a href="#" class="btn btn-primary btn-sm btn-fixed-height btn-fixed-width-email" style="display: flex; align-items: center; justify-content: center; text-decoration: none;">Upgrade</a>
                         </div>
-                    </form>
+                    </div>
+
+                    <!-- Name and Password Grid (Two Columns) -->
+                    <div class="account-section account-section-no-border">
+                        <div class="name-password-grid">
+                            <!-- Left Column: Name -->
+                            <form method="post" class="name-column" id="nameForm">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="update_name">
+                                <div class="column-header">
+                                    <h4><i class="fas fa-user"></i> Name</h4>
+                                </div>
+                                <div style="display: flex; flex-direction: column; gap: 16px; margin-top: 16px;">
+                                    <div>
+                                        <label>First Name</label>
+                                        <input type="text" name="first_name" value="{{ user.profile.first_name }}" class="form-input" id="firstNameInput">
+                                    </div>
+                                    <div>
+                                        <label>Last Name</label>
+                                        <input type="text" name="last_name" value="{{ user.profile.last_name }}" class="form-input" id="lastNameInput">
+                                    </div>
+                                    <div>
+                                        <button type="submit" id="nameSaveBtn" class="btn btn-primary btn-sm btn-fixed-height" disabled>Save</button>
+                                    </div>
+                                </div>
+                            </form>
+
+                            <!-- Right Column: Password -->
+                            <form method="post" class="password-column" id="passwordForm">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="update_password">
+                                <div class="column-header">
+                                    <h4><i class="fas fa-lock"></i> Password</h4>
+                                </div>
+                                <div style="display: flex; flex-direction: column; gap: 16px; margin-top: 16px;">
+                                    <div>
+                                        <label>New password</label>
+                                        <input type="password" name="new_password" id="newPasswordInput" class="form-input password-input" autocomplete="new-password">
+                                        <span class="password-error" id="passwordError" style="display: none; color: #dc2626; font-size: 0.85rem; margin-top: 4px;"></span>
+                                    </div>
+                                    <div>
+                                        <label>New password again</label>
+                                        <input type="password" name="new_password_again" id="newPasswordAgainInput" class="form-input password-input" autocomplete="new-password">
+                                        <span class="password-error" id="passwordMatchError" style="display: none; color: #dc2626; font-size: 0.85rem; margin-top: 4px;"></span>
+                                    </div>
+                                    <div>
+                                        <button type="submit" id="passwordSaveBtn" class="btn btn-primary btn-sm btn-fixed-height" disabled>Update Password</button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Delete Account Group -->
@@ -162,12 +184,12 @@
                         {% csrf_token %}
                         <input type="hidden" name="action" value="delete_account">
                         <div class="account-section-header">
-                            <h4 style="color: #dc2626;">Delete Account</h4>
+                            <h4 style="color: #dc2626;"><i class="fas fa-trash-alt"></i> Delete Account</h4>
                         </div>
                         <p style="margin: 12px 0 16px; color: var(--dash-text-muted); font-size: 0.9rem;">
                             Once you delete your account, there is no going back. Please be certain.
                         </p>
-                        <button type="button" class="btn btn-danger btn-sm btn-fixed-height">
+                        <button type="button" class="btn btn-outline-danger btn-sm btn-fixed-height">
                             Delete Account
                         </button>
                     </form>
@@ -253,40 +275,97 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Name Section Dirty Checking
     const nameForm = document.getElementById('nameForm');
-    const firstNameInput = document.querySelector('input[name="first_name"]');
-    const lastNameInput = document.querySelector('input[name="last_name"]');
+    const firstNameInput = document.getElementById('firstNameInput');
+    const lastNameInput = document.getElementById('lastNameInput');
     const nameSaveBtn = document.getElementById('nameSaveBtn');
     
     if (nameForm && firstNameInput && lastNameInput && nameSaveBtn) {
-        const originalFirstName = firstNameInput.value;
-        const originalLastName = lastNameInput.value;
+        const originalFirstName = firstNameInput.value.trim();
+        const originalLastName = lastNameInput.value.trim();
+        
+        // Ensure button starts as disabled
+        nameSaveBtn.disabled = true;
+        nameSaveBtn.classList.add('btn-disabled');
         
         function checkNameChanges() {
-            const isChanged = firstNameInput.value !== originalFirstName || lastNameInput.value !== originalLastName;
+            const currentFirstName = firstNameInput.value.trim();
+            const currentLastName = lastNameInput.value.trim();
+            const isChanged = currentFirstName !== originalFirstName || currentLastName !== originalLastName;
+            
             nameSaveBtn.disabled = !isChanged;
+            if (isChanged) {
+                nameSaveBtn.classList.remove('btn-disabled');
+            } else {
+                nameSaveBtn.classList.add('btn-disabled');
+            }
         }
         
         firstNameInput.addEventListener('input', checkNameChanges);
         lastNameInput.addEventListener('input', checkNameChanges);
+        
+        // Initial check
+        checkNameChanges();
     }
 
-    // Password Validation
+    // Password Validation with meaningful feedback
     const passwordForm = document.getElementById('passwordForm');
-    const newPasswordInput = document.querySelector('input[name="new_password"]');
-    const newPasswordAgainInput = document.querySelector('input[name="new_password_again"]');
+    const newPasswordInput = document.getElementById('newPasswordInput');
+    const newPasswordAgainInput = document.getElementById('newPasswordAgainInput');
     const passwordSaveBtn = document.getElementById('passwordSaveBtn');
+    const passwordError = document.getElementById('passwordError');
+    const passwordMatchError = document.getElementById('passwordMatchError');
 
     if (passwordForm && newPasswordInput && newPasswordAgainInput && passwordSaveBtn) {
         function validatePassword() {
-            const p1 = newPasswordInput.value;
-            const p2 = newPasswordAgainInput.value;
+            const p1 = newPasswordInput.value.trim();
+            const p2 = newPasswordAgainInput.value.trim();
             
-            const isValid = p1.length >= 6 && p1 === p2;
-            passwordSaveBtn.disabled = !isValid;
+            // Reset errors
+            passwordError.style.display = 'none';
+            passwordMatchError.style.display = 'none';
+            newPasswordInput.style.borderColor = '';
+            newPasswordAgainInput.style.borderColor = '';
+            
+            let isValid = false;
+            
+            // Check if both fields have values
+            if (p1.length === 0 && p2.length === 0) {
+                passwordSaveBtn.disabled = true;
+                passwordSaveBtn.classList.add('btn-disabled');
+                return;
+            }
+            
+            // Validate first password
+            if (p1.length < 8) {
+                passwordError.textContent = 'Password must be at least 8 characters';
+                passwordError.style.display = 'block';
+                newPasswordInput.style.borderColor = '#dc2626';
+                passwordSaveBtn.disabled = true;
+                passwordSaveBtn.classList.add('btn-disabled');
+                return;
+            }
+            
+            // Check if passwords match
+            if (p1 !== p2) {
+                passwordMatchError.textContent = 'Passwords do not match';
+                passwordMatchError.style.display = 'block';
+                newPasswordAgainInput.style.borderColor = '#dc2626';
+                passwordSaveBtn.disabled = true;
+                passwordSaveBtn.classList.add('btn-disabled');
+                return;
+            }
+            
+            // All validations passed
+            isValid = true;
+            passwordSaveBtn.disabled = false;
+            passwordSaveBtn.classList.remove('btn-disabled');
         }
 
         newPasswordInput.addEventListener('input', validatePassword);
         newPasswordAgainInput.addEventListener('input', validatePassword);
+        
+        // Initial validation
+        validatePassword();
     }
 
     // Modal Logic
