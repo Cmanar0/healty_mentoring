@@ -179,7 +179,7 @@ h1, h2, h3, h4 {
   transition: transform 0.5s ease;
 }
 .glass-card:hover { transform: rotate(0deg) scale(1.02); }
-.card-header { display: flex; align-items: center; gap: 16px; margin-bottom: 30px; }
+.card-header { display: flex; align-items: center; gap: 16px; }
 .avatar { width: 50px; height: 50px; background: #ddd; border-radius: 50%; background-image: url('https://i.pravatar.cc/150?img=32'); background-size: cover; }
 .name { font-weight: 700; color: var(--secondary); }
 .status { font-size: 0.85rem; color: var(--primary); font-weight: 600; }

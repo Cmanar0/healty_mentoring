@@ -20,7 +20,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self):
         return self.email
-    
+
     @property
     def profile(self):
         """Return the appropriate profile (UserProfile or MentorProfile) for backward compatibility"""

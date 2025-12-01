@@ -55,12 +55,12 @@
             </a>
             <div class="dropdown-divider"></div>
             <form action="{% url 'accounts:logout' %}" method="post" class="dropdown-item-form">
-              {% csrf_token %}
+          {% csrf_token %}
               <button type="submit" class="dropdown-item logout-item">
                 <i class="fas fa-sign-out-alt"></i>
                 <span>Logout</span>
               </button>
-            </form>
+        </form>
           </div>
         </div>
       {% endif %}

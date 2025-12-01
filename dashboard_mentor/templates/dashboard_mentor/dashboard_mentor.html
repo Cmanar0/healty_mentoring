@@ -4,52 +4,431 @@
 {% block page_title %}Mentor Dashboard{% endblock %}
 
 {% block dashboard_content %}
-<!-- Hero Section -->
-<div class="dashboard-hero">
-    <h1>Welcome back, {{ user.profile.first_name }}! 👋</h1>
-    <p>You're making a difference. Here's what's happening with your mentorships today.</p>
-</div>
-
-<!-- Main Content Container -->
 <div class="dashboard-content-container">
-    <div class="dashboard-grid">
-        
-        <!-- Stats Card (Moved to top for impact) -->
-        <div class="dashboard-card">
-            <h3><i class="fas fa-chart-line"></i> Impact Overview</h3>
-            <div class="stats-row">
-                <div class="stat-item">
-                    <span class="stat-value">0</span>
-                    <span class="stat-label">Total Sessions</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-value">5.0</span>
-                    <span class="stat-label">Avg Rating</span>
-                </div>
-            </div>
-            <a href="/dashboard/mentor/account/" class="btn btn-outline" style="text-align: center; margin-top: auto;">View Full Profile</a>
-        </div>
+    <!-- PART 1: Actionable Items -->
+    <div class="dashboard-part">
+        <div class="dashboard-main-flex">
+            
+            <!-- Left Column (2/3) -->
+            <div class="dashboard-col-left">
+                <!-- Stats Card -->
+                <div class="dashboard-card stats-card-compact">
+                    <div class="card-header">
+                        <h3 class="card-title">Stats</h3>
+                        <div class="stats-period-dropdown">
+                            <button class="stats-period-trigger" id="statsPeriodTrigger">
+                                <span class="period-label">This Week</span>
+                                <i class="fas fa-chevron-down"></i>
+                            </button>
+                            <div class="stats-period-menu" id="statsPeriodMenu">
+                                <button class="stats-period-item">Today</button>
+                                <button class="stats-period-item active">This Week</button>
+                                <button class="stats-period-item">This Month</button>
+                                <button class="stats-period-item">Last Month</button>
+                                <button class="stats-period-item">All Time</button>
+                            </div>
+                        </div>
+                    </div>
 
-        <!-- Upcoming Sessions -->
-        <div class="dashboard-card">
-            <h3><i class="fas fa-calendar-check"></i> Upcoming Sessions</h3>
-            <div class="empty-state">
-                <i class="far fa-calendar-times"></i>
-                <p>No sessions scheduled for today.</p>
+                    <div class="stats-grid-compact">
+                        <!-- Priority Stats -->
+                        <div class="stat-card-compact primary">
+                            <div class="stat-card-compact-icon">
+                                <i class="fas fa-euro-sign"></i>
+                            </div>
+                            <div class="stat-card-compact-content">
+                                <span class="stat-card-compact-label">Earned</span>
+                                <span class="stat-card-compact-value">€1,250</span>
+                                <span class="stat-card-compact-change positive">+12%</span>
+                            </div>
+                        </div>
+                        
+                        <div class="stat-card-compact secondary">
+                            <div class="stat-card-compact-icon">
+                                <i class="fas fa-calendar-check"></i>
+                            </div>
+                            <div class="stat-card-compact-content">
+                                <span class="stat-card-compact-label">Sessions</span>
+                                <span class="stat-card-compact-value">14</span>
+                                <span class="stat-card-compact-change neutral">2 upcoming</span>
+                            </div>
+                        </div>
+
+                        <!-- Compact Stats -->
+                        <div class="stat-mini">
+                            <div class="stat-mini-icon blue">
+                                <i class="fas fa-users"></i>
+                            </div>
+                            <div class="stat-mini-content">
+                                <span class="stat-mini-value">8</span>
+                                <span class="stat-mini-label">Active Clients</span>
+                            </div>
+                        </div>
+
+                        <div class="stat-mini">
+                            <div class="stat-mini-icon green">
+                                <i class="fas fa-user-plus"></i>
+                            </div>
+                            <div class="stat-mini-content">
+                                <span class="stat-mini-value">3</span>
+                                <span class="stat-mini-label">New Clients</span>
+                            </div>
+                        </div>
+
+                        <div class="stat-mini">
+                            <div class="stat-mini-icon purple">
+                                <i class="fas fa-file-alt"></i>
+                            </div>
+                            <div class="stat-mini-content">
+                                <span class="stat-mini-value">2</span>
+                                <span class="stat-mini-label">Blog Posts</span>
+                            </div>
+                        </div>
+
+                        <div class="stat-mini">
+                            <div class="stat-mini-icon orange">
+                                <i class="fas fa-eye"></i>
+                            </div>
+                            <div class="stat-mini-content">
+                                <span class="stat-mini-value">640</span>
+                                <span class="stat-mini-label">Views</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Upcoming Sessions Card (Scrollable) -->
+                <div class="dashboard-card flex-scroll-card">
+                    <div class="card-header" style="align-items: flex-start;">
+                        <h3 class="card-title">Upcoming Sessions</h3>
+                        <div style="display: flex; gap: 16px; align-items: center; white-space: nowrap;">
+                            <a href="/dashboard/mentor/my-sessions/" class="btn-link">View Calendar</a>
+                            <a href="#" class="btn-link" style="color: var(--dash-text-muted);">View All Sessions</a>
+                        </div>
+                    </div>
+                    
+                    <div class="session-timeline-container scrollable-content">
+                        <!-- Session Item 1 -->
+                        <div class="session-item confirmed status-completed">
+                            <div class="session-left">
+                                <div class="session-date">
+                                    <span class="date-day">28</span>
+                                    <span class="date-month">Nov</span>
+                                </div>
+                                <div class="session-info">
+                                    <h4 class="session-title">Strategy Review with Anna</h4>
+                                    <div class="session-meta-row">
+                                        <span class="session-time">
+                                            <i class="far fa-clock"></i> 10:00 AM - 11:00 AM
+                                        </span>
+                                        <span class="conf-tag confirmed">Confirmed</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="session-right">
+                                <div class="session-tasks">
+                                    <div class="task-badge completed">
+                                        <span class="task-label">Completed</span>
+                                        <span class="task-count">2</span>
+                                    </div>
+                                </div>
+                                <div class="dropdown">
+                                    <button class="session-action-btn" onclick="toggleDropdown(this)">
+                                        <i class="fas fa-ellipsis-h"></i>
+                                    </button>
+                                    <div class="dropdown-menu">
+                                        <button class="dropdown-item">View Details</button>
+                                        <button class="dropdown-item">Edit Session</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Session Item 2 -->
+                        <div class="session-item confirmed status-pending">
+                            <div class="session-left">
+                                <div class="session-date">
+                                    <span class="date-day">05</span>
+                                    <span class="date-month">Dec</span>
+                                </div>
+                                <div class="session-info">
+                                    <h4 class="session-title">Leadership Workshop with Michael</h4>
+                                    <div class="session-meta-row">
+                                        <span class="session-time">
+                                            <i class="far fa-clock"></i> 2:00 PM - 3:30 PM
+                                        </span>
+                                        <span class="conf-tag confirmed">Confirmed</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="session-right">
+                                <div class="session-tasks">
+                                    <div class="task-badge pending">
+                                        <span class="task-label">Pending</span>
+                                        <span class="task-count">1</span>
+                                    </div>
+                                </div>
+                                <div class="dropdown">
+                                    <button class="session-action-btn" onclick="toggleDropdown(this)">
+                                        <i class="fas fa-ellipsis-h"></i>
+                                    </button>
+                                    <div class="dropdown-menu">
+                                        <button class="dropdown-item">View Details</button>
+                                        <button class="dropdown-item">Edit Session</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Session Item 3 -->
+                        <div class="session-item tbc status-missed">
+                            <div class="session-left">
+                                <div class="session-date">
+                                    <span class="date-day">12</span>
+                                    <span class="date-month">Dec</span>
+                                </div>
+                                <div class="session-info">
+                                    <h4 class="session-title">Quarterly Planning with Team</h4>
+                                    <div class="session-meta-row">
+                                        <span class="session-time">
+                                            <i class="far fa-clock"></i> 11:00 AM - 12:30 PM
+                                        </span>
+                                        <span class="conf-tag tbc">To Be Confirmed</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="session-right">
+                                <div class="session-tasks">
+                                    <div class="task-badge completed">
+                                        <span class="task-label">Completed</span>
+                                        <span class="task-count">1</span>
+                                    </div>
+                                    <div class="task-badge missed">
+                                        <span class="task-label">Missed</span>
+                                        <span class="task-count">2</span>
+                                    </div>
+                                </div>
+                                <div class="dropdown">
+                                    <button class="session-action-btn" onclick="toggleDropdown(this)">
+                                        <i class="fas fa-ellipsis-h"></i>
+                                    </button>
+                                    <div class="dropdown-menu">
+                                        <button class="dropdown-item">View Details</button>
+                                        <button class="dropdown-item">Edit Session</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <a href="#" class="btn btn-primary" style="text-align: center; margin-top: 16px;">Manage Schedule</a>
-        </div>
-        
-        <!-- Mentees -->
-        <div class="dashboard-card">
-            <h3><i class="fas fa-users"></i> Active Mentees</h3>
-            <div class="empty-state">
-                <i class="fas fa-user-friends"></i>
-                <p>You have 0 active mentees.</p>
+
+            <!-- Right Column (1/3) -->
+            <div class="dashboard-col-right">
+                <!-- Create New Section -->
+                <div class="create-new-section">
+                    <h3 class="create-new-title">Create new</h3>
+                    <div class="create-new-grid">
+                        <button class="create-new-btn btn-session">
+                            <div class="create-icon"><i class="fas fa-calendar-plus"></i></div>
+                            <span class="create-label">Session</span>
+                        </button>
+                        <button class="create-new-btn btn-user">
+                            <div class="create-icon"><i class="fas fa-user-plus"></i></div>
+                            <span class="create-label">User</span>
+                        </button>
+                        <button class="create-new-btn btn-project">
+                            <div class="create-icon"><i class="fas fa-project-diagram"></i></div>
+                            <span class="create-label">Project</span>
+                        </button>
+                        <button class="create-new-btn btn-blog">
+                            <div class="create-icon"><i class="fas fa-pen-nib"></i></div>
+                            <span class="create-label">Blog Post</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Your Backlog Card (Scrollable) -->
+                <div class="dashboard-card flex-scroll-card">
+                    <div class="card-header">
+                        <h3 class="card-title">Your backlog</h3>
+                        <button class="btn-link btn-fixed-width" type="button">View All</button>
+                    </div>
+
+                    <div class="scrollable-content">
+                        <div class="task-row">
+                            <div class="status-circle orange"></div>
+                            <div class="task-info">
+                                <span class="task-name">Review session notes for Anna</span>
+                                <span class="task-status-text">Before next call</span>
+                            </div>
+                            <div class="completion-circle" onclick="toggleTask(this)">
+                                <i class="fas fa-check"></i>
+                            </div>
+                            <div class="dropdown">
+                                <button class="action-btn ghost" onclick="toggleDropdown(this)">
+                                    <i class="fas fa-ellipsis-h"></i>
+                                </button>
+                                <div class="dropdown-menu">
+                                    <button class="dropdown-item">Open Notes</button>
+                                    <button class="dropdown-item">Reschedule</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="task-row">
+                            <div class="status-circle red"></div>
+                            <div class="task-info">
+                                <span class="task-name">Confirm agenda with Michael</span>
+                                <span class="task-status-text">Overdue</span>
+                            </div>
+                            <div class="completion-circle" onclick="toggleTask(this)">
+                                <i class="fas fa-check"></i>
+                            </div>
+                            <div class="dropdown">
+                                <button class="action-btn ghost" onclick="toggleDropdown(this)">
+                                    <i class="fas fa-ellipsis-h"></i>
+                                </button>
+                                <div class="dropdown-menu">
+                                    <button class="dropdown-item">Send Reminder</button>
+                                    <button class="dropdown-item" style="color: var(--status-red);">
+                                        Mark as Not Relevant
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="task-row">
+                            <div class="status-circle green"></div>
+                            <div class="task-info">
+                                <span class="task-name">Prepare feedback for Leadership Program</span>
+                                <span class="task-status-text">Due this week</span>
+                            </div>
+                            <div class="completion-circle" onclick="toggleTask(this)">
+                                <i class="fas fa-check"></i>
+                            </div>
+                            <div class="dropdown">
+                                <button class="action-btn ghost" onclick="toggleDropdown(this)">
+                                    <i class="fas fa-ellipsis-h"></i>
+                                </button>
+                                <div class="dropdown-menu">
+                                    <button class="dropdown-item">View Details</button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Extra tasks to fill height -->
+                        <div class="task-row">
+                            <div class="status-circle blue"></div>
+                            <div class="task-info">
+                                <span class="task-name">Update mentorship profile</span>
+                                <span class="task-status-text">Profile visibility</span>
+                            </div>
+                            <div class="completion-circle" onclick="toggleTask(this)">
+                                <i class="fas fa-check"></i>
+                            </div>
+                            <div class="dropdown">
+                                <button class="action-btn ghost" onclick="toggleDropdown(this)">
+                                    <i class="fas fa-ellipsis-h"></i>
+                                </button>
+                                <div class="dropdown-menu">
+                                    <button class="dropdown-item">Edit Profile</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <a href="#" class="btn btn-outline" style="text-align: center; margin-top: 16px;">View All Mentees</a>
         </div>
-        
+    </div>
+    <!-- PART 2: Education & Platform Usage -->
+    <div class="dashboard-part">
+        <div class="dashboard-grid">
+            <!-- Promotion Education (Col 6) -->
+            <div class="dashboard-card col-span-6">
+                <div class="card-header">
+                    <h3 class="card-title">Get more clients with Healthy Mentoring</h3>
+                </div>
+                <div class="education-content">
+                    <p>
+                        Use your profile and content to position yourself for the right mentees.
+                    </p>
+                    <ul class="education-list">
+                        <li>Keep your bio and expertise areas up to date.</li>
+                        <li>Tag your profile with the topics you really want to work on.</li>
+                        <li>Publish short blog posts to share your perspective and build trust.</li>
+                        <li>Offer a limited number of free intro sessions to new clients.</li>
+                    </ul>
+                    <button class="btn btn-outline btn-sm" type="button">
+                        Learn how to optimise your profile
+                    </button>
+                </div>
+            </div>
+
+            <!-- Platform Education (Col 6) -->
+            <div class="dashboard-card col-span-6">
+                <div class="card-header">
+                    <h3 class="card-title">Make the most of our platform</h3>
+                </div>
+                <div class="education-content">
+                    <p>
+                        We designed the dashboard to help you stay organised and present with every client.
+                    </p>
+                    <ul class="education-list">
+                        <li>Use sessions to track goals, notes and agreed action items.</li>
+                        <li>Group projects by client to see their full journey in one place.</li>
+                        <li>Review your stats regularly to adjust capacity and pricing.</li>
+                        <li>Turn on notifications so you never miss an upcoming session.</li>
+                    </ul>
+                    <button class="btn btn-outline btn-sm" type="button">
+                        View mentor guide
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
+
+<!-- Page-specific JS: stats dropdown -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Stats Period Dropdown
+    const statsPeriodTrigger = document.getElementById('statsPeriodTrigger');
+    const statsPeriodMenu = document.getElementById('statsPeriodMenu');
+    const statsPeriodDropdown = document.querySelector('.stats-period-dropdown');
+
+    if (statsPeriodTrigger && statsPeriodMenu) {
+        statsPeriodTrigger.addEventListener('click', function(e) {
+            e.stopPropagation();
+            statsPeriodDropdown.classList.toggle('active');
+        });
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(event) {
+            if (statsPeriodDropdown && !statsPeriodDropdown.contains(event.target)) {
+                statsPeriodDropdown.classList.remove('active');
+            }
+        });
+
+        // Handle period selection
+        const periodItems = statsPeriodMenu.querySelectorAll('.stats-period-item');
+        periodItems.forEach(item => {
+            item.addEventListener('click', function() {
+                // Remove active from all
+                periodItems.forEach(i => i.classList.remove('active'));
+                // Add active to clicked
+                this.classList.add('active');
+                // Update label
+                const label = statsPeriodTrigger.querySelector('.period-label');
+                label.textContent = this.textContent;
+                // Close dropdown
+                statsPeriodDropdown.classList.remove('active');
+            });
+        });
+    }
+});
+</script>
 {% endblock %}

@@ -195,7 +195,7 @@
                 <div class="card-header" style="align-items: flex-start;">
                     <h3 class="card-title">Sessions</h3>
                     <div style="display: flex; gap: 16px; align-items: center; white-space: nowrap;">
-                        <a href="{% url 'dashboard:dashboard_user:my_sessions' %}" class="btn-link">View Calendar</a>
+                        <a href="/dashboard/user/my-sessions/" class="btn-link">View Calendar</a>
                         <a href="#" class="btn-link" style="color: var(--dash-text-muted);">Session History</a>
                         <button class="btn btn-primary btn-sm" style="white-space: nowrap;">
                             <i class="fas fa-plus"></i> Schedule Session
@@ -326,50 +326,50 @@
             <h2 class="section-title">Progress & Metrics</h2>
             <span class="mentor-link">Supervised by <a href="#">Dr. Sarah Smith</a></span>
         </div>
-        
-        <!-- Identity Progress Row -->
-        <div class="identity-progress-row">
-            <div class="identity-card">
-                <span class="identity-label">Leadership</span>
-                <div class="progress-vertical-container">
-                    <div class="progress-vertical-bar" style="height: 75%;"></div>
-                </div>
-                <span class="identity-percentage">75%</span>
+
+    <!-- Identity Progress Row -->
+    <div class="identity-progress-row">
+        <div class="identity-card">
+            <span class="identity-label">Leadership</span>
+            <div class="progress-vertical-container">
+                <div class="progress-vertical-bar" style="height: 75%;"></div>
             </div>
-            <div class="identity-card">
-                <span class="identity-label">Strategy</span>
-                <div class="progress-vertical-container">
-                    <div class="progress-vertical-bar" style="height: 45%;"></div>
-                </div>
-                <span class="identity-percentage">45%</span>
+            <span class="identity-percentage">75%</span>
+        </div>
+        <div class="identity-card">
+            <span class="identity-label">Strategy</span>
+            <div class="progress-vertical-container">
+                <div class="progress-vertical-bar" style="height: 45%;"></div>
             </div>
-            <div class="identity-card">
-                <span class="identity-label">Execution</span>
-                <div class="progress-vertical-container">
-                    <div class="progress-vertical-bar" style="height: 90%;"></div>
-                </div>
-                <span class="identity-percentage">90%</span>
+            <span class="identity-percentage">45%</span>
+        </div>
+        <div class="identity-card">
+            <span class="identity-label">Execution</span>
+            <div class="progress-vertical-container">
+                <div class="progress-vertical-bar" style="height: 90%;"></div>
             </div>
-            <div class="identity-card">
-                <span class="identity-label">Communication</span>
-                <div class="progress-vertical-container">
-                    <div class="progress-vertical-bar" style="height: 60%;"></div>
-                </div>
-                <span class="identity-percentage">60%</span>
+            <span class="identity-percentage">90%</span>
+        </div>
+        <div class="identity-card">
+            <span class="identity-label">Communication</span>
+            <div class="progress-vertical-container">
+                <div class="progress-vertical-bar" style="height: 60%;"></div>
+            </div>
+            <span class="identity-percentage">60%</span>
+        </div>
+    </div>
+
+    <div class="dashboard-grid">
+        <!-- Startup Metrics Radar (Col 6) -->
+        <div class="dashboard-card col-span-6">
+            <div class="card-header">
+                <h3 class="card-title">Startup Maturity</h3>
+                <i class="fas fa-info-circle" style="color: var(--dash-text-muted);"></i>
+            </div>
+            <div class="chart-container">
+                <canvas id="startupRadarChart"></canvas>
             </div>
         </div>
-
-        <div class="dashboard-grid">
-            <!-- Startup Metrics Radar (Col 6) -->
-            <div class="dashboard-card col-span-6">
-                <div class="card-header">
-                    <h3 class="card-title">Startup Maturity</h3>
-                    <i class="fas fa-info-circle" style="color: var(--dash-text-muted);"></i>
-                </div>
-                <div class="chart-container">
-                    <canvas id="startupRadarChart"></canvas>
-                </div>
-            </div>
         </div>
     </div>
 
