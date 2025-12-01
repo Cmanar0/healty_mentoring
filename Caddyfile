@@ -1,5 +1,14 @@
 healthymentoring.com {
-    reverse_proxy web:8000
+    # Serve media files directly
+    handle /media/* {
+        root * /app/media
+        file_server
+    }
+    
+    # Proxy everything else to Django
+    handle {
+        reverse_proxy web:8000
+    }
 }
 
 n8n.healthymentoring.com {
