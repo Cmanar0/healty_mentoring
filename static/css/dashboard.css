@@ -1381,7 +1381,7 @@
 .create-new-grid {
   display: grid;
   grid-template-columns: repeat(5, 1fr); /* Fixed 5 columns */
-  gap: 12px;
+  gap: 8px;
 }
 
 .create-new-btn {
@@ -1390,8 +1390,8 @@
   align-items: center;
   justify-content: center;
   border: none;
-  border-radius: 12px;
-  padding: 16px 8px;
+  border-radius: 10px;
+  padding: 10px 6px;
   cursor: pointer;
   transition: background-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
   height: 100%;
@@ -1442,9 +1442,9 @@
 }
 
 .create-icon {
-  font-size: 24px;
+  font-size: 18px;
   color: white;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   width: auto;
   height: auto;
   background: transparent;
@@ -1454,11 +1454,23 @@
 }
 
 .create-label {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   color: white;
   text-align: center;
   text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+  transition: font-size 0.3s ease;
+}
+
+/* When sidebar is open (not collapsed), make text smaller immediately */
+.dashboard-sidebar:not(.collapsed) ~ .dashboard-main .create-label {
+  font-size: 11px;
+  transition-delay: 0s;
+}
+
+/* When sidebar is closed (collapsed), delay the font size increase */
+.dashboard-sidebar.collapsed ~ .dashboard-main .create-label {
+  transition-delay: 0.5s;
 }
 
 /* Mobile Responsive */
