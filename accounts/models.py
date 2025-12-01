@@ -47,6 +47,7 @@ class UserProfile(models.Model):
     profile_picture = models.ImageField(upload_to="profiles/", blank=True, null=True)
     mentors = models.ManyToManyField("accounts.MentorProfile", related_name="users", blank=True)
     sessions = models.ManyToManyField("general.Session", related_name="user_profiles", blank=True)
+    manuals = models.JSONField(default=list, blank=True)  # Navigation tutorial manuals
 
     class Meta:
         verbose_name = "User Profile"
@@ -150,6 +151,9 @@ class MentorProfile(models.Model):
     
     # Reviews (JSON for now, could be a separate model later)
     reviews = models.JSONField(default=list, blank=True)
+    
+    # Navigation tutorial manuals
+    manuals = models.JSONField(default=list, blank=True)
     # Structure: [
     #   {
     #     "user_id": 123,

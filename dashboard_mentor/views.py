@@ -1,5 +1,6 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
+from dashboard_mentor.models import Tag, Credential
 
 @login_required
 def dashboard(request):
@@ -73,6 +74,68 @@ def account(request):
         'dashboard_mentor/account.html',
         {"profile_completion": profile_completion},
     )
+
+@login_required
+def profile(request):
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        return redirect('general:index')
+    
+    user = request.user
+    profile = user.profile
+    
+    if request.method == "POST":
+        action = request.POST.get("action")
+        
+        if action == "update_picture":
+            if 'profile_picture' in request.FILES:
+                profile.profile_picture = request.FILES['profile_picture']
+                profile.save()
+            return redirect("/dashboard/mentor/profile/")
+        
+        elif action == "update_profile":
+            # Update basic fields
+            first_name = request.POST.get("first_name")
+            last_name = request.POST.get("last_name")
+            time_zone = request.POST.get("time_zone", "")
+            mentor_type = request.POST.get("mentor_type", "")
+            bio = request.POST.get("bio", "")
+            quote = request.POST.get("quote", "")
+            
+            if first_name is not None:
+                profile.first_name = first_name
+            if last_name is not None:
+                profile.last_name = last_name
+            profile.time_zone = time_zone
+            profile.mentor_type = mentor_type if mentor_type else None
+            profile.bio = bio
+            profile.quote = quote
+            profile.save()
+            
+            # Handle tags (ManyToMany)
+            tags_input = request.POST.get("tags", "").strip()
+            if tags_input:
+                tag_names = [t.strip() for t in tags_input.split(",") if t.strip()]
+                profile.tags.clear()
+                for tag_name in tag_names:
+                    tag, created = Tag.objects.get_or_create(name=tag_name)
+                    profile.tags.add(tag)
+            else:
+                profile.tags.clear()
+            
+            # Handle credentials (ManyToMany)
+            credentials_input = request.POST.get("credentials", "").strip()
+            if credentials_input:
+                cred_titles = [c.strip() for c in credentials_input.split(",") if c.strip()]
+                profile.credentials.clear()
+                for cred_title in cred_titles:
+                    cred, created = Credential.objects.get_or_create(title=cred_title)
+                    profile.credentials.add(cred)
+            else:
+                profile.credentials.clear()
+            
+            return redirect("/dashboard/mentor/profile/")
+    
+    return render(request, 'dashboard_mentor/profile.html')
 
 @login_required
 def my_sessions(request):

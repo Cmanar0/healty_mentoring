@@ -36,13 +36,39 @@ class RegisterView(View):
                 user = CustomUser.objects.create_user(email=email, password=password)
                 print(f"DEBUG: User {email} created successfully.")
                 
+                # Default manuals data for navigation tutorial
+                default_manuals = [
+                    {
+                        "id": "createNewSection",
+                        "title": "Create New Content",
+                        "text": "Use these buttons to quickly create sessions, users, projects, marketing materials, and blog posts.",
+                        "position": {"x": -350, "y": 0},
+                        "displayed": False
+                    },
+                    {
+                        "id": "statsCard",
+                        "title": "Track Your Performance",
+                        "text": "View your statistics and metrics here. Use the dropdown to filter by different time periods.",
+                        "position": {"x": 0, "y": 300},
+                        "displayed": False
+                    },
+                    {
+                        "id": "backlogCard",
+                        "title": "Your Backlog",
+                        "text": "Items that require your action are displayed here. Stay on top of your tasks!",
+                        "position": {"x": 0, "y": -180},
+                        "displayed": False
+                    }
+                ]
+                
                 # Create appropriate profile based on role
                 if role == 'mentor':
                     MentorProfile.objects.create(
                         user=user,
                         first_name=first_name,
                         last_name=last_name,
-                        role='mentor'
+                        role='mentor',
+                        manuals=default_manuals
                     )
                     print(f"DEBUG: MentorProfile created for {email}.")
                 else:  # role == 'user'
@@ -50,7 +76,8 @@ class RegisterView(View):
                         user=user,
                         first_name=first_name,
                         last_name=last_name,
-                        role='user'
+                        role='user',
+                        manuals=default_manuals
                     )
                     print(f"DEBUG: UserProfile created for {email}.")
                 

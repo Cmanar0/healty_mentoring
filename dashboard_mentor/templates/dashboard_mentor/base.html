@@ -123,7 +123,7 @@
               <span>Account</span>
             </a>
             <a href="#" class="dropdown-item">
-              <i class="fas fa-receipt"></i>
+              <i class="fas fa-crown"></i>
               <span>Subscriptions</span>
             </a>
             <a href="#" class="dropdown-item">
@@ -186,7 +186,7 @@
           </a>
         </li>
         <li>
-          <a href="/dashboard/mentor/account/" class="sidebar-link" title="Your Profile">
+          <a href="/dashboard/mentor/profile/" class="sidebar-link" title="Your Profile">
             <i class="fas fa-id-badge"></i>
             <span class="sidebar-text">Your Profile</span>
           </a>
@@ -254,6 +254,20 @@
     {% block dashboard_content %}{% endblock %}
   </main>
 </div>
+
+<!-- Tutorial Manual Overlay -->
+<div id="tutorialOverlay" class="tutorial-overlay" style="display: none;">
+  <div class="tutorial-bubble" id="tutorialBubble">
+    <button type="button" class="tutorial-close" id="tutorialClose">
+      <i class="fas fa-times"></i>
+    </button>
+    <h3 class="tutorial-title" id="tutorialTitle"></h3>
+    <p class="tutorial-text" id="tutorialText"></p>
+  </div>
+</div>
+
+<!-- Manuals Data (JSON) -->
+{{ user.profile.manuals|json_script:"manualsData" }}
 {% endblock %}
 
 {% block scripts %}
@@ -543,7 +557,6 @@
 .notification-list {
   flex: 1;
   overflow-y: auto;
-  padding: 8px 0;
 }
 
 .notification-list::-webkit-scrollbar {
@@ -727,6 +740,211 @@ document.addEventListener('DOMContentLoaded', function() {
       notificationDropdown.classList.remove('active');
     }
   });
+
+  // Tutorial Manual System
+  let manuals = [];
+  let currentManualIndex = 0;
+  
+  try {
+    const manualsDataElement = document.getElementById('manualsData');
+    if (manualsDataElement) {
+      manuals = JSON.parse(manualsDataElement.textContent);
+      // Filter out displayed manuals
+      manuals = manuals.filter(m => !m.displayed);
+      console.log('Loaded manuals:', manuals);
+    }
+  } catch (error) {
+    console.error('Error parsing manuals data:', error);
+  }
+
+  function showTutorialManual(manual) {
+    console.log('Showing tutorial manual:', manual);
+    const overlay = document.getElementById('tutorialOverlay');
+    const bubble = document.getElementById('tutorialBubble');
+    const title = document.getElementById('tutorialTitle');
+    const text = document.getElementById('tutorialText');
+    
+    if (!overlay || !bubble || !title || !text) {
+      console.error('Tutorial elements not found');
+      return;
+    }
+
+    // Find target element by ID (manual.id now refers to DOM element ID)
+    let targetElement = document.getElementById(manual.id);
+    
+    if (!targetElement) {
+      console.warn('Target element not found for ID:', manual.id);
+      console.warn('Skipping this manual (will try again next time)');
+      // Skip this manual and show next one WITHOUT marking as displayed
+      // This way it won't be removed if the element doesn't exist yet
+      currentManualIndex++;
+      if (currentManualIndex < manuals.length) {
+        setTimeout(() => {
+          showTutorialManual(manuals[currentManualIndex]);
+        }, 300);
+      }
+      return;
+    }
+    
+    console.log('Target element found:', targetElement);
+
+    // Add highlight class to target element to prevent blur
+    targetElement.classList.add('tutorial-highlight');
+
+    // Set content
+    title.textContent = manual.title;
+    text.textContent = manual.text;
+
+    // Show overlay
+    overlay.style.display = 'block';
+    setTimeout(() => {
+      overlay.classList.add('active');
+    }, 10);
+
+    // Position bubble using coordinates from manual.position
+    positionBubbleByCoordinates(targetElement, bubble, manual.position);
+  }
+
+  function positionBubbleByCoordinates(targetElement, bubble, position) {
+    const rect = targetElement.getBoundingClientRect();
+    const bubbleRect = bubble.getBoundingClientRect();
+    const scrollY = window.scrollY;
+    const scrollX = window.scrollX;
+
+    let top, left;
+
+    // position can be an object with x, y offsets or a string like "top", "bottom", etc.
+    if (typeof position === 'object' && position.x !== undefined && position.y !== undefined) {
+      // Use coordinates relative to target element
+      top = rect.top + scrollY + position.y;
+      left = rect.left + scrollX + position.x;
+    } else if (typeof position === 'string') {
+      // Fallback to string-based positioning for backward compatibility
+      switch(position) {
+        case 'top':
+          top = rect.top + scrollY - bubbleRect.height - 16;
+          left = rect.left + scrollX + (rect.width / 2) - (bubbleRect.width / 2);
+          break;
+        case 'bottom':
+          top = rect.bottom + scrollY + 16;
+          left = rect.left + scrollX + (rect.width / 2) - (bubbleRect.width / 2);
+          break;
+        case 'left':
+          top = rect.top + scrollY + (rect.height / 2) - (bubbleRect.height / 2);
+          left = rect.left + scrollX - bubbleRect.width - 16;
+          break;
+        case 'right':
+          top = rect.top + scrollY + (rect.height / 2) - (bubbleRect.height / 2);
+          left = rect.right + scrollX + 16;
+          break;
+        default:
+          top = rect.bottom + scrollY + 16;
+          left = rect.left + scrollX + (rect.width / 2) - (bubbleRect.width / 2);
+      }
+    } else {
+      // Default: bottom center
+      top = rect.bottom + scrollY + 16;
+      left = rect.left + scrollX + (rect.width / 2) - (bubbleRect.width / 2);
+    }
+
+    // Keep bubble within viewport
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+
+    if (left < 20) left = 20;
+    if (left + bubbleRect.width > viewportWidth - 20) {
+      left = viewportWidth - bubbleRect.width - 20;
+    }
+    if (top < 20) top = 20;
+    if (top + bubbleRect.height > viewportHeight - 20) {
+      top = viewportHeight - bubbleRect.height - 20;
+    }
+
+    bubble.style.top = top + 'px';
+    bubble.style.left = left + 'px';
+  }
+
+  function closeTutorial() {
+    const overlay = document.getElementById('tutorialOverlay');
+    overlay.classList.remove('active');
+    
+    // Remove highlight class from all elements
+    document.querySelectorAll('.tutorial-highlight').forEach(el => {
+      el.classList.remove('tutorial-highlight');
+    });
+    
+    setTimeout(() => {
+      overlay.style.display = 'none';
+    }, 300);
+
+    // Mark current manual as displayed
+    if (manuals[currentManualIndex]) {
+      markManualAsDisplayed(manuals[currentManualIndex].id);
+    }
+  }
+
+  function markManualAsDisplayed(manualId) {
+    fetch('{% url "general:mark_manual_displayed" %}', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': '{{ csrf_token }}'
+      },
+      body: JSON.stringify({ manual_id: manualId })
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        // Show next manual if available
+        currentManualIndex++;
+        if (currentManualIndex < manuals.length) {
+          setTimeout(() => {
+            showTutorialManual(manuals[currentManualIndex]);
+          }, 300);
+        }
+      }
+    })
+    .catch(error => {
+      console.error('Error marking manual as displayed:', error);
+    });
+  }
+
+  // Initialize tutorial on page load
+  function initTutorial() {
+    if (manuals && manuals.length > 0) {
+      console.log('Initializing tutorial with', manuals.length, 'manuals');
+      // Wait for page to fully load and DOM to be ready
+      setTimeout(() => {
+        showTutorialManual(manuals[0]);
+      }, 1000);
+    } else {
+      console.log('No manuals to display');
+    }
+  }
+
+  // Wait for DOM to be fully loaded
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initTutorial);
+  } else {
+    // DOM is already loaded
+    window.addEventListener('load', initTutorial);
+  }
+
+  // Close tutorial handlers
+  const tutorialClose = document.getElementById('tutorialClose');
+  const tutorialOverlay = document.getElementById('tutorialOverlay');
+
+  if (tutorialClose) {
+    tutorialClose.addEventListener('click', closeTutorial);
+  }
+
+  if (tutorialOverlay) {
+    tutorialOverlay.addEventListener('click', function(e) {
+      if (e.target === tutorialOverlay) {
+        closeTutorial();
+      }
+    });
+  }
 });
 </script>
 {% endblock %}

@@ -45,6 +45,11 @@ class UserProfileAdmin(admin.ModelAdmin):
             'fields': ('mentors', 'sessions'),
             'classes': ('collapse',)
         }),
+        ('Tutorial Manuals', {
+            'fields': ('manuals',),
+            'classes': ('collapse',),
+            'description': 'Navigation tutorial manuals. See documentation for data structure.'
+        }),
     )
     filter_horizontal = ('mentors', 'sessions')
     
@@ -93,6 +98,11 @@ class MentorProfileAdmin(admin.ModelAdmin):
         ('Relations', {
             'fields': ('sessions', 'clients', 'reviews'),
             'classes': ('collapse',)
+        }),
+        ('Tutorial Manuals', {
+            'fields': ('manuals',),
+            'classes': ('collapse',),
+            'description': 'Navigation tutorial manuals. See documentation for data structure.'
         }),
     )
     filter_horizontal = ('credentials', 'tags', 'sessions', 'clients')

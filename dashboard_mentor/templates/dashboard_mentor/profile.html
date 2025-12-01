@@ -1,0 +1,180 @@
+{% extends "dashboard_mentor/base.html" %}
+{% load static %}
+
+{% block page_title %}Your Profile{% endblock %}
+
+{% block dashboard_content %}
+<div class="dashboard-content-container">
+    <div class="dashboard-grid">
+        <!-- Profile Picture and Basic Info Card -->
+        <div class="dashboard-card col-span-4">
+            <div class="card-header">
+                <h3 class="card-title">Profile Picture</h3>
+            </div>
+            <div style="text-align: center; padding: 20px 0;">
+                <div class="profile-avatar-large">
+                    {% if user.profile.profile_picture %}
+                        <img src="{{ user.profile.profile_picture.url }}" alt="Profile" id="profileImagePreview">
+                    {% else %}
+                        <i class="fas fa-user" id="profileImageIcon"></i>
+                    {% endif %}
+                </div>
+                <form method="post" enctype="multipart/form-data" style="margin-top: 20px;">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="update_picture">
+                    <label for="profilePictureInput" class="btn btn-outline btn-sm" style="cursor: pointer; display: inline-block;">
+                        <i class="fas fa-camera"></i> Change Picture
+                    </label>
+                    <input type="file" name="profile_picture" id="profilePictureInput" accept="image/*" style="display: none;" onchange="previewImage(this)">
+                    <button type="submit" class="btn btn-primary btn-sm" style="margin-left: 8px;">Save</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Profile Details Card -->
+        <div class="dashboard-card col-span-8">
+            <div class="card-header">
+                <h3 class="card-title">Profile Details</h3>
+            </div>
+            
+            <div class="account-form-container">
+                <form method="post" id="profileForm">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="update_profile">
+                    
+                    <!-- Name Section -->
+                    <div class="account-section">
+                        <div class="name-password-grid">
+                            <div class="name-column">
+                                <div class="column-header">
+                                    <h4><i class="fas fa-user"></i> First Name</h4>
+                                </div>
+                                <div style="margin-top: 16px;">
+                                    <input type="text" name="first_name" value="{{ user.profile.first_name }}" class="form-input" id="firstNameInput">
+                                </div>
+                            </div>
+                            <div class="name-column">
+                                <div class="column-header">
+                                    <h4><i class="fas fa-user"></i> Last Name</h4>
+                                </div>
+                                <div style="margin-top: 16px;">
+                                    <input type="text" name="last_name" value="{{ user.profile.last_name }}" class="form-input" id="lastNameInput">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Time Zone Section -->
+                    <div class="account-section">
+                        <div class="column-header">
+                            <h4><i class="fas fa-clock"></i> Time Zone</h4>
+                        </div>
+                        <div style="margin-top: 16px;">
+                            <input type="text" name="time_zone" value="{{ user.profile.time_zone|default:'' }}" class="form-input" placeholder="e.g., UTC, America/New_York">
+                        </div>
+                    </div>
+
+                    <!-- Mentor Type Section -->
+                    <div class="account-section">
+                        <div class="column-header">
+                            <h4><i class="fas fa-user-tie"></i> Mentor Type</h4>
+                        </div>
+                        <div style="margin-top: 16px;">
+                            <select name="mentor_type" class="form-input">
+                                <option value="">Select mentor type</option>
+                                <option value="nutritionist" {% if user.profile.mentor_type == 'nutritionist' %}selected{% endif %}>Nutritionist</option>
+                                <option value="fitness_coach" {% if user.profile.mentor_type == 'fitness_coach' %}selected{% endif %}>Fitness Coach</option>
+                                <option value="wellness_coach" {% if user.profile.mentor_type == 'wellness_coach' %}selected{% endif %}>Wellness Coach</option>
+                                <option value="life_coach" {% if user.profile.mentor_type == 'life_coach' %}selected{% endif %}>Life Coach</option>
+                                <option value="therapist" {% if user.profile.mentor_type == 'therapist' %}selected{% endif %}>Therapist</option>
+                                <option value="other" {% if user.profile.mentor_type == 'other' %}selected{% endif %}>Other</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Tags Section -->
+                    <div class="account-section">
+                        <div class="column-header">
+                            <h4><i class="fas fa-tags"></i> Expertise (Tags)</h4>
+                        </div>
+                        <div style="margin-top: 16px;">
+                            <input type="text" name="tags" value="{% for tag in user.profile.tags.all %}{{ tag.name }}{% if not forloop.last %}, {% endif %}{% endfor %}" class="form-input" placeholder="Enter tags separated by commas">
+                            <p style="margin-top: 8px; font-size: 0.85rem; color: var(--dash-text-muted);">Separate multiple tags with commas</p>
+                        </div>
+                    </div>
+
+                    <!-- Credentials Section -->
+                    <div class="account-section">
+                        <div class="column-header">
+                            <h4><i class="fas fa-certificate"></i> Credentials</h4>
+                        </div>
+                        <div style="margin-top: 16px;">
+                            <input type="text" name="credentials" value="{% for cred in user.profile.credentials.all %}{{ cred.title }}{% if not forloop.last %}, {% endif %}{% endfor %}" class="form-input" placeholder="Enter credentials separated by commas">
+                            <p style="margin-top: 8px; font-size: 0.85rem; color: var(--dash-text-muted);">Separate multiple credentials with commas</p>
+                        </div>
+                    </div>
+
+                    <!-- Bio Section -->
+                    <div class="account-section">
+                        <div class="column-header">
+                            <h4><i class="fas fa-align-left"></i> Bio</h4>
+                        </div>
+                        <div style="margin-top: 16px;">
+                            <textarea name="bio" rows="6" class="form-input" placeholder="Tell us about yourself...">{{ user.profile.bio|default:'' }}</textarea>
+                        </div>
+                    </div>
+
+                    <!-- Quote Section -->
+                    <div class="account-section">
+                        <div class="column-header">
+                            <h4><i class="fas fa-quote-left"></i> Quote</h4>
+                        </div>
+                        <div style="margin-top: 16px;">
+                            <textarea name="quote" rows="3" class="form-input" placeholder="Your favorite quote or motto...">{{ user.profile.quote|default:'' }}</textarea>
+                        </div>
+                    </div>
+
+                    <!-- Save Button -->
+                    <div class="account-section" style="border-bottom: none; padding-top: 24px;">
+                        <button type="submit" class="btn btn-primary">Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function previewImage(input) {
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const preview = document.getElementById('profileImagePreview');
+            const icon = document.getElementById('profileImageIcon');
+            if (preview) {
+                preview.src = e.target.result;
+                preview.style.display = 'block';
+            }
+            if (icon) {
+                icon.style.display = 'none';
+            }
+            // If preview doesn't exist, create it
+            if (!preview && icon) {
+                const img = document.createElement('img');
+                img.id = 'profileImagePreview';
+                img.src = e.target.result;
+                img.alt = 'Profile';
+                img.style.width = '100%';
+                img.style.height = '100%';
+                img.style.objectFit = 'cover';
+                img.style.borderRadius = '50%';
+                icon.parentElement.appendChild(img);
+                icon.style.display = 'none';
+            }
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+</script>
+{% endblock %}
+
