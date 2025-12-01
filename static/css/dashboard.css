@@ -100,7 +100,7 @@
 
 .dashboard-sidebar.collapsed { width: var(--sidebar-collapsed-width); }
 
-.sidebar-nav { padding: 24px 0; flex: 1; }
+.sidebar-nav {  flex: 1; }
 .sidebar-menu { list-style: none; padding: 0; margin: 0; }
 
 .sidebar-link {
@@ -774,11 +774,33 @@
 
 /* --- Enhanced Stats Card Styles --- */
 
-/* Fixed Width Button */
+/* Fixed Width Button/Link */
 .btn-fixed-width {
   min-width: 80px;
   width: auto;
   white-space: nowrap;
+  text-align: right; /* Align text to right for links */
+}
+
+/* Link Button Style */
+.btn-link {
+  background: none;
+  border: none;
+  color: var(--dash-primary);
+  font-weight: 500;
+  font-size: 0.9rem;
+  cursor: pointer;
+  text-decoration: none;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end; /* Align right if fixed width */
+  transition: color 0.2s ease;
+}
+
+.btn-link:hover {
+  color: var(--dash-primary-hover);
+  text-decoration: underline;
 }
 
 /* Stats Card Compact */
@@ -794,13 +816,13 @@
 .stats-period-trigger {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   background: transparent;
   border: none;
   cursor: pointer;
-  padding: 8px 12px;
-  border-radius: 8px;
-  transition: none;
+  padding: 0; /* Remove padding to look like link */
+  border-radius: 4px;
+  transition: all 0.2s ease;
 }
 
 .stats-period-trigger:hover {
@@ -808,19 +830,20 @@
 }
 
 .stats-period-trigger:hover .period-label {
-  color: var(--dash-primary);
+  color: var(--dash-primary-hover); /* Match btn-link hover */
+  text-decoration: underline;
 }
 
 .period-label {
   font-weight: 500;
-  color: var(--dash-text-main);
-  font-size: 0.9rem;
+  color: var(--dash-primary); /* Match btn-link color */
+  font-size: 0.9rem; /* Match btn-link size */
   transition: color 0.2s ease;
 }
 
 .stats-period-trigger i {
-  font-size: 0.7rem;
-  color: var(--dash-text-muted);
+  font-size: 0.8rem;
+  color: var(--dash-primary); /* Match link color */
   transition: transform 0.2s ease;
 }
 
