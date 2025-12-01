@@ -1511,27 +1511,177 @@
   font-size: 1.25rem;
 }
 
-/* Account Form Sections */
-.account-form-section {
-  padding: 20px;
-  border: 1px solid var(--dash-border);
-  border-radius: 12px;
-  background: #fafbfc;
+/* Account Form Container */
+.account-form-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  margin-top: 20px;
+  min-height: 400px;
 }
 
-.form-section-header {
+.account-settings-group {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.account-delete-group {
+  margin-top: auto;
+  padding-top: 40px;
+}
+
+/* Account Sections (No nested cards) */
+.account-section {
+  padding: 20px 0;
+  border-bottom: 1px solid var(--dash-border);
+}
+
+.account-section:last-child {
+  border-bottom: none;
+}
+
+.account-section-danger {
+  margin-top: 32px;
+  padding-top: 0;
+  border-top: none;
+  border-bottom: none;
+}
+
+.account-section-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
+  margin-bottom: 0;
 }
 
-.form-section-header h4 {
+.account-section-header h4 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--dash-text-main);
+  line-height: 36px; /* Match button height */
+}
+
+.account-section-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Email Row Layout */
+.email-row-layout {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.email-label-group {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.email-label-group h4 {
   margin: 0;
   font-size: 0.95rem;
   font-weight: 600;
   color: var(--dash-text-main);
 }
 
+.btn-change-email {
+  background: transparent;
+  border: 2px solid var(--dash-border);
+  color: var(--dash-text-main);
+  padding: 6px 16px;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-change-email:hover {
+  border-color: var(--dash-text-main);
+  background: var(--dash-bg-light);
+}
+
+.field-display {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.field-value {
+  font-size: 0.95rem;
+  color: var(--dash-text-main);
+  font-weight: 500;
+}
+
+.field-edit {
+  display: flex;
+  align-items: center;
+}
+
+.edit-fields {
+  margin-top: 12px;
+}
+
+/* Button Styles */
+.btn-edit {
+  background: transparent;
+  border: 1px solid var(--dash-border);
+  color: var(--dash-primary);
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  height: 36px;
+  white-space: nowrap;
+}
+
+.btn-edit:hover {
+  background: rgba(16, 185, 129, 0.05);
+  border-color: var(--dash-primary);
+}
+
+.btn-compact {
+  padding: 8px 12px;
+  width: auto;
+  min-width: auto;
+}
+
+.btn-cancel {
+  background: #6b7280;
+  border-color: #6b7280;
+  color: white;
+  width: 36px;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-cancel:hover {
+  background: #4b5563;
+  border-color: #4b5563;
+}
+
+.btn-fixed-height {
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-sm.btn-fixed-height {
+  height: 36px;
+}
+
+/* Form Input Styles */
 .form-input {
   width: 100%;
   padding: 10px 12px;
@@ -1549,7 +1699,7 @@
   box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
 }
 
-.account-form-section label {
+.account-section label {
   display: block;
   margin-bottom: 6px;
   font-weight: 500;
@@ -1568,16 +1718,6 @@
   background: #b91c1c;
 }
 
-.btn-secondary {
-  background: #6b7280;
-  color: white;
-  border: none;
-}
-
-.btn-secondary:hover {
-  background: #4b5563;
-}
-
 /* Navbar Avatar Placeholder */
 .avatar-placeholder {
   width: 100%;
@@ -1588,6 +1728,232 @@
   align-items: center;
   justify-content: center;
   color: var(--dash-text-muted);
+  font-size: 1rem;
+}
+
+/* Boost Promotion Box */
+.boost-promo-box {
+  margin-top: 32px;
+  padding: 24px 20px;
+  background: linear-gradient(135deg, #ec4899, #3b82f6);
+  border-radius: 16px;
+  text-align: center;
+  box-shadow: 0 8px 24px rgba(236, 72, 153, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.boost-promo-box::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+  animation: shimmer 3s infinite;
+}
+
+@keyframes shimmer {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(-10%, -10%); }
+}
+
+.boost-promo-icon {
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 16px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(10px);
+  position: relative;
+  z-index: 1;
+}
+
+.boost-promo-icon i {
+  font-size: 24px;
+  color: white;
+}
+
+.boost-promo-title {
+  margin: 0 0 12px;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: white;
+  position: relative;
+  z-index: 1;
+}
+
+.boost-promo-stats {
+  margin: 0 0 8px;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.95);
+  position: relative;
+  z-index: 1;
+}
+
+.boost-promo-stats strong {
+  font-weight: 700;
+  color: #fbbf24;
+}
+
+.boost-promo-text {
+  margin: 0 0 20px;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.9);
+  position: relative;
+  z-index: 1;
+}
+
+.btn-boost {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  background: white;
+  color: #1f2937;
+  border: none;
+  border-radius: 50px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  text-decoration: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  transition: box-shadow 0.3s ease, background 0.3s ease, color 0.3s ease;
+  position: relative;
+  z-index: 1;
+}
+
+.btn-boost:hover {
+  background: #1f2937;
+  color: white;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+}
+
+.btn-boost i {
+  font-size: 16px;
+  color: #fbbf24;
+}
+
+.btn-boost:hover i {
+  color: #fbbf24;
+}
+
+/* --- Modal Styles --- */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s ease;
+}
+
+.modal-overlay.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+.modal-content {
+  background: white;
+  width: 100%;
+  max-width: 480px;
+  border-radius: 16px;
+  padding: 32px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  transform: translateY(20px);
+  transition: transform 0.3s ease;
+  position: relative;
+}
+
+.modal-overlay.active .modal-content {
+  transform: translateY(0);
+}
+
+.modal-header {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.modal-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--dash-text-main);
+  margin: 0 0 8px;
+}
+
+.modal-subtitle {
+  color: var(--dash-text-muted);
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.modal-close {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  width: 36px;
+  height: 36px;
+  background: transparent;
+  border: none;
+  color: var(--dash-text-muted);
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+.modal-close:hover {
+  background: #f1f5f9;
+  color: var(--dash-text-main);
+}
+
+.verification-input-group {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin: 24px 0;
+}
+
+.verification-digit {
+  width: 48px;
+  height: 56px;
+  border: 2px solid var(--dash-border);
+  border-radius: 8px;
+  font-size: 1.5rem;
+  font-weight: 600;
+  text-align: center;
+  color: var(--dash-text-main);
+  transition: all 0.2s ease;
+}
+
+.verification-digit:focus {
+  outline: none;
+  border-color: var(--dash-primary);
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1);
+}
+
+.modal-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.btn-full {
+  width: 100%;
+  justify-content: center;
+  padding: 12px;
   font-size: 1rem;
 }
 

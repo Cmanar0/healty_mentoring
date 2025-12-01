@@ -52,7 +52,7 @@ h1, h2, h3, h4 {
 /* Buttons */
 .btn {
   display: inline-block;
-  padding: 14px 32px;
+  padding: 12px;
   border-radius: 50px;
   font-weight: 600;
   text-decoration: none;
@@ -64,15 +64,14 @@ h1, h2, h3, h4 {
   box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
 }
 .btn-primary:hover {
-  transform: translateY(-2px);
   box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
   background: var(--primary-dark);
   color: white;
 }
 .btn-outline {
+  background-color: transparent;
   border: 2px solid var(--text-dark);
   color: var(--text-dark);
-  margin-left: 16px;
 }
 .btn-outline:hover {
   background: var(--text-dark);

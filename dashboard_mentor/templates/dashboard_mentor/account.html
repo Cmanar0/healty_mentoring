@@ -11,7 +11,7 @@
             <div class="card-header">
                 <h3 class="card-title">Your Profile</h3>
             </div>
-            <div style="text-align: center; padding: 10px 0 20px;">
+            <div style="text-align: center; padding: 10px 0 0;">
                 <div class="profile-avatar-large">
                     {% if user.profile.profile_picture %}
                         <img src="{{ user.profile.profile_picture.url }}" alt="Profile">
@@ -71,7 +71,25 @@
                 </div>
 
                 <div style="margin: 24px 16px 0 0;">
-                    <a href="/dashboard/mentor/profile/" class="btn btn-outline btn-sm">Update Profile</a>
+                    <a href="/dashboard/mentor/profile/" class="btn btn-outline btn-sm" style="margin-left: 16px;">Update Profile</a>
+                </div>
+
+                <!-- Boost Promotion Box -->
+                <div class="boost-promo-box">
+                    <div class="boost-promo-icon">
+                        <i class="fas fa-rocket"></i>
+                    </div>
+                    <h4 class="boost-promo-title">Boost your visibility</h4>
+                    <p class="boost-promo-stats">
+                        Your profile was viewed <strong>{{ profile_views|default:47 }} times</strong> last month
+                    </p>
+                    <p class="boost-promo-text">
+                        Stand out from the crowd! Complete your profile to 100% and activate Boost to appear at the top of search results.
+                    </p>
+                    <a href="#" class="btn-boost">
+                        <i class="fas fa-star"></i>
+                        <span>Get Boost</span>
+                    </a>
                 </div>
             </div>
         </div>
@@ -82,71 +100,131 @@
                 <h3 class="card-title">Account</h3>
             </div>
             
-            <form method="post" style="display: flex; flex-direction: column; gap: 24px;">
+            <div class="account-form-container">
+                <!-- Account Settings Group -->
+                <div class="account-settings-group">
+                    
+                    <!-- Name Section (Inputs Visible) -->
+                    <form method="post" class="account-section" id="nameForm">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="update_name">
+                        <div class="account-section-header" style="margin-bottom: 0;">
+                            <h4>Name</h4>
+                            <button type="submit" id="nameSaveBtn" class="btn btn-primary btn-sm btn-fixed-height" disabled>Save</button>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px;">
+                            <div>
+                                <label>First Name</label>
+                                <input type="text" name="first_name" value="{{ user.profile.first_name }}" class="form-input">
+                            </div>
+                            <div>
+                                <label>Last Name</label>
+                                <input type="text" name="last_name" value="{{ user.profile.last_name }}" class="form-input">
+                            </div>
+                        </div>
+                    </form>
+
+                    <!-- Email Section (Row Layout) -->
+                    <div class="account-section">
+                        <div class="email-row-layout">
+                            <div class="email-label-group">
+                                <h4>Email</h4>
+                                <span class="field-value">{{ user.email }}</span>
+                            </div>
+                            <button type="button" class="btn-change-email" onclick="openEmailModal()">Change email</button>
+                        </div>
+                    </div>
+
+                    <!-- Password Section (Inputs Visible) -->
+                    <form method="post" class="account-section" id="passwordForm">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="update_password">
+                        <div class="account-section-header">
+                            <h4>Password</h4>
+                            <button type="submit" id="passwordSaveBtn" class="btn btn-primary btn-fixed-height" disabled>Update Password</button>
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 16px; margin-top: 16px;">
+                            <div>
+                                <label>New password</label>
+                                <input type="password" name="new_password" class="form-input" autocomplete="new-password">
+                            </div>
+                            <div>
+                                <label>New password again</label>
+                                <input type="password" name="new_password_again" class="form-input" autocomplete="new-password">
+                            </div>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Delete Account Group -->
+                <div class="account-delete-group">
+                    <form method="post" class="account-section account-section-danger">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="delete_account">
+                        <div class="account-section-header">
+                            <h4 style="color: #dc2626;">Delete Account</h4>
+                        </div>
+                        <p style="margin: 12px 0 16px; color: var(--dash-text-muted); font-size: 0.9rem;">
+                            Once you delete your account, there is no going back. Please be certain.
+                        </p>
+                        <button type="button" class="btn btn-danger btn-sm btn-fixed-height">
+                            Delete Account
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Email Verification Modal -->
+<div id="emailModal" class="modal-overlay">
+    <div class="modal-content">
+        <button type="button" class="modal-close" onclick="closeEmailModal()">
+            <i class="fas fa-times"></i>
+        </button>
+        
+        <!-- Step 1: New Email Input -->
+        <div id="emailStep1">
+            <div class="modal-header">
+                <h3 class="modal-title">Change Email Address</h3>
+                <p class="modal-subtitle">Enter your new email address. We'll send you a verification code.</p>
+            </div>
+            <form id="emailFormStep1" onsubmit="handleEmailStep1(event)">
+                <div style="margin-bottom: 24px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 500;">New Email Address</label>
+                    <input type="email" id="newEmailInput" class="form-input" placeholder="name@example.com" required>
+                </div>
+                <div class="modal-actions">
+                    <button type="submit" class="btn btn-primary btn-full">Send Verification Code</button>
+                    <button type="button" class="btn btn-outline" onclick="closeEmailModal()">Cancel</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Step 2: Verification Code -->
+        <div id="emailStep2" style="display: none;">
+            <div class="modal-header">
+                <h3 class="modal-title">Verify Email</h3>
+                <p class="modal-subtitle">Enter the 6-digit code sent to <strong id="confirmEmailDisplay"></strong></p>
+            </div>
+            <form id="emailFormStep2" method="post">
                 {% csrf_token %}
+                <input type="hidden" name="action" value="update_email">
+                <input type="hidden" name="email" id="finalEmailInput">
                 
-                <!-- Name Section -->
-                <div class="account-form-section">
-                    <div class="form-section-header">
-                        <h4>Name</h4>
-                        <button type="submit" name="action" value="update_name" class="btn btn-primary btn-sm">Save</button>
-                    </div>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 12px;">
-                        <div>
-                            <label>First Name</label>
-                            <input type="text" name="first_name" value="{{ user.profile.first_name }}" class="form-input">
-                        </div>
-                        <div>
-                            <label>Last Name</label>
-                            <input type="text" name="last_name" value="{{ user.profile.last_name }}" class="form-input">
-                        </div>
-                    </div>
+                <div class="verification-input-group">
+                    <input type="text" class="verification-digit" maxlength="1" pattern="[0-9]" required>
+                    <input type="text" class="verification-digit" maxlength="1" pattern="[0-9]" required>
+                    <input type="text" class="verification-digit" maxlength="1" pattern="[0-9]" required>
+                    <input type="text" class="verification-digit" maxlength="1" pattern="[0-9]" required>
+                    <input type="text" class="verification-digit" maxlength="1" pattern="[0-9]" required>
+                    <input type="text" class="verification-digit" maxlength="1" pattern="[0-9]" required>
                 </div>
-
-                <!-- Email Section -->
-                <div class="account-form-section">
-                    <div class="form-section-header">
-                        <h4>Email</h4>
-                        <button type="submit" name="action" value="update_email" class="btn btn-primary btn-sm">Save</button>
-                    </div>
-                    <div style="margin-top: 12px;">
-                        <label>Your email</label>
-                        <input type="email" name="email" value="{{ user.email }}" class="form-input">
-                    </div>
-                </div>
-
-                <!-- Change Password Section -->
-                <div class="account-form-section">
-                    <div class="form-section-header">
-                        <h4>Change password</h4>
-                        <button type="button" id="showPasswordFieldsBtn" class="btn btn-outline btn-sm">Create new password</button>
-                    </div>
-                    <div id="passwordFields" style="display: none; margin-top: 12px; display: flex; flex-direction: column; gap: 16px;">
-                        <div>
-                            <label>New password</label>
-                            <input type="password" name="new_password" class="form-input">
-                        </div>
-                        <div>
-                            <label>New password again</label>
-                            <input type="password" name="new_password_again" class="form-input">
-                        </div>
-                        <div>
-                            <button type="submit" name="action" value="update_password" class="btn btn-primary">Update Password</button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Delete Account Section -->
-                <div class="account-form-section" style="border-color: #fee2e2;">
-                    <div class="form-section-header">
-                        <h4 style="color: #dc2626;">Delete Account</h4>
-                    </div>
-                    <p style="margin: 12px 0 16px; color: var(--dash-text-muted); font-size: 0.9rem;">
-                        Once you delete your account, there is no going back. Please be certain.
-                    </p>
-                    <button type="button" class="btn btn-danger btn-sm">
-                        Delete Account
-                    </button>
+                
+                <div class="modal-actions">
+                    <button type="submit" class="btn btn-primary btn-full">Verify & Update Email</button>
+                    <button type="button" class="btn btn-outline" onclick="backToStep1()">Back</button>
                 </div>
             </form>
         </div>
@@ -172,25 +250,102 @@ document.addEventListener('DOMContentLoaded', function() {
             progressCircle.style.strokeDashoffset = offset;
         }, 100);
     }
+
+    // Name Section Dirty Checking
+    const nameForm = document.getElementById('nameForm');
+    const firstNameInput = document.querySelector('input[name="first_name"]');
+    const lastNameInput = document.querySelector('input[name="last_name"]');
+    const nameSaveBtn = document.getElementById('nameSaveBtn');
     
-    // Password fields toggle
-    const btn = document.getElementById('showPasswordFieldsBtn');
-    const fields = document.getElementById('passwordFields');
-    if (btn && fields) {
-        btn.addEventListener('click', function() {
-            if (fields.style.display === 'none' || fields.style.display === '') {
-                fields.style.display = 'flex';
-                btn.textContent = 'Cancel';
-                btn.classList.remove('btn-outline');
-                btn.classList.add('btn-secondary');
-            } else {
-                fields.style.display = 'none';
-                btn.textContent = 'Create new password';
-                btn.classList.remove('btn-secondary');
-                btn.classList.add('btn-outline');
+    if (nameForm && firstNameInput && lastNameInput && nameSaveBtn) {
+        const originalFirstName = firstNameInput.value;
+        const originalLastName = lastNameInput.value;
+        
+        function checkNameChanges() {
+            const isChanged = firstNameInput.value !== originalFirstName || lastNameInput.value !== originalLastName;
+            nameSaveBtn.disabled = !isChanged;
+        }
+        
+        firstNameInput.addEventListener('input', checkNameChanges);
+        lastNameInput.addEventListener('input', checkNameChanges);
+    }
+
+    // Password Validation
+    const passwordForm = document.getElementById('passwordForm');
+    const newPasswordInput = document.querySelector('input[name="new_password"]');
+    const newPasswordAgainInput = document.querySelector('input[name="new_password_again"]');
+    const passwordSaveBtn = document.getElementById('passwordSaveBtn');
+
+    if (passwordForm && newPasswordInput && newPasswordAgainInput && passwordSaveBtn) {
+        function validatePassword() {
+            const p1 = newPasswordInput.value;
+            const p2 = newPasswordAgainInput.value;
+            
+            const isValid = p1.length >= 6 && p1 === p2;
+            passwordSaveBtn.disabled = !isValid;
+        }
+
+        newPasswordInput.addEventListener('input', validatePassword);
+        newPasswordAgainInput.addEventListener('input', validatePassword);
+    }
+
+    // Modal Logic
+    const modal = document.getElementById('emailModal');
+    const modalOverlay = document.querySelector('.modal-overlay');
+    
+    // Close on outside click
+    if (modal) {
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                closeEmailModal();
             }
         });
     }
+
+    // Verification code input handling
+    const digits = document.querySelectorAll('.verification-digit');
+    digits.forEach((digit, idx) => {
+        digit.addEventListener('input', function(e) {
+            if (this.value.length === 1) {
+                if (idx < digits.length - 1) digits[idx + 1].focus();
+            }
+        });
+        
+        digit.addEventListener('keydown', function(e) {
+            if (e.key === 'Backspace' && this.value.length === 0) {
+                if (idx > 0) digits[idx - 1].focus();
+            }
+        });
+    });
 });
+
+function openEmailModal() {
+    document.getElementById('emailModal').classList.add('active');
+    document.getElementById('emailStep1').style.display = 'block';
+    document.getElementById('emailStep2').style.display = 'none';
+    document.getElementById('newEmailInput').value = '';
+}
+
+function closeEmailModal() {
+    document.getElementById('emailModal').classList.remove('active');
+}
+
+function handleEmailStep1(e) {
+    e.preventDefault();
+    const email = document.getElementById('newEmailInput').value;
+    if (email) {
+        document.getElementById('emailStep1').style.display = 'none';
+        document.getElementById('emailStep2').style.display = 'block';
+        document.getElementById('confirmEmailDisplay').textContent = email;
+        document.getElementById('finalEmailInput').value = email;
+        // Focus first digit
+        setTimeout(() => document.querySelector('.verification-digit').focus(), 100);
+    }
+}
+
+function backToStep1() {
+    document.getElementById('emailStep1').style.display = 'block';
+    document.getElementById('emailStep2').style.display = 'none';
+}
 </script>
 {% endblock %}
