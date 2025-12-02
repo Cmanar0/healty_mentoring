@@ -50,11 +50,11 @@
                 </div>
                 <div class="profile-header-actions">
                     <div style="display: flex; flex-direction: column; gap: 8px; align-items: flex-end;">
-                        <a href="/dashboard/mentor/account/" class="btn btn-outline btn-sm" style="display: inline-flex; align-items: center; gap: 8px;">
-                            <i class="fas fa-user-circle"></i> My account
-                        </a>
                         <a href="{% url 'web:mentor_profile_detail' user.id %}" class="btn btn-outline btn-sm" style="display: inline-flex; align-items: center; gap: 8px;" target="_blank">
                             <i class="fas fa-eye"></i> Profile Preview
+                        </a>
+                        <a href="/dashboard/mentor/account/" class="btn btn-outline btn-sm" style="display: inline-flex; align-items: center; gap: 8px;">
+                            <i class="fas fa-user-circle"></i> My account
                         </a>
                     </div>
                 </div>
@@ -124,16 +124,16 @@
                     <!-- Expertise (Tags) -->
                     <div class="compact-form-group form-grid-full">
                         <label><i class="fas fa-tags"></i> Expertise (Tags)</label>
-                        <div class="autocomplete-container" style="position: relative;">
+                        <div class="autocomplete-container" style="position: relative; margin-bottom: 0;">
                             <div style="display: flex; gap: 8px; align-items: stretch;">
-                                <input type="text" id="tagInput" class="form-input autocomplete-input" placeholder="Type to search tags..." style="flex: 1; padding: 12px 16px; font-size: 0.95rem;" autocomplete="off">
+                                <input type="text" id="tagInput" class="form-input autocomplete-input" placeholder="Type to search tags..." style="flex: 1; padding: 12px 16px; font-size: 0.95rem; margin-bottom: 0;" autocomplete="off">
                                 <button type="button" id="addTagBtn" class="btn btn-outline btn-sm" style="white-space: nowrap; width: auto; height: 43px;">
                                     <i class="fas fa-plus"></i> Add
                                 </button>
                             </div>
                             <div class="autocomplete-suggestions" id="tagSuggestions"></div>
                         </div>
-                        <div id="tagsList" style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; min-height: 20px;">
+                        <div id="tagsList" style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; min-height: 20px;">
                             {% for tag in user.profile.tags %}
                                 <div class="tag-item" data-tag-name="{{ tag }}">
                                     <span class="tag-text">{{ tag }}</span>
@@ -150,7 +150,7 @@
                     <!-- Bio -->
                     <div class="compact-form-group form-grid-full">
                         <label><i class="fas fa-align-left"></i> Bio</label>
-                        <div id="bioEditor" style="min-height: 200px;"></div>
+                        <div id="bioEditor" class="quill-editor-wrapper"></div>
                         <textarea name="bio" id="bioTextarea" style="display: none;">{{ user.profile.bio|default:'' }}</textarea>
                     </div>
 
@@ -218,39 +218,47 @@
                         <input type="hidden" name="qualifications_data" id="qualificationsData" value="">
                     </div>
 
-                    <!-- Languages -->
-                    <div class="compact-form-group form-grid-full">
-                        <label><i class="fas fa-language"></i> Languages</label>
-                        <div class="autocomplete-container" style="position: relative;">
-                            <input type="text" id="languageInput" class="form-input autocomplete-input" placeholder="Type to search languages..." style="width: 100%; padding: 12px 16px; font-size: 0.95rem;" autocomplete="off">
-                            <div class="autocomplete-suggestions" id="languageSuggestions"></div>
+                    <!-- Languages and Nationality -->
+                    <div class="compact-form-group form-grid-full" style="display: contents;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; grid-column: 1 / -1;">
+                            <div class="compact-form-group">
+                                <label><i class="fas fa-language"></i> Languages</label>
+                                <div class="autocomplete-container" style="position: relative; margin-bottom: 0;">
+                                    <input type="text" id="languageInput" class="form-input autocomplete-input" placeholder="Type to search languages..." style="width: 100%; padding: 12px 16px; font-size: 0.95rem; margin-bottom: 0;" autocomplete="off">
+                                    <div class="autocomplete-suggestions" id="languageSuggestions"></div>
+                                </div>
+                                <div id="languagesList" style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; min-height: 20px;">
+                                    {% for lang_id in user.profile.languages %}
+                                        {% for lang in predefined_languages %}
+                                            {% if lang.id == lang_id %}
+                                                <div class="tag-item" data-lang-id="{{ lang.id }}">
+                                                    <span class="tag-text">{{ lang.name }}</span>
+                                                    <button type="button" class="remove-tag-btn">
+                                                        <i class="fas fa-times"></i>
+                                                    </button>
+                                                </div>
+                                            {% endif %}
+                                        {% endfor %}
+                                    {% endfor %}
+                                </div>
+                                <input type="hidden" name="languages_data" id="languagesData" value="">
+                                {{ predefined_languages|json_script:"predefinedLanguagesData" }}
+                            </div>
+                            <div class="compact-form-group">
+                                <label><i class="fas fa-flag"></i> Nationality</label>
+                                <input type="text" name="nationality" value="{{ user.profile.nationality|default:'' }}" class="form-input" placeholder="e.g., American, British">
+                            </div>
                         </div>
-                        <div id="languagesList" style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; min-height: 20px;">
-                            {% for lang_id in user.profile.languages %}
-                                {% for lang in predefined_languages %}
-                                    {% if lang.id == lang_id %}
-                                        <div class="tag-item" data-lang-id="{{ lang.id }}">
-                                            <span class="tag-text">{{ lang.name }}</span>
-                                            <button type="button" class="remove-tag-btn">
-                                                <i class="fas fa-times"></i>
-                                            </button>
-                                        </div>
-                                    {% endif %}
-                                {% endfor %}
-                            {% endfor %}
-                        </div>
-                        <input type="hidden" name="languages_data" id="languagesData" value="">
-                        {{ predefined_languages|json_script:"predefinedLanguagesData" }}
                     </div>
 
                     <!-- Categories -->
                     <div class="compact-form-group form-grid-full">
                         <label><i class="fas fa-folder"></i> Categories</label>
-                        <div class="autocomplete-container" style="position: relative;">
-                            <input type="text" id="categoryInput" class="form-input autocomplete-input" placeholder="Type to search categories..." style="width: 100%; padding: 12px 16px; font-size: 0.95rem;" autocomplete="off">
+                        <div class="autocomplete-container" style="position: relative; margin-bottom: 0;">
+                            <input type="text" id="categoryInput" class="form-input autocomplete-input" placeholder="Type to search categories..." style="width: 100%; padding: 12px 16px; font-size: 0.95rem; margin-bottom: 0;" autocomplete="off">
                             <div class="autocomplete-suggestions" id="categorySuggestions"></div>
                         </div>
-                        <div id="categoriesList" style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; min-height: 20px;">
+                        <div id="categoriesList" style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; min-height: 20px;">
                             {% for cat_id in user.profile.categories %}
                                 {% for cat in predefined_categories %}
                                     {% if cat.id == cat_id %}
@@ -268,43 +276,60 @@
                         {{ predefined_categories|json_script:"predefinedCategoriesData" }}
                     </div>
 
-                    <!-- Price per Hour -->
-                    <div class="compact-form-group">
-                        <label><i class="fas fa-dollar-sign"></i> Price per Hour</label>
-                        <input type="number" name="price_per_hour" step="0.01" min="0" value="{{ user.profile.price_per_hour|default:'' }}" class="form-input" placeholder="0.00">
-                    </div>
-
-                    <!-- Price per Hour and Nationality -->
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-                        <div class="compact-form-group">
-                            <label><i class="fas fa-dollar-sign"></i> Price per Hour</label>
-                            <div style="position: relative;">
-                                <input type="number" name="price_per_hour" id="pricePerHour" step="1" min="0" value="{{ user.profile.price_per_hour|default:'' }}" class="form-input" placeholder="0" style="padding-right: 30px;">
-                                <span style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: var(--dash-text-muted); pointer-events: none;">$</span>
+                    <!-- Price per Hour, Earnings, and View Subscriptions -->
+                    <div class="compact-form-group form-grid-full" style="display: contents;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; grid-column: 1 / -1;">
+                            <div style="grid-column: span 2; display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                                <div class="compact-form-group">
+                                    <label><i class="fas fa-dollar-sign"></i> Price per Hour</label>
+                                    <div style="position: relative;">
+                                        <input type="number" name="price_per_hour" id="pricePerHour" step="1" min="0" value="{{ user.profile.price_per_hour|default:'' }}" class="form-input" placeholder="0" style="padding-left: 32px;">
+                                        <span style="position: absolute; left: 17px; top: 37%; transform: translateY(-50%); color: var(--dash-text-muted); pointer-events: none; font-weight: 500;">$</span>
+                                    </div>
+                                </div>
+                                <div class="compact-form-group">
+                                    <label><i class="fas fa-wallet"></i> You'll Earn (after 3% fees)</label>
+                                    <div id="earningsDisplay" style="padding: 12px 16px; background: var(--dash-bg-light); border: 1px solid var(--dash-border); border-radius: 8px; color: var(--dash-text-main); font-weight: 500; min-height: 43px; display: flex; align-items: center;">
+                                        $0.00
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="compact-form-group" style="display: flex; flex-direction: column; justify-content: flex-end;">
+                                <button type="button" class="btn btn-outline" style="width: 100%; height: 43px; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 24px;" onclick="window.location.href='/dashboard/mentor/account/'">
+                                    <i class="fas fa-crown"></i> View Subscriptions
+                                </button>
+                                <p style="margin: 8px 0 0 0; font-size: 0.75rem; color: var(--dash-text-muted); text-align: center; line-height: 1.3;">
+                                    Pick any Subscription and avoid any fees - Earn full amount / hour
+                                </p>
                             </div>
                         </div>
-                        <div class="compact-form-group">
-                            <label><i class="fas fa-flag"></i> Nationality</label>
-                            <input type="text" name="nationality" value="{{ user.profile.nationality|default:'' }}" class="form-input" placeholder="e.g., American, British">
+                    </div>
+
+                    <!-- Session Length -->
+                    <div class="compact-form-group">
+                        <label><i class="fas fa-clock"></i> Session Length</label>
+                        <div style="position: relative;">
+                            <input type="number" name="session_length" id="sessionLength" step="1" min="1" value="{{ user.profile.session_length|default:'' }}" class="form-input" placeholder="60" style="padding-right: 50px;">
+                            <span style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: var(--dash-text-muted); pointer-events: none; font-size: 0.9rem;">minutes</span>
                         </div>
                     </div>
 
-                    <!-- Instagram and LinkedIn -->
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-                        <div class="compact-form-group">
-                            <label><i class="fab fa-instagram"></i> Instagram</label>
-                            <input type="text" name="instagram_name" value="{{ user.profile.instagram_name|default:'' }}" class="form-input" placeholder="@username">
-                        </div>
-                        <div class="compact-form-group">
-                            <label><i class="fab fa-linkedin"></i> LinkedIn</label>
-                            <input type="text" name="linkedin_name" value="{{ user.profile.linkedin_name|default:'' }}" class="form-input" placeholder="LinkedIn username">
-                        </div>
-                    </div>
-
-                    <!-- Personal Website -->
+                    <!-- Instagram, LinkedIn, and Personal Website -->
                     <div class="compact-form-group form-grid-full">
-                        <label><i class="fas fa-globe"></i> Personal Website</label>
-                        <input type="url" name="personal_website" value="{{ user.profile.personal_website|default:'' }}" class="form-input" placeholder="https://example.com">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px;">
+                            <div class="compact-form-group">
+                                <label><i class="fab fa-instagram"></i> Instagram</label>
+                                <input type="text" name="instagram_name" value="{{ user.profile.instagram_name|default:'' }}" class="form-input" placeholder="@username">
+                            </div>
+                            <div class="compact-form-group">
+                                <label><i class="fab fa-linkedin"></i> LinkedIn</label>
+                                <input type="text" name="linkedin_name" value="{{ user.profile.linkedin_name|default:'' }}" class="form-input" placeholder="LinkedIn username">
+                            </div>
+                            <div class="compact-form-group">
+                                <label><i class="fas fa-globe"></i> Personal Website</label>
+                                <input type="url" name="personal_website" value="{{ user.profile.personal_website|default:'' }}" class="form-input" placeholder="https://example.com">
+                            </div>
+                        </div>
                     </div>
 
                 </div>
@@ -635,8 +660,27 @@ function getProgressColor(percentage) {
     }
 }
 
+// Calculate earnings after 3% fees
+function calculateEarnings() {
+    const pricePerHourInput = document.getElementById('pricePerHour');
+    const earningsDisplay = document.getElementById('earningsDisplay');
+    if (pricePerHourInput && earningsDisplay) {
+        const pricePerHour = parseFloat(pricePerHourInput.value) || 0;
+        const earnings = pricePerHour * 0.97; // 3% fee = 97% of price
+        earningsDisplay.textContent = '$' + earnings.toFixed(2);
+    }
+}
+
 // Profile completion circle animation
 document.addEventListener('DOMContentLoaded', function() {
+    // Initialize earnings display
+    const pricePerHourInput = document.getElementById('pricePerHour');
+    if (pricePerHourInput) {
+        calculateEarnings(); // Initial calculation
+        pricePerHourInput.addEventListener('input', calculateEarnings);
+        pricePerHourInput.addEventListener('change', calculateEarnings);
+    }
+    
     // Profile Completeness Circle
     const progressCircle = document.getElementById('profileProgressCircle');
     const completionText = document.getElementById('profileCompletionText');
@@ -962,6 +1006,18 @@ document.addEventListener('DOMContentLoaded', function() {
         if (tagName && !tagsArray.includes(tagName)) {
             tagsArray.push(tagName);
         }
+        // Add event listener to existing remove button
+        const removeBtn = tagItem.querySelector('.remove-tag-btn');
+        if (removeBtn) {
+            removeBtn.addEventListener('click', function() {
+                const index = tagsArray.indexOf(tagName);
+                if (index > -1) {
+                    tagsArray.splice(index, 1);
+                    renderTagsList();
+                    updateTagsData();
+                }
+            });
+        }
     });
 
     function updateTagsData() {
@@ -1117,6 +1173,18 @@ document.addEventListener('DOMContentLoaded', function() {
         if (langId && !languagesArray.includes(langId)) {
             languagesArray.push(langId);
         }
+        // Add event listener to existing remove button
+        const removeBtn = langItem.querySelector('.remove-tag-btn');
+        if (removeBtn) {
+            removeBtn.addEventListener('click', function() {
+                const index = languagesArray.indexOf(langId);
+                if (index > -1) {
+                    languagesArray.splice(index, 1);
+                    renderLanguagesList();
+                    updateLanguagesData();
+                }
+            });
+        }
     });
 
     function updateLanguagesData() {
@@ -1267,6 +1335,18 @@ document.addEventListener('DOMContentLoaded', function() {
         const catId = catItem.getAttribute('data-cat-id');
         if (catId && !categoriesArray.includes(catId)) {
             categoriesArray.push(catId);
+        }
+        // Add event listener to existing remove button
+        const removeBtn = catItem.querySelector('.remove-tag-btn');
+        if (removeBtn) {
+            removeBtn.addEventListener('click', function() {
+                const index = categoriesArray.indexOf(catId);
+                if (index > -1) {
+                    categoriesArray.splice(index, 1);
+                    renderCategoriesList();
+                    updateCategoriesData();
+                }
+            });
         }
     });
 

@@ -115,6 +115,7 @@ class MentorProfile(models.Model):
     languages = models.JSONField(default=list, blank=True)  # Array of language IDs from predefined list
     categories = models.JSONField(default=list, blank=True)  # Array of category IDs from predefined list
     price_per_hour = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
+    session_length = models.PositiveIntegerField(blank=True, null=True, help_text="Session length in minutes")
     first_session_free = models.CharField(max_length=10, choices=get_first_session_free_choices(), blank=True, null=True)
     instagram_name = models.CharField(max_length=100, blank=True, null=True)
     linkedin_name = models.CharField(max_length=100, blank=True, null=True)

@@ -72,6 +72,14 @@ def account(request):
     consider(profile.profile_picture, 'profile_picture', 'Profile Picture')
     consider(profile.qualifications.exists(), 'qualifications', 'Qualifications')
     consider(len(profile.tags) > 0 if profile.tags else False, 'tags', 'Tags')
+    consider(len(profile.languages) > 0 if profile.languages else False, 'languages', 'Languages')
+    consider(len(profile.categories) > 0 if profile.categories else False, 'categories', 'Categories')
+    consider(profile.nationality, 'nationality', 'Nationality')
+    consider(profile.price_per_hour, 'price_per_hour', 'Price per Hour')
+    consider(profile.session_length, 'session_length', 'Session Length')
+    # At least one social media link
+    has_social = bool(profile.instagram_name or profile.linkedin_name or profile.personal_website)
+    consider(has_social, 'social_media', 'Social Media (Instagram, LinkedIn, or Website)')
     # Note: Billing and Subscription are NOT included in profile completion
 
     profile_completion = int(round((filled / total) * 100)) if total else 0
@@ -210,6 +218,16 @@ def profile(request):
             else:
                 profile.price_per_hour = None
             
+            # Handle session length
+            session_length = request.POST.get("session_length", "")
+            if session_length:
+                try:
+                    profile.session_length = int(session_length)
+                except ValueError:
+                    profile.session_length = None
+            else:
+                profile.session_length = None
+            
             # Handle social media and links
             profile.instagram_name = instagram_name.strip() if instagram_name else None
             profile.linkedin_name = linkedin_name.strip() if linkedin_name else None
@@ -281,6 +299,14 @@ def profile(request):
     consider(profile.profile_picture, 'profile_picture', 'Profile Picture')
     consider(profile.qualifications.exists(), 'qualifications', 'Qualifications')
     consider(len(profile.tags) > 0 if profile.tags else False, 'tags', 'Tags')
+    consider(len(profile.languages) > 0 if profile.languages else False, 'languages', 'Languages')
+    consider(len(profile.categories) > 0 if profile.categories else False, 'categories', 'Categories')
+    consider(profile.nationality, 'nationality', 'Nationality')
+    consider(profile.price_per_hour, 'price_per_hour', 'Price per Hour')
+    consider(profile.session_length, 'session_length', 'Session Length')
+    # At least one social media link
+    has_social = bool(profile.instagram_name or profile.linkedin_name or profile.personal_website)
+    consider(has_social, 'social_media', 'Social Media (Instagram, LinkedIn, or Website)')
     # Note: Billing and Subscription are NOT included in profile completion
 
     profile_completion = int(round((filled / total) * 100)) if total else 0
