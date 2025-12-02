@@ -207,7 +207,7 @@
                     </div>
 
                     <!-- Name and Password Grid (Two Columns) -->
-                    <div class="account-section account-section-no-border">
+                    <div class="account-section ">
                         <div class="name-password-grid">
                             <!-- Left Column: Name -->
                             <form method="post" class="name-column" id="nameForm">
@@ -256,41 +256,41 @@
                             </form>
                         </div>
                     </div>
-                </div>
 
-                <!-- Delete Account Group -->
-                <!-- Billing Information -->
-                <div class="account-section" style="margin-bottom: 24px;">
-                    <div style="display: flex; align-items: center; justify-content: space-between; padding: 16px; background: {% if billing_filled %}rgba(16, 185, 129, 0.05){% else %}rgba(239, 68, 68, 0.05){% endif %}; border: 1px solid {% if billing_filled %}rgba(16, 185, 129, 0.2){% else %}rgba(239, 68, 68, 0.2){% endif %}; border-radius: 8px;">
-                        <div style="display: flex; align-items: center; gap: 12px;">
-                            <div style="width: 40px; height: 40px; border-radius: 50%; background: {% if billing_filled %}var(--dash-primary){% else %}#ef4444{% endif %}; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                                <i class="fas {% if billing_filled %}fa-check{% else %}fa-exclamation{% endif %}" style="color: white; font-size: 1rem;"></i>
+                    <!-- Billing Information Section -->
+                    <div class="account-section" style="margin-bottom: 24px;">
+                        <div style="display: flex; align-items: center; justify-content: space-between; padding: 16px; background: {% if billing_filled %}rgba(16, 185, 129, 0.05){% else %}rgba(239, 68, 68, 0.05){% endif %}; border: 1px solid {% if billing_filled %}rgba(16, 185, 129, 0.2){% else %}rgba(239, 68, 68, 0.2){% endif %}; border-radius: 8px;">
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <div style="width: 40px; height: 40px; border-radius: 50%; background: {% if billing_filled %}var(--dash-primary){% else %}#ef4444{% endif %}; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                    <i class="fas {% if billing_filled %}fa-check{% else %}fa-exclamation{% endif %}" style="color: white; font-size: 1rem;"></i>
+                                </div>
+                                <div>
+                                    <h4 style="margin: 0 0 4px; font-size: 0.95rem; font-weight: 600; color: var(--dash-text-main);">
+                                        Billing Information
+                                    </h4>
+                                    <p style="margin: 0; font-size: 0.85rem; color: var(--dash-text-muted);">
+                                        {% if billing_filled %}
+                                            Your billing information is complete
+                                        {% else %}
+                                            Complete your billing information to receive payments
+                                        {% endif %}
+                                    </p>
+                                </div>
                             </div>
-                            <div>
-                                <h4 style="margin: 0 0 4px; font-size: 0.95rem; font-weight: 600; color: var(--dash-text-main);">
-                                    Billing Information
-                                </h4>
-                                <p style="margin: 0; font-size: 0.85rem; color: var(--dash-text-muted);">
-                                    {% if billing_filled %}
-                                        Your billing information is complete
-                                    {% else %}
-                                        Complete your billing information to receive payments
-                                    {% endif %}
-                                </p>
-                            </div>
+                            {% if not billing_filled %}
+                                <a href="/dashboard/mentor/billing/" class="btn btn-primary btn-sm">
+                                    Set Up Billing
+                                </a>
+                            {% else %}
+                                <a href="/dashboard/mentor/billing/" class="btn btn-outline btn-sm">
+                                    Update Billing
+                                </a>
+                            {% endif %}
                         </div>
-                        {% if not billing_filled %}
-                            <a href="/dashboard/mentor/billing/" class="btn btn-primary btn-sm">
-                                Set Up Billing
-                            </a>
-                        {% else %}
-                            <a href="/dashboard/mentor/billing/" class="btn btn-outline btn-sm">
-                                Update Billing
-                            </a>
-                        {% endif %}
                     </div>
                 </div>
 
+                <!-- Delete Account Group -->
                 <div class="account-delete-group">
                     <form method="post" class="account-section account-section-danger">
                         {% csrf_token %}
