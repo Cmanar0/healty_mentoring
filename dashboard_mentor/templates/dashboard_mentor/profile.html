@@ -85,46 +85,17 @@
                     <!-- Mentor Type -->
                     <div class="compact-form-group">
                         <label><i class="fas fa-user-tie"></i> Mentor Type</label>
-                        <div class="custom-dropdown-container">
-                            <button type="button" class="custom-dropdown-trigger" id="mentorTypeTrigger">
-                                <span class="dropdown-selected-text" id="mentorTypeSelected">
-                                    {% if user.profile.mentor_type %}
-                                        {% if user.profile.mentor_type == 'life_coach' %}Life Coach
-                                        {% elif user.profile.mentor_type == 'career_coach' %}Career Coach
-                                        {% elif user.profile.mentor_type == 'business_coach' %}Business Coach
-                                        {% elif user.profile.mentor_type == 'health_coach' %}Health Coach
-                                        {% elif user.profile.mentor_type == 'other' %}Other
-                                        {% else %}{{ user.profile.mentor_type|title }}
-                                        {% endif %}
-                                    {% else %}
-                                        Select mentor type
-                                    {% endif %}
-                                </span>
-                                <i class="fas fa-chevron-down"></i>
-                            </button>
-                            <input type="hidden" name="mentor_type" id="mentorTypeInput" value="{{ user.profile.mentor_type|default:'' }}">
-                            <div class="custom-dropdown-menu" id="mentorTypeMenu">
-                                <button type="button" class="dropdown-item first-item" data-value="">
-                                    <span>Select mentor type</span>
-                                </button>
-                                <button type="button" class="dropdown-item" data-value="life_coach">
-                                    <span>Life Coach</span>
-                                </button>
-                                <button type="button" class="dropdown-item" data-value="career_coach">
-                                    <span>Career Coach</span>
-                                </button>
-                                <button type="button" class="dropdown-item" data-value="business_coach">
-                                    <span>Business Coach</span>
-                                </button>
-                                <button type="button" class="dropdown-item" data-value="health_coach">
-                                    <span>Health Coach</span>
-                                </button>
-                                <button type="button" class="dropdown-item last-item" data-value="other">
-                                    <span>Other</span>
-                                </button>
-                            </div>
+                        <div class="autocomplete-container">
+                            <input type="text" name="mentor_type" id="mentorTypeInput" 
+                                   value="{{ user.profile.mentor_type|default:'' }}" 
+                                   class="form-input autocomplete-input" 
+                                   placeholder="Type or select a mentor type"
+                                   autocomplete="off">
+                            <div class="autocomplete-suggestions" id="mentorTypeSuggestions"></div>
                         </div>
+                        {{ mentor_types|json_script:"mentorTypesData" }}
                     </div>
+                    {{ mentor_types|json_script:"mentorTypesData" }}
 
                     <!-- Time Zone -->
                     <div class="compact-form-group">
@@ -673,53 +644,82 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Custom Dropdown for Mentor Type
-    const mentorTypeTrigger = document.getElementById('mentorTypeTrigger');
-    const mentorTypeMenu = document.getElementById('mentorTypeMenu');
+    // Autocomplete for Mentor Type
     const mentorTypeInput = document.getElementById('mentorTypeInput');
-    const mentorTypeSelected = document.getElementById('mentorTypeSelected');
-    const mentorTypeContainer = document.querySelector('.custom-dropdown-container');
+    const mentorTypeSuggestions = document.getElementById('mentorTypeSuggestions');
+    const mentorTypesData = document.getElementById('mentorTypesData');
+    const mentorTypes = mentorTypesData ? JSON.parse(mentorTypesData.textContent) : [];
+    let debounceTimer;
 
-    if (mentorTypeTrigger && mentorTypeMenu) {
-        // Toggle dropdown
-        mentorTypeTrigger.addEventListener('click', function(e) {
-            e.stopPropagation();
-            mentorTypeContainer.classList.toggle('active');
+    if (mentorTypeInput && mentorTypeSuggestions) {
+        // Show suggestions on focus if input has value
+        mentorTypeInput.addEventListener('focus', function() {
+            if (this.value.trim()) {
+                filterSuggestions(this.value.trim());
+            } else {
+                showAllSuggestions();
+            }
         });
 
-        // Handle item selection
-        const dropdownItems = mentorTypeMenu.querySelectorAll('.dropdown-item');
-        dropdownItems.forEach(item => {
-            item.addEventListener('click', function() {
-                const value = this.getAttribute('data-value');
-                const text = this.querySelector('span').textContent;
-                
-                mentorTypeInput.value = value;
-                mentorTypeSelected.textContent = text;
-                
-                // Update active state
-                dropdownItems.forEach(i => i.classList.remove('active'));
-                this.classList.add('active');
-                
-                // Close dropdown
-                mentorTypeContainer.classList.remove('active');
-            });
+        // Filter suggestions as user types
+        mentorTypeInput.addEventListener('input', function() {
+            clearTimeout(debounceTimer);
+            const query = this.value.trim();
+            
+            debounceTimer = setTimeout(() => {
+                if (query.length > 0) {
+                    filterSuggestions(query);
+                } else {
+                    showAllSuggestions();
+                }
+            }, 200);
         });
 
-        // Close dropdown when clicking outside
+        // Handle suggestion selection
+        mentorTypeSuggestions.addEventListener('click', function(e) {
+            if (e.target.classList.contains('suggestion-item')) {
+                mentorTypeInput.value = e.target.textContent.trim();
+                mentorTypeSuggestions.style.display = 'none';
+                mentorTypeInput.focus();
+            }
+        });
+
+        // Close suggestions when clicking outside
         document.addEventListener('click', function(event) {
-            if (mentorTypeContainer && !mentorTypeContainer.contains(event.target)) {
-                mentorTypeContainer.classList.remove('active');
+            if (!mentorTypeInput.contains(event.target) && !mentorTypeSuggestions.contains(event.target)) {
+                mentorTypeSuggestions.style.display = 'none';
             }
         });
 
-        // Mark current selection as active
-        const currentValue = mentorTypeInput.value;
-        dropdownItems.forEach(item => {
-            if (item.getAttribute('data-value') === currentValue) {
-                item.classList.add('active');
+        function filterSuggestions(query) {
+            const filtered = mentorTypes.filter(type => 
+                type.toLowerCase().includes(query.toLowerCase())
+            );
+            displaySuggestions(filtered);
+        }
+
+        function showAllSuggestions() {
+            displaySuggestions(mentorTypes.slice(0, 10)); // Show first 10
+        }
+
+        function displaySuggestions(suggestions) {
+            if (suggestions.length === 0) {
+                mentorTypeSuggestions.style.display = 'none';
+                return;
             }
-        });
+
+            mentorTypeSuggestions.innerHTML = '';
+            suggestions.forEach((suggestion, index) => {
+                const item = document.createElement('div');
+                item.className = 'suggestion-item';
+                if (index === 0) item.classList.add('first-item');
+                if (index === suggestions.length - 1) item.classList.add('last-item');
+                item.textContent = suggestion;
+                mentorTypeSuggestions.appendChild(item);
+            });
+
+            mentorTypeSuggestions.style.display = 'block';
+        }
     }
 
     // Popover functionality

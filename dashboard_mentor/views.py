@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
-from dashboard_mentor.models import Tag, Credential
+from dashboard_mentor.models import Tag, Credential, MentorType
 
 @login_required
 def dashboard(request):
@@ -145,7 +145,18 @@ def profile(request):
             if last_name is not None:
                 profile.last_name = last_name
             profile.time_zone = time_zone
-            profile.mentor_type = mentor_type if mentor_type else None
+            
+            # Handle mentor type - create if it doesn't exist
+            if mentor_type:
+                mentor_type = mentor_type.strip()
+                mentor_type_obj, created = MentorType.objects.get_or_create(
+                    name=mentor_type,
+                    defaults={'is_custom': True}
+                )
+                profile.mentor_type = mentor_type
+            else:
+                profile.mentor_type = None
+            
             profile.bio = bio
             profile.quote = quote
             profile.save()
@@ -234,11 +245,17 @@ def profile(request):
     if (reviews / reviewsTotal) < 1:
         content_missing.append(f'Client Reviews ({reviews}/{reviewsTotal})')
     
+    # Fetch all mentor types for autocomplete
+    mentor_types = MentorType.objects.all().values_list('name', flat=True)
+    
     return render(request, 'dashboard_mentor/profile.html', {
+        'user': user,
+        'profile': profile,
         'profile_completion': profile_completion,
         'missing_fields': missing_fields,
         'content_percentage': contentPercentage,
         'content_missing': content_missing,
+        'mentor_types': list(mentor_types),
     })
 
 @login_required

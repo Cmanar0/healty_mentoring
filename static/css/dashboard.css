@@ -141,6 +141,72 @@
   color: var(--primary);
 }
 
+/* Subtle styling for "Your" section */
+.your-section-divider {
+  height: 1px;
+  background: rgba(0, 0, 0, 0.08);
+  margin: 12px 22px;
+  list-style: none;
+}
+
+.sidebar-link-your {
+  opacity: 0.9;
+}
+
+.sidebar-link-your:hover {
+  opacity: 1;
+}
+
+/* Autocomplete styling */
+.autocomplete-container {
+  position: relative;
+}
+
+.autocomplete-input {
+  width: 100%;
+}
+
+.autocomplete-suggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid var(--dash-border);
+  border-radius: 8px;
+  margin-top: 4px;
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 1000;
+  display: none;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.suggestion-item {
+  padding: 12px 16px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  color: var(--dash-text-main);
+  font-size: 0.95rem;
+}
+
+.suggestion-item:hover {
+  background: rgba(16, 185, 129, 0.08);
+  color: var(--dash-primary);
+}
+
+.suggestion-item.first-item {
+  border-radius: 8px 8px 0 0;
+}
+
+.suggestion-item.last-item {
+  border-radius: 0 0 8px 8px;
+}
+
+.suggestion-item:only-child {
+  border-radius: 8px;
+}
+
 .sidebar-text {
   transition: opacity 0.2s;
   opacity: 1;
@@ -1569,6 +1635,67 @@
 #nameSaveBtn.btn-primary:focus,
 #passwordSaveBtn.btn-primary:focus {
   box-shadow: none !important;
+}
+
+/* Billing Status Card */
+.billing-status-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  border-radius: 8px;
+}
+
+.billing-status-card.billing-filled {
+  background: rgba(16, 185, 129, 0.05);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.billing-status-card.billing-empty {
+  background: rgba(239, 68, 68, 0.05);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.billing-status-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.billing-status-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.billing-status-icon.billing-icon-filled {
+  background: var(--dash-primary);
+}
+
+.billing-status-icon.billing-icon-empty {
+  background: #ef4444;
+}
+
+.billing-status-icon i {
+  color: white;
+  font-size: 1rem;
+}
+
+.billing-status-title {
+  margin: 0 0 4px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--dash-text-main);
+}
+
+.billing-status-text {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--dash-text-muted);
 }
 
 /* Account Sections (No nested cards) */
