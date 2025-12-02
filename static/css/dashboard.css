@@ -2777,24 +2777,80 @@ textarea.form-input {
   margin-bottom: 4px;
 }
 
-/* Remove Qualification Button */
+/* Qualification Item Styles */
+.qualification-item {
+  cursor: move;
+}
+
+.qualification-item-content {
+  position: relative;
+}
+
+.qualification-item.dragging {
+  opacity: 0.5;
+}
+
+.qualification-ghost {
+  opacity: 0.4;
+  background: var(--dash-bg-light);
+}
+
+.qualification-chosen {
+  cursor: grabbing;
+}
+
+.qualification-drag {
+  opacity: 0.8;
+}
+
+/* Edit and Remove Qualification Buttons */
+.edit-qualification-btn,
 .remove-qualification-btn {
   background: transparent;
   border: none;
-  color: #ef4444;
   cursor: pointer;
-  padding: 8px 8px;
-  font-size: 1rem;
-  margin-left: 12px;
+  padding: 6px 8px;
+  font-size: 0.9rem;
   flex-shrink: 0;
   width: auto;
-  transition: color 0.2s ease;
-  border-radius: 8px;
+  transition: color 0.2s ease, background-color 0.2s ease;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.edit-qualification-btn {
+  color: var(--dash-text-muted);
+}
+
+.edit-qualification-btn:hover {
+  color: var(--dash-primary);
+  background: rgba(16, 185, 129, 0.1);
+}
+
+.remove-qualification-btn {
+  color: #ef4444;
 }
 
 .remove-qualification-btn:hover {
   color: #dc2626;
-  background: rgba(0, 0, 0, 0.091);
+  background: rgba(239, 68, 68, 0.1);
+}
+
+/* Qualification Drag Handle */
+.qualification-drag-handle {
+  flex-shrink: 0;
+  user-select: none;
+  transition: color 0.2s ease;
+}
+
+.qualification-drag-handle:hover {
+  color: var(--dash-primary);
+}
+
+.qualification-item:hover .qualification-drag-handle {
+  color: var(--dash-text-main);
 }
 
 /* Tag styling */

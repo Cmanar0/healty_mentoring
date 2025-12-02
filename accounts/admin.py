@@ -6,6 +6,7 @@ from .models import (
     CustomUser, UserProfile, MentorProfile
 )
 from .forms import CustomUserCreationForm, CustomUserChangeForm
+from dashboard_mentor.models import MentorProfileQualification
 
 # Hide Authentication and Authorization groups
 admin.site.unregister(Group)
@@ -65,8 +66,15 @@ class UserProfileAdmin(admin.ModelAdmin):
         verbose_name = "User Profile"
         verbose_name_plural = "User Profiles"
 
+# Inline for Qualifications
+class MentorProfileQualificationInline(admin.TabularInline):
+    model = MentorProfileQualification
+    extra = 1
+    ordering = ('order',)
+
 # Mentor Profile Admin
 class MentorProfileAdmin(admin.ModelAdmin):
+    inlines = [MentorProfileQualificationInline]
     list_display = ('first_name', 'last_name', 'email_display', 'role', 'mentor_type')
     list_filter = ('role', 'mentor_type')
     search_fields = ('first_name', 'last_name', 'user__email')
@@ -81,7 +89,7 @@ class MentorProfileAdmin(admin.ModelAdmin):
             'fields': ('first_name', 'last_name', 'profile_picture')
         }),
         ('Personal Information', {
-            'fields': ('time_zone', 'mentor_type', 'bio', 'quote', 'qualifications', 'tags', 'languages', 'categories', 'nationality')
+            'fields': ('time_zone', 'mentor_type', 'bio', 'quote', 'tags', 'languages', 'categories', 'nationality')
         }),
         ('Pricing & Session', {
             'fields': ('price_per_hour', 'first_session_free')
@@ -111,7 +119,7 @@ class MentorProfileAdmin(admin.ModelAdmin):
             'description': 'Navigation tutorial manuals. See documentation for data structure.'
         }),
     )
-    filter_horizontal = ('qualifications', 'sessions', 'clients')
+    filter_horizontal = ('sessions', 'clients')
     
     def email_display(self, obj):
         return obj.user.email

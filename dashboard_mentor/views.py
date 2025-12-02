@@ -223,8 +223,12 @@ def profile(request):
             if qualifications_data:
                 try:
                     qualifications_list = json.loads(qualifications_data)
-                    profile.qualifications.clear()
-                    for qual_data in qualifications_list:
+                    # Import the through model
+                    from dashboard_mentor.models import MentorProfileQualification
+                    # Clear existing qualifications
+                    MentorProfileQualification.objects.filter(mentor_profile=profile).delete()
+                    # Add qualifications in order using through model
+                    for order, qual_data in enumerate(qualifications_list):
                         title = qual_data.get('title', '').strip()
                         subtitle = qual_data.get('subtitle', '').strip()
                         description = qual_data.get('description', '').strip()
@@ -239,11 +243,17 @@ def profile(request):
                                 if description:
                                     qual.description = description
                                 qual.save()
-                            profile.qualifications.add(qual)
+                            # Create through model instance with order
+                            MentorProfileQualification.objects.create(
+                                mentor_profile=profile,
+                                qualification=qual,
+                                order=order
+                            )
                 except json.JSONDecodeError:
                     pass
             else:
-                profile.qualifications.clear()
+                from dashboard_mentor.models import MentorProfileQualification
+                MentorProfileQualification.objects.filter(mentor_profile=profile).delete()
             
             return redirect("/dashboard/mentor/profile/")
     

@@ -101,6 +101,15 @@ class MentorProfile(models.Model):
     # Personal Info (could be JSON, but using separate fields for better querying)
     time_zone = models.CharField(max_length=64, blank=True, null=True)
     qualifications = models.ManyToManyField("dashboard_mentor.Qualification", related_name="mentors", blank=True)
+    
+    def get_qualifications_ordered(self):
+        """Get qualifications in order using through model"""
+        from dashboard_mentor.models import MentorProfileQualification
+        # Get through model instances ordered by order field
+        mpqs = MentorProfileQualification.objects.filter(
+            mentor_profile=self
+        ).select_related('qualification').order_by('order', 'qualification__title')
+        return mpqs
     mentor_type = models.CharField(max_length=100, blank=True, null=True)  # Free text, suggestions from predefined list
     tags = models.JSONField(default=list, blank=True)  # Array of tag strings from predefined list
     languages = models.JSONField(default=list, blank=True)  # Array of language IDs from predefined list
