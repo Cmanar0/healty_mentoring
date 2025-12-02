@@ -2853,6 +2853,8 @@ textarea.form-input {
   color: var(--dash-text-main);
 }
 
+/* Profile Notifications - Now using unified notifications.css */
+
 /* Tag styling */
 .tag-item {
   display: inline-flex;

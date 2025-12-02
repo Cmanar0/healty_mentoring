@@ -60,6 +60,15 @@
                 </div>
             </div>
 
+            <!-- Messages -->
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="app-message app-message-{{ message.tags }} active">
+                        <i class="fas fa-check-circle"></i> {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+
             <!-- Compact Form Grid -->
             <form method="post" id="profileForm">
                 {% csrf_token %}
@@ -154,15 +163,23 @@
                     <!-- Qualifications -->
                     <div class="compact-form-group form-grid-full">
                         <label><i class="fas fa-certificate"></i> Qualifications</label>
-                        <div style="display: flex; flex-direction: column; gap: 8px;">
+                        <div id="qualificationInputSection" style="display: flex; flex-direction: column; gap: 8px;">
                             <div style="display: flex; gap: 8px; align-items: stretch;">
                                 <input type="text" id="qualificationTitle" class="form-input" placeholder="Title" style="flex: 1; padding: 12px 16px; font-size: 0.95rem;">
                                 <input type="text" id="qualificationSubtitle" class="form-input" placeholder="Subtitle" style="flex: 1; padding: 12px 16px; font-size: 0.95rem;">
                             </div>
                             <textarea id="qualificationDescription" class="form-input" placeholder="Description (max 450 characters)" rows="3" maxlength="450" style="width: 100%; padding: 12px 16px; font-size: 0.95rem; resize: vertical;"></textarea>
-                            <button type="button" id="addQualificationBtn" class="btn btn-outline btn-sm" style="white-space: nowrap; height: 43px; align-self: flex-start;">
-                                <i class="fas fa-plus"></i> Add
-                            </button>
+                            <div style="display: flex; gap: 8px; align-items: center;">
+                                <button type="button" id="addQualificationBtn" class="btn btn-outline btn-sm" style="white-space: nowrap; height: 43px; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+                                    <i class="fas fa-plus"></i> Add
+                                </button>
+                                <button type="button" id="updateQualificationBtn" class="btn btn-primary btn-sm" style="white-space: nowrap; height: 43px; display: none; align-items: center; justify-content: center; gap: 6px;">
+                                    <i class="fas fa-check"></i> Update
+                                </button>
+                                <button type="button" id="cancelQualificationBtn" class="btn btn-outline btn-sm" style="white-space: nowrap; height: 43px; display: none; align-items: center; justify-content: center; gap: 6px;">
+                                    <i class="fas fa-times"></i> Cancel
+                                </button>
+                            </div>
                         </div>
                         <div id="qualificationsList" style="display: flex; flex-direction: column; gap: 8px; margin-top: 12px;">
                             {% for mpq in user.profile.get_qualifications_ordered %}
@@ -603,6 +620,8 @@ function previewImage(input) {
     }
 }
 
+// Notification function is now in notifications.js
+
 // Function to get color based on percentage
 function getProgressColor(percentage) {
     if (percentage >= 90) {
@@ -704,6 +723,18 @@ document.addEventListener('DOMContentLoaded', function() {
         qualificationsData.value = JSON.stringify(qualificationsArray);
     }
 
+    function resetQualificationInputs() {
+        qualificationTitle.value = '';
+        qualificationSubtitle.value = '';
+        qualificationDescription.value = '';
+        editingQualificationIndex = null;
+        addQualificationBtn.style.display = 'inline-flex';
+        addQualificationBtn.style.alignItems = 'center';
+        addQualificationBtn.style.justifyContent = 'center';
+        updateQualificationBtn.style.display = 'none';
+        cancelQualificationBtn.style.display = 'none';
+    }
+
     function renderQualificationsList() {
         qualificationsList.innerHTML = '';
         qualificationsArray.forEach((qual, index) => {
@@ -751,10 +782,9 @@ document.addEventListener('DOMContentLoaded', function() {
             
             if (title) {
                 qualificationsArray.push({ title: title, subtitle: subtitle, description: description });
-                qualificationTitle.value = '';
-                qualificationSubtitle.value = '';
-                qualificationDescription.value = '';
+                resetQualificationInputs();
                 renderQualificationsList();
+                showNotification('Don\'t forget to save your profile to apply the changes.', 'note');
             }
         });
 
@@ -813,6 +843,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (newOrder.length === qualificationsArray.length) {
                         qualificationsArray = newOrder;
                         updateQualificationsData();
+                        showNotification('Don\'t forget to save your profile to apply the changes.', 'note');
                     }
                     // Don't re-render, just update the order - this prevents issues with Sortable
                 }
@@ -831,6 +862,31 @@ document.addEventListener('DOMContentLoaded', function() {
         document.head.appendChild(sortableScript);
     }
 
+    // Update qualification button
+    if (updateQualificationBtn) {
+        updateQualificationBtn.addEventListener('click', function() {
+            if (editingQualificationIndex !== null && qualificationsArray[editingQualificationIndex]) {
+                const title = qualificationTitle.value.trim();
+                const subtitle = qualificationSubtitle.value.trim();
+                const description = qualificationDescription.value.trim();
+                
+                if (title) {
+                    qualificationsArray[editingQualificationIndex] = { title: title, subtitle: subtitle, description: description };
+                    resetQualificationInputs();
+                    renderQualificationsList();
+                    showNotification('Don\'t forget to save your profile to apply the changes.', 'note');
+                }
+            }
+        });
+    }
+
+    // Cancel qualification edit button
+    if (cancelQualificationBtn) {
+        cancelQualificationBtn.addEventListener('click', function() {
+            resetQualificationInputs();
+        });
+    }
+
     // Edit qualification
     document.addEventListener('click', function(e) {
         if (e.target.closest('.edit-qualification-btn')) {
@@ -843,9 +899,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 qualificationSubtitle.value = qual.subtitle || '';
                 qualificationDescription.value = qual.description || '';
                 
-                // Remove the qualification from array (will be re-added when user clicks Add)
-                qualificationsArray.splice(index, 1);
-                renderQualificationsList();
+                editingQualificationIndex = index;
+                addQualificationBtn.style.display = 'none';
+                updateQualificationBtn.style.display = 'inline-flex';
+                updateQualificationBtn.style.alignItems = 'center';
+                updateQualificationBtn.style.justifyContent = 'center';
+                cancelQualificationBtn.style.display = 'inline-flex';
+                cancelQualificationBtn.style.alignItems = 'center';
+                cancelQualificationBtn.style.justifyContent = 'center';
                 
                 // Scroll to input fields
                 qualificationTitle.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -863,6 +924,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!isNaN(index)) {
                 qualificationsArray.splice(index, 1);
                 renderQualificationsList();
+                showNotification('Don\'t forget to save your profile to apply the changes.', 'note');
             } else {
                 // Fallback for existing qualifications loaded from template
                 const item = btn.closest('.qualification-item');
@@ -874,6 +936,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 );
                 item.remove();
                 updateQualificationsData();
+                showNotification('Don\'t forget to save your profile to apply the changes.', 'note');
                 if (typeof Sortable !== 'undefined') {
                     initializeSortable(); // Reinitialize after removal
                 }
@@ -1544,6 +1607,19 @@ function backToStep1() {
     document.getElementById('emailStep1').style.display = 'block';
     document.getElementById('emailStep2').style.display = 'none';
 }
+
+// Auto-hide Django messages after 5 seconds
+document.addEventListener('DOMContentLoaded', function() {
+    const messages = document.querySelectorAll('.app-message.active');
+    messages.forEach(message => {
+        setTimeout(() => {
+            message.classList.remove('active');
+            setTimeout(() => {
+                message.remove();
+            }, 300);
+        }, 5000);
+    });
+});
 </script>
 {% endblock %}
 

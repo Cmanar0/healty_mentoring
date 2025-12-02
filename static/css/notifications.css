@@ -1,0 +1,130 @@
+/**
+ * Unified Notification Styles
+ * Types: note, warning, error, success
+ */
+
+.app-notification {
+  position: fixed;
+  top: 90px;
+  right: 20px;
+  background: var(--dash-bg);
+  border: 1px solid var(--dash-border);
+  border-radius: 8px;
+  padding: 12px 20px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 10000;
+  font-size: 0.9rem;
+  color: var(--dash-text-main);
+  max-width: 350px;
+  opacity: 0;
+  transform: translateX(100%);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.app-notification.active {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* Note (default/info) */
+.app-notification-note {
+  border-left: 4px solid var(--dash-primary);
+}
+
+/* Warning */
+.app-notification-warning {
+  border-left: 4px solid #f59e0b;
+  background: rgba(245, 158, 11, 0.05);
+}
+
+/* Error */
+.app-notification-error {
+  border-left: 4px solid #ef4444;
+  background: rgba(239, 68, 68, 0.05);
+}
+
+/* Success */
+.app-notification-success {
+  border-left: 4px solid var(--dash-primary);
+  background: rgba(16, 185, 129, 0.05);
+}
+
+/* Django Messages (for server-side messages) */
+.app-message {
+  position: fixed;
+  top: 90px;
+  right: 20px;
+  background: var(--dash-bg);
+  border: 1px solid var(--dash-border);
+  border-radius: 8px;
+  padding: 12px 20px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 10000;
+  font-size: 0.9rem;
+  color: var(--dash-text-main);
+  max-width: 350px;
+  opacity: 0;
+  transform: translateX(100%);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.app-message.active {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.app-message-success {
+  border-left: 4px solid var(--dash-primary);
+  background: rgba(16, 185, 129, 0.05);
+}
+
+.app-message-success i {
+  color: var(--dash-primary);
+}
+
+.app-message-error {
+  border-left: 4px solid #ef4444;
+  background: rgba(239, 68, 68, 0.05);
+}
+
+.app-message-error i {
+  color: #ef4444;
+}
+
+.app-message-warning {
+  border-left: 4px solid #f59e0b;
+  background: rgba(245, 158, 11, 0.05);
+}
+
+.app-message-warning i {
+  color: #f59e0b;
+}
+
+.app-message-info {
+  border-left: 4px solid var(--dash-primary);
+}
+
+.app-message-info i {
+  color: var(--dash-primary);
+}
+
+/* Animation */
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.app-notification.active,
+.app-message.active {
+  animation: slideInRight 0.3s ease;
+}
+

@@ -5,6 +5,7 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/dashboard.css' %}">
+<link rel="stylesheet" href="{% static 'css/notifications.css' %}">
 {% endblock %}
 
 {% block navbar %}
@@ -272,6 +273,7 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="{% static 'js/notifications.js' %}"></script>
 {{ block.super }}
 <style>
 :root {

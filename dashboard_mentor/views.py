@@ -255,6 +255,8 @@ def profile(request):
                 from dashboard_mentor.models import MentorProfileQualification
                 MentorProfileQualification.objects.filter(mentor_profile=profile).delete()
             
+            from django.contrib import messages
+            messages.success(request, 'Profile updated successfully!')
             return redirect("/dashboard/mentor/profile/")
     
     # Compute profile completion percentage (same as account view)

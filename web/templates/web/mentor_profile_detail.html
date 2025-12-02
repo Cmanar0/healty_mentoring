@@ -64,11 +64,12 @@
         {% endif %}
         
         <!-- Qualifications Section -->
-        {% if mentor_profile.qualifications.all %}
+        {% if mentor_profile.get_qualifications_ordered %}
             <div style="margin-bottom: 40px; padding-top: 32px; border-top: 1px solid #e2e8f0;">
                 <h2 style="margin: 0 0 16px; font-size: 1.5rem; color: #1e293b; font-weight: 600;">Qualifications</h2>
                 <div style="display: flex; flex-direction: column; gap: 12px;">
-                    {% for qual in mentor_profile.qualifications.all %}
+                    {% for mpq in mentor_profile.get_qualifications_ordered %}
+                        {% with qual=mpq.qualification %}
                         <div style="padding: 16px; background: #f8fafc; border-radius: 8px; border-left: 4px solid #10b981;">
                             <h3 style="margin: 0 0 4px; font-size: 1rem; color: #1e293b; font-weight: 600;">{{ qual.title }}</h3>
                             {% if qual.subtitle %}
@@ -78,6 +79,7 @@
                                 <p style="margin: 0; font-size: 0.9rem; color: #64748b;">{{ qual.description }}</p>
                             {% endif %}
                         </div>
+                        {% endwith %}
                     {% endfor %}
                 </div>
             </div>
