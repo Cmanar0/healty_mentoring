@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
-from dashboard_mentor.models import Credential
+from dashboard_mentor.models import Qualification
 from dashboard_mentor.constants import (
     PREDEFINED_MENTOR_TYPES, PREDEFINED_TAGS, 
     PREDEFINED_LANGUAGES, PREDEFINED_CATEGORIES
@@ -70,7 +70,7 @@ def account(request):
     consider(profile.quote, 'quote', 'Quote')
     consider(profile.mentor_type, 'mentor_type', 'Mentor Type')
     consider(profile.profile_picture, 'profile_picture', 'Profile Picture')
-    consider(profile.credentials.exists(), 'credentials', 'Credentials')
+    consider(profile.qualifications.exists(), 'qualifications', 'Qualifications')
     consider(len(profile.tags) > 0 if profile.tags else False, 'tags', 'Tags')
     # Note: Billing and Subscription are NOT included in profile completion
 
@@ -218,32 +218,32 @@ def profile(request):
             
             profile.save()
             
-            # Handle credentials (from JSON array)
-            credentials_data = request.POST.get("credentials_data", "")
-            if credentials_data:
+            # Handle qualifications (from JSON array)
+            qualifications_data = request.POST.get("qualifications_data", "")
+            if qualifications_data:
                 try:
-                    credentials_list = json.loads(credentials_data)
-                    profile.credentials.clear()
-                    for cred_data in credentials_list:
-                        title = cred_data.get('title', '').strip()
-                        subtitle = cred_data.get('subtitle', '').strip()
-                        description = cred_data.get('description', '').strip()
+                    qualifications_list = json.loads(qualifications_data)
+                    profile.qualifications.clear()
+                    for qual_data in qualifications_list:
+                        title = qual_data.get('title', '').strip()
+                        subtitle = qual_data.get('subtitle', '').strip()
+                        description = qual_data.get('description', '').strip()
                         if title:
-                            cred, created = Credential.objects.get_or_create(
+                            qual, created = Qualification.objects.get_or_create(
                                 title=title,
                                 defaults={'subtitle': subtitle, 'description': description}
                             )
                             if not created:
                                 if subtitle:
-                                    cred.subtitle = subtitle
+                                    qual.subtitle = subtitle
                                 if description:
-                                    cred.description = description
-                                cred.save()
-                            profile.credentials.add(cred)
+                                    qual.description = description
+                                qual.save()
+                            profile.qualifications.add(qual)
                 except json.JSONDecodeError:
                     pass
             else:
-                profile.credentials.clear()
+                profile.qualifications.clear()
             
             return redirect("/dashboard/mentor/profile/")
     
@@ -267,7 +267,7 @@ def profile(request):
     consider(profile.quote, 'quote', 'Quote')
     consider(profile.mentor_type, 'mentor_type', 'Mentor Type')
     consider(profile.profile_picture, 'profile_picture', 'Profile Picture')
-    consider(profile.credentials.exists(), 'credentials', 'Credentials')
+    consider(profile.qualifications.exists(), 'qualifications', 'Qualifications')
     consider(len(profile.tags) > 0 if profile.tags else False, 'tags', 'Tags')
     # Note: Billing and Subscription are NOT included in profile completion
 

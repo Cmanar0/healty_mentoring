@@ -1,14 +1,14 @@
 from django.db import models
 
-class Credential(models.Model):
-    """Credentials model for mentors"""
+class Qualification(models.Model):
+    """Qualifications model for mentors"""
     title = models.CharField(max_length=200)
     subtitle = models.CharField(max_length=200, blank=True)
     description = models.TextField(max_length=450, blank=True)
 
     class Meta:
-        verbose_name = "Credential"
-        verbose_name_plural = "Credentials"
+        verbose_name = "Qualification"
+        verbose_name_plural = "Qualifications"
         ordering = ['title']
 
     def __str__(self):

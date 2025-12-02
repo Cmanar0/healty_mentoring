@@ -81,7 +81,7 @@ class MentorProfileAdmin(admin.ModelAdmin):
             'fields': ('first_name', 'last_name', 'profile_picture')
         }),
         ('Personal Information', {
-            'fields': ('time_zone', 'mentor_type', 'bio', 'quote', 'credentials', 'tags', 'languages', 'categories', 'nationality')
+            'fields': ('time_zone', 'mentor_type', 'bio', 'quote', 'qualifications', 'tags', 'languages', 'categories', 'nationality')
         }),
         ('Pricing & Session', {
             'fields': ('price_per_hour', 'first_session_free')
@@ -111,7 +111,7 @@ class MentorProfileAdmin(admin.ModelAdmin):
             'description': 'Navigation tutorial manuals. See documentation for data structure.'
         }),
     )
-    filter_horizontal = ('credentials', 'sessions', 'clients')
+    filter_horizontal = ('qualifications', 'sessions', 'clients')
     
     def email_display(self, obj):
         return obj.user.email

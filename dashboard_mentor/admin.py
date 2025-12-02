@@ -1,7 +1,7 @@
 from django.contrib import admin
-from .models import Credential, Tag
+from .models import Qualification, Tag
 
-class CredentialAdmin(admin.ModelAdmin):
+class QualificationAdmin(admin.ModelAdmin):
     list_display = ('title', 'description_preview')
     search_fields = ('title', 'description')
     
@@ -13,5 +13,5 @@ class TagAdmin(admin.ModelAdmin):
     list_display = ('name',)
     search_fields = ('name',)
 
-admin.site.register(Credential, CredentialAdmin)
+admin.site.register(Qualification, QualificationAdmin)
 admin.site.register(Tag, TagAdmin)

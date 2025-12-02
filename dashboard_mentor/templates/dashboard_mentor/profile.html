@@ -147,23 +147,23 @@
                         <input type="text" name="quote" value="{{ user.profile.quote|default:'' }}" class="form-input" placeholder="Your favorite quote or motto...">
                     </div>
 
-                    <!-- Credentials -->
+                    <!-- Qualifications -->
                     <div class="compact-form-group form-grid-full">
-                        <label><i class="fas fa-certificate"></i> Credentials</label>
-                        <div id="credentialsList" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px;">
-                            {% for cred in user.profile.credentials.all %}
-                                <div class="credential-item" data-title="{{ cred.title }}" data-subtitle="{{ cred.subtitle|default:'' }}" data-description="{{ cred.description|default:'' }}">
+                        <label><i class="fas fa-certificate"></i> Qualifications</label>
+                        <div id="qualificationsList" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px;">
+                            {% for qual in user.profile.qualifications.all %}
+                                <div class="qualification-item" data-title="{{ qual.title }}" data-subtitle="{{ qual.subtitle|default:'' }}" data-description="{{ qual.description|default:'' }}">
                                     <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px; background: var(--dash-bg); border: 1px solid var(--dash-border); border-radius: 8px;">
                                         <div style="flex: 1;">
-                                            <div style="font-weight: 600; color: var(--dash-text-main); margin-bottom: 4px;">{{ cred.title }}</div>
-                                            {% if cred.subtitle %}
-                                                <div style="font-size: 0.9rem; color: var(--dash-text-main); margin-bottom: 4px;">{{ cred.subtitle }}</div>
+                                            <div style="font-weight: 600; color: var(--dash-text-main); margin-bottom: 4px;">{{ qual.title }}</div>
+                                            {% if qual.subtitle %}
+                                                <div style="font-size: 0.9rem; color: var(--dash-text-main); margin-bottom: 4px;">{{ qual.subtitle }}</div>
                                             {% endif %}
-                                            {% if cred.description %}
-                                                <div style="font-size: 0.85rem; color: var(--dash-text-muted);">{{ cred.description }}</div>
+                                            {% if qual.description %}
+                                                <div style="font-size: 0.85rem; color: var(--dash-text-muted);">{{ qual.description }}</div>
                                             {% endif %}
                                         </div>
-                                        <button type="button" class="remove-credential-btn">
+                                        <button type="button" class="remove-qualification-btn">
                                             <i class="fas fa-times"></i>
                                         </button>
                                     </div>
@@ -172,15 +172,15 @@
                         </div>
                         <div style="display: flex; flex-direction: column; gap: 8px;">
                             <div style="display: flex; gap: 8px; align-items: stretch;">
-                                <input type="text" id="credentialTitle" class="form-input" placeholder="Title" style="flex: 1; padding: 12px 16px; font-size: 0.95rem;">
-                                <input type="text" id="credentialSubtitle" class="form-input" placeholder="Subtitle" style="flex: 1; padding: 12px 16px; font-size: 0.95rem;">
+                                <input type="text" id="qualificationTitle" class="form-input" placeholder="Title" style="flex: 1; padding: 12px 16px; font-size: 0.95rem;">
+                                <input type="text" id="qualificationSubtitle" class="form-input" placeholder="Subtitle" style="flex: 1; padding: 12px 16px; font-size: 0.95rem;">
                             </div>
-                            <textarea id="credentialDescription" class="form-input" placeholder="Description (max 450 characters)" rows="3" maxlength="450" style="width: 100%; padding: 12px 16px; font-size: 0.95rem; resize: vertical;"></textarea>
-                            <button type="button" id="addCredentialBtn" class="btn btn-outline btn-sm" style="white-space: nowrap; width: auto; height: 43px; align-self: flex-start;">
+                            <textarea id="qualificationDescription" class="form-input" placeholder="Description (max 450 characters)" rows="3" maxlength="450" style="width: 100%; padding: 12px 16px; font-size: 0.95rem; resize: vertical;"></textarea>
+                            <button type="button" id="addQualificationBtn" class="btn btn-outline btn-sm" style="white-space: nowrap; width: auto; height: 43px; align-self: flex-start;">
                                 <i class="fas fa-plus"></i> Add
                             </button>
                         </div>
-                        <input type="hidden" name="credentials_data" id="credentialsData" value="">
+                        <input type="hidden" name="qualifications_data" id="qualificationsData" value="">
                     </div>
 
                     <!-- Languages -->
@@ -665,99 +665,99 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 200);
     }
 
-    // Credentials Management
-    const credentialTitle = document.getElementById('credentialTitle');
-    const credentialSubtitle = document.getElementById('credentialSubtitle');
-    const credentialDescription = document.getElementById('credentialDescription');
-    const addCredentialBtn = document.getElementById('addCredentialBtn');
-    const credentialsList = document.getElementById('credentialsList');
-    const credentialsData = document.getElementById('credentialsData');
-    let credentialsArray = [];
+    // Qualifications Management
+    const qualificationTitle = document.getElementById('qualificationTitle');
+    const qualificationSubtitle = document.getElementById('qualificationSubtitle');
+    const qualificationDescription = document.getElementById('qualificationDescription');
+    const addQualificationBtn = document.getElementById('addQualificationBtn');
+    const qualificationsList = document.getElementById('qualificationsList');
+    const qualificationsData = document.getElementById('qualificationsData');
+    let qualificationsArray = [];
 
-    // Load existing credentials
-    document.querySelectorAll('.credential-item').forEach(item => {
+    // Load existing qualifications
+    document.querySelectorAll('.qualification-item').forEach(item => {
         const title = item.getAttribute('data-title');
         const subtitle = item.getAttribute('data-subtitle');
         const description = item.getAttribute('data-description');
-        credentialsArray.push({ title: title, subtitle: subtitle, description: description });
+        qualificationsArray.push({ title: title, subtitle: subtitle, description: description });
     });
 
-    function updateCredentialsData() {
-        credentialsData.value = JSON.stringify(credentialsArray);
+    function updateQualificationsData() {
+        qualificationsData.value = JSON.stringify(qualificationsArray);
     }
 
-    function renderCredentialsList() {
-        credentialsList.innerHTML = '';
-        credentialsArray.forEach((cred, index) => {
+    function renderQualificationsList() {
+        qualificationsList.innerHTML = '';
+        qualificationsArray.forEach((qual, index) => {
             const item = document.createElement('div');
-            item.className = 'credential-item';
+            item.className = 'qualification-item';
             item.innerHTML = `
                 <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px; background: var(--dash-bg); border: 1px solid var(--dash-border); border-radius: 8px;">
                     <div style="flex: 1;">
-                        <div style="font-weight: 600; color: var(--dash-text-main); margin-bottom: 4px;">${cred.title}</div>
-                        ${cred.subtitle ? `<div style="font-size: 0.9rem; color: var(--dash-text-main); margin-bottom: 4px;">${cred.subtitle}</div>` : ''}
-                        ${cred.description ? `<div style="font-size: 0.85rem; color: var(--dash-text-muted);">${cred.description}</div>` : ''}
+                        <div style="font-weight: 600; color: var(--dash-text-main); margin-bottom: 4px;">${qual.title}</div>
+                        ${qual.subtitle ? `<div style="font-size: 0.9rem; color: var(--dash-text-main); margin-bottom: 4px;">${qual.subtitle}</div>` : ''}
+                        ${qual.description ? `<div style="font-size: 0.85rem; color: var(--dash-text-muted);">${qual.description}</div>` : ''}
                     </div>
-                    <button type="button" class="remove-credential-btn" data-index="${index}">
+                    <button type="button" class="remove-qualification-btn" data-index="${index}">
                         <i class="fas fa-times"></i>
                     </button>
                 </div>
             `;
-            credentialsList.appendChild(item);
+            qualificationsList.appendChild(item);
         });
-        updateCredentialsData();
+        updateQualificationsData();
     }
 
-    if (addCredentialBtn && credentialTitle && credentialSubtitle && credentialDescription) {
-        addCredentialBtn.addEventListener('click', function() {
-            const title = credentialTitle.value.trim();
-            const subtitle = credentialSubtitle.value.trim();
-            const description = credentialDescription.value.trim();
+    if (addQualificationBtn && qualificationTitle && qualificationSubtitle && qualificationDescription) {
+        addQualificationBtn.addEventListener('click', function() {
+            const title = qualificationTitle.value.trim();
+            const subtitle = qualificationSubtitle.value.trim();
+            const description = qualificationDescription.value.trim();
             
             if (title) {
-                credentialsArray.push({ title: title, subtitle: subtitle, description: description });
-                credentialTitle.value = '';
-                credentialSubtitle.value = '';
-                credentialDescription.value = '';
-                renderCredentialsList();
+                qualificationsArray.push({ title: title, subtitle: subtitle, description: description });
+                qualificationTitle.value = '';
+                qualificationSubtitle.value = '';
+                qualificationDescription.value = '';
+                renderQualificationsList();
             }
         });
 
-        // Allow Enter key to add credential
-        credentialTitle.addEventListener('keypress', function(e) {
+        // Allow Enter key to add qualification
+        qualificationTitle.addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
                 e.preventDefault();
-                addCredentialBtn.click();
+                addQualificationBtn.click();
             }
         });
 
-        credentialSubtitle.addEventListener('keypress', function(e) {
+        qualificationSubtitle.addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
                 e.preventDefault();
-                addCredentialBtn.click();
+                addQualificationBtn.click();
             }
         });
     }
 
-    // Remove credential
+    // Remove qualification
     document.addEventListener('click', function(e) {
-        if (e.target.closest('.remove-credential-btn')) {
-            const btn = e.target.closest('.remove-credential-btn');
+        if (e.target.closest('.remove-qualification-btn')) {
+            const btn = e.target.closest('.remove-qualification-btn');
             const index = parseInt(btn.getAttribute('data-index'));
             if (!isNaN(index)) {
-                credentialsArray.splice(index, 1);
-                renderCredentialsList();
+                qualificationsArray.splice(index, 1);
+                renderQualificationsList();
             } else {
-                // Fallback for existing credentials loaded from template
-                const item = btn.closest('.credential-item');
+                // Fallback for existing qualifications loaded from template
+                const item = btn.closest('.qualification-item');
                 const title = item.getAttribute('data-title');
                 const subtitle = item.getAttribute('data-subtitle');
                 const description = item.getAttribute('data-description');
-                credentialsArray = credentialsArray.filter(cred => 
-                    !(cred.title === title && cred.subtitle === subtitle && cred.description === description)
+                qualificationsArray = qualificationsArray.filter(qual => 
+                    !(qual.title === title && qual.subtitle === subtitle && qual.description === description)
                 );
                 item.remove();
-                updateCredentialsData();
+                updateQualificationsData();
             }
         }
     });
@@ -1219,7 +1219,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const profileForm = document.getElementById('profileForm');
     if (profileForm) {
         profileForm.addEventListener('submit', function() {
-            updateCredentialsData();
+            updateQualificationsData();
             updateTagsData();
             updateLanguagesData();
             updateCategoriesData();

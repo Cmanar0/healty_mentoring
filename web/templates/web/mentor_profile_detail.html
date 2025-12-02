@@ -63,16 +63,19 @@
             </div>
         {% endif %}
         
-        <!-- Credentials Section -->
-        {% if mentor_profile.credentials.all %}
+        <!-- Qualifications Section -->
+        {% if mentor_profile.qualifications.all %}
             <div style="margin-bottom: 40px; padding-top: 32px; border-top: 1px solid #e2e8f0;">
-                <h2 style="margin: 0 0 16px; font-size: 1.5rem; color: #1e293b; font-weight: 600;">Credentials</h2>
+                <h2 style="margin: 0 0 16px; font-size: 1.5rem; color: #1e293b; font-weight: 600;">Qualifications</h2>
                 <div style="display: flex; flex-direction: column; gap: 12px;">
-                    {% for cred in mentor_profile.credentials.all %}
+                    {% for qual in mentor_profile.qualifications.all %}
                         <div style="padding: 16px; background: #f8fafc; border-radius: 8px; border-left: 4px solid #10b981;">
-                            <h3 style="margin: 0 0 4px; font-size: 1rem; color: #1e293b; font-weight: 600;">{{ cred.title }}</h3>
-                            {% if cred.description %}
-                                <p style="margin: 0; font-size: 0.9rem; color: #64748b;">{{ cred.description }}</p>
+                            <h3 style="margin: 0 0 4px; font-size: 1rem; color: #1e293b; font-weight: 600;">{{ qual.title }}</h3>
+                            {% if qual.subtitle %}
+                                <p style="margin: 0 0 4px; font-size: 0.95rem; color: #1e293b; font-weight: 500;">{{ qual.subtitle }}</p>
+                            {% endif %}
+                            {% if qual.description %}
+                                <p style="margin: 0; font-size: 0.9rem; color: #64748b;">{{ qual.description }}</p>
                             {% endif %}
                         </div>
                     {% endfor %}

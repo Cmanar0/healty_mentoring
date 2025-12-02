@@ -2777,8 +2777,8 @@ textarea.form-input {
   margin-bottom: 4px;
 }
 
-/* Remove Credential Button */
-.remove-credential-btn {
+/* Remove Qualification Button */
+.remove-qualification-btn {
   background: transparent;
   border: none;
   color: #ef4444;
@@ -2792,7 +2792,7 @@ textarea.form-input {
   border-radius: 8px;
 }
 
-.remove-credential-btn:hover {
+.remove-qualification-btn:hover {
   color: #dc2626;
   background: rgba(0, 0, 0, 0.091);
 }

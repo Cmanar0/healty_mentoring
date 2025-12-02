@@ -100,7 +100,7 @@ class MentorProfile(models.Model):
     
     # Personal Info (could be JSON, but using separate fields for better querying)
     time_zone = models.CharField(max_length=64, blank=True, null=True)
-    credentials = models.ManyToManyField("dashboard_mentor.Credential", related_name="mentors", blank=True)
+    qualifications = models.ManyToManyField("dashboard_mentor.Qualification", related_name="mentors", blank=True)
     mentor_type = models.CharField(max_length=100, blank=True, null=True)  # Free text, suggestions from predefined list
     tags = models.JSONField(default=list, blank=True)  # Array of tag strings from predefined list
     languages = models.JSONField(default=list, blank=True)  # Array of language IDs from predefined list
