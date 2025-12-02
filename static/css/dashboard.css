@@ -2247,8 +2247,9 @@ textarea.form-input {
   align-items: center;
   gap: 24px;
   padding: 24px;
+  margin-bottom: 24px;
   border-radius: 12px;
-  background: linear-gradient(to right, rgba(16, 185, 129, 0.161), transparent);
+  background: linear-gradient(to right, rgba(16, 185, 129, 0.089), transparent);
 }
 
 .profile-avatar-compact {
@@ -2260,12 +2261,14 @@ textarea.form-input {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   position: relative;
   flex-shrink: 0;
+  cursor: pointer;
 }
 
 .profile-avatar-compact img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  transition: filter 0.3s ease;
 }
 
 .profile-avatar-compact i {
@@ -2277,6 +2280,43 @@ textarea.form-input {
   background: #f1f5f9;
   color: var(--dash-text-light);
   font-size: 2.5rem;
+  transition: filter 0.3s ease;
+}
+
+.profile-avatar-compact.profile-avatar-hover {
+  position: relative;
+}
+
+.profile-avatar-compact.profile-avatar-hover:hover img,
+.profile-avatar-compact.profile-avatar-hover:hover i {
+  filter: blur(4px);
+}
+
+.avatar-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.profile-avatar-compact.profile-avatar-hover:hover .avatar-overlay {
+  opacity: 1;
+}
+
+.avatar-overlay i {
+  color: white;
+  font-size: 2rem;
+  filter: none !important;
+  background: transparent;
 }
 
 .profile-header-info {

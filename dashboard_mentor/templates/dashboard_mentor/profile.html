@@ -10,29 +10,42 @@
         <div class="dashboard-card profile-card-compact">
             <!-- Compact Header with Profile Picture -->
             <div class="profile-header-compact">
-                <div class="profile-avatar-compact">
-                    {% if user.profile.profile_picture %}
-                        <img src="{{ user.profile.profile_picture.url }}" alt="Profile" id="profileImagePreview">
-                    {% else %}
-                        <i class="fas fa-user" id="profileImageIcon"></i>
-                    {% endif %}
-                </div>
+                <form method="post" enctype="multipart/form-data" id="pictureForm" style="margin: 0;">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="update_picture">
+                    <label for="profilePictureInput" class="profile-avatar-compact profile-avatar-hover">
+                        {% if user.profile.profile_picture %}
+                            <img src="{{ user.profile.profile_picture.url }}" alt="Profile" id="profileImagePreview">
+                        {% else %}
+                            <i class="fas fa-user" id="profileImageIcon"></i>
+                        {% endif %}
+                        <div class="avatar-overlay">
+                            <i class="fas {% if user.profile.profile_picture %}fa-camera{% else %}fa-plus{% endif %}"></i>
+                        </div>
+                        <input type="file" name="profile_picture" id="profilePictureInput" accept="image/*" style="display: none;" onchange="document.getElementById('pictureForm').submit()">
+                    </label>
+                </form>
                 <div class="profile-header-info">
                     <h2>{{ user.profile.first_name }} {{ user.profile.last_name }}</h2>
-                    <p style="color: var(--dash-text-muted); margin: 0;">{{ user.email }}</p>
+                    {% if user.profile.mentor_type %}
+                        <p style="color: var(--dash-text-muted); margin: 0;">
+                            {% if user.profile.mentor_type == 'life_coach' %}Life Coach
+                            {% elif user.profile.mentor_type == 'career_coach' %}Career Coach
+                            {% elif user.profile.mentor_type == 'business_coach' %}Business Coach
+                            {% elif user.profile.mentor_type == 'health_coach' %}Health Coach
+                            {% elif user.profile.mentor_type == 'other' %}Other
+                            {% else %}{{ user.profile.mentor_type|title }}
+                            {% endif %}
+                        </p>
+                    {% endif %}
                 </div>
                 <div class="profile-header-actions">
-                    <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
-                        <form method="post" enctype="multipart/form-data" id="pictureForm" style="margin: 0;">
-                            {% csrf_token %}
-                            <input type="hidden" name="action" value="update_picture">
-                            <label for="profilePictureInput" class="btn btn-outline btn-sm" style="cursor: pointer; display: inline-flex; align-items: center; gap: 8px;">
-                                <i class="fas fa-camera"></i> Change Picture
-                            </label>
-                            <input type="file" name="profile_picture" id="profilePictureInput" accept="image/*" style="display: none;" onchange="document.getElementById('pictureForm').submit()">
-                        </form>
-                        <a href="/dashboard/mentor/account/" style="color: #1e40af; text-decoration: none; font-size: 0.875rem; font-weight: 500;">
-                            Change Email
+                    <div style="display: flex; flex-direction: column; gap: 8px; align-items: flex-end;">
+                        <a href="/dashboard/mentor/account/" class="btn btn-outline btn-sm" style="display: inline-flex; align-items: center; gap: 8px;">
+                            <i class="fas fa-user-circle"></i> My account
+                        </a>
+                        <a href="{% url 'web:mentor_profile_detail' user.id %}" class="btn btn-outline btn-sm" style="display: inline-flex; align-items: center; gap: 8px;" target="_blank">
+                            <i class="fas fa-eye"></i> Profile Preview
                         </a>
                     </div>
                 </div>
@@ -58,16 +71,14 @@
 
                     <!-- Email -->
                     <div class="compact-form-group form-grid-full">
-                        <div class="email-row-layout" style="display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: var(--dash-bg); border: 1px solid var(--dash-border); border-radius: 8px;">
-                            <div class="email-label-group" style="display: flex; flex-direction: column; gap: 4px;">
-                                <h4 style="margin: 0; font-size: 0.95rem; font-weight: 600; color: var(--dash-text-main);">
-                                    <i class="fas fa-envelope" style="color: var(--dash-primary); margin-right: 6px;"></i> Email
-                                </h4>
-                                <span class="field-value" style="font-size: 0.875rem; color: var(--dash-text-muted);">{{ user.email }}</span>
+                        <div class="account-section" style="padding: 0; border-bottom: none;">
+                            <div class="email-row-layout">
+                                <div class="email-label-group">
+                                    <h4><i class="fas fa-envelope"></i> Email</h4>
+                                    <span class="field-value">{{ user.email }}</span>
+                                </div>
+                                <button type="button" class="btn-change-email btn-fixed-width-email" onclick="openEmailModal()">Change email</button>
                             </div>
-                            <a href="/dashboard/mentor/account/" style="color: #1e40af; text-decoration: none; font-size: 0.875rem; font-weight: 500;">
-                                Change email
-                            </a>
                         </div>
                     </div>
 
@@ -397,6 +408,60 @@
     </div>
 </div>
 
+<!-- Email Verification Modal -->
+<div id="emailModal" class="modal-overlay">
+    <div class="modal-content">
+        <button type="button" class="modal-close" onclick="closeEmailModal()">
+            <i class="fas fa-times"></i>
+        </button>
+        
+        <!-- Step 1: New Email Input -->
+        <div id="emailStep1">
+            <div class="modal-header">
+                <h3 class="modal-title">Change Email Address</h3>
+                <p class="modal-subtitle">Enter your new email address. We'll send you a verification code.</p>
+            </div>
+            <form id="emailFormStep1" onsubmit="handleEmailStep1(event)">
+                <div style="margin-bottom: 24px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 500;">New Email Address</label>
+                    <input type="email" id="newEmailInput" class="form-input" placeholder="name@example.com" required>
+                </div>
+                <div class="modal-actions">
+                    <button type="submit" class="btn btn-primary btn-full">Send Verification Code</button>
+                    <button type="button" class="btn btn-outline" onclick="closeEmailModal()">Cancel</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Step 2: Verification Code -->
+        <div id="emailStep2" style="display: none;">
+            <div class="modal-header">
+                <h3 class="modal-title">Verify Email</h3>
+                <p class="modal-subtitle">Enter the 6-digit code sent to <strong id="confirmEmailDisplay"></strong></p>
+            </div>
+            <form id="emailFormStep2" method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="update_email">
+                <input type="hidden" name="email" id="finalEmailInput">
+                
+                <div class="verification-input-group">
+                    <input type="text" class="verification-digit" maxlength="1" pattern="[0-9]" required>
+                    <input type="text" class="verification-digit" maxlength="1" pattern="[0-9]" required>
+                    <input type="text" class="verification-digit" maxlength="1" pattern="[0-9]" required>
+                    <input type="text" class="verification-digit" maxlength="1" pattern="[0-9]" required>
+                    <input type="text" class="verification-digit" maxlength="1" pattern="[0-9]" required>
+                    <input type="text" class="verification-digit" maxlength="1" pattern="[0-9]" required>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="submit" class="btn btn-primary btn-full">Verify & Update Email</button>
+                    <button type="button" class="btn btn-outline" onclick="backToStep1()">Back</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <script>
 function previewImage(input) {
     if (input.files && input.files[0]) {
@@ -679,7 +744,65 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
     });
+
+    // Modal Logic
+    const modal = document.getElementById('emailModal');
+    const modalOverlay = document.querySelector('.modal-overlay');
+    
+    // Close on outside click
+    if (modal) {
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                closeEmailModal();
+            }
+        });
+    }
+
+    // Verification code input handling
+    const digits = document.querySelectorAll('.verification-digit');
+    digits.forEach((digit, idx) => {
+        digit.addEventListener('input', function(e) {
+            if (this.value.length === 1) {
+                if (idx < digits.length - 1) digits[idx + 1].focus();
+            }
+        });
+        
+        digit.addEventListener('keydown', function(e) {
+            if (e.key === 'Backspace' && this.value.length === 0) {
+                if (idx > 0) digits[idx - 1].focus();
+            }
+        });
+    });
 });
+
+function openEmailModal() {
+    document.getElementById('emailModal').classList.add('active');
+    document.getElementById('emailStep1').style.display = 'block';
+    document.getElementById('emailStep2').style.display = 'none';
+    document.getElementById('newEmailInput').value = '';
+}
+
+function closeEmailModal() {
+    document.getElementById('emailModal').classList.remove('active');
+}
+
+function handleEmailStep1(e) {
+    e.preventDefault();
+    const email = document.getElementById('newEmailInput').value;
+    if (email) {
+        document.getElementById('emailStep1').style.display = 'none';
+        document.getElementById('emailStep2').style.display = 'block';
+        document.getElementById('confirmEmailDisplay').textContent = email;
+        document.getElementById('finalEmailInput').value = email;
+        // Focus first digit
+        setTimeout(() => document.querySelector('.verification-digit').focus(), 100);
+    }
+}
+
+function backToStep1() {
+    document.getElementById('emailStep1').style.display = 'block';
+    document.getElementById('emailStep2').style.display = 'none';
+}
 </script>
 {% endblock %}
 

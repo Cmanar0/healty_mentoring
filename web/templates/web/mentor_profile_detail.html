@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}{{ mentor_user.profile.first_name }} {{ mentor_user.profile.last_name }} — Mentor Profile{% endblock %}
+{% load static %}
+
+{% block content %}
+<div style="max-width: 1200px; margin: 0 auto; padding: 40px 24px;">
+    <div style="background: white; border-radius: 16px; padding: 40px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);">
+        <!-- Profile Header -->
+        <div style="display: flex; gap: 32px; margin-bottom: 40px; align-items: flex-start;">
+            <!-- Avatar -->
+            <div style="flex-shrink: 0;">
+                {% if mentor_profile.profile_picture %}
+                    <img src="{{ mentor_profile.profile_picture.url }}" alt="{{ mentor_user.profile.first_name }} {{ mentor_user.profile.last_name }}" style="width: 150px; height: 150px; border-radius: 50%; object-fit: cover; border: 4px solid white; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);">
+                {% else %}
+                    <div style="width: 150px; height: 150px; border-radius: 50%; background: #f1f5f9; display: flex; align-items: center; justify-content: center; border: 4px solid white; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);">
+                        <i class="fas fa-user" style="font-size: 4rem; color: #94a3b8;"></i>
+                    </div>
+                {% endif %}
+            </div>
+            
+            <!-- Profile Info -->
+            <div style="flex: 1;">
+                <h1 style="margin: 0 0 8px; font-size: 2rem; color: #1e293b; font-weight: 700;">
+                    {{ mentor_profile.first_name }} {{ mentor_profile.last_name }}
+                </h1>
+                {% if mentor_profile.mentor_type %}
+                    <p style="margin: 0 0 16px; font-size: 1.1rem; color: #64748b; font-weight: 500;">
+                        {% if mentor_profile.mentor_type == 'life_coach' %}Life Coach
+                        {% elif mentor_profile.mentor_type == 'career_coach' %}Career Coach
+                        {% elif mentor_profile.mentor_type == 'business_coach' %}Business Coach
+                        {% elif mentor_profile.mentor_type == 'health_coach' %}Health Coach
+                        {% elif mentor_profile.mentor_type == 'other' %}Other
+                        {% else %}{{ mentor_profile.mentor_type|title }}
+                        {% endif %}
+                    </p>
+                {% endif %}
+                
+                <!-- Tags/Expertise -->
+                {% if mentor_profile.tags.all %}
+                    <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px;">
+                        {% for tag in mentor_profile.tags.all %}
+                            <span style="padding: 6px 12px; background: rgba(16, 185, 129, 0.1); color: #059669; border-radius: 20px; font-size: 0.875rem; font-weight: 500;">
+                                {{ tag.name }}
+                            </span>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+                
+                <!-- Quote -->
+                {% if mentor_profile.quote %}
+                    <p style="margin: 0; font-size: 1rem; color: #334155; font-style: italic; line-height: 1.6;">
+                        "{{ mentor_profile.quote }}"
+                    </p>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Bio Section -->
+        {% if mentor_profile.bio %}
+            <div style="margin-bottom: 40px; padding-top: 32px; border-top: 1px solid #e2e8f0;">
+                <h2 style="margin: 0 0 16px; font-size: 1.5rem; color: #1e293b; font-weight: 600;">About</h2>
+                <p style="margin: 0; font-size: 1rem; color: #334155; line-height: 1.8; white-space: pre-wrap;">{{ mentor_profile.bio }}</p>
+            </div>
+        {% endif %}
+        
+        <!-- Credentials Section -->
+        {% if mentor_profile.credentials.all %}
+            <div style="margin-bottom: 40px; padding-top: 32px; border-top: 1px solid #e2e8f0;">
+                <h2 style="margin: 0 0 16px; font-size: 1.5rem; color: #1e293b; font-weight: 600;">Credentials</h2>
+                <div style="display: flex; flex-direction: column; gap: 12px;">
+                    {% for cred in mentor_profile.credentials.all %}
+                        <div style="padding: 16px; background: #f8fafc; border-radius: 8px; border-left: 4px solid #10b981;">
+                            <h3 style="margin: 0 0 4px; font-size: 1rem; color: #1e293b; font-weight: 600;">{{ cred.title }}</h3>
+                            {% if cred.description %}
+                                <p style="margin: 0; font-size: 0.9rem; color: #64748b;">{{ cred.description }}</p>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
+        
+        <!-- Contact/CTA Section -->
+        <div style="padding-top: 32px; border-top: 1px solid #e2e8f0; text-align: center;">
+            <a href="{% url 'web:mentors' %}" class="btn btn-primary" style="display: inline-flex; align-items: center; gap: 8px; padding: 12px 24px; font-size: 1rem;">
+                <i class="fas fa-arrow-left"></i> Back to Mentors
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
