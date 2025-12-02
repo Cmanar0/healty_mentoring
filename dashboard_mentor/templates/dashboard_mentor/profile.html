@@ -106,8 +106,27 @@
                     <!-- Expertise (Tags) -->
                     <div class="compact-form-group form-grid-full">
                         <label><i class="fas fa-tags"></i> Expertise (Tags)</label>
-                        <input type="text" name="tags" value="{% for tag in user.profile.tags.all %}{{ tag.name }}{% if not forloop.last %}, {% endif %}{% endfor %}" class="form-input" placeholder="Enter tags separated by commas">
-                        <p style="margin: 4px 0 0; font-size: 0.8rem; color: var(--dash-text-muted);">Separate multiple tags with commas</p>
+                        <div id="tagsList" style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; min-height: 20px;">
+                            {% for tag in user.profile.tags %}
+                                <div class="tag-item" data-tag-name="{{ tag }}">
+                                    <span class="tag-text">{{ tag }}</span>
+                                    <button type="button" class="remove-tag-btn">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                            {% endfor %}
+                        </div>
+                        <div class="autocomplete-container" style="position: relative;">
+                            <div style="display: flex; gap: 8px; align-items: stretch;">
+                                <input type="text" id="tagInput" class="form-input autocomplete-input" placeholder="Type to search tags..." style="flex: 1; padding: 12px 16px; font-size: 0.95rem;" autocomplete="off">
+                                <button type="button" id="addTagBtn" class="btn btn-outline btn-sm" style="white-space: nowrap; width: auto; height: 43px;">
+                                    <i class="fas fa-plus"></i> Add
+                                </button>
+                            </div>
+                            <div class="autocomplete-suggestions" id="tagSuggestions"></div>
+                        </div>
+                        <input type="hidden" name="tags_data" id="tagsData" value="">
+                        {{ predefined_tags|json_script:"predefinedTagsData" }}
                     </div>
 
                     <!-- Bio -->
@@ -150,6 +169,96 @@
                             </button>
                         </div>
                         <input type="hidden" name="credentials_data" id="credentialsData" value="">
+                    </div>
+
+                    <!-- Languages -->
+                    <div class="compact-form-group form-grid-full">
+                        <label><i class="fas fa-language"></i> Languages</label>
+                        <div id="languagesList" style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; min-height: 20px;">
+                            {% for lang_id in user.profile.languages %}
+                                {% for lang in predefined_languages %}
+                                    {% if lang.id == lang_id %}
+                                        <div class="tag-item" data-lang-id="{{ lang.id }}">
+                                            <span class="tag-text">{{ lang.name }}</span>
+                                            <button type="button" class="remove-tag-btn">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        </div>
+                                    {% endif %}
+                                {% endfor %}
+                            {% endfor %}
+                        </div>
+                        <div class="autocomplete-container" style="position: relative;">
+                            <div style="display: flex; gap: 8px; align-items: stretch;">
+                                <input type="text" id="languageInput" class="form-input autocomplete-input" placeholder="Type to search languages..." style="flex: 1; padding: 12px 16px; font-size: 0.95rem;" autocomplete="off">
+                                <button type="button" id="addLanguageBtn" class="btn btn-outline btn-sm" style="white-space: nowrap; width: auto; height: 43px;">
+                                    <i class="fas fa-plus"></i> Add
+                                </button>
+                            </div>
+                            <div class="autocomplete-suggestions" id="languageSuggestions"></div>
+                        </div>
+                        <input type="hidden" name="languages_data" id="languagesData" value="">
+                        {{ predefined_languages|json_script:"predefinedLanguagesData" }}
+                    </div>
+
+                    <!-- Categories -->
+                    <div class="compact-form-group form-grid-full">
+                        <label><i class="fas fa-folder"></i> Categories</label>
+                        <div id="categoriesList" style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; min-height: 20px;">
+                            {% for cat_id in user.profile.categories %}
+                                {% for cat in predefined_categories %}
+                                    {% if cat.id == cat_id %}
+                                        <div class="tag-item" data-cat-id="{{ cat.id }}">
+                                            <span class="tag-text">{{ cat.name }}</span>
+                                            <button type="button" class="remove-tag-btn">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        </div>
+                                    {% endif %}
+                                {% endfor %}
+                            {% endfor %}
+                        </div>
+                        <div class="autocomplete-container" style="position: relative;">
+                            <div style="display: flex; gap: 8px; align-items: stretch;">
+                                <input type="text" id="categoryInput" class="form-input autocomplete-input" placeholder="Type to search categories..." style="flex: 1; padding: 12px 16px; font-size: 0.95rem;" autocomplete="off">
+                                <button type="button" id="addCategoryBtn" class="btn btn-outline btn-sm" style="white-space: nowrap; width: auto; height: 43px;">
+                                    <i class="fas fa-plus"></i> Add
+                                </button>
+                            </div>
+                            <div class="autocomplete-suggestions" id="categorySuggestions"></div>
+                        </div>
+                        <input type="hidden" name="categories_data" id="categoriesData" value="">
+                        {{ predefined_categories|json_script:"predefinedCategoriesData" }}
+                    </div>
+
+                    <!-- Price per Hour -->
+                    <div class="compact-form-group">
+                        <label><i class="fas fa-dollar-sign"></i> Price per Hour</label>
+                        <input type="number" name="price_per_hour" step="0.01" min="0" value="{{ user.profile.price_per_hour|default:'' }}" class="form-input" placeholder="0.00">
+                    </div>
+
+                    <!-- Instagram Name -->
+                    <div class="compact-form-group">
+                        <label><i class="fab fa-instagram"></i> Instagram</label>
+                        <input type="text" name="instagram_name" value="{{ user.profile.instagram_name|default:'' }}" class="form-input" placeholder="@username">
+                    </div>
+
+                    <!-- LinkedIn Name -->
+                    <div class="compact-form-group">
+                        <label><i class="fab fa-linkedin"></i> LinkedIn</label>
+                        <input type="text" name="linkedin_name" value="{{ user.profile.linkedin_name|default:'' }}" class="form-input" placeholder="LinkedIn username">
+                    </div>
+
+                    <!-- Personal Website -->
+                    <div class="compact-form-group form-grid-full">
+                        <label><i class="fas fa-globe"></i> Personal Website</label>
+                        <input type="url" name="personal_website" value="{{ user.profile.personal_website|default:'' }}" class="form-input" placeholder="https://example.com">
+                    </div>
+
+                    <!-- Nationality -->
+                    <div class="compact-form-group">
+                        <label><i class="fas fa-flag"></i> Nationality</label>
+                        <input type="text" name="nationality" value="{{ user.profile.nationality|default:'' }}" class="form-input" placeholder="e.g., American, British">
                     </div>
 
                 </div>
@@ -636,11 +745,458 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
+    // Tags management
+    const tagInput = document.getElementById('tagInput');
+    const addTagBtn = document.getElementById('addTagBtn');
+    const tagsList = document.getElementById('tagsList');
+    const tagsData = document.getElementById('tagsData');
+    const tagSuggestions = document.getElementById('tagSuggestions');
+    const predefinedTagsData = document.getElementById('predefinedTagsData');
+    const predefinedTags = predefinedTagsData ? JSON.parse(predefinedTagsData.textContent) : [];
+    let tagsArray = [];
+    let tagDebounceTimer;
+
+    // Initialize tags array from existing tags
+    const existingTags = tagsList.querySelectorAll('.tag-item');
+    existingTags.forEach(tagItem => {
+        const tagName = tagItem.getAttribute('data-tag-name');
+        if (tagName && !tagsArray.includes(tagName)) {
+            tagsArray.push(tagName);
+        }
+    });
+
+    function updateTagsData() {
+        tagsData.value = JSON.stringify(tagsArray);
+    }
+
+    function renderTagsList() {
+        tagsList.innerHTML = '';
+        tagsArray.forEach(tagName => {
+            const tagItem = document.createElement('div');
+            tagItem.className = 'tag-item';
+            tagItem.setAttribute('data-tag-name', tagName);
+            
+            const tagText = document.createElement('span');
+            tagText.className = 'tag-text';
+            tagText.textContent = tagName;
+            
+            const removeBtn = document.createElement('button');
+            removeBtn.type = 'button';
+            removeBtn.className = 'remove-tag-btn';
+            removeBtn.innerHTML = '<i class="fas fa-times"></i>';
+            removeBtn.addEventListener('click', function() {
+                const index = tagsArray.indexOf(tagName);
+                if (index > -1) {
+                    tagsArray.splice(index, 1);
+                    renderTagsList();
+                    updateTagsData();
+                }
+            });
+            
+            tagItem.appendChild(tagText);
+            tagItem.appendChild(removeBtn);
+            tagsList.appendChild(tagItem);
+        });
+        updateTagsData();
+    }
+
+    function filterTagSuggestions(query) {
+        const filtered = predefinedTags.filter(tag => 
+            tag.toLowerCase().includes(query.toLowerCase()) && !tagsArray.includes(tag)
+        );
+        displayTagSuggestions(filtered);
+    }
+
+    function displayTagSuggestions(suggestions) {
+        if (suggestions.length === 0) {
+            tagSuggestions.style.display = 'none';
+            return;
+        }
+
+        tagSuggestions.innerHTML = '';
+        suggestions.slice(0, 10).forEach((suggestion, index) => {
+            const item = document.createElement('div');
+            item.className = 'suggestion-item';
+            if (index === 0) item.classList.add('first-item');
+            if (index === suggestions.length - 1 || index === 9) item.classList.add('last-item');
+            item.textContent = suggestion;
+            item.addEventListener('click', function() {
+                if (!tagsArray.includes(suggestion)) {
+                    tagsArray.push(suggestion);
+                    tagInput.value = '';
+                    tagSuggestions.style.display = 'none';
+                    renderTagsList();
+                }
+            });
+            tagSuggestions.appendChild(item);
+        });
+
+        tagSuggestions.style.display = 'block';
+    }
+
+    if (addTagBtn && tagInput && tagSuggestions) {
+        // Show suggestions on focus
+        tagInput.addEventListener('focus', function() {
+            if (this.value.trim()) {
+                filterTagSuggestions(this.value.trim());
+            }
+        });
+
+        // Filter suggestions as user types
+        tagInput.addEventListener('input', function() {
+            clearTimeout(tagDebounceTimer);
+            const query = this.value.trim();
+            
+            tagDebounceTimer = setTimeout(() => {
+                if (query.length > 0) {
+                    filterTagSuggestions(query);
+                } else {
+                    tagSuggestions.style.display = 'none';
+                }
+            }, 200);
+        });
+
+        addTagBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const tagName = tagInput.value.trim();
+            
+            if (!tagName) return;
+            
+            // Find matching predefined tag (case-insensitive) to use exact capitalization
+            const matchingTag = predefinedTags.find(tag => tag.toLowerCase() === tagName.toLowerCase());
+            
+            // Use the exact predefined tag name if found, otherwise use the typed name
+            const tagToAdd = matchingTag || tagName;
+            
+            if (!tagsArray.includes(tagToAdd)) {
+                tagsArray.push(tagToAdd);
+                tagInput.value = '';
+                tagSuggestions.style.display = 'none';
+                renderTagsList();
+            } else {
+                tagInput.value = '';
+                tagSuggestions.style.display = 'none';
+            }
+        });
+
+        // Allow Enter key to add tag
+        tagInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                e.stopPropagation();
+                addTagBtn.click();
+            }
+        });
+
+        // Close suggestions when clicking outside
+        document.addEventListener('click', function(event) {
+            if (!tagInput.contains(event.target) && !tagSuggestions.contains(event.target) && !addTagBtn.contains(event.target)) {
+                tagSuggestions.style.display = 'none';
+            }
+        });
+    }
+
+    // Initialize tags data on page load
+    updateTagsData();
+
+    // Languages management
+    const languageInput = document.getElementById('languageInput');
+    const addLanguageBtn = document.getElementById('addLanguageBtn');
+    const languagesList = document.getElementById('languagesList');
+    const languagesData = document.getElementById('languagesData');
+    const languageSuggestions = document.getElementById('languageSuggestions');
+    const predefinedLanguagesData = document.getElementById('predefinedLanguagesData');
+    const predefinedLanguages = predefinedLanguagesData ? JSON.parse(predefinedLanguagesData.textContent) : [];
+    let languagesArray = [];
+    let languageDebounceTimer;
+
+    // Initialize languages array from existing languages
+    const existingLanguages = languagesList.querySelectorAll('.tag-item');
+    existingLanguages.forEach(langItem => {
+        const langId = langItem.getAttribute('data-lang-id');
+        if (langId && !languagesArray.includes(langId)) {
+            languagesArray.push(langId);
+        }
+    });
+
+    function updateLanguagesData() {
+        languagesData.value = JSON.stringify(languagesArray);
+    }
+
+    function renderLanguagesList() {
+        languagesList.innerHTML = '';
+        languagesArray.forEach(langId => {
+            const lang = predefinedLanguages.find(l => l.id === langId);
+            if (lang) {
+                const langItem = document.createElement('div');
+                langItem.className = 'tag-item';
+                langItem.setAttribute('data-lang-id', langId);
+                
+                const langText = document.createElement('span');
+                langText.className = 'tag-text';
+                langText.textContent = lang.name;
+                
+                const removeBtn = document.createElement('button');
+                removeBtn.type = 'button';
+                removeBtn.className = 'remove-tag-btn';
+                removeBtn.innerHTML = '<i class="fas fa-times"></i>';
+                removeBtn.addEventListener('click', function() {
+                    const index = languagesArray.indexOf(langId);
+                    if (index > -1) {
+                        languagesArray.splice(index, 1);
+                        renderLanguagesList();
+                        updateLanguagesData();
+                    }
+                });
+                
+                langItem.appendChild(langText);
+                langItem.appendChild(removeBtn);
+                languagesList.appendChild(langItem);
+            }
+        });
+        updateLanguagesData();
+    }
+
+    function filterLanguageSuggestions(query) {
+        const filtered = predefinedLanguages.filter(lang => 
+            lang.name.toLowerCase().includes(query.toLowerCase()) && !languagesArray.includes(lang.id)
+        );
+        displayLanguageSuggestions(filtered);
+    }
+
+    function displayLanguageSuggestions(suggestions) {
+        if (suggestions.length === 0) {
+            languageSuggestions.style.display = 'none';
+            return;
+        }
+
+        languageSuggestions.innerHTML = '';
+        suggestions.slice(0, 10).forEach((lang, index) => {
+            const item = document.createElement('div');
+            item.className = 'suggestion-item';
+            if (index === 0) item.classList.add('first-item');
+            if (index === suggestions.length - 1 || index === 9) item.classList.add('last-item');
+            item.textContent = lang.name;
+            item.addEventListener('click', function() {
+                if (!languagesArray.includes(lang.id)) {
+                    languagesArray.push(lang.id);
+                    languageInput.value = '';
+                    languageSuggestions.style.display = 'none';
+                    renderLanguagesList();
+                }
+            });
+            languageSuggestions.appendChild(item);
+        });
+
+        languageSuggestions.style.display = 'block';
+    }
+
+    if (addLanguageBtn && languageInput && languageSuggestions) {
+        languageInput.addEventListener('focus', function() {
+            if (this.value.trim()) {
+                filterLanguageSuggestions(this.value.trim());
+            }
+        });
+
+        languageInput.addEventListener('input', function() {
+            clearTimeout(languageDebounceTimer);
+            const query = this.value.trim();
+            
+            languageDebounceTimer = setTimeout(() => {
+                if (query.length > 0) {
+                    filterLanguageSuggestions(query);
+                } else {
+                    languageSuggestions.style.display = 'none';
+                }
+            }, 200);
+        });
+
+        addLanguageBtn.addEventListener('click', function() {
+            const query = languageInput.value.trim();
+            const lang = predefinedLanguages.find(l => l.name.toLowerCase() === query.toLowerCase());
+            
+            if (lang && !languagesArray.includes(lang.id)) {
+                languagesArray.push(lang.id);
+                languageInput.value = '';
+                languageSuggestions.style.display = 'none';
+                renderLanguagesList();
+            } else if (query && !lang) {
+                languageInput.value = '';
+                languageSuggestions.style.display = 'none';
+                alert('Please select a language from the suggestions.');
+            }
+        });
+
+        languageInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                addLanguageBtn.click();
+            }
+        });
+
+        document.addEventListener('click', function(event) {
+            if (!languageInput.contains(event.target) && !languageSuggestions.contains(event.target) && !addLanguageBtn.contains(event.target)) {
+                languageSuggestions.style.display = 'none';
+            }
+        });
+    }
+
+    updateLanguagesData();
+
+    // Categories management
+    const categoryInput = document.getElementById('categoryInput');
+    const addCategoryBtn = document.getElementById('addCategoryBtn');
+    const categoriesList = document.getElementById('categoriesList');
+    const categoriesData = document.getElementById('categoriesData');
+    const categorySuggestions = document.getElementById('categorySuggestions');
+    const predefinedCategoriesData = document.getElementById('predefinedCategoriesData');
+    const predefinedCategories = predefinedCategoriesData ? JSON.parse(predefinedCategoriesData.textContent) : [];
+    let categoriesArray = [];
+    let categoryDebounceTimer;
+
+    // Initialize categories array from existing categories
+    const existingCategories = categoriesList.querySelectorAll('.tag-item');
+    existingCategories.forEach(catItem => {
+        const catId = catItem.getAttribute('data-cat-id');
+        if (catId && !categoriesArray.includes(catId)) {
+            categoriesArray.push(catId);
+        }
+    });
+
+    function updateCategoriesData() {
+        categoriesData.value = JSON.stringify(categoriesArray);
+    }
+
+    function renderCategoriesList() {
+        categoriesList.innerHTML = '';
+        categoriesArray.forEach(catId => {
+            const cat = predefinedCategories.find(c => c.id === catId);
+            if (cat) {
+                const catItem = document.createElement('div');
+                catItem.className = 'tag-item';
+                catItem.setAttribute('data-cat-id', catId);
+                
+                const catText = document.createElement('span');
+                catText.className = 'tag-text';
+                catText.textContent = cat.name;
+                
+                const removeBtn = document.createElement('button');
+                removeBtn.type = 'button';
+                removeBtn.className = 'remove-tag-btn';
+                removeBtn.innerHTML = '<i class="fas fa-times"></i>';
+                removeBtn.addEventListener('click', function() {
+                    const index = categoriesArray.indexOf(catId);
+                    if (index > -1) {
+                        categoriesArray.splice(index, 1);
+                        renderCategoriesList();
+                        updateCategoriesData();
+                    }
+                });
+                
+                catItem.appendChild(catText);
+                catItem.appendChild(removeBtn);
+                categoriesList.appendChild(catItem);
+            }
+        });
+        updateCategoriesData();
+    }
+
+    function filterCategorySuggestions(query) {
+        const filtered = predefinedCategories.filter(cat => 
+            cat.name.toLowerCase().includes(query.toLowerCase()) && !categoriesArray.includes(cat.id)
+        );
+        displayCategorySuggestions(filtered);
+    }
+
+    function displayCategorySuggestions(suggestions) {
+        if (suggestions.length === 0) {
+            categorySuggestions.style.display = 'none';
+            return;
+        }
+
+        categorySuggestions.innerHTML = '';
+        suggestions.slice(0, 10).forEach((cat, index) => {
+            const item = document.createElement('div');
+            item.className = 'suggestion-item';
+            if (index === 0) item.classList.add('first-item');
+            if (index === suggestions.length - 1 || index === 9) item.classList.add('last-item');
+            item.textContent = cat.name;
+            item.addEventListener('click', function() {
+                if (!categoriesArray.includes(cat.id)) {
+                    categoriesArray.push(cat.id);
+                    categoryInput.value = '';
+                    categorySuggestions.style.display = 'none';
+                    renderCategoriesList();
+                }
+            });
+            categorySuggestions.appendChild(item);
+        });
+
+        categorySuggestions.style.display = 'block';
+    }
+
+    if (addCategoryBtn && categoryInput && categorySuggestions) {
+        categoryInput.addEventListener('focus', function() {
+            if (this.value.trim()) {
+                filterCategorySuggestions(this.value.trim());
+            }
+        });
+
+        categoryInput.addEventListener('input', function() {
+            clearTimeout(categoryDebounceTimer);
+            const query = this.value.trim();
+            
+            categoryDebounceTimer = setTimeout(() => {
+                if (query.length > 0) {
+                    filterCategorySuggestions(query);
+                } else {
+                    categorySuggestions.style.display = 'none';
+                }
+            }, 200);
+        });
+
+        addCategoryBtn.addEventListener('click', function() {
+            const query = categoryInput.value.trim();
+            const cat = predefinedCategories.find(c => c.name.toLowerCase() === query.toLowerCase());
+            
+            if (cat && !categoriesArray.includes(cat.id)) {
+                categoriesArray.push(cat.id);
+                categoryInput.value = '';
+                categorySuggestions.style.display = 'none';
+                renderCategoriesList();
+            } else if (query && !cat) {
+                categoryInput.value = '';
+                categorySuggestions.style.display = 'none';
+                alert('Please select a category from the suggestions.');
+            }
+        });
+
+        categoryInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                addCategoryBtn.click();
+            }
+        });
+
+        document.addEventListener('click', function(event) {
+            if (!categoryInput.contains(event.target) && !categorySuggestions.contains(event.target) && !addCategoryBtn.contains(event.target)) {
+                categorySuggestions.style.display = 'none';
+            }
+        });
+    }
+
+    updateCategoriesData();
+
     // Update credentials data on form submit
     const profileForm = document.getElementById('profileForm');
     if (profileForm) {
         profileForm.addEventListener('submit', function() {
             updateCredentialsData();
+            updateTagsData();
+            updateLanguagesData();
+            updateCategoriesData();
         });
     }
 

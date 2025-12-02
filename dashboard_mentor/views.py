@@ -1,6 +1,11 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
-from dashboard_mentor.models import Tag, Credential, MentorType
+from dashboard_mentor.models import Credential
+from dashboard_mentor.constants import (
+    PREDEFINED_MENTOR_TYPES, PREDEFINED_TAGS, 
+    PREDEFINED_LANGUAGES, PREDEFINED_CATEGORIES
+)
+import json
 
 @login_required
 def dashboard(request):
@@ -66,7 +71,7 @@ def account(request):
     consider(profile.mentor_type, 'mentor_type', 'Mentor Type')
     consider(profile.profile_picture, 'profile_picture', 'Profile Picture')
     consider(profile.credentials.exists(), 'credentials', 'Credentials')
-    consider(profile.tags.exists(), 'tags', 'Tags')
+    consider(len(profile.tags) > 0 if profile.tags else False, 'tags', 'Tags')
     # Note: Billing and Subscription are NOT included in profile completion
 
     profile_completion = int(round((filled / total) * 100)) if total else 0
@@ -139,6 +144,11 @@ def profile(request):
             mentor_type = request.POST.get("mentor_type", "")
             bio = request.POST.get("bio", "")
             quote = request.POST.get("quote", "")
+            price_per_hour = request.POST.get("price_per_hour", "")
+            instagram_name = request.POST.get("instagram_name", "")
+            linkedin_name = request.POST.get("linkedin_name", "")
+            personal_website = request.POST.get("personal_website", "")
+            nationality = request.POST.get("nationality", "")
             
             if first_name is not None:
                 profile.first_name = first_name
@@ -146,34 +156,69 @@ def profile(request):
                 profile.last_name = last_name
             profile.time_zone = time_zone
             
-            # Handle mentor type - create if it doesn't exist
+            # Handle mentor type - just store as string
             if mentor_type:
-                mentor_type = mentor_type.strip()
-                mentor_type_obj, created = MentorType.objects.get_or_create(
-                    name=mentor_type,
-                    defaults={'is_custom': True}
-                )
-                profile.mentor_type = mentor_type
+                profile.mentor_type = mentor_type.strip()
             else:
                 profile.mentor_type = None
             
             profile.bio = bio
             profile.quote = quote
+            
+            # Handle tags (from JSON array) - save all tags (predefined and custom)
+            tags_data = request.POST.get("tags_data", "")
+            if tags_data:
+                try:
+                    tags_list = json.loads(tags_data)
+                    # Save all tags as-is (no filtering)
+                    profile.tags = [tag.strip() for tag in tags_list if tag.strip()]
+                except json.JSONDecodeError:
+                    profile.tags = []
+            else:
+                profile.tags = []
+            
+            # Handle languages (from JSON array) - only allow predefined language IDs
+            languages_data = request.POST.get("languages_data", "")
+            if languages_data:
+                try:
+                    languages_list = json.loads(languages_data)
+                    valid_language_ids = [lang_id for lang_id in languages_list if lang_id in [lang['id'] for lang in PREDEFINED_LANGUAGES]]
+                    profile.languages = valid_language_ids
+                except json.JSONDecodeError:
+                    profile.languages = []
+            else:
+                profile.languages = []
+            
+            # Handle categories (from JSON array) - only allow predefined category IDs
+            categories_data = request.POST.get("categories_data", "")
+            if categories_data:
+                try:
+                    categories_list = json.loads(categories_data)
+                    valid_category_ids = [cat_id for cat_id in categories_list if cat_id in [cat['id'] for cat in PREDEFINED_CATEGORIES]]
+                    profile.categories = valid_category_ids
+                except json.JSONDecodeError:
+                    profile.categories = []
+            else:
+                profile.categories = []
+            
+            # Handle price per hour
+            if price_per_hour:
+                try:
+                    profile.price_per_hour = float(price_per_hour)
+                except ValueError:
+                    profile.price_per_hour = None
+            else:
+                profile.price_per_hour = None
+            
+            # Handle social media and links
+            profile.instagram_name = instagram_name.strip() if instagram_name else None
+            profile.linkedin_name = linkedin_name.strip() if linkedin_name else None
+            profile.personal_website = personal_website.strip() if personal_website else None
+            profile.nationality = nationality.strip() if nationality else None
+            
             profile.save()
             
-            # Handle tags (ManyToMany)
-            tags_input = request.POST.get("tags", "").strip()
-            if tags_input:
-                tag_names = [t.strip() for t in tags_input.split(",") if t.strip()]
-                profile.tags.clear()
-                for tag_name in tag_names:
-                    tag, created = Tag.objects.get_or_create(name=tag_name)
-                    profile.tags.add(tag)
-            else:
-                profile.tags.clear()
-            
             # Handle credentials (from JSON array)
-            import json
             credentials_data = request.POST.get("credentials_data", "")
             if credentials_data:
                 try:
@@ -219,7 +264,7 @@ def profile(request):
     consider(profile.mentor_type, 'mentor_type', 'Mentor Type')
     consider(profile.profile_picture, 'profile_picture', 'Profile Picture')
     consider(profile.credentials.exists(), 'credentials', 'Credentials')
-    consider(profile.tags.exists(), 'tags', 'Tags')
+    consider(len(profile.tags) > 0 if profile.tags else False, 'tags', 'Tags')
     # Note: Billing and Subscription are NOT included in profile completion
 
     profile_completion = int(round((filled / total) * 100)) if total else 0
@@ -245,9 +290,6 @@ def profile(request):
     if (reviews / reviewsTotal) < 1:
         content_missing.append(f'Client Reviews ({reviews}/{reviewsTotal})')
     
-    # Fetch all mentor types for autocomplete
-    mentor_types = MentorType.objects.all().values_list('name', flat=True)
-    
     return render(request, 'dashboard_mentor/profile.html', {
         'user': user,
         'profile': profile,
@@ -255,7 +297,8 @@ def profile(request):
         'missing_fields': missing_fields,
         'content_percentage': contentPercentage,
         'content_missing': content_missing,
-        'mentor_types': list(mentor_types),
+        'mentor_types': PREDEFINED_MENTOR_TYPES,
+        'predefined_tags': PREDEFINED_TAGS,
     })
 
 @login_required

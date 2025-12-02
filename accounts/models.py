@@ -56,6 +56,11 @@ class UserProfile(models.Model):
     def __str__(self):
         return f"{self.first_name} {self.last_name} ({self.user.email})"
 
+# Import constants function to avoid circular imports
+def get_first_session_free_choices():
+    from dashboard_mentor.constants import FIRST_SESSION_FREE_CHOICES
+    return FIRST_SESSION_FREE_CHOICES
+
 class MentorProfile(models.Model):
     """Profile for mentors"""
     ROLE_CHOICES = [
@@ -96,8 +101,16 @@ class MentorProfile(models.Model):
     # Personal Info (could be JSON, but using separate fields for better querying)
     time_zone = models.CharField(max_length=64, blank=True, null=True)
     credentials = models.ManyToManyField("dashboard_mentor.Credential", related_name="mentors", blank=True)
-    mentor_type = models.CharField(max_length=50, choices=MENTOR_TYPES, blank=True, null=True)
-    tags = models.ManyToManyField("dashboard_mentor.Tag", related_name="mentors", blank=True)
+    mentor_type = models.CharField(max_length=100, blank=True, null=True)  # Free text, suggestions from predefined list
+    tags = models.JSONField(default=list, blank=True)  # Array of tag strings from predefined list
+    languages = models.JSONField(default=list, blank=True)  # Array of language IDs from predefined list
+    categories = models.JSONField(default=list, blank=True)  # Array of category IDs from predefined list
+    price_per_hour = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
+    first_session_free = models.CharField(max_length=10, choices=get_first_session_free_choices(), blank=True, null=True)
+    instagram_name = models.CharField(max_length=100, blank=True, null=True)
+    linkedin_name = models.CharField(max_length=100, blank=True, null=True)
+    personal_website = models.URLField(blank=True, null=True)
+    nationality = models.CharField(max_length=100, blank=True, null=True)
     bio = models.TextField(blank=True)
     quote = models.TextField(blank=True)
     profile_picture = models.ImageField(upload_to="profiles/", blank=True, null=True)
