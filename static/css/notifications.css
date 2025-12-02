@@ -3,128 +3,199 @@
  * Types: note, warning, error, success
  */
 
-.app-notification {
+/* Container for all notifications to ensure proper stacking */
+#notification-container {
   position: fixed;
   top: 90px;
   right: 20px;
-  background: var(--dash-bg);
-  border: 1px solid var(--dash-border);
-  border-radius: 8px;
-  padding: 12px 20px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   z-index: 10000;
-  font-size: 0.9rem;
-  color: var(--dash-text-main);
-  max-width: 350px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  pointer-events: none; /* Allow clicking through the container area */
+}
+
+.app-notification, .app-message {
+  /* Glassmorphism background */
+  background: rgba(255, 255, 255, 0.43);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  
+  border: 0px solid rgba(255, 255, 255, 0.5);
+  border-left: 0; /* We use a pseudo-element for the colored bar now */
+  border-radius: 16px;
+  border-bottom: 0px solid #ffffff00;
+  padding: 0; /* Padding handled by inner wrapper */
+  
+  /* Deep, multi-layered shadow for "alive" feel */
+  box-shadow: 
+    0 4px 6px -1px rgba(0, 0, 0, 0.05), 
+    0 10px 15px -3px rgba(0, 0, 0, 0.08),
+    0 0 0 1px rgba(0, 0, 0, 0.02);
+    
+  font-family: 'Outfit', 'Inter', sans-serif;
+  font-size: 0.95rem;
+  color: var(--dash-text-main, #1e293b);
+  
+  width: 360px;
+  max-width: 90vw;
+  
+  /* Animation State: Hidden */
   opacity: 0;
-  transform: translateX(100%);
-  transition: opacity 0.3s ease, transform 0.3s ease;
+  transform: translateX(50px) scale(0.95);
+  transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); /* Bouncy spring effect */
+  
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  pointer-events: auto; /* Re-enable pointer events for the notification itself */
+  position: relative;
+  margin-bottom: 10px; /* Spacing between stacked notifications */
 }
 
-.app-notification.active {
+/* Animation State: Active/Visible */
+.app-notification.active, .app-message.active {
   opacity: 1;
-  transform: translateX(0);
+  transform: translateX(0) scale(1);
 }
 
-/* Note (default/info) */
-.app-notification-note {
-  border-left: 4px solid var(--dash-primary);
+/* Hover Effect */
+.app-notification:hover, .app-message:hover {
+  transform: translateY(-2px) scale(1.01);
+  box-shadow: 
+    0 10px 20px -5px rgba(0, 0, 0, 0.1), 
+    0 20px 25px -5px rgba(0, 0, 0, 0.05),
+    0 0 0 1px rgba(0, 0, 0, 0.02);
 }
 
-/* Warning */
-.app-notification-warning {
-  border-left: 4px solid #f59e0b;
-  background: rgba(245, 158, 11, 0.05);
+/* Content Layout */
+.notification-content-wrapper {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 16px 20px;
+  position: relative;
+  z-index: 2;
 }
 
-/* Error */
-.app-notification-error {
-  border-left: 4px solid #ef4444;
-  background: rgba(239, 68, 68, 0.05);
+/* Icon Styling */
+.notification-icon {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  margin-top: -2px;
+  
+  /* Default Icon Style */
+  background: rgba(226, 232, 240, 0.5);
+  color: #64748b;
+}
+
+.notification-message {
+  flex: 1;
+  line-height: 1.5;
+  font-weight: 500;
+  padding-top: 2px;
+}
+
+/* Close Button */
+.notification-close {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 6px;
+  margin: -6px -10px 0 0;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+}
+
+.notification-close:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: #1e293b;
+  transform: rotate(90deg);
+}
+
+/* Progress Bar */
+.notification-progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  width: 100%;
+  transform-origin: left;
+  transform: scaleX(1);
+  opacity: 0.8;
+  z-index: 1;
+  background: linear-gradient(to right, currentColor, transparent);
+}
+
+/* --- Variants --- */
+
+/* Note / Info */
+.app-notification-note .notification-icon,
+.app-message-info .notification-icon,
+.app-message-info i {
+  background: rgba(59, 130, 246, 0.1);
+  color: #3b82f6;
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.05);
+}
+.app-notification-note .notification-progress,
+.app-message-info {
+  color: #3b82f6;
 }
 
 /* Success */
-.app-notification-success {
-  border-left: 4px solid var(--dash-primary);
-  background: rgba(16, 185, 129, 0.05);
-}
-
-/* Django Messages (for server-side messages) */
-.app-message {
-  position: fixed;
-  top: 90px;
-  right: 20px;
-  background: var(--dash-bg);
-  border: 1px solid var(--dash-border);
-  border-radius: 8px;
-  padding: 12px 20px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  z-index: 10000;
-  font-size: 0.9rem;
-  color: var(--dash-text-main);
-  max-width: 350px;
-  opacity: 0;
-  transform: translateX(100%);
-  transition: opacity 0.3s ease, transform 0.3s ease;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.app-message.active {
-  opacity: 1;
-  transform: translateX(0);
-}
-
-.app-message-success {
-  border-left: 4px solid var(--dash-primary);
-  background: rgba(16, 185, 129, 0.05);
-}
-
+.app-notification-success .notification-icon,
+.app-message-success .notification-icon,
 .app-message-success i {
-  color: var(--dash-primary);
+  background: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.05);
+}
+.app-notification-success .notification-progress,
+.app-message-success {
+  color: #10b981;
 }
 
-.app-message-error {
-  border-left: 4px solid #ef4444;
-  background: rgba(239, 68, 68, 0.05);
-}
-
-.app-message-error i {
-  color: #ef4444;
-}
-
-.app-message-warning {
-  border-left: 4px solid #f59e0b;
-  background: rgba(245, 158, 11, 0.05);
-}
-
+/* Warning */
+.app-notification-warning .notification-icon,
+.app-message-warning .notification-icon,
 .app-message-warning i {
+  background: rgba(245, 158, 11, 0.1);
+  color: #f59e0b;
+  box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.05);
+}
+.app-notification-warning .notification-progress,
+.app-message-warning {
   color: #f59e0b;
 }
 
-.app-message-info {
-  border-left: 4px solid var(--dash-primary);
+/* Error */
+.app-notification-error .notification-icon,
+.app-message-error .notification-icon,
+.app-message-error i {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.05);
+}
+.app-notification-error .notification-progress,
+.app-message-error {
+  color: #ef4444;
 }
 
-.app-message-info i {
-  color: var(--dash-primary);
+/* Legacy Django Message Support (if structure is different) */
+/* We try to force them to look like the new ones */
+.app-message {
+  /* Reset some defaults if they differ */
+  align-items: center;
 }
-
-/* Animation */
-@keyframes slideInRight {
-  from {
-    opacity: 0;
-    transform: translateX(100%);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-.app-notification.active,
-.app-message.active {
-  animation: slideInRight 0.3s ease;
-}
-

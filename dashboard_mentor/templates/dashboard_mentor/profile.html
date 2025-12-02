@@ -17,6 +17,17 @@
     <div class="dashboard-grid" style="display: grid; grid-template-columns: 1fr 380px; gap: 24px;">
         <!-- Main Profile Card -->
         <div class="dashboard-card profile-card-compact">
+            <div class="card-header">
+                <h3 class="card-title">Your Profile</h3>
+                <div style="display: flex; flex-direction: column; gap: 8px; align-items: flex-end;">
+                    <a href="{% url 'web:mentor_profile_detail' user.id %}" class="btn btn-outline btn-sm btn-profile-preview" style="display: inline-flex; align-items: center; gap: 8px;" target="_blank">
+                        <i class="fas fa-eye"></i> Profile Preview
+                    </a>
+                    <a href="/dashboard/mentor/account/" class="btn btn-outline btn-sm" style="display: inline-flex; align-items: center; gap: 8px;">
+                        <i class="fas fa-user-circle"></i> My account
+                    </a>
+                </div>
+            </div>
             <!-- Compact Header with Profile Picture -->
             <div class="profile-header-compact">
                 <form method="post" enctype="multipart/form-data" id="pictureForm" style="margin: 0;">
@@ -47,16 +58,6 @@
                             {% endif %}
                         </p>
                     {% endif %}
-                </div>
-                <div class="profile-header-actions">
-                    <div style="display: flex; flex-direction: column; gap: 8px; align-items: flex-end;">
-                        <a href="{% url 'web:mentor_profile_detail' user.id %}" class="btn btn-outline btn-sm" style="display: inline-flex; align-items: center; gap: 8px;" target="_blank">
-                            <i class="fas fa-eye"></i> Profile Preview
-                        </a>
-                        <a href="/dashboard/mentor/account/" class="btn btn-outline btn-sm" style="display: inline-flex; align-items: center; gap: 8px;">
-                            <i class="fas fa-user-circle"></i> My account
-                        </a>
-                    </div>
                 </div>
             </div>
 

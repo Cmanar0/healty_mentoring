@@ -2092,6 +2092,20 @@ textarea.form-input {
   background: #b91c1c;
 }
 
+/* Profile Preview Button - Swapped colors */
+.btn-profile-preview {
+  background: var(--dash-text-main);
+  color: white;
+  border: 2px solid var(--dash-text-main);
+  transition: all 0.2s ease;
+}
+
+.btn-profile-preview:hover {
+  background: transparent;
+  color: var(--dash-text-main);
+  border: 2px solid var(--dash-text-main);
+}
+
 /* Navbar Avatar Placeholder */
 .avatar-placeholder {
   width: 100%;
