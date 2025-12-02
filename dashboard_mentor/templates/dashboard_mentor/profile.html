@@ -3,6 +3,11 @@
 
 {% block page_title %}Your Profile{% endblock %}
 
+{% block extra_css %}
+{{ block.super }}
+<link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+{% endblock %}
+
 {% block dashboard_content %}
 <div class="dashboard-content-container">
     <div class="dashboard-grid" style="display: grid; grid-template-columns: 1fr 380px; gap: 24px;">
@@ -132,7 +137,8 @@
                     <!-- Bio -->
                     <div class="compact-form-group form-grid-full">
                         <label><i class="fas fa-align-left"></i> Bio</label>
-                        <textarea name="bio" rows="4" class="form-input" placeholder="Tell us about yourself...">{{ user.profile.bio|default:'' }}</textarea>
+                        <div id="bioEditor" style="min-height: 200px;"></div>
+                        <textarea name="bio" id="bioTextarea" style="display: none;">{{ user.profile.bio|default:'' }}</textarea>
                     </div>
 
                     <!-- Quote -->
@@ -146,10 +152,13 @@
                         <label><i class="fas fa-certificate"></i> Credentials</label>
                         <div id="credentialsList" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px;">
                             {% for cred in user.profile.credentials.all %}
-                                <div class="credential-item" data-title="{{ cred.title }}" data-subtitle="{{ cred.description|default:'' }}">
+                                <div class="credential-item" data-title="{{ cred.title }}" data-subtitle="{{ cred.subtitle|default:'' }}" data-description="{{ cred.description|default:'' }}">
                                     <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px; background: var(--dash-bg); border: 1px solid var(--dash-border); border-radius: 8px;">
                                         <div style="flex: 1;">
                                             <div style="font-weight: 600; color: var(--dash-text-main); margin-bottom: 4px;">{{ cred.title }}</div>
+                                            {% if cred.subtitle %}
+                                                <div style="font-size: 0.9rem; color: var(--dash-text-main); margin-bottom: 4px;">{{ cred.subtitle }}</div>
+                                            {% endif %}
                                             {% if cred.description %}
                                                 <div style="font-size: 0.85rem; color: var(--dash-text-muted);">{{ cred.description }}</div>
                                             {% endif %}
@@ -161,10 +170,13 @@
                                 </div>
                             {% endfor %}
                         </div>
-                        <div style="display: flex; gap: 8px; align-items: stretch;">
-                            <input type="text" id="credentialTitle" class="form-input" placeholder="Title" style="flex: 1; padding: 12px 16px; font-size: 0.95rem;">
-                            <input type="text" id="credentialSubtitle" class="form-input" placeholder="Subtitle" style="flex: 1; padding: 12px 16px; font-size: 0.95rem;">
-                            <button type="button" id="addCredentialBtn" class="btn btn-outline btn-sm" style="white-space: nowrap; width: auto; height: 43px;">
+                        <div style="display: flex; flex-direction: column; gap: 8px;">
+                            <div style="display: flex; gap: 8px; align-items: stretch;">
+                                <input type="text" id="credentialTitle" class="form-input" placeholder="Title" style="flex: 1; padding: 12px 16px; font-size: 0.95rem;">
+                                <input type="text" id="credentialSubtitle" class="form-input" placeholder="Subtitle" style="flex: 1; padding: 12px 16px; font-size: 0.95rem;">
+                            </div>
+                            <textarea id="credentialDescription" class="form-input" placeholder="Description (max 450 characters)" rows="3" maxlength="450" style="width: 100%; padding: 12px 16px; font-size: 0.95rem; resize: vertical;"></textarea>
+                            <button type="button" id="addCredentialBtn" class="btn btn-outline btn-sm" style="white-space: nowrap; width: auto; height: 43px; align-self: flex-start;">
                                 <i class="fas fa-plus"></i> Add
                             </button>
                         </div>
@@ -189,12 +201,7 @@
                             {% endfor %}
                         </div>
                         <div class="autocomplete-container" style="position: relative;">
-                            <div style="display: flex; gap: 8px; align-items: stretch;">
-                                <input type="text" id="languageInput" class="form-input autocomplete-input" placeholder="Type to search languages..." style="flex: 1; padding: 12px 16px; font-size: 0.95rem;" autocomplete="off">
-                                <button type="button" id="addLanguageBtn" class="btn btn-outline btn-sm" style="white-space: nowrap; width: auto; height: 43px;">
-                                    <i class="fas fa-plus"></i> Add
-                                </button>
-                            </div>
+                            <input type="text" id="languageInput" class="form-input autocomplete-input" placeholder="Type to search languages..." style="width: 100%; padding: 12px 16px; font-size: 0.95rem;" autocomplete="off">
                             <div class="autocomplete-suggestions" id="languageSuggestions"></div>
                         </div>
                         <input type="hidden" name="languages_data" id="languagesData" value="">
@@ -219,12 +226,7 @@
                             {% endfor %}
                         </div>
                         <div class="autocomplete-container" style="position: relative;">
-                            <div style="display: flex; gap: 8px; align-items: stretch;">
-                                <input type="text" id="categoryInput" class="form-input autocomplete-input" placeholder="Type to search categories..." style="flex: 1; padding: 12px 16px; font-size: 0.95rem;" autocomplete="off">
-                                <button type="button" id="addCategoryBtn" class="btn btn-outline btn-sm" style="white-space: nowrap; width: auto; height: 43px;">
-                                    <i class="fas fa-plus"></i> Add
-                                </button>
-                            </div>
+                            <input type="text" id="categoryInput" class="form-input autocomplete-input" placeholder="Type to search categories..." style="width: 100%; padding: 12px 16px; font-size: 0.95rem;" autocomplete="off">
                             <div class="autocomplete-suggestions" id="categorySuggestions"></div>
                         </div>
                         <input type="hidden" name="categories_data" id="categoriesData" value="">
@@ -237,28 +239,37 @@
                         <input type="number" name="price_per_hour" step="0.01" min="0" value="{{ user.profile.price_per_hour|default:'' }}" class="form-input" placeholder="0.00">
                     </div>
 
-                    <!-- Instagram Name -->
-                    <div class="compact-form-group">
-                        <label><i class="fab fa-instagram"></i> Instagram</label>
-                        <input type="text" name="instagram_name" value="{{ user.profile.instagram_name|default:'' }}" class="form-input" placeholder="@username">
+                    <!-- Price per Hour and Nationality -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                        <div class="compact-form-group">
+                            <label><i class="fas fa-dollar-sign"></i> Price per Hour</label>
+                            <div style="position: relative;">
+                                <input type="number" name="price_per_hour" id="pricePerHour" step="1" min="0" value="{{ user.profile.price_per_hour|default:'' }}" class="form-input" placeholder="0" style="padding-right: 30px;">
+                                <span style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: var(--dash-text-muted); pointer-events: none;">$</span>
+                            </div>
+                        </div>
+                        <div class="compact-form-group">
+                            <label><i class="fas fa-flag"></i> Nationality</label>
+                            <input type="text" name="nationality" value="{{ user.profile.nationality|default:'' }}" class="form-input" placeholder="e.g., American, British">
+                        </div>
                     </div>
 
-                    <!-- LinkedIn Name -->
-                    <div class="compact-form-group">
-                        <label><i class="fab fa-linkedin"></i> LinkedIn</label>
-                        <input type="text" name="linkedin_name" value="{{ user.profile.linkedin_name|default:'' }}" class="form-input" placeholder="LinkedIn username">
+                    <!-- Instagram and LinkedIn -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                        <div class="compact-form-group">
+                            <label><i class="fab fa-instagram"></i> Instagram</label>
+                            <input type="text" name="instagram_name" value="{{ user.profile.instagram_name|default:'' }}" class="form-input" placeholder="@username">
+                        </div>
+                        <div class="compact-form-group">
+                            <label><i class="fab fa-linkedin"></i> LinkedIn</label>
+                            <input type="text" name="linkedin_name" value="{{ user.profile.linkedin_name|default:'' }}" class="form-input" placeholder="LinkedIn username">
+                        </div>
                     </div>
 
                     <!-- Personal Website -->
                     <div class="compact-form-group form-grid-full">
                         <label><i class="fas fa-globe"></i> Personal Website</label>
                         <input type="url" name="personal_website" value="{{ user.profile.personal_website|default:'' }}" class="form-input" placeholder="https://example.com">
-                    </div>
-
-                    <!-- Nationality -->
-                    <div class="compact-form-group">
-                        <label><i class="fas fa-flag"></i> Nationality</label>
-                        <input type="text" name="nationality" value="{{ user.profile.nationality|default:'' }}" class="form-input" placeholder="e.g., American, British">
                     </div>
 
                 </div>
@@ -657,6 +668,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Credentials Management
     const credentialTitle = document.getElementById('credentialTitle');
     const credentialSubtitle = document.getElementById('credentialSubtitle');
+    const credentialDescription = document.getElementById('credentialDescription');
     const addCredentialBtn = document.getElementById('addCredentialBtn');
     const credentialsList = document.getElementById('credentialsList');
     const credentialsData = document.getElementById('credentialsData');
@@ -666,7 +678,8 @@ document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('.credential-item').forEach(item => {
         const title = item.getAttribute('data-title');
         const subtitle = item.getAttribute('data-subtitle');
-        credentialsArray.push({ title: title, subtitle: subtitle });
+        const description = item.getAttribute('data-description');
+        credentialsArray.push({ title: title, subtitle: subtitle, description: description });
     });
 
     function updateCredentialsData() {
@@ -682,7 +695,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px; background: var(--dash-bg); border: 1px solid var(--dash-border); border-radius: 8px;">
                     <div style="flex: 1;">
                         <div style="font-weight: 600; color: var(--dash-text-main); margin-bottom: 4px;">${cred.title}</div>
-                        ${cred.subtitle ? `<div style="font-size: 0.85rem; color: var(--dash-text-muted);">${cred.subtitle}</div>` : ''}
+                        ${cred.subtitle ? `<div style="font-size: 0.9rem; color: var(--dash-text-main); margin-bottom: 4px;">${cred.subtitle}</div>` : ''}
+                        ${cred.description ? `<div style="font-size: 0.85rem; color: var(--dash-text-muted);">${cred.description}</div>` : ''}
                     </div>
                     <button type="button" class="remove-credential-btn" data-index="${index}">
                         <i class="fas fa-times"></i>
@@ -694,15 +708,17 @@ document.addEventListener('DOMContentLoaded', function() {
         updateCredentialsData();
     }
 
-    if (addCredentialBtn && credentialTitle && credentialSubtitle) {
+    if (addCredentialBtn && credentialTitle && credentialSubtitle && credentialDescription) {
         addCredentialBtn.addEventListener('click', function() {
             const title = credentialTitle.value.trim();
             const subtitle = credentialSubtitle.value.trim();
+            const description = credentialDescription.value.trim();
             
             if (title) {
-                credentialsArray.push({ title: title, subtitle: subtitle });
+                credentialsArray.push({ title: title, subtitle: subtitle, description: description });
                 credentialTitle.value = '';
                 credentialSubtitle.value = '';
+                credentialDescription.value = '';
                 renderCredentialsList();
             }
         });
@@ -736,8 +752,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 const item = btn.closest('.credential-item');
                 const title = item.getAttribute('data-title');
                 const subtitle = item.getAttribute('data-subtitle');
+                const description = item.getAttribute('data-description');
                 credentialsArray = credentialsArray.filter(cred => 
-                    !(cred.title === title && cred.subtitle === subtitle)
+                    !(cred.title === title && cred.subtitle === subtitle && cred.description === description)
                 );
                 item.remove();
                 updateCredentialsData();
@@ -903,7 +920,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Languages management
     const languageInput = document.getElementById('languageInput');
-    const addLanguageBtn = document.getElementById('addLanguageBtn');
     const languagesList = document.getElementById('languagesList');
     const languagesData = document.getElementById('languagesData');
     const languageSuggestions = document.getElementById('languageSuggestions');
@@ -993,10 +1009,14 @@ document.addEventListener('DOMContentLoaded', function() {
         languageSuggestions.style.display = 'block';
     }
 
-    if (addLanguageBtn && languageInput && languageSuggestions) {
+    if (languageInput && languageSuggestions) {
         languageInput.addEventListener('focus', function() {
-            if (this.value.trim()) {
-                filterLanguageSuggestions(this.value.trim());
+            const query = this.value.trim();
+            if (query.length > 0) {
+                filterLanguageSuggestions(query);
+            } else {
+                // Show all suggestions when focused and empty
+                displayLanguageSuggestions(predefinedLanguages.filter(lang => !languagesArray.includes(lang.id)).slice(0, 10));
             }
         });
 
@@ -1008,36 +1028,35 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (query.length > 0) {
                     filterLanguageSuggestions(query);
                 } else {
-                    languageSuggestions.style.display = 'none';
+                    // Show all available suggestions when input is empty
+                    displayLanguageSuggestions(predefinedLanguages.filter(lang => !languagesArray.includes(lang.id)).slice(0, 10));
                 }
             }, 200);
-        });
-
-        addLanguageBtn.addEventListener('click', function() {
-            const query = languageInput.value.trim();
-            const lang = predefinedLanguages.find(l => l.name.toLowerCase() === query.toLowerCase());
-            
-            if (lang && !languagesArray.includes(lang.id)) {
-                languagesArray.push(lang.id);
-                languageInput.value = '';
-                languageSuggestions.style.display = 'none';
-                renderLanguagesList();
-            } else if (query && !lang) {
-                languageInput.value = '';
-                languageSuggestions.style.display = 'none';
-                alert('Please select a language from the suggestions.');
-            }
         });
 
         languageInput.addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
                 e.preventDefault();
-                addLanguageBtn.click();
+                e.stopPropagation();
+                const query = languageInput.value.trim();
+                const lang = predefinedLanguages.find(l => l.name.toLowerCase() === query.toLowerCase());
+                
+                if (lang && !languagesArray.includes(lang.id)) {
+                    languagesArray.push(lang.id);
+                    languageInput.value = '';
+                    languageSuggestions.style.display = 'none';
+                    renderLanguagesList();
+                } else if (query && !lang) {
+                    showNotification('Please select a language from the suggestions.', 'error');
+                    if (query.length > 0) {
+                        filterLanguageSuggestions(query);
+                    }
+                }
             }
         });
 
         document.addEventListener('click', function(event) {
-            if (!languageInput.contains(event.target) && !languageSuggestions.contains(event.target) && !addLanguageBtn.contains(event.target)) {
+            if (!languageInput.contains(event.target) && !languageSuggestions.contains(event.target)) {
                 languageSuggestions.style.display = 'none';
             }
         });
@@ -1047,7 +1066,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Categories management
     const categoryInput = document.getElementById('categoryInput');
-    const addCategoryBtn = document.getElementById('addCategoryBtn');
     const categoriesList = document.getElementById('categoriesList');
     const categoriesData = document.getElementById('categoriesData');
     const categorySuggestions = document.getElementById('categorySuggestions');
@@ -1055,6 +1073,11 @@ document.addEventListener('DOMContentLoaded', function() {
     const predefinedCategories = predefinedCategoriesData ? JSON.parse(predefinedCategoriesData.textContent) : [];
     let categoriesArray = [];
     let categoryDebounceTimer;
+    
+    // Debug: Check if categories data is loaded
+    if (!predefinedCategoriesData || predefinedCategories.length === 0) {
+        console.warn('No predefined categories data found or empty array');
+    }
 
     // Initialize categories array from existing categories
     const existingCategories = categoriesList.querySelectorAll('.tag-item');
@@ -1137,10 +1160,14 @@ document.addEventListener('DOMContentLoaded', function() {
         categorySuggestions.style.display = 'block';
     }
 
-    if (addCategoryBtn && categoryInput && categorySuggestions) {
+    if (categoryInput && categorySuggestions) {
         categoryInput.addEventListener('focus', function() {
-            if (this.value.trim()) {
-                filterCategorySuggestions(this.value.trim());
+            const query = this.value.trim();
+            if (query.length > 0) {
+                filterCategorySuggestions(query);
+            } else {
+                // Show all suggestions when focused and empty
+                displayCategorySuggestions(predefinedCategories.filter(cat => !categoriesArray.includes(cat.id)).slice(0, 10));
             }
         });
 
@@ -1152,36 +1179,35 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (query.length > 0) {
                     filterCategorySuggestions(query);
                 } else {
-                    categorySuggestions.style.display = 'none';
+                    // Show all available suggestions when input is empty
+                    displayCategorySuggestions(predefinedCategories.filter(cat => !categoriesArray.includes(cat.id)).slice(0, 10));
                 }
             }, 200);
-        });
-
-        addCategoryBtn.addEventListener('click', function() {
-            const query = categoryInput.value.trim();
-            const cat = predefinedCategories.find(c => c.name.toLowerCase() === query.toLowerCase());
-            
-            if (cat && !categoriesArray.includes(cat.id)) {
-                categoriesArray.push(cat.id);
-                categoryInput.value = '';
-                categorySuggestions.style.display = 'none';
-                renderCategoriesList();
-            } else if (query && !cat) {
-                categoryInput.value = '';
-                categorySuggestions.style.display = 'none';
-                alert('Please select a category from the suggestions.');
-            }
         });
 
         categoryInput.addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
                 e.preventDefault();
-                addCategoryBtn.click();
+                e.stopPropagation();
+                const query = categoryInput.value.trim();
+                const cat = predefinedCategories.find(c => c.name.toLowerCase() === query.toLowerCase());
+                
+                if (cat && !categoriesArray.includes(cat.id)) {
+                    categoriesArray.push(cat.id);
+                    categoryInput.value = '';
+                    categorySuggestions.style.display = 'none';
+                    renderCategoriesList();
+                } else if (query && !cat) {
+                    showNotification('Please select a category from the suggestions.', 'error');
+                    if (query.length > 0) {
+                        filterCategorySuggestions(query);
+                    }
+                }
             }
         });
 
         document.addEventListener('click', function(event) {
-            if (!categoryInput.contains(event.target) && !categorySuggestions.contains(event.target) && !addCategoryBtn.contains(event.target)) {
+            if (!categoryInput.contains(event.target) && !categorySuggestions.contains(event.target)) {
                 categorySuggestions.style.display = 'none';
             }
         });
@@ -1197,7 +1223,47 @@ document.addEventListener('DOMContentLoaded', function() {
             updateTagsData();
             updateLanguagesData();
             updateCategoriesData();
+            
+            // Update bio textarea with Quill content
+            if (window.bioQuill) {
+                document.getElementById('bioTextarea').value = window.bioQuill.root.innerHTML;
+            }
         });
+    }
+
+    // Initialize Quill editor for Bio
+    const bioTextarea = document.getElementById('bioTextarea');
+    const bioEditor = document.getElementById('bioEditor');
+    if (bioTextarea && bioEditor) {
+        // Load Quill from CDN
+        const script = document.createElement('script');
+        script.src = 'https://cdn.quilljs.com/1.3.6/quill.js';
+        script.onload = function() {
+            window.bioQuill = new Quill('#bioEditor', {
+                theme: 'snow',
+                modules: {
+                    toolbar: [
+                        [{ 'header': [1, 2, 3, false] }],
+                        ['bold', 'italic', 'underline', 'strike'],
+                        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                        [{ 'color': [] }, { 'background': [] }],
+                        ['link'],
+                        ['clean']
+                    ]
+                }
+            });
+            
+            // Set initial content
+            if (bioTextarea.value) {
+                window.bioQuill.root.innerHTML = bioTextarea.value;
+            }
+            
+            // Update textarea on text change
+            window.bioQuill.on('text-change', function() {
+                bioTextarea.value = window.bioQuill.root.innerHTML;
+            });
+        };
+        document.head.appendChild(script);
     }
 
     // Autocomplete for Mentor Type

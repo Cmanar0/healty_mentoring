@@ -227,13 +227,17 @@ def profile(request):
                     for cred_data in credentials_list:
                         title = cred_data.get('title', '').strip()
                         subtitle = cred_data.get('subtitle', '').strip()
+                        description = cred_data.get('description', '').strip()
                         if title:
                             cred, created = Credential.objects.get_or_create(
                                 title=title,
-                                defaults={'description': subtitle}
+                                defaults={'subtitle': subtitle, 'description': description}
                             )
-                            if not created and subtitle:
-                                cred.description = subtitle
+                            if not created:
+                                if subtitle:
+                                    cred.subtitle = subtitle
+                                if description:
+                                    cred.description = description
                                 cred.save()
                             profile.credentials.add(cred)
                 except json.JSONDecodeError:
@@ -299,6 +303,8 @@ def profile(request):
         'content_missing': content_missing,
         'mentor_types': PREDEFINED_MENTOR_TYPES,
         'predefined_tags': PREDEFINED_TAGS,
+        'predefined_languages': PREDEFINED_LANGUAGES,
+        'predefined_categories': PREDEFINED_CATEGORIES,
     })
 
 @login_required

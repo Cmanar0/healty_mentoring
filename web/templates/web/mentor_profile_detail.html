@@ -59,7 +59,7 @@
         {% if mentor_profile.bio %}
             <div style="margin-bottom: 40px; padding-top: 32px; border-top: 1px solid #e2e8f0;">
                 <h2 style="margin: 0 0 16px; font-size: 1.5rem; color: #1e293b; font-weight: 600;">About</h2>
-                <p style="margin: 0; font-size: 1rem; color: #334155; line-height: 1.8; white-space: pre-wrap;">{{ mentor_profile.bio }}</p>
+                <div style="font-size: 1rem; color: #334155; line-height: 1.8;">{{ mentor_profile.bio|safe }}</div>
             </div>
         {% endif %}
         
