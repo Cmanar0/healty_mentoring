@@ -1,0 +1,113 @@
+{% extends "dashboard_mentor/base.html" %}
+{% load static %}
+
+{% block page_title %}Billing Information{% endblock %}
+
+{% block dashboard_content %}
+<div class="dashboard-content-container">
+    <div class="dashboard-card">
+        <div class="card-header">
+            <h3 class="card-title">Billing Information</h3>
+        </div>
+        
+        <form method="post" style="padding: 24px;">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="update_billing">
+            
+            <div style="display: flex; flex-direction: column; gap: 20px;">
+                <!-- Residential Address -->
+                <div>
+                    <label style="display: block; margin-bottom: 8px; font-weight: 500; color: var(--dash-text-main);">
+                        <i class="fas fa-map-marker-alt" style="color: var(--dash-primary); margin-right: 6px;"></i> Residential Address
+                    </label>
+                    <textarea 
+                        name="residential_address" 
+                        rows="3" 
+                        class="form-input" 
+                        placeholder="Enter your full residential address"
+                        required
+                    >{{ billing.residential_address|default:'' }}</textarea>
+                </div>
+
+                <!-- Tax ID -->
+                <div>
+                    <label style="display: block; margin-bottom: 8px; font-weight: 500; color: var(--dash-text-main);">
+                        <i class="fas fa-id-card" style="color: var(--dash-primary); margin-right: 6px;"></i> Tax ID / VAT Number
+                    </label>
+                    <input 
+                        type="text" 
+                        name="tax_id" 
+                        class="form-input" 
+                        placeholder="Enter your tax ID or VAT number"
+                        value="{{ billing.tax_id|default:'' }}"
+                    >
+                </div>
+
+                <!-- Payment Method -->
+                <div>
+                    <label style="display: block; margin-bottom: 8px; font-weight: 500; color: var(--dash-text-main);">
+                        <i class="fas fa-credit-card" style="color: var(--dash-primary); margin-right: 6px;"></i> Payment Method
+                    </label>
+                    <select name="payment_method" class="form-input" required>
+                        <option value="">Select payment method</option>
+                        <option value="bank_transfer" {% if billing.payment_method == 'bank_transfer' %}selected{% endif %}>Bank Transfer</option>
+                        <option value="paypal" {% if billing.payment_method == 'paypal' %}selected{% endif %}>PayPal</option>
+                        <option value="stripe" {% if billing.payment_method == 'stripe' %}selected{% endif %}>Stripe</option>
+                        <option value="wise" {% if billing.payment_method == 'wise' %}selected{% endif %}>Wise</option>
+                        <option value="other" {% if billing.payment_method == 'other' %}selected{% endif %}>Other</option>
+                    </select>
+                </div>
+
+                <!-- Bank Name -->
+                <div>
+                    <label style="display: block; margin-bottom: 8px; font-weight: 500; color: var(--dash-text-main);">
+                        <i class="fas fa-university" style="color: var(--dash-primary); margin-right: 6px;"></i> Bank Name
+                    </label>
+                    <input 
+                        type="text" 
+                        name="bank_name" 
+                        class="form-input" 
+                        placeholder="Enter your bank name"
+                        value="{{ billing.bank_name|default:'' }}"
+                    >
+                </div>
+
+                <!-- Bank Account -->
+                <div>
+                    <label style="display: block; margin-bottom: 8px; font-weight: 500; color: var(--dash-text-main);">
+                        <i class="fas fa-university" style="color: var(--dash-primary); margin-right: 6px;"></i> Bank Account Number / IBAN
+                    </label>
+                    <input 
+                        type="text" 
+                        name="bank_account" 
+                        class="form-input" 
+                        placeholder="Enter your bank account number or IBAN"
+                        value="{{ billing.bank_account|default:'' }}"
+                    >
+                </div>
+
+                <!-- SWIFT Code -->
+                <div>
+                    <label style="display: block; margin-bottom: 8px; font-weight: 500; color: var(--dash-text-main);">
+                        <i class="fas fa-code" style="color: var(--dash-primary); margin-right: 6px;"></i> SWIFT / BIC Code
+                    </label>
+                    <input 
+                        type="text" 
+                        name="swift_code" 
+                        class="form-input" 
+                        placeholder="Enter your SWIFT or BIC code"
+                        value="{{ billing.swift_code|default:'' }}"
+                    >
+                </div>
+            </div>
+
+            <!-- Save Button -->
+            <div style="margin-top: 32px; display: flex; justify-content: flex-end; gap: 12px;">
+                <a href="/dashboard/mentor/profile/" class="btn btn-outline">Cancel</a>
+                <button type="submit" class="btn btn-primary">Save Billing Information</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+

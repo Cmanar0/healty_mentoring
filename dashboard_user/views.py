@@ -19,6 +19,13 @@ def account(request):
         profile.last_name = request.POST.get("last_name", profile.last_name)
         profile.time_zone = request.POST.get("time_zone", profile.time_zone)
         if request.FILES.get("profile_picture"):
+            # Delete old profile picture if it exists
+            if profile.profile_picture:
+                old_picture = profile.profile_picture
+                # Delete the file from storage
+                old_picture.delete(save=False)
+            
+            # Save new profile picture
             profile.profile_picture = request.FILES.get("profile_picture")
         profile.save()
         return redirect("/dashboard/user/account/")

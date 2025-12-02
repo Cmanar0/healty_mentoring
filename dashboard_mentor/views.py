@@ -48,31 +48,63 @@ def account(request):
     # Compute simple profile completion percentage based on key fields
     filled = 0
     total = 0
+    missing_fields = []
 
-    def consider(value):
+    def consider(value, field_name, display_name):
         nonlocal filled, total
         total += 1
         if value:
             filled += 1
+        else:
+            missing_fields.append(display_name)
 
-    consider(profile.first_name)
-    consider(profile.last_name)
-    consider(profile.time_zone)
-    consider(profile.bio)
-    consider(profile.quote)
-    consider(profile.mentor_type)
-    consider(profile.profile_picture)
-    consider(profile.credentials.exists())
-    consider(profile.tags.exists())
-    consider(bool(profile.billing))
-    consider(bool(profile.subscription))
+    consider(profile.first_name, 'first_name', 'First Name')
+    consider(profile.last_name, 'last_name', 'Last Name')
+    consider(profile.time_zone, 'time_zone', 'Time Zone')
+    consider(profile.bio, 'bio', 'Bio')
+    consider(profile.quote, 'quote', 'Quote')
+    consider(profile.mentor_type, 'mentor_type', 'Mentor Type')
+    consider(profile.profile_picture, 'profile_picture', 'Profile Picture')
+    consider(profile.credentials.exists(), 'credentials', 'Credentials')
+    consider(profile.tags.exists(), 'tags', 'Tags')
+    # Note: Billing and Subscription are NOT included in profile completion
 
     profile_completion = int(round((filled / total) * 100)) if total else 0
+    
+    # Calculate profile content percentage
+    blogPosts = 2
+    blogPostsTotal = 5
+    marketingContent = 2  # quiz + manual checked
+    marketingContentTotal = 7
+    reviews = 0  # Mockup data - will be replaced with actual reviews count
+    reviewsTotal = 3
+    
+    blogPercentage = (blogPosts / blogPostsTotal) * 100
+    marketingPercentage = (marketingContent / marketingContentTotal) * 100
+    reviewsPercentage = (reviews / reviewsTotal) * 100 if reviewsTotal > 0 else 0
+    contentPercentage = round((blogPercentage + marketingPercentage + reviewsPercentage) / 3)
+    
+    content_missing = []
+    if (blogPosts / blogPostsTotal) < 1:
+        content_missing.append(f'Blog Posts ({blogPosts}/{blogPostsTotal})')
+    if (marketingContent / marketingContentTotal) < 1:
+        content_missing.append(f'Marketing Content ({marketingContent}/{marketingContentTotal})')
+    if (reviews / reviewsTotal) < 1:
+        content_missing.append(f'Client Reviews ({reviews}/{reviewsTotal})')
+    
+    # Check billing status for account page
+    billing_filled = bool(profile.billing and profile.billing.get('residential_address') and profile.billing.get('payment_method'))
 
     return render(
         request,
         'dashboard_mentor/account.html',
-        {"profile_completion": profile_completion},
+        {
+            "profile_completion": profile_completion,
+            "missing_fields": missing_fields,
+            "content_percentage": contentPercentage,
+            "content_missing": content_missing,
+            "billing_filled": billing_filled,
+        },
     )
 
 @login_required
@@ -88,6 +120,13 @@ def profile(request):
         
         if action == "update_picture":
             if 'profile_picture' in request.FILES:
+                # Delete old profile picture if it exists
+                if profile.profile_picture:
+                    old_picture = profile.profile_picture
+                    # Delete the file from storage
+                    old_picture.delete(save=False)
+                
+                # Save new profile picture
                 profile.profile_picture = request.FILES['profile_picture']
                 profile.save()
             return redirect("/dashboard/mentor/profile/")
@@ -122,20 +161,113 @@ def profile(request):
             else:
                 profile.tags.clear()
             
-            # Handle credentials (ManyToMany)
-            credentials_input = request.POST.get("credentials", "").strip()
-            if credentials_input:
-                cred_titles = [c.strip() for c in credentials_input.split(",") if c.strip()]
-                profile.credentials.clear()
-                for cred_title in cred_titles:
-                    cred, created = Credential.objects.get_or_create(title=cred_title)
-                    profile.credentials.add(cred)
+            # Handle credentials (from JSON array)
+            import json
+            credentials_data = request.POST.get("credentials_data", "")
+            if credentials_data:
+                try:
+                    credentials_list = json.loads(credentials_data)
+                    profile.credentials.clear()
+                    for cred_data in credentials_list:
+                        title = cred_data.get('title', '').strip()
+                        subtitle = cred_data.get('subtitle', '').strip()
+                        if title:
+                            cred, created = Credential.objects.get_or_create(
+                                title=title,
+                                defaults={'description': subtitle}
+                            )
+                            if not created and subtitle:
+                                cred.description = subtitle
+                                cred.save()
+                            profile.credentials.add(cred)
+                except json.JSONDecodeError:
+                    pass
             else:
                 profile.credentials.clear()
             
             return redirect("/dashboard/mentor/profile/")
     
-    return render(request, 'dashboard_mentor/profile.html')
+    # Compute profile completion percentage (same as account view)
+    filled = 0
+    total = 0
+    missing_fields = []
+
+    def consider(value, field_name, display_name):
+        nonlocal filled, total
+        total += 1
+        if value:
+            filled += 1
+        else:
+            missing_fields.append(display_name)
+
+    consider(profile.first_name, 'first_name', 'First Name')
+    consider(profile.last_name, 'last_name', 'Last Name')
+    consider(profile.time_zone, 'time_zone', 'Time Zone')
+    consider(profile.bio, 'bio', 'Bio')
+    consider(profile.quote, 'quote', 'Quote')
+    consider(profile.mentor_type, 'mentor_type', 'Mentor Type')
+    consider(profile.profile_picture, 'profile_picture', 'Profile Picture')
+    consider(profile.credentials.exists(), 'credentials', 'Credentials')
+    consider(profile.tags.exists(), 'tags', 'Tags')
+    # Note: Billing and Subscription are NOT included in profile completion
+
+    profile_completion = int(round((filled / total) * 100)) if total else 0
+    
+    # Calculate profile content percentage
+    blogPosts = 2
+    blogPostsTotal = 5
+    marketingContent = 2  # quiz + manual checked
+    marketingContentTotal = 7
+    reviews = 0  # Mockup data - will be replaced with actual reviews count
+    reviewsTotal = 3
+    
+    blogPercentage = (blogPosts / blogPostsTotal) * 100
+    marketingPercentage = (marketingContent / marketingContentTotal) * 100
+    reviewsPercentage = (reviews / reviewsTotal) * 100 if reviewsTotal > 0 else 0
+    contentPercentage = round((blogPercentage + marketingPercentage + reviewsPercentage) / 3)
+    
+    content_missing = []
+    if (blogPosts / blogPostsTotal) < 1:
+        content_missing.append(f'Blog Posts ({blogPosts}/{blogPostsTotal})')
+    if (marketingContent / marketingContentTotal) < 1:
+        content_missing.append(f'Marketing Content ({marketingContent}/{marketingContentTotal})')
+    if (reviews / reviewsTotal) < 1:
+        content_missing.append(f'Client Reviews ({reviews}/{reviewsTotal})')
+    
+    return render(request, 'dashboard_mentor/profile.html', {
+        'profile_completion': profile_completion,
+        'missing_fields': missing_fields,
+        'content_percentage': contentPercentage,
+        'content_missing': content_missing,
+    })
+
+@login_required
+def billing(request):
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        return redirect('general:index')
+    
+    profile = request.user.profile
+    
+    if request.method == "POST":
+        action = request.POST.get("action")
+        
+        if action == "update_billing":
+            # Update billing information
+            billing_data = {
+                'residential_address': request.POST.get('residential_address', ''),
+                'tax_id': request.POST.get('tax_id', ''),
+                'bank_account': request.POST.get('bank_account', ''),
+                'payment_method': request.POST.get('payment_method', ''),
+                'bank_name': request.POST.get('bank_name', ''),
+                'swift_code': request.POST.get('swift_code', ''),
+            }
+            profile.billing = billing_data
+            profile.save()
+            return redirect("/dashboard/mentor/billing/")
+    
+    return render(request, 'dashboard_mentor/billing.html', {
+        'billing': profile.billing or {}
+    })
 
 @login_required
 def my_sessions(request):

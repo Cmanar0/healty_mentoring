@@ -11,67 +11,144 @@
             <div class="card-header">
                 <h3 class="card-title">Your Profile</h3>
             </div>
-            <div style="text-align: center; padding: 10px 0 0;">
-                <div class="profile-avatar-large">
-                    {% if user.profile.profile_picture %}
-                        <img src="{{ user.profile.profile_picture.url }}" alt="Profile">
-                    {% else %}
-                        <i class="fas fa-user"></i>
-                    {% endif %}
-                </div>
-                <h3 style="margin: 0 0 4px; color: var(--dash-text-main);">{{ user.profile.first_name }} {{ user.profile.last_name }}</h3>
-                {% with tag_list=user.profile.tags.all %}
-                    {% if tag_list %}
-                        <p style="margin: 0; color: var(--dash-text-muted); font-size: 0.9rem;">
-                            {% for tag in tag_list %}
-                                {{ tag.name }}{% if not forloop.last %}, {% endif %}
-                            {% endfor %}
-                        </p>
-                    {% else %}
-                        <p style="margin: 0; color: var(--dash-text-muted);">Mentor</p>
-                    {% endif %}
-                {% endwith %}
+            <div style="text-align: center; padding: 24px; display: flex; flex-direction: column; justify-content: space-between; height: 100%;">
+                <div class="profile-section-wrapper">
+                    <div class="profile-avatar-large">
+                        {% if user.profile.profile_picture %}
+                            <img src="{{ user.profile.profile_picture.url }}" alt="Profile">
+                        {% else %}
+                            <i class="fas fa-user"></i>
+                        {% endif %}
+                    </div>
+                    <h3 style="margin: 0 0 4px; color: var(--dash-text-main);">{{ user.profile.first_name }} {{ user.profile.last_name }}</h3>
+                    {% with tag_list=user.profile.tags.all %}
+                        {% if tag_list %}
+                            <p style="margin: 0; color: var(--dash-text-muted); font-size: 0.9rem;">
+                                {% for tag in tag_list %}
+                                    {{ tag.name }}{% if not forloop.last %}, {% endif %}
+                                {% endfor %}
+                            </p>
+                        {% else %}
+                            <p style="margin: 0; color: var(--dash-text-muted);">Mentor</p>
+                        {% endif %}
+                    {% endwith %}
 
-                <!-- Profile completion circle (SVG) -->
-                <div style="margin-top: 24px; display: flex; flex-direction: column; align-items: center; gap: 8px;">
-                    <div class="profile-completion-circle">
-                        <svg width="120" height="120" viewBox="0 0 120 120">
-                            <!-- Background circle -->
-                            <circle
-                                cx="60"
-                                cy="60"
-                                r="52"
-                                fill="none"
-                                stroke="#e5e7eb"
-                                stroke-width="8"
-                            />
-                            <!-- Progress circle -->
-                            <circle
-                                id="progressCircle"
-                                cx="60"
-                                cy="60"
-                                r="52"
-                                fill="none"
-                                stroke="var(--dash-primary)"
-                                stroke-width="8"
-                                stroke-linecap="round"
-                                stroke-dasharray="326.73"
-                                stroke-dashoffset="326.73"
-                                transform="rotate(-90 60 60)"
-                                style="transition: stroke-dashoffset 0.3s ease;"
-                            />
-                        </svg>
-                        <div class="completion-percentage">
-                            <span id="completionText">{{ profile_completion|default:0 }}%</span>
+                    <!-- Profile Completion Circles -->
+                    <div style="margin-top: 24px; display: flex; justify-content: center; gap: 32px;">
+                        <!-- Profile Completeness Circle -->
+                        <div style="text-align: center; position: relative;">
+                            <div class="profile-completion-circle completion-popover-trigger" style="margin: 0 auto; cursor: help;" data-popover="accountCompletenessPopover">
+                                <svg width="120" height="120" viewBox="0 0 120 120">
+                                    <!-- Background circle -->
+                                    <circle
+                                        cx="60"
+                                        cy="60"
+                                        r="52"
+                                        fill="none"
+                                        stroke="#e5e7eb"
+                                        stroke-width="8"
+                                    />
+                                    <!-- Progress circle -->
+                                    <circle
+                                        id="progressCircle"
+                                        cx="60"
+                                        cy="60"
+                                        r="52"
+                                        fill="none"
+                                        stroke="var(--dash-primary)"
+                                        stroke-width="8"
+                                        stroke-linecap="round"
+                                        stroke-dasharray="326.73"
+                                        stroke-dashoffset="326.73"
+                                        transform="rotate(-90 60 60)"
+                                        style="transition: stroke-dashoffset 0.3s ease;"
+                                    />
+                                </svg>
+                                <div class="completion-percentage">
+                                    <span id="completionText">{{ profile_completion|default:0 }}%</span>
+                                </div>
+                            </div>
+                            <p style="margin: 12px 0 0; font-size: 0.85rem; color: var(--dash-text-muted);">
+                                Profile completeness
+                            </p>
+                            <!-- Popover -->
+                            <div class="completion-popover" id="accountCompletenessPopover">
+                                <div class="popover-header">
+                                    <strong>Missing Fields</strong>
+                                </div>
+                                <div class="popover-content">
+                                    {% if missing_fields %}
+                                        <ul style="margin: 0; padding-left: 20px; text-align: left;">
+                                            {% for field in missing_fields %}
+                                                <li style="margin-bottom: 6px;">{{ field }}</li>
+                                            {% endfor %}
+                                        </ul>
+                                    {% else %}
+                                        <p style="margin: 0; color: var(--dash-primary);">✓ All fields completed!</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Profile Content Circle -->
+                        <div style="text-align: center; position: relative;">
+                            <div class="profile-completion-circle completion-popover-trigger" style="margin: 0 auto; cursor: help;" data-popover="accountContentPopover">
+                                <svg width="120" height="120" viewBox="0 0 120 120">
+                                    <!-- Background circle -->
+                                    <circle
+                                        cx="60"
+                                        cy="60"
+                                        r="52"
+                                        fill="none"
+                                        stroke="#e5e7eb"
+                                        stroke-width="8"
+                                    />
+                                    <!-- Progress circle -->
+                                    <circle
+                                        id="accountContentCircle"
+                                        cx="60"
+                                        cy="60"
+                                        r="52"
+                                        fill="none"
+                                        stroke="var(--dash-primary)"
+                                        stroke-width="8"
+                                        stroke-linecap="round"
+                                        stroke-dasharray="326.73"
+                                        stroke-dashoffset="326.73"
+                                        transform="rotate(-90 60 60)"
+                                        style="transition: stroke-dashoffset 0.3s ease;"
+                                    />
+                                </svg>
+                                <div class="completion-percentage">
+                                    <span id="accountContentText">0%</span>
+                                </div>
+                            </div>
+                            <p style="margin: 12px 0 0; font-size: 0.85rem; color: var(--dash-text-muted);">
+                                Profile content
+                            </p>
+                            <!-- Popover -->
+                            <div class="completion-popover" id="accountContentPopover">
+                                <div class="popover-header">
+                                    <strong>Missing Content</strong>
+                                </div>
+                                <div class="popover-content">
+                                    {% if content_missing %}
+                                        <ul style="margin: 0; padding-left: 20px; text-align: left;">
+                                            {% for item in content_missing %}
+                                                <li style="margin-bottom: 6px;">{{ item }}</li>
+                                            {% endfor %}
+                                        </ul>
+                                    {% else %}
+                                        <p style="margin: 0; color: var(--dash-primary);">✓ All content completed!</p>
+                                    {% endif %}
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    <p style="margin: 0; font-size: 0.85rem; color: var(--dash-text-muted);">
-                        Profile completeness
-                    </p>
-                </div>
 
-                <div style="margin: 24px 16px 0 0;">
-                    <a href="/dashboard/mentor/profile/" class="btn btn-outline btn-sm" style="margin-left: 16px;">Update Profile</a>
+                    <div style="margin: 24px 16px 0 0;">
+                        <a href="/dashboard/mentor/profile/" class="btn btn-outline" style="margin-left: 16px; width: 100%;">Update Profile</a>
+                    </div>
                 </div>
 
                 <!-- Boost Promotion Box -->
@@ -182,6 +259,38 @@
                 </div>
 
                 <!-- Delete Account Group -->
+                <!-- Billing Information -->
+                <div class="account-section" style="margin-bottom: 24px;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; padding: 16px; background: {% if billing_filled %}rgba(16, 185, 129, 0.05){% else %}rgba(239, 68, 68, 0.05){% endif %}; border: 1px solid {% if billing_filled %}rgba(16, 185, 129, 0.2){% else %}rgba(239, 68, 68, 0.2){% endif %}; border-radius: 8px;">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <div style="width: 40px; height: 40px; border-radius: 50%; background: {% if billing_filled %}var(--dash-primary){% else %}#ef4444{% endif %}; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                <i class="fas {% if billing_filled %}fa-check{% else %}fa-exclamation{% endif %}" style="color: white; font-size: 1rem;"></i>
+                            </div>
+                            <div>
+                                <h4 style="margin: 0 0 4px; font-size: 0.95rem; font-weight: 600; color: var(--dash-text-main);">
+                                    Billing Information
+                                </h4>
+                                <p style="margin: 0; font-size: 0.85rem; color: var(--dash-text-muted);">
+                                    {% if billing_filled %}
+                                        Your billing information is complete
+                                    {% else %}
+                                        Complete your billing information to receive payments
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
+                        {% if not billing_filled %}
+                            <a href="/dashboard/mentor/billing/" class="btn btn-primary btn-sm">
+                                Set Up Billing
+                            </a>
+                        {% else %}
+                            <a href="/dashboard/mentor/billing/" class="btn btn-outline btn-sm">
+                                Update Billing
+                            </a>
+                        {% endif %}
+                    </div>
+                </div>
+
                 <div class="account-delete-group">
                     <form method="post" class="account-section account-section-danger">
                         {% csrf_token %}
@@ -199,7 +308,7 @@
                 </div>
             </div>
         </div>
-    </div>
+      </div>
 </div>
 
 <!-- Email Verification Modal -->
@@ -225,14 +334,14 @@
                     <button type="button" class="btn btn-outline" onclick="closeEmailModal()">Cancel</button>
                 </div>
             </form>
-        </div>
+      </div>
 
         <!-- Step 2: Verification Code -->
         <div id="emailStep2" style="display: none;">
             <div class="modal-header">
                 <h3 class="modal-title">Verify Email</h3>
                 <p class="modal-subtitle">Enter the 6-digit code sent to <strong id="confirmEmailDisplay"></strong></p>
-            </div>
+      </div>
             <form id="emailFormStep2" method="post">
                 {% csrf_token %}
                 <input type="hidden" name="action" value="update_email">
@@ -245,15 +354,15 @@
                     <input type="text" class="verification-digit" maxlength="1" pattern="[0-9]" required>
                     <input type="text" class="verification-digit" maxlength="1" pattern="[0-9]" required>
                     <input type="text" class="verification-digit" maxlength="1" pattern="[0-9]" required>
-                </div>
-                
+      </div>
+
                 <div class="modal-actions">
                     <button type="submit" class="btn btn-primary btn-full">Verify & Update Email</button>
                     <button type="button" class="btn btn-outline" onclick="backToStep1()">Back</button>
                 </div>
-            </form>
-        </div>
-    </div>
+    </form>
+  </div>
+</div>
 </div>
 {% endblock %}
 
@@ -261,6 +370,19 @@
 {{ block.super }}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Function to get color based on percentage
+    function getProgressColor(percentage) {
+        if (percentage >= 90) {
+            return '#059669'; // Dark green - Excellent (90-100%)
+        } else if (percentage >= 70) {
+            return '#10b981'; // Green - Good (70-89%)
+        } else if (percentage >= 40) {
+            return '#f59e0b'; // Orange - Needs improvement (40-69%)
+        } else {
+            return '#ef4444'; // Red - Low (0-39%)
+        }
+    }
+
     // Profile completion circle animation
     const progressCircle = document.getElementById('progressCircle');
     const completionText = document.getElementById('completionText');
@@ -270,11 +392,110 @@ document.addEventListener('DOMContentLoaded', function() {
         const circumference = 326.73; // 2 * PI * radius (52)
         const offset = circumference - (percentage / 100) * circumference;
         
+        // Set color based on percentage
+        const color = getProgressColor(percentage);
+        progressCircle.style.stroke = color;
+        
         // Animate the circle
         setTimeout(() => {
             progressCircle.style.strokeDashoffset = offset;
         }, 100);
     }
+
+    // Profile Content Circle
+    const accountContentCircle = document.getElementById('accountContentCircle');
+    const accountContentText = document.getElementById('accountContentText');
+    
+    if (accountContentCircle && accountContentText) {
+        // Calculate profile content percentage (same as backend)
+        const blogPosts = 2;
+        const blogPostsTotal = 5;
+        const marketingContent = 2; // quiz + manual checked
+        const marketingContentTotal = 7;
+        const reviews = 0; // Mockup data
+        const reviewsTotal = 3;
+        
+        const blogPercentage = (blogPosts / blogPostsTotal) * 100;
+        const marketingPercentage = (marketingContent / marketingContentTotal) * 100;
+        const reviewsPercentage = (reviews / reviewsTotal) * 100;
+        const contentPercentage = Math.round((blogPercentage + marketingPercentage + reviewsPercentage) / 3);
+        
+        const circumference = 326.73; // 2 * PI * radius (52)
+        const offset = circumference - (contentPercentage / 100) * circumference;
+        
+        // Set color based on percentage
+        const color = getProgressColor(contentPercentage);
+        accountContentCircle.style.stroke = color;
+        
+        // Update text
+        accountContentText.textContent = contentPercentage + '%';
+        
+        // Animate the circle
+        setTimeout(() => {
+            accountContentCircle.style.strokeDashoffset = offset;
+        }, 200);
+}
+
+    // Popover functionality with smart positioning
+    const popoverTriggers = document.querySelectorAll('.completion-popover-trigger');
+    popoverTriggers.forEach(trigger => {
+        const popoverId = trigger.getAttribute('data-popover');
+        const popover = document.getElementById(popoverId);
+        
+        if (popover) {
+            trigger.addEventListener('mouseenter', function() {
+                popover.style.display = 'block';
+                
+                // Calculate position
+                const triggerRect = trigger.getBoundingClientRect();
+                const popoverRect = popover.getBoundingClientRect();
+                const viewportHeight = window.innerHeight;
+                const viewportWidth = window.innerWidth;
+                
+                // Check if there's enough space above
+                const spaceAbove = triggerRect.top;
+                const spaceBelow = viewportHeight - triggerRect.bottom;
+                const popoverHeight = popoverRect.height || 200; // Estimate if not yet rendered
+                
+                // Position popover above or below based on available space
+                if (spaceAbove >= popoverHeight + 20 || spaceAbove > spaceBelow) {
+                    // Position above
+                    popover.style.bottom = 'calc(100% + 12px)';
+                    popover.style.top = 'auto';
+                    popover.classList.remove('popover-below');
+                    popover.classList.add('popover-above');
+                } else {
+                    // Position below
+                    popover.style.top = 'calc(100% + 12px)';
+                    popover.style.bottom = 'auto';
+                    popover.classList.remove('popover-above');
+                    popover.classList.add('popover-below');
+}
+
+                // Ensure popover stays within viewport horizontally
+                setTimeout(() => {
+                    const finalPopoverRect = popover.getBoundingClientRect();
+                    if (finalPopoverRect.left < 10) {
+                        popover.style.left = '10px';
+                        popover.style.transform = 'translateX(0)';
+                    } else if (finalPopoverRect.right > viewportWidth - 10) {
+                        popover.style.left = 'auto';
+                        popover.style.right = '10px';
+                        popover.style.transform = 'translateX(0)';
+                    }
+                    
+                    popover.classList.add('active');
+                }, 10);
+            });
+            
+            trigger.addEventListener('mouseleave', function() {
+                popover.classList.remove('active');
+                setTimeout(() => {
+                    popover.style.display = 'none';
+                }, 200);
+            });
+        }
+    });
 
     // Name Section Dirty Checking
     const nameForm = document.getElementById('nameForm');
@@ -308,7 +529,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Initial check
         checkNameChanges();
-    }
+}
 
     // Password Validation with meaningful feedback
     const passwordForm = document.getElementById('passwordForm');
@@ -422,7 +643,7 @@ function handleEmailStep1(e) {
         document.getElementById('finalEmailInput').value = email;
         // Focus first digit
         setTimeout(() => document.querySelector('.verification-digit').focus(), 100);
-    }
+  }
 }
 
 function backToStep1() {

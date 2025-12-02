@@ -5,140 +5,393 @@
 
 {% block dashboard_content %}
 <div class="dashboard-content-container">
-    <div class="dashboard-grid">
-        <!-- Profile Picture and Basic Info Card -->
-        <div class="dashboard-card col-span-4">
-            <div class="card-header">
-                <h3 class="card-title">Profile Picture</h3>
-            </div>
-            <div style="text-align: center; padding: 20px 0;">
-                <div class="profile-avatar-large">
+    <div class="dashboard-grid" style="display: grid; grid-template-columns: 1fr 380px; gap: 24px;">
+        <!-- Main Profile Card -->
+        <div class="dashboard-card profile-card-compact">
+            <!-- Compact Header with Profile Picture -->
+            <div class="profile-header-compact">
+                <div class="profile-avatar-compact">
                     {% if user.profile.profile_picture %}
                         <img src="{{ user.profile.profile_picture.url }}" alt="Profile" id="profileImagePreview">
                     {% else %}
                         <i class="fas fa-user" id="profileImageIcon"></i>
                     {% endif %}
                 </div>
-                <form method="post" enctype="multipart/form-data" style="margin-top: 20px;">
-                    {% csrf_token %}
-                    <input type="hidden" name="action" value="update_picture">
-                    <label for="profilePictureInput" class="btn btn-outline btn-sm" style="cursor: pointer; display: inline-block;">
-                        <i class="fas fa-camera"></i> Change Picture
-                    </label>
-                    <input type="file" name="profile_picture" id="profilePictureInput" accept="image/*" style="display: none;" onchange="previewImage(this)">
-                    <button type="submit" class="btn btn-primary btn-sm" style="margin-left: 8px;">Save</button>
-                </form>
+                <div class="profile-header-info">
+                    <h2>{{ user.profile.first_name }} {{ user.profile.last_name }}</h2>
+                    <p style="color: var(--dash-text-muted); margin: 0;">{{ user.email }}</p>
+                </div>
+                <div class="profile-header-actions">
+                    <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
+                        <form method="post" enctype="multipart/form-data" id="pictureForm" style="margin: 0;">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="update_picture">
+                            <label for="profilePictureInput" class="btn btn-outline btn-sm" style="cursor: pointer; display: inline-flex; align-items: center; gap: 8px;">
+                                <i class="fas fa-camera"></i> Change Picture
+                            </label>
+                            <input type="file" name="profile_picture" id="profilePictureInput" accept="image/*" style="display: none;" onchange="document.getElementById('pictureForm').submit()">
+                        </form>
+                        <a href="/dashboard/mentor/account/" style="color: #1e40af; text-decoration: none; font-size: 0.875rem; font-weight: 500;">
+                            Change Email
+                        </a>
+                    </div>
+                </div>
             </div>
+
+            <!-- Compact Form Grid -->
+            <form method="post" id="profileForm">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="update_profile">
+                
+                <div class="form-grid">
+                    <!-- First Name -->
+                    <div class="compact-form-group">
+                        <label><i class="fas fa-user"></i> First Name</label>
+                        <input type="text" name="first_name" value="{{ user.profile.first_name }}" class="form-input" placeholder="First Name">
+                    </div>
+
+                    <!-- Last Name -->
+                    <div class="compact-form-group">
+                        <label><i class="fas fa-user"></i> Last Name</label>
+                        <input type="text" name="last_name" value="{{ user.profile.last_name }}" class="form-input" placeholder="Last Name">
+                    </div>
+
+                    <!-- Email -->
+                    <div class="compact-form-group form-grid-full">
+                        <div class="email-row-layout" style="display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: var(--dash-bg); border: 1px solid var(--dash-border); border-radius: 8px;">
+                            <div class="email-label-group" style="display: flex; flex-direction: column; gap: 4px;">
+                                <h4 style="margin: 0; font-size: 0.95rem; font-weight: 600; color: var(--dash-text-main);">
+                                    <i class="fas fa-envelope" style="color: var(--dash-primary); margin-right: 6px;"></i> Email
+                                </h4>
+                                <span class="field-value" style="font-size: 0.875rem; color: var(--dash-text-muted);">{{ user.email }}</span>
+                            </div>
+                            <a href="/dashboard/mentor/account/" style="color: #1e40af; text-decoration: none; font-size: 0.875rem; font-weight: 500;">
+                                Change email
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- Mentor Type -->
+                    <div class="compact-form-group">
+                        <label><i class="fas fa-user-tie"></i> Mentor Type</label>
+                        <div class="custom-dropdown-container">
+                            <button type="button" class="custom-dropdown-trigger" id="mentorTypeTrigger">
+                                <span class="dropdown-selected-text" id="mentorTypeSelected">
+                                    {% if user.profile.mentor_type %}
+                                        {% if user.profile.mentor_type == 'life_coach' %}Life Coach
+                                        {% elif user.profile.mentor_type == 'career_coach' %}Career Coach
+                                        {% elif user.profile.mentor_type == 'business_coach' %}Business Coach
+                                        {% elif user.profile.mentor_type == 'health_coach' %}Health Coach
+                                        {% elif user.profile.mentor_type == 'other' %}Other
+                                        {% else %}{{ user.profile.mentor_type|title }}
+                                        {% endif %}
+                                    {% else %}
+                                        Select mentor type
+                                    {% endif %}
+                                </span>
+                                <i class="fas fa-chevron-down"></i>
+                            </button>
+                            <input type="hidden" name="mentor_type" id="mentorTypeInput" value="{{ user.profile.mentor_type|default:'' }}">
+                            <div class="custom-dropdown-menu" id="mentorTypeMenu">
+                                <button type="button" class="dropdown-item first-item" data-value="">
+                                    <span>Select mentor type</span>
+                                </button>
+                                <button type="button" class="dropdown-item" data-value="life_coach">
+                                    <span>Life Coach</span>
+                                </button>
+                                <button type="button" class="dropdown-item" data-value="career_coach">
+                                    <span>Career Coach</span>
+                                </button>
+                                <button type="button" class="dropdown-item" data-value="business_coach">
+                                    <span>Business Coach</span>
+                                </button>
+                                <button type="button" class="dropdown-item" data-value="health_coach">
+                                    <span>Health Coach</span>
+                                </button>
+                                <button type="button" class="dropdown-item last-item" data-value="other">
+                                    <span>Other</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Time Zone -->
+                    <div class="compact-form-group">
+                        <label><i class="fas fa-clock"></i> Time Zone</label>
+                        <input type="text" name="time_zone" value="{{ user.profile.time_zone|default:'' }}" class="form-input" placeholder="e.g., UTC, America/New_York">
+                    </div>
+
+                    <!-- Expertise (Tags) -->
+                    <div class="compact-form-group form-grid-full">
+                        <label><i class="fas fa-tags"></i> Expertise (Tags)</label>
+                        <input type="text" name="tags" value="{% for tag in user.profile.tags.all %}{{ tag.name }}{% if not forloop.last %}, {% endif %}{% endfor %}" class="form-input" placeholder="Enter tags separated by commas">
+                        <p style="margin: 4px 0 0; font-size: 0.8rem; color: var(--dash-text-muted);">Separate multiple tags with commas</p>
+                    </div>
+
+                    <!-- Bio -->
+                    <div class="compact-form-group form-grid-full">
+                        <label><i class="fas fa-align-left"></i> Bio</label>
+                        <textarea name="bio" rows="4" class="form-input" placeholder="Tell us about yourself...">{{ user.profile.bio|default:'' }}</textarea>
+                    </div>
+
+                    <!-- Quote -->
+                    <div class="compact-form-group form-grid-full">
+                        <label><i class="fas fa-quote-left"></i> Quote</label>
+                        <input type="text" name="quote" value="{{ user.profile.quote|default:'' }}" class="form-input" placeholder="Your favorite quote or motto...">
+                    </div>
+
+                    <!-- Credentials -->
+                    <div class="compact-form-group form-grid-full">
+                        <label><i class="fas fa-certificate"></i> Credentials</label>
+                        <div id="credentialsList" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px;">
+                            {% for cred in user.profile.credentials.all %}
+                                <div class="credential-item" data-title="{{ cred.title }}" data-subtitle="{{ cred.description|default:'' }}">
+                                    <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px; background: var(--dash-bg); border: 1px solid var(--dash-border); border-radius: 8px;">
+                                        <div style="flex: 1;">
+                                            <div style="font-weight: 600; color: var(--dash-text-main); margin-bottom: 4px;">{{ cred.title }}</div>
+                                            {% if cred.description %}
+                                                <div style="font-size: 0.85rem; color: var(--dash-text-muted);">{{ cred.description }}</div>
+                                            {% endif %}
+                                        </div>
+                                        <button type="button" class="remove-credential-btn">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                        <div style="display: flex; gap: 8px; align-items: stretch;">
+                            <input type="text" id="credentialTitle" class="form-input" placeholder="Title" style="flex: 1; padding: 12px 16px; font-size: 0.95rem;">
+                            <input type="text" id="credentialSubtitle" class="form-input" placeholder="Subtitle" style="flex: 1; padding: 12px 16px; font-size: 0.95rem;">
+                            <button type="button" id="addCredentialBtn" class="btn btn-outline btn-sm" style="white-space: nowrap; width: auto; height: 43px;">
+                                <i class="fas fa-plus"></i> Add
+                            </button>
+                        </div>
+                        <input type="hidden" name="credentials_data" id="credentialsData" value="">
+                    </div>
+
+                </div>
+
+                <!-- Save Button Bar -->
+                <div class="profile-save-bar">
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                </div>
+            </form>
         </div>
 
-        <!-- Profile Details Card -->
-        <div class="dashboard-card col-span-8">
+        <!-- Tracking Card -->
+        <div class="dashboard-card" style="height: fit-content;">
             <div class="card-header">
-                <h3 class="card-title">Profile Details</h3>
+                <h3 class="card-title">Profile Credibility</h3>
             </div>
             
-            <div class="account-form-container">
-                <form method="post" id="profileForm">
-                    {% csrf_token %}
-                    <input type="hidden" name="action" value="update_profile">
-                    
-                    <!-- Name Section -->
-                    <div class="account-section">
-                        <div class="name-password-grid">
-                            <div class="name-column">
-                                <div class="column-header">
-                                    <h4><i class="fas fa-user"></i> First Name</h4>
-                                </div>
-                                <div style="margin-top: 16px;">
-                                    <input type="text" name="first_name" value="{{ user.profile.first_name }}" class="form-input" id="firstNameInput">
-                                </div>
-                            </div>
-                            <div class="name-column">
-                                <div class="column-header">
-                                    <h4><i class="fas fa-user"></i> Last Name</h4>
-                                </div>
-                                <div style="margin-top: 16px;">
-                                    <input type="text" name="last_name" value="{{ user.profile.last_name }}" class="form-input" id="lastNameInput">
-                                </div>
-                            </div>
+            <!-- Profile Completion Circles -->
+            <div style="display: flex; justify-content: center; gap: 32px; padding: 20px 0;">
+                <!-- Profile Completeness Circle -->
+                <div style="text-align: center; position: relative;">
+                    <div class="profile-completion-circle completion-popover-trigger" style="margin: 0 auto; cursor: help;" data-popover="completenessPopover">
+                        <svg width="120" height="120" viewBox="0 0 120 120">
+                            <!-- Background circle -->
+                            <circle
+                                cx="60"
+                                cy="60"
+                                r="52"
+                                fill="none"
+                                stroke="#e5e7eb"
+                                stroke-width="8"
+                            />
+                            <!-- Progress circle -->
+                            <circle
+                                id="profileProgressCircle"
+                                cx="60"
+                                cy="60"
+                                r="52"
+                                fill="none"
+                                stroke="var(--dash-primary)"
+                                stroke-width="8"
+                                stroke-linecap="round"
+                                stroke-dasharray="326.73"
+                                stroke-dashoffset="326.73"
+                                transform="rotate(-90 60 60)"
+                                style="transition: stroke-dashoffset 0.3s ease;"
+                            />
+                        </svg>
+                        <div class="completion-percentage">
+                            <span id="profileCompletionText">{{ profile_completion|default:0 }}%</span>
                         </div>
                     </div>
+                    <p style="margin: 12px 0 0; font-size: 0.85rem; color: var(--dash-text-muted);">
+                        Profile completeness
+                    </p>
+                    <!-- Popover -->
+                    <div class="completion-popover" id="completenessPopover">
+                        <div class="popover-header">
+                            <strong>Missing Fields</strong>
+                        </div>
+                        <div class="popover-content">
+                            {% if missing_fields %}
+                                <ul style="margin: 0; padding-left: 20px; text-align: left;">
+                                    {% for field in missing_fields %}
+                                        <li style="margin-bottom: 6px;">{{ field }}</li>
+                                    {% endfor %}
+                                </ul>
+                            {% else %}
+                                <p style="margin: 0; color: var(--dash-primary);">✓ All fields completed!</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
 
-                    <!-- Time Zone Section -->
-                    <div class="account-section">
-                        <div class="column-header">
-                            <h4><i class="fas fa-clock"></i> Time Zone</h4>
-                        </div>
-                        <div style="margin-top: 16px;">
-                            <input type="text" name="time_zone" value="{{ user.profile.time_zone|default:'' }}" class="form-input" placeholder="e.g., UTC, America/New_York">
+                <!-- Profile Content Circle -->
+                <div style="text-align: center; position: relative;">
+                    <div class="profile-completion-circle completion-popover-trigger" style="margin: 0 auto; cursor: help;" data-popover="contentPopover">
+                        <svg width="120" height="120" viewBox="0 0 120 120">
+                            <!-- Background circle -->
+                            <circle
+                                cx="60"
+                                cy="60"
+                                r="52"
+                                fill="none"
+                                stroke="#e5e7eb"
+                                stroke-width="8"
+                            />
+                            <!-- Progress circle -->
+                            <circle
+                                id="profileContentCircle"
+                                cx="60"
+                                cy="60"
+                                r="52"
+                                fill="none"
+                                stroke="var(--dash-primary)"
+                                stroke-width="8"
+                                stroke-linecap="round"
+                                stroke-dasharray="326.73"
+                                stroke-dashoffset="326.73"
+                                transform="rotate(-90 60 60)"
+                                style="transition: stroke-dashoffset 0.3s ease;"
+                            />
+                        </svg>
+                        <div class="completion-percentage">
+                            <span id="profileContentText">0%</span>
                         </div>
                     </div>
+                    <p style="margin: 12px 0 0; font-size: 0.85rem; color: var(--dash-text-muted);">
+                        Profile content
+                    </p>
+                    <!-- Popover -->
+                    <div class="completion-popover" id="contentPopover">
+                        <div class="popover-header">
+                            <strong>Missing Content</strong>
+                        </div>
+                        <div class="popover-content">
+                            {% if content_missing %}
+                                <ul style="margin: 0; padding-left: 20px; text-align: left;">
+                                    {% for item in content_missing %}
+                                        <li style="margin-bottom: 6px;">{{ item }}</li>
+                                    {% endfor %}
+                                </ul>
+                            {% else %}
+                                <p style="margin: 0; color: var(--dash-primary);">✓ All content completed!</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-                    <!-- Mentor Type Section -->
-                    <div class="account-section">
-                        <div class="column-header">
-                            <h4><i class="fas fa-user-tie"></i> Mentor Type</h4>
-                        </div>
-                        <div style="margin-top: 16px;">
-                            <select name="mentor_type" class="form-input">
-                                <option value="">Select mentor type</option>
-                                <option value="nutritionist" {% if user.profile.mentor_type == 'nutritionist' %}selected{% endif %}>Nutritionist</option>
-                                <option value="fitness_coach" {% if user.profile.mentor_type == 'fitness_coach' %}selected{% endif %}>Fitness Coach</option>
-                                <option value="wellness_coach" {% if user.profile.mentor_type == 'wellness_coach' %}selected{% endif %}>Wellness Coach</option>
-                                <option value="life_coach" {% if user.profile.mentor_type == 'life_coach' %}selected{% endif %}>Life Coach</option>
-                                <option value="therapist" {% if user.profile.mentor_type == 'therapist' %}selected{% endif %}>Therapist</option>
-                                <option value="other" {% if user.profile.mentor_type == 'other' %}selected{% endif %}>Other</option>
-                            </select>
-                        </div>
-                    </div>
+            <!-- Blog Activity -->
+            <div style="padding: 40px 24px; border-top: 1px solid var(--dash-border);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <h4 style="margin: 0; font-size: 0.95rem; font-weight: 600; color: var(--dash-text-main);">
+                        Blog Activity
+                    </h4>
+                    <span style="font-size: 0.85rem; color: var(--dash-text-muted);">2/5</span>
+                </div>
+                <div style="background: #e5e7eb; height: 8px; border-radius: 4px; overflow: hidden;">
+                    <div style="background: var(--dash-primary); height: 100%; width: 40%; border-radius: 4px; transition: width 0.3s ease;"></div>
+                </div>
+                <p style="margin: 8px 0 16px; font-size: 0.8rem; color: var(--dash-text-muted); line-height: 1.4;">
+                    Write blog posts to increase your credibility and attract more clients.
+                </p>
+                <a href="#" class="btn btn-primary btn-sm" style="width: 100%; text-align: center; display: inline-block;">
+                    <i class="fas fa-plus"></i> Create a blog post
+                </a>
+            </div>
 
-                    <!-- Tags Section -->
-                    <div class="account-section">
-                        <div class="column-header">
-                            <h4><i class="fas fa-tags"></i> Expertise (Tags)</h4>
+            <!-- Marketing Content -->
+            <div style="padding: 20px 24px ; border-top: 1px solid var(--dash-border);">
+                <h4 style="margin: 0 0 12px; font-size: 0.95rem; font-weight: 600; color: var(--dash-text-main);">
+                    Marketing Content
+                </h4>
+                <p style="margin: 0 0 20px; font-size: 0.85rem; color: var(--dash-text-muted); line-height: 1.5;">
+                    Use our tools to quickly and easily create your own quizzes, workshops, and more to share on social media. Engage with your audience and create connections that can turn into new clients.
+                </p>
+                
+                <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px;">
+                    <div class="marketing-checkbox-item">
+                        <div class="custom-checkbox checked">
+                            <i class="fas fa-check"></i>
                         </div>
-                        <div style="margin-top: 16px;">
-                            <input type="text" name="tags" value="{% for tag in user.profile.tags.all %}{{ tag.name }}{% if not forloop.last %}, {% endif %}{% endfor %}" class="form-input" placeholder="Enter tags separated by commas">
-                            <p style="margin-top: 8px; font-size: 0.85rem; color: var(--dash-text-muted);">Separate multiple tags with commas</p>
-                        </div>
+                        <span>Create your quiz</span>
                     </div>
+                    <div class="marketing-checkbox-item">
+                        <div class="custom-checkbox checked">
+                            <i class="fas fa-check"></i>
+                        </div>
+                        <span>Create your manual</span>
+                    </div>
+                    <div class="marketing-checkbox-item">
+                        <div class="custom-checkbox">
+                        </div>
+                        <span>Create your workshop</span>
+                    </div>
+                    <div class="marketing-checkbox-item">
+                        <div class="custom-checkbox">
+                        </div>
+                        <span>Create your challenge</span>
+                    </div>
+                    <div class="marketing-checkbox-item">
+                        <div class="custom-checkbox">
+                        </div>
+                        <span>Create your webinar</span>
+                    </div>
+                    <div class="marketing-checkbox-item">
+                        <div class="custom-checkbox">
+                        </div>
+                        <span>Create your e-book</span>
+                    </div>
+                    <div class="marketing-checkbox-item">
+                        <div class="custom-checkbox">
+                        </div>
+                        <span>Create your template</span>
+                    </div>
+                </div>
+                
+                <a href="#" class="btn btn-primary btn-sm" style="width: 100%; text-align: center; display: inline-block;">
+                    <i class="fas fa-plus"></i> Create Marketing Content
+                </a>
+            </div>
 
-                    <!-- Credentials Section -->
-                    <div class="account-section">
-                        <div class="column-header">
-                            <h4><i class="fas fa-certificate"></i> Credentials</h4>
-                        </div>
-                        <div style="margin-top: 16px;">
-                            <input type="text" name="credentials" value="{% for cred in user.profile.credentials.all %}{{ cred.title }}{% if not forloop.last %}, {% endif %}{% endfor %}" class="form-input" placeholder="Enter credentials separated by commas">
-                            <p style="margin-top: 8px; font-size: 0.85rem; color: var(--dash-text-muted);">Separate multiple credentials with commas</p>
-                        </div>
+            <!-- Clients Reviews -->
+            <div style="padding: 20px 24px; border-top: 1px solid var(--dash-border);">
+                <h4 style="margin: 0 0 12px; font-size: 0.95rem; font-weight: 600; color: var(--dash-text-main);">
+                    Clients Reviews
+                </h4>
+                <p style="margin: 0 0 20px; font-size: 0.85rem; color: var(--dash-text-muted); line-height: 1.5;">
+                    Build trust and credibility with client reviews. Aim for at least three reviews to showcase your expertise and help potential clients make informed decisions.
+                </p>
+                
+                <!-- Reviews Progress Bar -->
+                <div style="margin-bottom: 16px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <span style="font-size: 0.85rem; color: var(--dash-text-muted);">Reviews</span>
+                        <span style="font-size: 0.85rem; font-weight: 600; color: var(--dash-text-main);">
+                            <span id="reviewsCount">0</span>/3
+                        </span>
                     </div>
-
-                    <!-- Bio Section -->
-                    <div class="account-section">
-                        <div class="column-header">
-                            <h4><i class="fas fa-align-left"></i> Bio</h4>
-                        </div>
-                        <div style="margin-top: 16px;">
-                            <textarea name="bio" rows="6" class="form-input" placeholder="Tell us about yourself...">{{ user.profile.bio|default:'' }}</textarea>
-                        </div>
+                    <div style="width: 100%; height: 8px; background: var(--dash-border); border-radius: 4px; overflow: hidden;">
+                        <div id="reviewsProgressBar" style="height: 100%; background: var(--dash-primary); border-radius: 4px; transition: width 0.3s ease; width: 0%;"></div>
                     </div>
-
-                    <!-- Quote Section -->
-                    <div class="account-section">
-                        <div class="column-header">
-                            <h4><i class="fas fa-quote-left"></i> Quote</h4>
-                        </div>
-                        <div style="margin-top: 16px;">
-                            <textarea name="quote" rows="3" class="form-input" placeholder="Your favorite quote or motto...">{{ user.profile.quote|default:'' }}</textarea>
-                        </div>
-                    </div>
-
-                    <!-- Save Button -->
-                    <div class="account-section" style="border-bottom: none; padding-top: 24px;">
-                        <button type="submit" class="btn btn-primary">Save Changes</button>
-                    </div>
-                </form>
+                </div>
             </div>
         </div>
     </div>
@@ -175,6 +428,258 @@ function previewImage(input) {
         reader.readAsDataURL(input.files[0]);
     }
 }
+
+// Function to get color based on percentage
+function getProgressColor(percentage) {
+    if (percentage >= 90) {
+        return '#059669'; // Dark green - Excellent (90-100%)
+    } else if (percentage >= 70) {
+        return '#10b981'; // Green - Good (70-89%)
+    } else if (percentage >= 40) {
+        return '#f59e0b'; // Orange - Needs improvement (40-69%)
+    } else {
+        return '#ef4444'; // Red - Low (0-39%)
+    }
+}
+
+// Profile completion circle animation
+document.addEventListener('DOMContentLoaded', function() {
+    // Profile Completeness Circle
+    const progressCircle = document.getElementById('profileProgressCircle');
+    const completionText = document.getElementById('profileCompletionText');
+    
+    if (progressCircle && completionText) {
+        const percentage = parseInt('{{ profile_completion|default:0 }}', 10) || 0;
+        const circumference = 326.73; // 2 * PI * radius (52)
+        const offset = circumference - (percentage / 100) * circumference;
+        
+        // Set color based on percentage
+        const color = getProgressColor(percentage);
+        progressCircle.style.stroke = color;
+        
+        // Animate the circle
+        setTimeout(() => {
+            progressCircle.style.strokeDashoffset = offset;
+        }, 100);
+    }
+
+    // Profile Content Circle
+    const contentCircle = document.getElementById('profileContentCircle');
+    const contentText = document.getElementById('profileContentText');
+    
+    if (contentCircle && contentText) {
+        // Calculate profile content percentage
+        // Blog posts: 2 out of 5 = 40%
+        // Marketing content: 2 out of 7 = ~28.6%
+        // Average: (40 + 28.6) / 2 = ~34.3%
+        const blogPosts = 2;
+        const blogPostsTotal = 5;
+        const marketingContent = 2; // quiz + manual checked
+        const marketingContentTotal = 7;
+        const reviews = 0; // Mockup data
+        const reviewsTotal = 3;
+        
+        const blogPercentage = (blogPosts / blogPostsTotal) * 100;
+        const marketingPercentage = (marketingContent / marketingContentTotal) * 100;
+        const reviewsPercentage = (reviews / reviewsTotal) * 100;
+        const contentPercentage = Math.round((blogPercentage + marketingPercentage + reviewsPercentage) / 3);
+        
+        // Update reviews display
+        const reviewsCountEl = document.getElementById('reviewsCount');
+        const reviewsProgressBar = document.getElementById('reviewsProgressBar');
+        if (reviewsCountEl) reviewsCountEl.textContent = reviews;
+        if (reviewsProgressBar) {
+            const reviewsWidth = Math.min((reviews / reviewsTotal) * 100, 100);
+            reviewsProgressBar.style.width = reviewsWidth + '%';
+        }
+        
+        const circumference = 326.73; // 2 * PI * radius (52)
+        const offset = circumference - (contentPercentage / 100) * circumference;
+        
+        // Set color based on percentage
+        const color = getProgressColor(contentPercentage);
+        contentCircle.style.stroke = color;
+        
+        // Update text
+        contentText.textContent = contentPercentage + '%';
+        
+        // Animate the circle
+        setTimeout(() => {
+            contentCircle.style.strokeDashoffset = offset;
+        }, 200);
+    }
+
+    // Credentials Management
+    const credentialTitle = document.getElementById('credentialTitle');
+    const credentialSubtitle = document.getElementById('credentialSubtitle');
+    const addCredentialBtn = document.getElementById('addCredentialBtn');
+    const credentialsList = document.getElementById('credentialsList');
+    const credentialsData = document.getElementById('credentialsData');
+    let credentialsArray = [];
+
+    // Load existing credentials
+    document.querySelectorAll('.credential-item').forEach(item => {
+        const title = item.getAttribute('data-title');
+        const subtitle = item.getAttribute('data-subtitle');
+        credentialsArray.push({ title: title, subtitle: subtitle });
+    });
+
+    function updateCredentialsData() {
+        credentialsData.value = JSON.stringify(credentialsArray);
+    }
+
+    function renderCredentialsList() {
+        credentialsList.innerHTML = '';
+        credentialsArray.forEach((cred, index) => {
+            const item = document.createElement('div');
+            item.className = 'credential-item';
+            item.innerHTML = `
+                <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px; background: var(--dash-bg); border: 1px solid var(--dash-border); border-radius: 8px;">
+                    <div style="flex: 1;">
+                        <div style="font-weight: 600; color: var(--dash-text-main); margin-bottom: 4px;">${cred.title}</div>
+                        ${cred.subtitle ? `<div style="font-size: 0.85rem; color: var(--dash-text-muted);">${cred.subtitle}</div>` : ''}
+                    </div>
+                    <button type="button" class="remove-credential-btn" data-index="${index}">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            `;
+            credentialsList.appendChild(item);
+        });
+        updateCredentialsData();
+    }
+
+    if (addCredentialBtn && credentialTitle && credentialSubtitle) {
+        addCredentialBtn.addEventListener('click', function() {
+            const title = credentialTitle.value.trim();
+            const subtitle = credentialSubtitle.value.trim();
+            
+            if (title) {
+                credentialsArray.push({ title: title, subtitle: subtitle });
+                credentialTitle.value = '';
+                credentialSubtitle.value = '';
+                renderCredentialsList();
+            }
+        });
+
+        // Allow Enter key to add credential
+        credentialTitle.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                addCredentialBtn.click();
+            }
+        });
+
+        credentialSubtitle.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                addCredentialBtn.click();
+            }
+        });
+    }
+
+    // Remove credential
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.remove-credential-btn')) {
+            const btn = e.target.closest('.remove-credential-btn');
+            const index = parseInt(btn.getAttribute('data-index'));
+            if (!isNaN(index)) {
+                credentialsArray.splice(index, 1);
+                renderCredentialsList();
+            } else {
+                // Fallback for existing credentials loaded from template
+                const item = btn.closest('.credential-item');
+                const title = item.getAttribute('data-title');
+                const subtitle = item.getAttribute('data-subtitle');
+                credentialsArray = credentialsArray.filter(cred => 
+                    !(cred.title === title && cred.subtitle === subtitle)
+                );
+                item.remove();
+                updateCredentialsData();
+            }
+        }
+    });
+
+    // Update credentials data on form submit
+    const profileForm = document.getElementById('profileForm');
+    if (profileForm) {
+        profileForm.addEventListener('submit', function() {
+            updateCredentialsData();
+        });
+    }
+
+    // Custom Dropdown for Mentor Type
+    const mentorTypeTrigger = document.getElementById('mentorTypeTrigger');
+    const mentorTypeMenu = document.getElementById('mentorTypeMenu');
+    const mentorTypeInput = document.getElementById('mentorTypeInput');
+    const mentorTypeSelected = document.getElementById('mentorTypeSelected');
+    const mentorTypeContainer = document.querySelector('.custom-dropdown-container');
+
+    if (mentorTypeTrigger && mentorTypeMenu) {
+        // Toggle dropdown
+        mentorTypeTrigger.addEventListener('click', function(e) {
+            e.stopPropagation();
+            mentorTypeContainer.classList.toggle('active');
+        });
+
+        // Handle item selection
+        const dropdownItems = mentorTypeMenu.querySelectorAll('.dropdown-item');
+        dropdownItems.forEach(item => {
+            item.addEventListener('click', function() {
+                const value = this.getAttribute('data-value');
+                const text = this.querySelector('span').textContent;
+                
+                mentorTypeInput.value = value;
+                mentorTypeSelected.textContent = text;
+                
+                // Update active state
+                dropdownItems.forEach(i => i.classList.remove('active'));
+                this.classList.add('active');
+                
+                // Close dropdown
+                mentorTypeContainer.classList.remove('active');
+            });
+        });
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(event) {
+            if (mentorTypeContainer && !mentorTypeContainer.contains(event.target)) {
+                mentorTypeContainer.classList.remove('active');
+            }
+        });
+
+        // Mark current selection as active
+        const currentValue = mentorTypeInput.value;
+        dropdownItems.forEach(item => {
+            if (item.getAttribute('data-value') === currentValue) {
+                item.classList.add('active');
+            }
+        });
+    }
+
+    // Popover functionality
+    const popoverTriggers = document.querySelectorAll('.completion-popover-trigger');
+    popoverTriggers.forEach(trigger => {
+        const popoverId = trigger.getAttribute('data-popover');
+        const popover = document.getElementById(popoverId);
+        
+        if (popover) {
+            trigger.addEventListener('mouseenter', function() {
+                popover.style.display = 'block';
+                setTimeout(() => {
+                    popover.classList.add('active');
+                }, 10);
+            });
+            
+            trigger.addEventListener('mouseleave', function() {
+                popover.classList.remove('active');
+                setTimeout(() => {
+                    popover.style.display = 'none';
+                }, 200);
+            });
+        }
+    });
+});
 </script>
 {% endblock %}
 

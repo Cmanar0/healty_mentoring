@@ -396,7 +396,7 @@
 }
 
 .mentor-info { 
-  flex: 1; 
+  flex: 1;
   min-width: 0;
 }
 
@@ -1538,6 +1538,7 @@
   margin-top: 20px;
   min-height: 400px;
   height: 100%;
+  padding: 24px;
 }
 
 .account-settings-group {
@@ -1559,6 +1560,7 @@
 
 .account-section:last-child {
   border-bottom: none;
+  padding-bottom: 0;
 }
 
 .account-section-danger {
@@ -1905,9 +1907,18 @@
   border: 1px solid var(--dash-border);
   border-radius: 8px;
   font-size: 0.95rem;
+  font-family: inherit; /* Ensure same font as parent */
   color: var(--dash-text-main);
   background: white;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Ensure textareas have the same font styling */
+textarea.form-input {
+  font-family: inherit;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  resize: vertical;
 }
 
 .form-input:focus {
@@ -1960,21 +1971,6 @@
   overflow: hidden;
 }
 
-.boost-promo-box::before {
-  content: '';
-  position: absolute;
-  top: -50%;
-  right: -50%;
-  width: 200%;
-  height: 200%;
-  background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
-  animation: shimmer 3s infinite;
-}
-
-@keyframes shimmer {
-  0%, 100% { transform: translate(0, 0); }
-  50% { transform: translate(-10%, -10%); }
-}
 
 .boost-promo-icon {
   width: 48px;
@@ -2221,3 +2217,396 @@
 
 
 
+/* Compact Profile Layout */
+.profile-card-compact {
+  width: 100%;
+  margin: 0 auto;
+}
+
+.profile-header-compact {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 24px;
+  border-radius: 12px;
+  background: linear-gradient(to right, rgba(16, 185, 129, 0.161), transparent);
+}
+
+.profile-avatar-compact {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 4px solid white;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  position: relative;
+  flex-shrink: 0;
+}
+
+.profile-avatar-compact img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.profile-avatar-compact i {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f1f5f9;
+  color: var(--dash-text-light);
+  font-size: 2.5rem;
+}
+
+.profile-header-info {
+  flex: 1;
+}
+
+.profile-header-info h2 {
+  margin: 0 0 8px 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--dash-text-main);
+}
+
+.profile-header-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  padding: 24px;
+}
+
+.form-grid-full {
+  grid-column: 1 / -1;
+}
+
+.compact-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.compact-form-group label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--dash-text-main);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.compact-form-group label i {
+  color: var(--dash-primary);
+  opacity: 0.9;
+}
+
+.compact-form-group .form-input {
+  padding: 10px 16px;
+  font-size: 0.95rem;
+}
+
+.profile-save-bar {
+  padding: 20px 24px;
+  border-top: 1px solid var(--dash-border);
+  display: flex;
+  justify-content: flex-end;
+  border-radius: 0 0 16px 16px;
+}
+
+@media (max-width: 768px) {
+  .profile-header-compact {
+    flex-direction: column;
+    text-align: center;
+  }
+  
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Custom Dropdown Menu (following DROPDOWN_MENU_STYLE_GUIDE.md) */
+.custom-dropdown-container {
+  position: relative;
+  width: 100%;
+}
+
+.custom-dropdown-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 10px 16px;
+  background: white !important; /* Override any general button styles */
+  border: 1px solid var(--dash-border);
+  border-radius: 8px;
+  color: var(--dash-text-main);
+  font-size: 0.95rem;
+  font-weight: 400;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+}
+
+/* Explicitly prevent background color change on hover */
+.custom-dropdown-trigger:hover {
+  background: white !important; /* Keep white background on hover */
+  /* Only border color can change, no background */
+}
+
+.custom-dropdown-trigger i {
+  color: var(--dash-text-light);
+  font-size: 0.85rem;
+  transition: transform 0.2s ease;
+}
+
+.custom-dropdown-container.active .custom-dropdown-trigger i {
+  transform: rotate(180deg);
+}
+
+.custom-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+  padding: 0; /* ⚠️ NO PADDING - following style guide */
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-10px);
+  transition: all 0.2s ease;
+  z-index: 1000;
+  min-width: 100%;
+}
+
+.custom-dropdown-container.active .custom-dropdown-menu {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.custom-dropdown-menu .dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px;
+  color: var(--dash-text-main);
+  text-decoration: none;
+  transition: background 0.2s ease;
+  border: none;
+  background: transparent;
+  width: 100%;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 400;
+  text-align: left;
+}
+
+/* Single item - all corners round */
+.custom-dropdown-menu .dropdown-item:only-child {
+  border-radius: 12px;
+}
+
+.custom-dropdown-menu .dropdown-item:only-child:hover {
+  border-radius: 12px;
+}
+
+/* Two items - first has top corners round, last has bottom corners round */
+.custom-dropdown-menu .dropdown-item:first-child:not(:last-child) {
+  border-radius: 12px 12px 0 0;
+}
+
+.custom-dropdown-menu .dropdown-item:first-child:not(:last-child):hover {
+  border-radius: 12px 12px 0 0;
+}
+
+.custom-dropdown-menu .dropdown-item:last-child:not(:first-child) {
+  border-radius: 0 0 12px 12px;
+}
+
+.custom-dropdown-menu .dropdown-item:last-child:not(:first-child):hover {
+  border-radius: 0 0 12px 12px;
+}
+
+/* Three or more items - middle items have NO rounded corners */
+/* This selector targets items that are NOT first AND NOT last */
+.custom-dropdown-menu .dropdown-item:not(:first-child):not(:last-child) {
+  border-radius: 0 !important; /* Force no rounded corners for middle items */
+}
+
+.custom-dropdown-menu .dropdown-item:not(:first-child):not(:last-child):hover {
+  border-radius: 0 !important; /* Force no rounded corners for middle items on hover */
+}
+
+/* Three or more items - first has top corners round */
+.custom-dropdown-menu .dropdown-item:first-child:not(:only-child) {
+  border-radius: 12px 12px 0 0 !important;
+}
+
+.custom-dropdown-menu .dropdown-item:first-child:not(:only-child):hover {
+  border-radius: 12px 12px 0 0 !important;
+}
+
+/* Three or more items - last has bottom corners round */
+/* This must override the middle items rule, so it needs !important */
+.custom-dropdown-menu .dropdown-item:last-child:not(:only-child):not(:first-child) {
+  border-radius: 0 0 12px 12px !important;
+}
+
+.custom-dropdown-menu .dropdown-item:last-child:not(:only-child):not(:first-child):hover {
+  border-radius: 0 0 12px 12px !important;
+}
+
+.custom-dropdown-menu .dropdown-item:hover {
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--dash-primary);
+}
+
+.custom-dropdown-menu .dropdown-item.active {
+  background: rgba(16, 185, 129, 0.05);
+  color: var(--dash-primary);
+  font-weight: 500;
+}
+
+/* Marketing Content Checkboxes */
+.marketing-checkbox-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 16px 0;
+}
+
+.marketing-checkbox-item span {
+  font-size: 0.9rem;
+  color: var(--dash-text-main);
+}
+
+.custom-checkbox {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  border: 2px solid #cbd5e1;
+  background: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.custom-checkbox.checked {
+  background: var(--dash-primary);
+  border-color: var(--dash-primary);
+}
+
+.custom-checkbox.checked i {
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+/* Completion Popover */
+.completion-popover {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+  padding: 0;
+  min-width: 220px;
+  max-width: 280px;
+  z-index: 1000;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.2s ease;
+  pointer-events: none;
+}
+
+.completion-popover.active {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+/* Popover positioned above (default) */
+.completion-popover.popover-above {
+  bottom: calc(100% + 12px);
+  top: auto;
+}
+
+.completion-popover.popover-above::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 8px solid transparent;
+  border-top-color: white;
+}
+
+/* Popover positioned below */
+.completion-popover.popover-below {
+  top: calc(100% + 12px);
+  bottom: auto;
+}
+
+.completion-popover.popover-below::after {
+  content: '';
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 8px solid transparent;
+  border-bottom-color: white;
+}
+
+.popover-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--dash-border);
+  font-size: 0.9rem;
+  color: var(--dash-text-main);
+}
+
+.popover-content {
+  padding: 12px 16px;
+  font-size: 0.85rem;
+  color: var(--dash-text-muted);
+  line-height: 1.6;
+}
+
+.popover-content ul {
+  list-style: disc;
+}
+
+.popover-content li {
+  margin-bottom: 4px;
+}
+
+/* Remove Credential Button */
+.remove-credential-btn {
+  background: transparent;
+  border: none;
+  color: #ef4444;
+  cursor: pointer;
+  padding: 8px 8px;
+  font-size: 1rem;
+  margin-left: 12px;
+  flex-shrink: 0;
+  width: auto;
+  transition: color 0.2s ease;
+  border-radius: 8px;
+}
+
+.remove-credential-btn:hover {
+  color: #dc2626;
+  background: rgba(0, 0, 0, 0.091);
+}
