@@ -4,14 +4,12 @@ from django.views import View
 from django.contrib import messages
 from .forms import RegisterForm
 from .models import CustomUser, UserProfile, MentorProfile
-from django.template.loader import render_to_string
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, force_str
 from django.contrib.auth.tokens import default_token_generator
-from django.core.mail import send_mail
-from django.conf import settings
 from django.urls import reverse
 from django.http import HttpResponse
+from general.email_service import EmailService
 import os
 
 class RegisterView(View):
@@ -99,13 +97,14 @@ class RegisterView(View):
         return render(request, "accounts/register.html", {"form": form})
 
 def send_verification_email(request, user):
+    """Send email verification email using the universal email service."""
     token = default_token_generator.make_token(user)
     uid = urlsafe_base64_encode(force_bytes(user.pk))
     domain = os.getenv("SITE_DOMAIN", "http://localhost:8000")
     verify_url = f"{domain}{reverse('accounts:verify_email', kwargs={'uidb64': uid, 'token': token})}"
-    subject = "Verify your Healthy Mentoring account"
-    html_message = render_to_string("accounts/verify_email.html", {"user": user, "verify_url": verify_url})
-    send_mail(subject, "", settings.DEFAULT_FROM_EMAIL, [user.email], html_message=html_message, fail_silently=False)
+    
+    # Use the universal email service
+    EmailService.send_verification_email(user, verify_url)
 
 class VerifyEmailView(View):
     def get(self, request, uidb64, token):

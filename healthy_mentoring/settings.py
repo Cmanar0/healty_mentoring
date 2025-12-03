@@ -16,6 +16,9 @@ ALLOWED_HOSTS = ["*"] if DEBUG else [os.getenv("SITE_DOMAIN", "").replace("https
 if not DEBUG:
     CSRF_TRUSTED_ORIGINS = [os.getenv("SITE_DOMAIN")]
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+else:
+    # In development, allow localhost
+    CSRF_TRUSTED_ORIGINS = ["http://localhost:8000", "http://127.0.0.1:8000"]
 
 # Applications
 INSTALLED_APPS = [

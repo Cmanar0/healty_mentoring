@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{% block title %}{{ site_name }}{% endblock %}</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          "Helvetica Neue", Arial, sans-serif;
+        background-color: #f5f5f5;
+        line-height: 1.6;
+        color: #333333;
+      }
+      .email-container {
+        max-width: 600px;
+        margin: 0 auto;
+        background-color: #ffffff;
+      }
+      .email-header {
+        background-color: #4a90e2;
+        padding: 30px 20px;
+        text-align: center;
+      }
+      .email-header h1 {
+        margin: 0;
+        color: #ffffff;
+        font-size: 24px;
+        font-weight: 600;
+      }
+      .email-body {
+        padding: 40px 30px;
+      }
+      .email-content {
+        color: #333333;
+        font-size: 16px;
+      }
+      .email-content p {
+        margin: 0 0 16px 0;
+      }
+      .email-content a {
+        color: #4a90e2;
+        text-decoration: none;
+      }
+      .email-content a:hover {
+        text-decoration: underline;
+      }
+      .button {
+        display: inline-block;
+        padding: 14px 28px;
+        background-color: #4a90e2;
+        color: #ffffff !important;
+        text-decoration: none;
+        border-radius: 6px;
+        font-weight: 600;
+        margin: 20px 0;
+        text-align: center;
+      }
+      .button:hover {
+        background-color: #357abd;
+        text-decoration: none;
+      }
+      .email-footer {
+        background-color: #f8f9fa;
+        padding: 30px;
+        text-align: center;
+        font-size: 14px;
+        color: #666666;
+        border-top: 1px solid #e9ecef;
+      }
+      .email-footer p {
+        margin: 8px 0;
+      }
+      .email-footer a {
+        color: #4a90e2;
+        text-decoration: none;
+      }
+      @media only screen and (max-width: 600px) {
+        .email-body {
+          padding: 30px 20px;
+        }
+        .button {
+          display: block;
+          width: 100%;
+          box-sizing: border-box;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="email-container">
+      <div class="email-header">
+        <h1>{% block header_title %}{{ site_name }}{% endblock %}</h1>
+      </div>
+      <div class="email-body">
+        <div class="email-content">{% block content %}{% endblock %}</div>
+      </div>
+      <div class="email-footer">
+        {% block footer %}
+        <p><strong>{{ site_name }}</strong></p>
+        <p>This is an automated message. Please do not reply to this email.</p>
+        <p>
+          <a href="{{ site_domain }}">Visit our website</a> |
+          <a href="{{ site_domain }}/terms/">Terms & Conditions</a>
+        </p>
+        {% endblock %}
+      </div>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,37 @@
+﻿{% extends "emails/base.html" %} {% block title %}Welcome to {{ site_name }}!{%
+endblock %} {% block header_title %}Welcome!{% endblock %} {% block content %}
+<p>Hello {{ user_name }},</p>
+
+<p>
+  Welcome to Healthy Mentoring! We're thrilled to have you as part of our
+  community.
+</p>
+
+<p>
+  Your account has been successfully verified and you're all set to start your
+  journey with us.
+</p>
+
+<p>Here's what you can do next:</p>
+<ul>
+  <li>Complete your profile to help us personalize your experience</li>
+  <li>Explore our mentor directory to find the perfect match</li>
+  <li>Book your first session and start your mentoring journey</li>
+</ul>
+
+<p style="text-align: center">
+  <a href="{{ site_domain }}/dashboard/" class="button">Go to Dashboard</a>
+</p>
+
+<p>
+  If you have any questions or need assistance, don't hesitate to reach out to
+  our support team.
+</p>
+
+<p>We're here to support you every step of the way!</p>
+
+<p>
+  Best regards,<br />
+  The Healthy Mentoring Team
+</p>
+{% endblock %}

@@ -51,11 +51,18 @@ def account(request):
         return redirect("/dashboard/mentor/account/")
 
     # Compute simple profile completion percentage based on key fields
+    # Each field contributes equally: 100% / 15 fields = ~6.67% per field
+    # Total fields tracked: 15
     filled = 0
     total = 0
     missing_fields = []
 
     def consider(value, field_name, display_name):
+        """
+        Track a field for profile completion.
+        Each call increments total by 1, and if value is truthy, increments filled by 1.
+        This ensures each field contributes equally to the completion percentage.
+        """
         nonlocal filled, total
         total += 1
         if value:
@@ -63,24 +70,47 @@ def account(request):
         else:
             missing_fields.append(display_name)
 
+    # Field 1-2: Basic Info
     consider(profile.first_name, 'first_name', 'First Name')
     consider(profile.last_name, 'last_name', 'Last Name')
+    
+    # Field 3: Time Zone
     consider(profile.time_zone, 'time_zone', 'Time Zone')
+    
+    # Field 4-5: Content
     consider(profile.bio, 'bio', 'Bio')
     consider(profile.quote, 'quote', 'Quote')
+    
+    # Field 6: Mentor Type
     consider(profile.mentor_type, 'mentor_type', 'Mentor Type')
+    
+    # Field 7: Profile Picture
     consider(profile.profile_picture, 'profile_picture', 'Profile Picture')
-    consider(profile.qualifications.exists(), 'qualifications', 'Qualifications')
+    
+    # Field 8: Qualifications (at least one required)
+    # Check through the through model since we use a custom through model
+    from dashboard_mentor.models import MentorProfileQualification
+    has_qualifications = MentorProfileQualification.objects.filter(mentor_profile=profile).exists()
+    consider(has_qualifications, 'qualifications', 'Qualifications')
+    
+    # Field 9-11: Tags, Languages, Categories (at least one of each required)
     consider(len(profile.tags) > 0 if profile.tags else False, 'tags', 'Tags')
     consider(len(profile.languages) > 0 if profile.languages else False, 'languages', 'Languages')
     consider(len(profile.categories) > 0 if profile.categories else False, 'categories', 'Categories')
+    
+    # Field 12: Nationality
     consider(profile.nationality, 'nationality', 'Nationality')
+    
+    # Field 13-14: Pricing
     consider(profile.price_per_hour, 'price_per_hour', 'Price per Hour')
     consider(profile.session_length, 'session_length', 'Session Length')
-    # At least one social media link
+    
+    # Field 15: Social Media (at least one of: Instagram, LinkedIn, or Website)
     has_social = bool(profile.instagram_name or profile.linkedin_name or profile.personal_website)
     consider(has_social, 'social_media', 'Social Media (Instagram, LinkedIn, or Website)')
+    
     # Note: Billing and Subscription are NOT included in profile completion
+    # Total: 15 fields, each contributing 100/15 = ~6.67% to completion
 
     profile_completion = int(round((filled / total) * 100)) if total else 0
     
@@ -278,11 +308,18 @@ def profile(request):
             return redirect("/dashboard/mentor/profile/")
     
     # Compute profile completion percentage (same as account view)
+    # Each field contributes equally: 100% / 15 fields = ~6.67% per field
+    # Total fields tracked: 15
     filled = 0
     total = 0
     missing_fields = []
 
     def consider(value, field_name, display_name):
+        """
+        Track a field for profile completion.
+        Each call increments total by 1, and if value is truthy, increments filled by 1.
+        This ensures each field contributes equally to the completion percentage.
+        """
         nonlocal filled, total
         total += 1
         if value:
@@ -290,24 +327,47 @@ def profile(request):
         else:
             missing_fields.append(display_name)
 
+    # Field 1-2: Basic Info
     consider(profile.first_name, 'first_name', 'First Name')
     consider(profile.last_name, 'last_name', 'Last Name')
+    
+    # Field 3: Time Zone
     consider(profile.time_zone, 'time_zone', 'Time Zone')
+    
+    # Field 4-5: Content
     consider(profile.bio, 'bio', 'Bio')
     consider(profile.quote, 'quote', 'Quote')
+    
+    # Field 6: Mentor Type
     consider(profile.mentor_type, 'mentor_type', 'Mentor Type')
+    
+    # Field 7: Profile Picture
     consider(profile.profile_picture, 'profile_picture', 'Profile Picture')
-    consider(profile.qualifications.exists(), 'qualifications', 'Qualifications')
+    
+    # Field 8: Qualifications (at least one required)
+    # Check through the through model since we use a custom through model
+    from dashboard_mentor.models import MentorProfileQualification
+    has_qualifications = MentorProfileQualification.objects.filter(mentor_profile=profile).exists()
+    consider(has_qualifications, 'qualifications', 'Qualifications')
+    
+    # Field 9-11: Tags, Languages, Categories (at least one of each required)
     consider(len(profile.tags) > 0 if profile.tags else False, 'tags', 'Tags')
     consider(len(profile.languages) > 0 if profile.languages else False, 'languages', 'Languages')
     consider(len(profile.categories) > 0 if profile.categories else False, 'categories', 'Categories')
+    
+    # Field 12: Nationality
     consider(profile.nationality, 'nationality', 'Nationality')
+    
+    # Field 13-14: Pricing
     consider(profile.price_per_hour, 'price_per_hour', 'Price per Hour')
     consider(profile.session_length, 'session_length', 'Session Length')
-    # At least one social media link
+    
+    # Field 15: Social Media (at least one of: Instagram, LinkedIn, or Website)
     has_social = bool(profile.instagram_name or profile.linkedin_name or profile.personal_website)
     consider(has_social, 'social_media', 'Social Media (Instagram, LinkedIn, or Website)')
+    
     # Note: Billing and Subscription are NOT included in profile completion
+    # Total: 15 fields, each contributing 100/15 = ~6.67% to completion
 
     profile_completion = int(round((filled / total) * 100)) if total else 0
     

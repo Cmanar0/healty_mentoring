@@ -61,14 +61,7 @@
                 </div>
             </div>
 
-            <!-- Messages -->
-            {% if messages %}
-                {% for message in messages %}
-                    <div class="app-message app-message-{{ message.tags }} active">
-                        <i class="fas fa-check-circle"></i> {{ message }}
-                    </div>
-                {% endfor %}
-            {% endif %}
+            <!-- Messages will be shown via notification system -->
 
             <!-- Compact Form Grid -->
             <form method="post" id="profileForm">
@@ -1016,6 +1009,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     tagsArray.splice(index, 1);
                     renderTagsList();
                     updateTagsData();
+                    showNotification('Don\'t forget to save your profile to apply the changes.', 'note');
                 }
             });
         }
@@ -1046,6 +1040,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     tagsArray.splice(index, 1);
                     renderTagsList();
                     updateTagsData();
+                    showNotification('Don\'t forget to save your profile to apply the changes.', 'note');
                 }
             });
             
@@ -1082,6 +1077,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     tagInput.value = '';
                     tagSuggestions.style.display = 'none';
                     renderTagsList();
+                    showNotification('Don\'t forget to save your profile to apply the changes.', 'note');
                 }
             });
             tagSuggestions.appendChild(item);
@@ -1131,6 +1127,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 tagInput.value = '';
                 tagSuggestions.style.display = 'none';
                 renderTagsList();
+                showNotification('Don\'t forget to save your profile to apply the changes.', 'note');
             } else {
                 tagInput.value = '';
                 tagSuggestions.style.display = 'none';
@@ -1183,6 +1180,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     languagesArray.splice(index, 1);
                     renderLanguagesList();
                     updateLanguagesData();
+                    showNotification('Don\'t forget to save your profile to apply the changes.', 'note');
                 }
             });
         }
@@ -1215,6 +1213,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         languagesArray.splice(index, 1);
                         renderLanguagesList();
                         updateLanguagesData();
+                        showNotification('Don\'t forget to save your profile to apply the changes.', 'note');
                     }
                 });
                 
@@ -1252,6 +1251,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     languageInput.value = '';
                     languageSuggestions.style.display = 'none';
                     renderLanguagesList();
+                    showNotification('Don\'t forget to save your profile to apply the changes.', 'note');
                 }
             });
             languageSuggestions.appendChild(item);
@@ -1297,6 +1297,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     languageInput.value = '';
                     languageSuggestions.style.display = 'none';
                     renderLanguagesList();
+                    showNotification('Don\'t forget to save your profile to apply the changes.', 'note');
                 } else if (query && !lang) {
                     showNotification('Please select a language from the suggestions.', 'error');
                     if (query.length > 0) {
@@ -1346,6 +1347,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     categoriesArray.splice(index, 1);
                     renderCategoriesList();
                     updateCategoriesData();
+                    showNotification('Don\'t forget to save your profile to apply the changes.', 'note');
                 }
             });
         }
@@ -1378,6 +1380,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         categoriesArray.splice(index, 1);
                         renderCategoriesList();
                         updateCategoriesData();
+                        showNotification('Don\'t forget to save your profile to apply the changes.', 'note');
                     }
                 });
                 
@@ -1415,6 +1418,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     categoryInput.value = '';
                     categorySuggestions.style.display = 'none';
                     renderCategoriesList();
+                    showNotification('Don\'t forget to save your profile to apply the changes.', 'note');
                 }
             });
             categorySuggestions.appendChild(item);
@@ -1460,6 +1464,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     categoryInput.value = '';
                     categorySuggestions.style.display = 'none';
                     renderCategoriesList();
+                    showNotification('Don\'t forget to save your profile to apply the changes.', 'note');
                 } else if (query && !cat) {
                     showNotification('Please select a category from the suggestions.', 'error');
                     if (query.length > 0) {
@@ -1689,17 +1694,22 @@ function backToStep1() {
     document.getElementById('emailStep2').style.display = 'none';
 }
 
-// Auto-hide Django messages after 5 seconds
+// Convert Django messages to notifications
 document.addEventListener('DOMContentLoaded', function() {
-    const messages = document.querySelectorAll('.app-message.active');
-    messages.forEach(message => {
-        setTimeout(() => {
-            message.classList.remove('active');
-            setTimeout(() => {
-                message.remove();
-            }, 300);
-        }, 5000);
-    });
+    {% if messages %}
+        {% for message in messages %}
+            // Map Django message tags to notification types
+            {% if message.tags == 'success' %}
+                showNotification('{{ message|escapejs }}', 'success');
+            {% elif message.tags == 'error' %}
+                showNotification('{{ message|escapejs }}', 'error');
+            {% elif message.tags == 'warning' %}
+                showNotification('{{ message|escapejs }}', 'warning');
+            {% else %}
+                showNotification('{{ message|escapejs }}', 'note');
+            {% endif %}
+        {% endfor %}
+    {% endif %}
 });
 </script>
 {% endblock %}
