@@ -294,7 +294,7 @@
                                         {% for nat in predefined_nationalities %}
                                             {% if nat.id == nat_id %}
                                                 <div class="tag-item" data-nat-id="{{ nat.id }}">
-                                                    <span class="tag-text">{% if nat.flag_code %}<span class="fi fi-{{ nat.flag_code|lower }}" style="margin-right: 6px; vertical-align: middle;"></span>{% else %}{{ nat.flag }} {% endif %}{{ nat.name }}</span>
+                                                    <span class="tag-text">{% if nat.id %}<span class="fi fi-{{ nat.id|lower }}" style="margin-right: 6px; vertical-align: middle;"></span>{% else %}{{ nat.flag }} {% endif %}{{ nat.name }}</span>
                                                     <button type="button" class="remove-tag-btn">
                                                         <i class="fas fa-times"></i>
                                                     </button>
@@ -1718,9 +1718,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Helper function to render flag icon or emoji fallback
     function renderFlag(item) {
-        if (item.flag_code) {
-            // Use flag-icon-css if flag_code is available
-            return `<span class="fi fi-${item.flag_code.toLowerCase()}" style="margin-right: 6px; vertical-align: middle;"></span>`;
+        // For nationalities: use id as flag_code (they are the same)
+        // For languages: use flag_code if available, otherwise use id
+        const flagCode = item.flag_code || item.id;
+        if (flagCode) {
+            // Use flag-icon-css if flag_code/id is available
+            return `<span class="fi fi-${flagCode.toLowerCase()}" style="margin-right: 6px; vertical-align: middle;"></span>`;
         } else if (item.flag) {
             // Fallback to emoji
             return item.flag + ' ';
