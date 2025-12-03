@@ -355,20 +355,22 @@
                                 <label class="setting-label">
                                     <i class="fas fa-gift"></i> First Session Free
                                 </label>
-                                <p class="setting-description">Attract more clients by offering a free introductory session.</p>
                                 
-                                <div class="toggle-wrapper">
-                                    <label class="toggle-switch">
-                                        <input type="checkbox" name="first_session_free" id="firstSessionFree" {% if user.profile.first_session_free %}checked{% endif %}>
-                                        <span class="toggle-slider"></span>
-                                    </label>
-                                    <span class="toggle-status-text" id="firstSessionStatusText">
-                                        {% if user.profile.first_session_free %}Enabled{% else %}Disabled{% endif %}
-                                    </span>
+                                <div class="session-free-header-row">
+                                    <p class="setting-description">Attract more clients by offering a free introductory session.</p>
+                                    
+                                    <div class="toggle-wrapper">
+                                        <label class="toggle-switch">
+                                            <input type="checkbox" name="first_session_free" id="firstSessionFree" {% if user.profile.first_session_free %}checked{% endif %}>
+                                            <span class="toggle-slider"></span>
+                                        </label>
+                                        <span class="toggle-status-text" id="firstSessionStatusText">
+                                            {% if user.profile.first_session_free %}Enabled{% else %}Disabled{% endif %}
+                                        </span>
+                                    </div>
                                 </div>
 
                                 <div id="firstSessionLengthWrapper" class="free-session-input-container {% if user.profile.first_session_free %}visible{% endif %}">
-                                    <label class="setting-label" style="font-size: 0.85rem; margin-bottom: 6px;">Free Session Duration</label>
                                     <div class="pricing-input-group">
                                         <input type="number" name="first_session_length" id="firstSessionLength" step="1" min="1" value="{{ user.profile.first_session_length|default:'' }}" class="pricing-input" placeholder="30" style="padding-left: 16px; padding-right: 50px;">
                                         <span style="position: absolute; right: 16px; color: var(--dash-text-muted); pointer-events: none; font-size: 0.9rem;">minutes</span>
@@ -1160,11 +1162,12 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         tagSuggestions.innerHTML = '';
-        suggestions.slice(0, 10).forEach((suggestion, index) => {
+        // Show all suggestions (no limit) - make it scrollable
+        suggestions.forEach((suggestion, index) => {
             const item = document.createElement('div');
             item.className = 'suggestion-item';
             if (index === 0) item.classList.add('first-item');
-            if (index === suggestions.length - 1 || index === 9) item.classList.add('last-item');
+            if (index === suggestions.length - 1) item.classList.add('last-item');
             item.textContent = suggestion;
             item.addEventListener('click', function() {
                 if (!tagsArray.includes(suggestion)) {
@@ -1179,6 +1182,8 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         tagSuggestions.style.display = 'block';
+        tagSuggestions.style.maxHeight = '300px';
+        tagSuggestions.style.overflowY = 'auto';
     }
 
     if (addTagBtn && tagInput && tagSuggestions) {
@@ -1198,7 +1203,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (query.length > 0) {
                     filterTagSuggestions(query);
                 } else {
-                    tagSuggestions.style.display = 'none';
+                    // Show all suggestions when input is empty (no limit)
+                    displayTagSuggestions(predefinedTags.filter(tag => !tagsArray.includes(tag)));
                 }
             }, 200);
         });
@@ -1334,11 +1340,12 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         languageSuggestions.innerHTML = '';
-        suggestions.slice(0, 10).forEach((lang, index) => {
+        // Show all suggestions (no limit) - make it scrollable
+        suggestions.forEach((lang, index) => {
             const item = document.createElement('div');
             item.className = 'suggestion-item';
             if (index === 0) item.classList.add('first-item');
-            if (index === suggestions.length - 1 || index === 9) item.classList.add('last-item');
+            if (index === suggestions.length - 1) item.classList.add('last-item');
             item.textContent = lang.name;
             item.addEventListener('click', function() {
                 if (!languagesArray.includes(lang.id)) {
@@ -1353,6 +1360,8 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         languageSuggestions.style.display = 'block';
+        languageSuggestions.style.maxHeight = '300px';
+        languageSuggestions.style.overflowY = 'auto';
     }
 
     if (languageInput && languageSuggestions) {
@@ -1361,8 +1370,8 @@ document.addEventListener('DOMContentLoaded', function() {
             if (query.length > 0) {
                 filterLanguageSuggestions(query);
             } else {
-                // Show all suggestions when focused and empty
-                displayLanguageSuggestions(predefinedLanguages.filter(lang => !languagesArray.includes(lang.id)).slice(0, 10));
+                // Show all suggestions when focused and empty (no limit)
+                displayLanguageSuggestions(predefinedLanguages.filter(lang => !languagesArray.includes(lang.id)));
             }
         });
 
@@ -1374,8 +1383,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (query.length > 0) {
                     filterLanguageSuggestions(query);
                 } else {
-                    // Show all available suggestions when input is empty
-                    displayLanguageSuggestions(predefinedLanguages.filter(lang => !languagesArray.includes(lang.id)).slice(0, 10));
+                    // Show all available suggestions when input is empty (no limit)
+                    displayLanguageSuggestions(predefinedLanguages.filter(lang => !languagesArray.includes(lang.id)));
                 }
             }, 200);
         });
@@ -1501,11 +1510,12 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         categorySuggestions.innerHTML = '';
-        suggestions.slice(0, 10).forEach((cat, index) => {
+        // Show all suggestions (no limit) - make it scrollable
+        suggestions.forEach((cat, index) => {
             const item = document.createElement('div');
             item.className = 'suggestion-item';
             if (index === 0) item.classList.add('first-item');
-            if (index === suggestions.length - 1 || index === 9) item.classList.add('last-item');
+            if (index === suggestions.length - 1) item.classList.add('last-item');
             item.textContent = cat.name;
             item.addEventListener('click', function() {
                 if (!categoriesArray.includes(cat.id)) {
@@ -1520,6 +1530,8 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         categorySuggestions.style.display = 'block';
+        categorySuggestions.style.maxHeight = '300px';
+        categorySuggestions.style.overflowY = 'auto';
     }
 
     if (categoryInput && categorySuggestions) {
@@ -1528,8 +1540,8 @@ document.addEventListener('DOMContentLoaded', function() {
             if (query.length > 0) {
                 filterCategorySuggestions(query);
             } else {
-                // Show all suggestions when focused and empty
-                displayCategorySuggestions(predefinedCategories.filter(cat => !categoriesArray.includes(cat.id)).slice(0, 10));
+                // Show all suggestions when focused and empty (no limit)
+                displayCategorySuggestions(predefinedCategories.filter(cat => !categoriesArray.includes(cat.id)));
             }
         });
 
@@ -1541,8 +1553,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (query.length > 0) {
                     filterCategorySuggestions(query);
                 } else {
-                    // Show all available suggestions when input is empty
-                    displayCategorySuggestions(predefinedCategories.filter(cat => !categoriesArray.includes(cat.id)).slice(0, 10));
+                    // Show all available suggestions when input is empty (no limit)
+                    displayCategorySuggestions(predefinedCategories.filter(cat => !categoriesArray.includes(cat.id)));
                 }
             }, 200);
         });
@@ -1684,7 +1696,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         function showAllSuggestions() {
-            displaySuggestions(mentorTypes.slice(0, 10)); // Show first 10
+            displaySuggestions(mentorTypes); // Show all mentor types
         }
 
         function displaySuggestions(suggestions) {
@@ -1704,6 +1716,8 @@ document.addEventListener('DOMContentLoaded', function() {
             });
 
             mentorTypeSuggestions.style.display = 'block';
+            mentorTypeSuggestions.style.maxHeight = '300px';
+            mentorTypeSuggestions.style.overflowY = 'auto';
         }
     }
 
