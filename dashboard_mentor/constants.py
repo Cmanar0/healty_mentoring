@@ -464,4 +464,84 @@ PREDEFINED_CATEGORIES = [
     {'id': 'storytelling_coaching', 'name': 'Storytelling Coaching'},
 ]
 
+# Common timezones grouped by region for user-friendly selection
+# Format: {'id': 'IANA_timezone', 'name': 'Display Name', 'region': 'Region Name', 'offset': 'UTC offset'}
+COMMON_TIMEZONES = [
+    # North America
+    {'id': 'America/New_York', 'name': 'Eastern Time (US & Canada)', 'region': 'North America', 'offset': 'UTC-5'},
+    {'id': 'America/Chicago', 'name': 'Central Time (US & Canada)', 'region': 'North America', 'offset': 'UTC-6'},
+    {'id': 'America/Denver', 'name': 'Mountain Time (US & Canada)', 'region': 'North America', 'offset': 'UTC-7'},
+    {'id': 'America/Los_Angeles', 'name': 'Pacific Time (US & Canada)', 'region': 'North America', 'offset': 'UTC-8'},
+    {'id': 'America/Phoenix', 'name': 'Arizona', 'region': 'North America', 'offset': 'UTC-7'},
+    {'id': 'America/Anchorage', 'name': 'Alaska', 'region': 'North America', 'offset': 'UTC-9'},
+    {'id': 'Pacific/Honolulu', 'name': 'Hawaii', 'region': 'North America', 'offset': 'UTC-10'},
+    {'id': 'America/Toronto', 'name': 'Eastern Time (Canada)', 'region': 'North America', 'offset': 'UTC-5'},
+    {'id': 'America/Vancouver', 'name': 'Pacific Time (Canada)', 'region': 'North America', 'offset': 'UTC-8'},
+    {'id': 'America/Mexico_City', 'name': 'Mexico City', 'region': 'North America', 'offset': 'UTC-6'},
+    
+    # Europe
+    {'id': 'Europe/London', 'name': 'London', 'region': 'Europe', 'offset': 'UTC+0'},
+    {'id': 'Europe/Paris', 'name': 'Paris', 'region': 'Europe', 'offset': 'UTC+1'},
+    {'id': 'Europe/Berlin', 'name': 'Berlin', 'region': 'Europe', 'offset': 'UTC+1'},
+    {'id': 'Europe/Rome', 'name': 'Rome', 'region': 'Europe', 'offset': 'UTC+1'},
+    {'id': 'Europe/Madrid', 'name': 'Madrid', 'region': 'Europe', 'offset': 'UTC+1'},
+    {'id': 'Europe/Amsterdam', 'name': 'Amsterdam', 'region': 'Europe', 'offset': 'UTC+1'},
+    {'id': 'Europe/Brussels', 'name': 'Brussels', 'region': 'Europe', 'offset': 'UTC+1'},
+    {'id': 'Europe/Vienna', 'name': 'Vienna', 'region': 'Europe', 'offset': 'UTC+1'},
+    {'id': 'Europe/Zurich', 'name': 'Zurich', 'region': 'Europe', 'offset': 'UTC+1'},
+    {'id': 'Europe/Stockholm', 'name': 'Stockholm', 'region': 'Europe', 'offset': 'UTC+1'},
+    {'id': 'Europe/Oslo', 'name': 'Oslo', 'region': 'Europe', 'offset': 'UTC+1'},
+    {'id': 'Europe/Copenhagen', 'name': 'Copenhagen', 'region': 'Europe', 'offset': 'UTC+1'},
+    {'id': 'Europe/Helsinki', 'name': 'Helsinki', 'region': 'Europe', 'offset': 'UTC+2'},
+    {'id': 'Europe/Warsaw', 'name': 'Warsaw', 'region': 'Europe', 'offset': 'UTC+1'},
+    {'id': 'Europe/Prague', 'name': 'Prague', 'region': 'Europe', 'offset': 'UTC+1'},
+    {'id': 'Europe/Budapest', 'name': 'Budapest', 'region': 'Europe', 'offset': 'UTC+1'},
+    {'id': 'Europe/Athens', 'name': 'Athens', 'region': 'Europe', 'offset': 'UTC+2'},
+    {'id': 'Europe/Lisbon', 'name': 'Lisbon', 'region': 'Europe', 'offset': 'UTC+0'},
+    {'id': 'Europe/Dublin', 'name': 'Dublin', 'region': 'Europe', 'offset': 'UTC+0'},
+    {'id': 'Europe/Moscow', 'name': 'Moscow', 'region': 'Europe', 'offset': 'UTC+3'},
+    {'id': 'Europe/Kiev', 'name': 'Kyiv', 'region': 'Europe', 'offset': 'UTC+2'},
+    {'id': 'Europe/Istanbul', 'name': 'Istanbul', 'region': 'Europe', 'offset': 'UTC+3'},
+    
+    # Asia Pacific
+    {'id': 'Asia/Dubai', 'name': 'Dubai', 'region': 'Middle East', 'offset': 'UTC+4'},
+    {'id': 'Asia/Riyadh', 'name': 'Riyadh', 'region': 'Middle East', 'offset': 'UTC+3'},
+    {'id': 'Asia/Jerusalem', 'name': 'Jerusalem', 'region': 'Middle East', 'offset': 'UTC+2'},
+    {'id': 'Asia/Tehran', 'name': 'Tehran', 'region': 'Middle East', 'offset': 'UTC+3:30'},
+    {'id': 'Asia/Kolkata', 'name': 'Mumbai, New Delhi', 'region': 'Asia', 'offset': 'UTC+5:30'},
+    {'id': 'Asia/Dhaka', 'name': 'Dhaka', 'region': 'Asia', 'offset': 'UTC+6'},
+    {'id': 'Asia/Bangkok', 'name': 'Bangkok', 'region': 'Asia', 'offset': 'UTC+7'},
+    {'id': 'Asia/Singapore', 'name': 'Singapore', 'region': 'Asia', 'offset': 'UTC+8'},
+    {'id': 'Asia/Hong_Kong', 'name': 'Hong Kong', 'region': 'Asia', 'offset': 'UTC+8'},
+    {'id': 'Asia/Shanghai', 'name': 'Beijing, Shanghai', 'region': 'Asia', 'offset': 'UTC+8'},
+    {'id': 'Asia/Tokyo', 'name': 'Tokyo', 'region': 'Asia', 'offset': 'UTC+9'},
+    {'id': 'Asia/Seoul', 'name': 'Seoul', 'region': 'Asia', 'offset': 'UTC+9'},
+    {'id': 'Asia/Manila', 'name': 'Manila', 'region': 'Asia', 'offset': 'UTC+8'},
+    {'id': 'Asia/Jakarta', 'name': 'Jakarta', 'region': 'Asia', 'offset': 'UTC+7'},
+    {'id': 'Asia/Kuala_Lumpur', 'name': 'Kuala Lumpur', 'region': 'Asia', 'offset': 'UTC+8'},
+    {'id': 'Asia/Taipei', 'name': 'Taipei', 'region': 'Asia', 'offset': 'UTC+8'},
+    {'id': 'Asia/Sydney', 'name': 'Sydney', 'region': 'Asia Pacific', 'offset': 'UTC+10'},
+    {'id': 'Australia/Melbourne', 'name': 'Melbourne', 'region': 'Asia Pacific', 'offset': 'UTC+10'},
+    {'id': 'Australia/Brisbane', 'name': 'Brisbane', 'region': 'Asia Pacific', 'offset': 'UTC+10'},
+    {'id': 'Pacific/Auckland', 'name': 'Auckland', 'region': 'Asia Pacific', 'offset': 'UTC+12'},
+    
+    # South America
+    {'id': 'America/Sao_Paulo', 'name': 'São Paulo', 'region': 'South America', 'offset': 'UTC-3'},
+    {'id': 'America/Buenos_Aires', 'name': 'Buenos Aires', 'region': 'South America', 'offset': 'UTC-3'},
+    {'id': 'America/Lima', 'name': 'Lima', 'region': 'South America', 'offset': 'UTC-5'},
+    {'id': 'America/Bogota', 'name': 'Bogotá', 'region': 'South America', 'offset': 'UTC-5'},
+    {'id': 'America/Santiago', 'name': 'Santiago', 'region': 'South America', 'offset': 'UTC-3'},
+    {'id': 'America/Caracas', 'name': 'Caracas', 'region': 'South America', 'offset': 'UTC-4'},
+    
+    # Africa
+    {'id': 'Africa/Cairo', 'name': 'Cairo', 'region': 'Africa', 'offset': 'UTC+2'},
+    {'id': 'Africa/Johannesburg', 'name': 'Johannesburg', 'region': 'Africa', 'offset': 'UTC+2'},
+    {'id': 'Africa/Lagos', 'name': 'Lagos', 'region': 'Africa', 'offset': 'UTC+1'},
+    {'id': 'Africa/Nairobi', 'name': 'Nairobi', 'region': 'Africa', 'offset': 'UTC+3'},
+    {'id': 'Africa/Casablanca', 'name': 'Casablanca', 'region': 'Africa', 'offset': 'UTC+1'},
+    
+    # UTC
+    {'id': 'UTC', 'name': 'UTC (Coordinated Universal Time)', 'region': 'UTC', 'offset': 'UTC+0'},
+]
+
 

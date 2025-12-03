@@ -3521,3 +3521,35 @@ textarea.form-input {
 #categoriesList {
   margin-bottom: 16px !important;
 }
+
+/* Timezone Selector Styles */
+.timezone-selector-container {
+  position: relative;
+}
+
+.timezone-info {
+  padding: 8px 12px;
+  background: var(--dash-bg-light);
+  border-radius: 6px;
+  border-left: 3px solid var(--dash-primary);
+}
+
+.timezone-region-header {
+  padding: 8px 12px;
+  background: var(--dash-bg);
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--dash-text-main);
+  border-bottom: 1px solid var(--dash-border);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.timezone-item {
+  padding: 10px 12px;
+}
+
+.timezone-item:hover {
+  background: rgba(16, 185, 129, 0.05);
+}

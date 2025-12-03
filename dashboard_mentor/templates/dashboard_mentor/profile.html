@@ -119,7 +119,17 @@
                     <!-- Time Zone -->
                     <div class="compact-form-group">
                         <label><i class="fas fa-clock"></i> Time Zone</label>
-                        <input type="text" name="time_zone" value="{{ user.profile.time_zone|default:'' }}" class="form-input" placeholder="e.g., UTC, America/New_York">
+                        <div class="timezone-selector-container">
+                            <div class="autocomplete-container" style="position: relative;">
+                                <input type="text" name="time_zone" id="timezoneInput" value="{{ user.profile.time_zone|default:'' }}" class="form-input autocomplete-input" placeholder="Search for your timezone..." autocomplete="off">
+                                <input type="hidden" id="timezoneValue" name="time_zone" value="{{ user.profile.time_zone|default:'' }}">
+                                <div class="autocomplete-suggestions" id="timezoneSuggestions"></div>
+                            </div>
+                            <div id="timezoneInfo" class="timezone-info" style="margin-top: 8px; font-size: 0.85rem; color: var(--dash-text-muted); display: none;">
+                                <span id="timezoneCurrentTime"></span>
+                            </div>
+                        </div>
+                        {{ common_timezones|json_script:"timezonesData" }}
                     </div>
 
                     <!-- Expertise (Tags) -->
@@ -599,7 +609,45 @@
                 </a>
             </div>
 
-            <!-- Clients Reviews -->
+            <!-- Your Community -->
+            <div style="padding: 20px 24px; border-top: 1px solid var(--dash-border);">
+                <div style="display: flex; align-items: flex-start; gap: 16px; margin-bottom: 16px;">
+                    <div style="width: 40px; height: 40px; border-radius: 10px; background: rgba(59, 130, 246, 0.1); display: flex; align-items: center; justify-content: center; color: #3b82f6; flex-shrink: 0;">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <div>
+                        <h4 style="margin: 0 0 6px; font-size: 0.95rem; font-weight: 600; color: var(--dash-text-main);">
+                            Your Community
+                        </h4>
+                        <p style="margin: 0; font-size: 0.85rem; color: var(--dash-text-muted); line-height: 1.5;">
+                            Build a following! Use your marketing content to attract new people and create a vibrant community. Engaging with your community makes it easier to turn followers into loyal clients.
+                        </p>
+                    </div>
+                </div>
+                <a href="#" class="btn btn-outline btn-sm" style="width: 100%; text-align: center; display: inline-block;">
+                    Grow your Community
+                </a>
+            </div>
+
+            <!-- Your Courses -->
+            <div style="padding: 20px 24px; border-top: 1px solid var(--dash-border);">
+                <div style="display: flex; align-items: flex-start; gap: 16px; margin-bottom: 16px;">
+                    <div style="width: 40px; height: 40px; border-radius: 10px; background: rgba(16, 185, 129, 0.1); display: flex; align-items: center; justify-content: center; color: #10b981; flex-shrink: 0;">
+                        <i class="fas fa-graduation-cap"></i>
+                    </div>
+                    <div>
+                        <h4 style="margin: 0 0 6px; font-size: 0.95rem; font-weight: 600; color: var(--dash-text-main);">
+                            Your Courses
+                        </h4>
+                        <p style="margin: 0; font-size: 0.85rem; color: var(--dash-text-muted); line-height: 1.5;">
+                            Unlock a new revenue stream! Create online courses to share your expertise and generate additional income alongside your mentoring sessions.
+                        </p>
+                    </div>
+                </div>
+                <a href="#" class="btn btn-outline btn-sm" style="width: 100%; text-align: center; display: inline-block;">
+                    Create Course
+                </a>
+            </div>
             <div style="padding: 20px 24px; border-top: 1px solid var(--dash-border);">
                 <h4 style="margin: 0 0 12px; font-size: 0.95rem; font-weight: 600; color: var(--dash-text-main);">
                     Clients Reviews
@@ -609,16 +657,109 @@
                 </p>
                 
                 <!-- Reviews Progress Bar -->
-                <div style="margin-bottom: 16px;">
+                <div style="margin-bottom: 24px;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                         <span style="font-size: 0.85rem; color: var(--dash-text-muted);">Reviews</span>
                         <span style="font-size: 0.85rem; font-weight: 600; color: var(--dash-text-main);">
-                            <span id="reviewsCount">0</span>/3
+                            <span id="reviewsCount">3</span>/3
                         </span>
                     </div>
                     <div style="width: 100%; height: 8px; background: var(--dash-border); border-radius: 4px; overflow: hidden;">
-                        <div id="reviewsProgressBar" style="height: 100%; background: var(--dash-primary); border-radius: 4px; transition: width 0.3s ease; width: 0%;"></div>
+                        <div id="reviewsProgressBar" style="height: 100%; background: var(--dash-primary); border-radius: 4px; transition: width 0.3s ease; width: 100%;"></div>
                     </div>
+                </div>
+
+                <!-- Static Reviews List -->
+                <div class="reviews-list" style="display: flex; flex-direction: column; gap: 16px; margin-bottom: 24px;">
+                    <!-- Review 1 -->
+                    <div class="review-item" style="display: flex; gap: 12px; align-items: start;">
+                        <div style="width: 40px; height: 40px; border-radius: 50%; background: #f3f4f6; display: flex; align-items: center; justify-content: center; color: #9ca3af; flex-shrink: 0;">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <div>
+                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                                <span style="font-weight: 600; font-size: 0.9rem; color: var(--dash-text-main);">Sarah Jenkins</span>
+                                <div style="color: #fbbf24; font-size: 0.8rem;">
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                </div>
+                            </div>
+                            <p style="margin: 0; font-size: 0.85rem; color: var(--dash-text-muted); line-height: 1.4;">
+                                "Great session! Really helped me clarify my career goals."
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <!-- Review 2 -->
+                    <div class="review-item" style="display: flex; gap: 12px; align-items: start;">
+                        <div style="width: 40px; height: 40px; border-radius: 50%; background: #f3f4f6; display: flex; align-items: center; justify-content: center; color: #9ca3af; flex-shrink: 0;">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <div>
+                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                                <span style="font-weight: 600; font-size: 0.9rem; color: var(--dash-text-main);">Mike Ross</span>
+                                <div style="color: #fbbf24; font-size: 0.8rem;">
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star-half-alt"></i>
+                                </div>
+                            </div>
+                            <p style="margin: 0; font-size: 0.85rem; color: var(--dash-text-muted); line-height: 1.4;">
+                                "Very knowledgeable and easy to talk to. Highly recommended."
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Review 3 -->
+                    <div class="review-item" style="display: flex; gap: 12px; align-items: start;">
+                        <div style="width: 40px; height: 40px; border-radius: 50%; background: #f3f4f6; display: flex; align-items: center; justify-content: center; color: #9ca3af; flex-shrink: 0;">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <div>
+                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                                <span style="font-weight: 600; font-size: 0.9rem; color: var(--dash-text-main);">Emily Chen</span>
+                                <div style="color: #fbbf24; font-size: 0.8rem;">
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                </div>
+                            </div>
+                            <p style="margin: 0; font-size: 0.85rem; color: var(--dash-text-muted); line-height: 1.4;">
+                                "The best mentor I've had so far. Thank you!"
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <a href="#" class="btn btn-outline btn-sm" style="width: 100%; text-align: center; display: inline-block;">
+                    Manage reviews
+                </a>
+            </div>
+
+            <!-- Boost Promotion Box -->
+            <div style="padding: 24px; border-top: 1px solid var(--dash-border);">
+                <div class="boost-promo-box" style="margin: 0;">
+                    <div class="boost-promo-icon">
+                        <i class="fas fa-rocket"></i>
+                    </div>
+                    <h4 class="boost-promo-title">Boost your visibility</h4>
+                    <p class="boost-promo-stats">
+                        Your profile was viewed <strong>{{ profile_views|default:47 }} times</strong> last month
+                    </p>
+                    <p class="boost-promo-text">
+                        Stand out from the crowd! Complete your profile to 100% and activate Boost to appear at the top of search results.
+                    </p>
+                    <a href="#" class="btn-boost">
+                        <i class="fas fa-star"></i>
+                        <span>Get Boost</span>
+                    </a>
                 </div>
             </div>
         </div>
@@ -737,8 +878,183 @@ function calculateEarnings() {
     }
 }
 
+// Timezone Management
+function initializeTimezoneSelector() {
+    const timezoneInput = document.getElementById('timezoneInput');
+    const timezoneValue = document.getElementById('timezoneValue');
+    const timezoneSuggestions = document.getElementById('timezoneSuggestions');
+    const timezoneInfo = document.getElementById('timezoneInfo');
+    const timezoneCurrentTime = document.getElementById('timezoneCurrentTime');
+    const timezonesData = document.getElementById('timezonesData');
+    
+    if (!timezoneInput || !timezoneValue || !timezoneSuggestions || !timezonesData) return;
+    
+    const timezones = JSON.parse(timezonesData.textContent);
+    let selectedTimezone = null;
+    let timezoneUpdateInterval = null;
+    
+    // Auto-detect timezone on page load if not set
+    if (!timezoneValue.value || timezoneValue.value.trim() === '') {
+        try {
+            const detectedTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+            // Try to find matching timezone in our list
+            const matchingTz = timezones.find(tz => tz.id === detectedTz);
+            if (matchingTz) {
+                selectedTimezone = matchingTz;
+                timezoneInput.value = matchingTz.name + ' (' + matchingTz.offset + ')';
+                timezoneValue.value = matchingTz.id;
+                updateTimezoneDisplay();
+            }
+        } catch (e) {
+            console.log('Could not auto-detect timezone:', e);
+        }
+    } else {
+        // Find and display current timezone
+        const currentTz = timezones.find(tz => tz.id === timezoneValue.value);
+        if (currentTz) {
+            selectedTimezone = currentTz;
+            timezoneInput.value = currentTz.name + ' (' + currentTz.offset + ')';
+            updateTimezoneDisplay();
+        }
+    }
+    
+    function updateTimezoneDisplay() {
+        if (!selectedTimezone) return;
+        
+        try {
+            const now = new Date();
+            const formatter = new Intl.DateTimeFormat('en-US', {
+                timeZone: selectedTimezone.id,
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: true,
+                weekday: 'short',
+                month: 'short',
+                day: 'numeric'
+            });
+            const formatted = formatter.format(now);
+            timezoneCurrentTime.textContent = `Current time: ${formatted}`;
+            timezoneInfo.style.display = 'block';
+        } catch (e) {
+            timezoneInfo.style.display = 'none';
+        }
+    }
+    
+    // Update time display every second
+    if (selectedTimezone) {
+        updateTimezoneDisplay();
+        timezoneUpdateInterval = setInterval(updateTimezoneDisplay, 1000);
+    }
+    
+    function filterTimezoneSuggestions(query) {
+        const lowerQuery = query.toLowerCase();
+        return timezones.filter(tz => 
+            tz.name.toLowerCase().includes(lowerQuery) ||
+            tz.region.toLowerCase().includes(lowerQuery) ||
+            tz.id.toLowerCase().includes(lowerQuery) ||
+            tz.offset.toLowerCase().includes(lowerQuery)
+        );
+    }
+    
+    function displayTimezoneSuggestions(suggestions) {
+        if (suggestions.length === 0) {
+            timezoneSuggestions.style.display = 'none';
+            return;
+        }
+        
+        // Group by region
+        const grouped = {};
+        suggestions.forEach(tz => {
+            if (!grouped[tz.region]) {
+                grouped[tz.region] = [];
+            }
+            grouped[tz.region].push(tz);
+        });
+        
+        timezoneSuggestions.innerHTML = '';
+        
+        Object.keys(grouped).sort().forEach(region => {
+            const regionHeader = document.createElement('div');
+            regionHeader.className = 'timezone-region-header';
+            regionHeader.textContent = region;
+            timezoneSuggestions.appendChild(regionHeader);
+            
+            grouped[region].forEach((tz, index) => {
+                const item = document.createElement('div');
+                item.className = 'suggestion-item timezone-item';
+                item.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                        <div>
+                            <div style="font-weight: 500; color: var(--dash-text-main);">${tz.name}</div>
+                            <div style="font-size: 0.85rem; color: var(--dash-text-muted);">${tz.id}</div>
+                        </div>
+                        <div style="font-size: 0.85rem; color: var(--dash-text-muted);">${tz.offset}</div>
+                    </div>
+                `;
+                item.addEventListener('click', function() {
+                    selectedTimezone = tz;
+                    timezoneInput.value = tz.name + ' (' + tz.offset + ')';
+                    timezoneValue.value = tz.id;
+                    timezoneSuggestions.style.display = 'none';
+                    updateTimezoneDisplay();
+                    if (timezoneUpdateInterval) {
+                        clearInterval(timezoneUpdateInterval);
+                    }
+                    timezoneUpdateInterval = setInterval(updateTimezoneDisplay, 1000);
+                });
+                timezoneSuggestions.appendChild(item);
+            });
+        });
+        
+        timezoneSuggestions.style.display = 'block';
+        timezoneSuggestions.style.maxHeight = '400px';
+        timezoneSuggestions.style.overflowY = 'auto';
+    }
+    
+    let timezoneDebounceTimer;
+    
+    timezoneInput.addEventListener('focus', function() {
+        const query = this.value.trim();
+        if (query.length > 0) {
+            displayTimezoneSuggestions(filterTimezoneSuggestions(query));
+        } else {
+            displayTimezoneSuggestions(timezones);
+        }
+    });
+    
+    timezoneInput.addEventListener('input', function() {
+        clearTimeout(timezoneDebounceTimer);
+        const query = this.value.trim();
+        timezoneDebounceTimer = setTimeout(() => {
+            if (query.length > 0) {
+                displayTimezoneSuggestions(filterTimezoneSuggestions(query));
+            } else {
+                displayTimezoneSuggestions(timezones);
+            }
+        }, 200);
+    });
+    
+    // Close suggestions when clicking outside
+    document.addEventListener('click', function(event) {
+        if (!timezoneInput.contains(event.target) && !timezoneSuggestions.contains(event.target)) {
+            timezoneSuggestions.style.display = 'none';
+        }
+    });
+    
+    // Clear interval on page unload
+    window.addEventListener('beforeunload', function() {
+        if (timezoneUpdateInterval) {
+            clearInterval(timezoneUpdateInterval);
+        }
+    });
+}
+
 // Profile completion circle animation
 document.addEventListener('DOMContentLoaded', function() {
+    // Initialize timezone selector
+    initializeTimezoneSelector();
+    
     // Initialize earnings display
     const pricePerHourInput = document.getElementById('pricePerHour');
     if (pricePerHourInput) {
@@ -751,23 +1067,52 @@ document.addEventListener('DOMContentLoaded', function() {
     const firstSessionFreeCheckbox = document.getElementById('firstSessionFree');
     const firstSessionLengthWrapper = document.getElementById('firstSessionLengthWrapper');
     const firstSessionStatusText = document.getElementById('firstSessionStatusText');
+    const firstSessionLengthInput = document.getElementById('firstSessionLength');
+    
+    // Function to set default value if checkbox is checked and input is empty
+    function ensureFirstSessionLengthValue() {
+        if (firstSessionFreeCheckbox && firstSessionFreeCheckbox.checked && firstSessionLengthInput) {
+            if (!firstSessionLengthInput.value || firstSessionLengthInput.value.trim() === '') {
+                firstSessionLengthInput.value = '30';
+            }
+        }
+    }
     
     if (firstSessionFreeCheckbox && firstSessionLengthWrapper) {
+        // Set default value on page load if checkbox is checked
+        ensureFirstSessionLengthValue();
+        
         firstSessionFreeCheckbox.addEventListener('change', function() {
             if (this.checked) {
                 firstSessionLengthWrapper.classList.add('visible');
                 if (firstSessionStatusText) firstSessionStatusText.textContent = 'Enabled';
+                // Set default value if input is empty
+                ensureFirstSessionLengthValue();
             } else {
                 firstSessionLengthWrapper.classList.remove('visible');
                 if (firstSessionStatusText) firstSessionStatusText.textContent = 'Disabled';
                 
                 // Clear the value when unchecked after a delay
                 setTimeout(() => {
-                    const firstSessionLengthInput = document.getElementById('firstSessionLength');
                     if (firstSessionLengthInput) {
                         firstSessionLengthInput.value = '';
                     }
                 }, 300);
+            }
+        });
+    }
+    
+    // Form validation - prevent submission if checkbox is checked but input is empty
+    const profileFormElement = document.getElementById('profileForm');
+    if (profileFormElement) {
+        profileFormElement.addEventListener('submit', function(e) {
+            if (firstSessionFreeCheckbox && firstSessionFreeCheckbox.checked && firstSessionLengthInput) {
+                if (!firstSessionLengthInput.value || firstSessionLengthInput.value.trim() === '' || parseInt(firstSessionLengthInput.value) < 1) {
+                    e.preventDefault();
+                    showNotification('Please enter a valid duration for the free session (minimum 1 minute).', 'error');
+                    firstSessionLengthInput.focus();
+                    return false;
+                }
             }
         });
     }
@@ -1593,7 +1938,25 @@ document.addEventListener('DOMContentLoaded', function() {
     // Update credentials data on form submit
     const profileForm = document.getElementById('profileForm');
     if (profileForm) {
-        profileForm.addEventListener('submit', function() {
+        profileForm.addEventListener('submit', function(e) {
+            // Ensure first session length has a value if checkbox is checked
+            const firstSessionFreeCheckbox = document.getElementById('firstSessionFree');
+            const firstSessionLengthInput = document.getElementById('firstSessionLength');
+            if (firstSessionFreeCheckbox && firstSessionFreeCheckbox.checked && firstSessionLengthInput) {
+                if (!firstSessionLengthInput.value || firstSessionLengthInput.value.trim() === '' || parseInt(firstSessionLengthInput.value) < 1) {
+                    // Set default value if empty
+                    if (!firstSessionLengthInput.value || firstSessionLengthInput.value.trim() === '') {
+                        firstSessionLengthInput.value = '30';
+                    } else {
+                        // If value exists but is invalid, prevent submission
+                        e.preventDefault();
+                        showNotification('Please enter a valid duration for the free session (minimum 1 minute).', 'error');
+                        firstSessionLengthInput.focus();
+                        return false;
+                    }
+                }
+            }
+            
             updateQualificationsData();
             updateTagsData();
             updateLanguagesData();

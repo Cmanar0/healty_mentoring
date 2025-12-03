@@ -3,7 +3,8 @@ from django.contrib.auth.decorators import login_required
 from dashboard_mentor.models import Qualification
 from dashboard_mentor.constants import (
     PREDEFINED_MENTOR_TYPES, PREDEFINED_TAGS, 
-    PREDEFINED_LANGUAGES, PREDEFINED_CATEGORIES
+    PREDEFINED_LANGUAGES, PREDEFINED_CATEGORIES,
+    COMMON_TIMEZONES
 )
 import json
 
@@ -147,6 +148,7 @@ def account(request):
             "content_percentage": contentPercentage,
             "content_missing": content_missing,
             "billing_filled": billing_filled,
+            "common_timezones": COMMON_TIMEZONES,
         },
     )
 
@@ -416,6 +418,7 @@ def profile(request):
         'predefined_tags': PREDEFINED_TAGS,
         'predefined_languages': PREDEFINED_LANGUAGES,
         'predefined_categories': PREDEFINED_CATEGORIES,
+        'common_timezones': COMMON_TIMEZONES,
     })
 
 @login_required
