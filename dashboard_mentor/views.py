@@ -258,6 +258,19 @@ def profile(request):
             else:
                 profile.session_length = None
             
+            # Handle first session free (boolean checkbox)
+            profile.first_session_free = request.POST.get("first_session_free") == "on"
+            
+            # Handle first session length (only if first_session_free is True)
+            first_session_length = request.POST.get("first_session_length", "")
+            if profile.first_session_free and first_session_length:
+                try:
+                    profile.first_session_length = int(first_session_length)
+                except ValueError:
+                    profile.first_session_length = None
+            else:
+                profile.first_session_length = None
+            
             # Handle social media and links
             profile.instagram_name = instagram_name.strip() if instagram_name else None
             profile.linkedin_name = linkedin_name.strip() if linkedin_name else None

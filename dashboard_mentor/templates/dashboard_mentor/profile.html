@@ -62,6 +62,13 @@
             </div>
 
             <!-- Messages will be shown via notification system -->
+            {% if messages %}
+            <div id="django-messages" style="display: none;">
+                {% for message in messages %}
+                <div data-message="{{ message|escape }}" data-tags="{{ message.tags|default:'info' }}"></div>
+                {% endfor %}
+            </div>
+            {% endif %}
 
             <!-- Compact Form Grid -->
             <form method="post" id="profileForm">
@@ -270,41 +277,104 @@
                         {{ predefined_categories|json_script:"predefinedCategoriesData" }}
                     </div>
 
-                    <!-- Price per Hour, Earnings, and View Subscriptions -->
-                    <div class="compact-form-group form-grid-full" style="display: contents;">
-                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; grid-column: 1 / -1;">
-                            <div style="grid-column: span 2; display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-                                <div class="compact-form-group">
-                                    <label><i class="fas fa-dollar-sign"></i> Price per Hour</label>
-                                    <div style="position: relative;">
-                                        <input type="number" name="price_per_hour" id="pricePerHour" step="1" min="0" value="{{ user.profile.price_per_hour|default:'' }}" class="form-input" placeholder="0" style="padding-left: 32px;">
-                                        <span style="position: absolute; left: 17px; top: 37%; transform: translateY(-50%); color: var(--dash-text-muted); pointer-events: none; font-weight: 500;">$</span>
-                                    </div>
-                                </div>
-                                <div class="compact-form-group">
-                                    <label><i class="fas fa-wallet"></i> You'll Earn (after 3% fees)</label>
-                                    <div id="earningsDisplay" style="padding: 12px 16px; background: var(--dash-bg-light); border: 1px solid var(--dash-border); border-radius: 8px; color: var(--dash-text-main); font-weight: 500; min-height: 43px; display: flex; align-items: center;">
-                                        $0.00
-                                    </div>
+                    <!-- Price per Hour, Earnings, and View Subscriptions (Redesigned) -->
+                    <div class="pricing-section-container">
+                        <div class="pricing-header">
+                            <h4 class="pricing-title">
+                                <i class="fas fa-coins" style="color: var(--dash-primary);"></i> Pricing & Earnings
+                            </h4>
+                            <p class="pricing-subtitle">Set your hourly rate and see what you'll earn.</p>
+                        </div>
+
+                        <div class="pricing-calculator-row">
+                            <!-- Price Input -->
+                            <div class="pricing-input-wrapper">
+                                <label class="pricing-label">Price per Hour</label>
+                                <div class="pricing-input-group">
+                                    <span class="pricing-currency-symbol">$</span>
+                                    <input type="number" name="price_per_hour" id="pricePerHour" step="1" min="0" value="{{ user.profile.price_per_hour|default:'' }}" class="pricing-input" placeholder="0">
                                 </div>
                             </div>
-                            <div class="compact-form-group" style="display: flex; flex-direction: column; justify-content: flex-end;">
-                                <button type="button" class="btn btn-outline" style="width: 100%; height: 43px; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 24px;" onclick="window.location.href='/dashboard/mentor/account/'">
-                                    <i class="fas fa-crown"></i> View Subscriptions
-                                </button>
-                                <p style="margin: 8px 0 0 0; font-size: 0.75rem; color: var(--dash-text-muted); text-align: center; line-height: 1.3;">
-                                    Pick any Subscription and avoid any fees - Earn full amount / hour
+
+                            <!-- Arrow -->
+                            <div class="pricing-arrow">
+                                <i class="fas fa-arrow-right"></i>
+                            </div>
+
+                            <!-- Earnings Display -->
+                            <div class="pricing-input-wrapper">
+                                <label class="pricing-label">You'll Earn <span style="font-weight: 400; text-transform: none; font-size: 0.75rem;">(after 3% fees)</span></label>
+                                <div id="earningsDisplay" class="pricing-result-box">
+                                    $0.00
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Subscription Promo Card -->
+                        <div class="subscription-promo-card">
+                            <div class="promo-content">
+                                <h5 class="promo-title">
+                                    Keep 100% of your earnings
+                                    <span class="promo-badge">Premium</span>
+                                </h5>
+                                <p class="promo-text">
+                                    With our <strong>FREE plan</strong>, you don't pay any monthly subscription, but we take a 3% fee from each session to cover payment provider fees and keep our infrastructure running. Choose any <strong>subscription plan</strong> to avoid the 3% fee entirely and keep 100% of your earnings.
                                 </p>
+                            </div>
+                            <div class="promo-action">
+                                <button type="button" class="btn btn-primary" onclick="window.location.href='/dashboard/mentor/account/'">
+                                    View Subscriptions
+                                </button>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Session Length -->
-                    <div class="compact-form-group">
-                        <label><i class="fas fa-clock"></i> Session Length</label>
-                        <div style="position: relative;">
-                            <input type="number" name="session_length" id="sessionLength" step="1" min="1" value="{{ user.profile.session_length|default:'' }}" class="form-input" placeholder="60" style="padding-right: 50px;">
-                            <span style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: var(--dash-text-muted); pointer-events: none; font-size: 0.9rem;">minutes</span>
+                    <!-- Session Settings (Redesigned) -->
+                    <div class="session-settings-container">
+                        <div class="session-settings-header">
+                            <h4 class="session-settings-title">
+                                <i class="fas fa-sliders-h" style="color: var(--dash-primary);"></i> Session Configuration
+                            </h4>
+                        </div>
+                        
+                        <div class="session-settings-grid">
+                            <!-- Standard Session Length -->
+                            <div class="session-setting-item">
+                                <label class="setting-label">
+                                    <i class="fas fa-clock"></i> Session Length
+                                </label>
+                                <p class="setting-description">Set the standard duration for your paid mentoring sessions.</p>
+                                <div class="pricing-input-group">
+                                    <input type="number" name="session_length" id="sessionLength" step="1" min="1" value="{{ user.profile.session_length|default:'' }}" class="pricing-input" placeholder="60" style="padding-left: 16px; padding-right: 50px;">
+                                    <span style="position: absolute; right: 16px; color: var(--dash-text-muted); pointer-events: none; font-size: 0.9rem;">minutes</span>
+                                </div>
+                            </div>
+
+                            <!-- First Session Free Offer -->
+                            <div class="session-setting-item">
+                                <label class="setting-label">
+                                    <i class="fas fa-gift"></i> First Session Free
+                                </label>
+                                <p class="setting-description">Attract more clients by offering a free introductory session.</p>
+                                
+                                <div class="toggle-wrapper">
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" name="first_session_free" id="firstSessionFree" {% if user.profile.first_session_free %}checked{% endif %}>
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                    <span class="toggle-status-text" id="firstSessionStatusText">
+                                        {% if user.profile.first_session_free %}Enabled{% else %}Disabled{% endif %}
+                                    </span>
+                                </div>
+
+                                <div id="firstSessionLengthWrapper" class="free-session-input-container {% if user.profile.first_session_free %}visible{% endif %}">
+                                    <label class="setting-label" style="font-size: 0.85rem; margin-bottom: 6px;">Free Session Duration</label>
+                                    <div class="pricing-input-group">
+                                        <input type="number" name="first_session_length" id="firstSessionLength" step="1" min="1" value="{{ user.profile.first_session_length|default:'' }}" class="pricing-input" placeholder="30" style="padding-left: 16px; padding-right: 50px;">
+                                        <span style="position: absolute; right: 16px; color: var(--dash-text-muted); pointer-events: none; font-size: 0.9rem;">minutes</span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -673,6 +743,31 @@ document.addEventListener('DOMContentLoaded', function() {
         calculateEarnings(); // Initial calculation
         pricePerHourInput.addEventListener('input', calculateEarnings);
         pricePerHourInput.addEventListener('change', calculateEarnings);
+    }
+    
+    // Handle first session free toggle
+    const firstSessionFreeCheckbox = document.getElementById('firstSessionFree');
+    const firstSessionLengthWrapper = document.getElementById('firstSessionLengthWrapper');
+    const firstSessionStatusText = document.getElementById('firstSessionStatusText');
+    
+    if (firstSessionFreeCheckbox && firstSessionLengthWrapper) {
+        firstSessionFreeCheckbox.addEventListener('change', function() {
+            if (this.checked) {
+                firstSessionLengthWrapper.classList.add('visible');
+                if (firstSessionStatusText) firstSessionStatusText.textContent = 'Enabled';
+            } else {
+                firstSessionLengthWrapper.classList.remove('visible');
+                if (firstSessionStatusText) firstSessionStatusText.textContent = 'Disabled';
+                
+                // Clear the value when unchecked after a delay
+                setTimeout(() => {
+                    const firstSessionLengthInput = document.getElementById('firstSessionLength');
+                    if (firstSessionLengthInput) {
+                        firstSessionLengthInput.value = '';
+                    }
+                }, 300);
+            }
+        });
     }
     
     // Profile Completeness Circle
@@ -1696,20 +1791,23 @@ function backToStep1() {
 
 // Convert Django messages to notifications
 document.addEventListener('DOMContentLoaded', function() {
-    {% if messages %}
-        {% for message in messages %}
-            // Map Django message tags to notification types
-            {% if message.tags == 'success' %}
-                showNotification('{{ message|escapejs }}', 'success');
-            {% elif message.tags == 'error' %}
-                showNotification('{{ message|escapejs }}', 'error');
-            {% elif message.tags == 'warning' %}
-                showNotification('{{ message|escapejs }}', 'warning');
-            {% else %}
-                showNotification('{{ message|escapejs }}', 'note');
-            {% endif %}
-        {% endfor %}
-    {% endif %}
+    var messagesContainer = document.getElementById('django-messages');
+    if (messagesContainer) {
+        var messageDivs = messagesContainer.querySelectorAll('div[data-message]');
+        messageDivs.forEach(function(div) {
+            var messageText = div.getAttribute('data-message');
+            var tags = div.getAttribute('data-tags') || 'info';
+            var type = 'note';
+            if (tags === 'success') {
+                type = 'success';
+            } else if (tags === 'error') {
+                type = 'error';
+            } else if (tags === 'warning') {
+                type = 'warning';
+            }
+            showNotification(messageText, type);
+        });
+    }
 });
 </script>
 {% endblock %}

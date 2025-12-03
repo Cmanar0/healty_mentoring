@@ -92,7 +92,7 @@ class MentorProfileAdmin(admin.ModelAdmin):
             'fields': ('time_zone', 'mentor_type', 'bio', 'quote', 'tags', 'languages', 'categories', 'nationality')
         }),
         ('Pricing & Session', {
-            'fields': ('price_per_hour', 'first_session_free')
+            'fields': ('price_per_hour', 'session_length', 'first_session_free', 'first_session_length')
         }),
         ('Social Media & Links', {
             'fields': ('instagram_name', 'linkedin_name', 'personal_website')
