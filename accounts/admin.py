@@ -40,7 +40,16 @@ class UserProfileAdmin(admin.ModelAdmin):
             'fields': ('user_email_display', 'role')
         }),
         ('Personal Information', {
-            'fields': ('first_name', 'last_name', 'time_zone', 'profile_picture')
+            'fields': ('first_name', 'last_name', 'profile_picture')
+        }),
+        ('Timezone Settings', {
+            'fields': ('detected_timezone', 'selected_timezone', 'confirmed_timezone_mismatch'),
+            'description': 'Detected timezone is updated automatically. Selected timezone is user\'s preference. Confirmed mismatch indicates user wants to keep a different timezone than detected.'
+        }),
+        ('Legacy Timezone', {
+            'fields': ('time_zone',),
+            'classes': ('collapse',),
+            'description': 'Legacy field - kept for backward compatibility. Use selected_timezone instead.'
         }),
         ('Relations', {
             'fields': ('mentors', 'sessions'),
@@ -89,7 +98,16 @@ class MentorProfileAdmin(admin.ModelAdmin):
             'fields': ('first_name', 'last_name', 'profile_picture')
         }),
         ('Personal Information', {
-            'fields': ('time_zone', 'mentor_type', 'bio', 'quote', 'tags', 'languages', 'categories', 'nationality')
+            'fields': ('mentor_type', 'bio', 'quote', 'tags', 'languages', 'categories', 'nationality')
+        }),
+        ('Timezone Settings', {
+            'fields': ('detected_timezone', 'selected_timezone', 'confirmed_timezone_mismatch'),
+            'description': 'Detected timezone is updated automatically. Selected timezone is user\'s preference. Confirmed mismatch indicates user wants to keep a different timezone than detected.'
+        }),
+        ('Legacy Timezone', {
+            'fields': ('time_zone',),
+            'classes': ('collapse',),
+            'description': 'Legacy field - kept for backward compatibility. Use selected_timezone instead.'
         }),
         ('Pricing & Session', {
             'fields': ('price_per_hour', 'session_length', 'first_session_free', 'first_session_length')

@@ -102,7 +102,7 @@
                     </div>
 
                     <!-- Mentor Type -->
-                    <div class="compact-form-group">
+                    <div class="compact-form-group form-grid-full">
                         <label><i class="fas fa-user-tie"></i> Mentor Type</label>
                         <div class="autocomplete-container">
                             <input type="text" name="mentor_type" id="mentorTypeInput" 
@@ -117,16 +117,44 @@
                     {{ mentor_types|json_script:"mentorTypesData" }}
 
                     <!-- Time Zone -->
-                    <div class="compact-form-group">
+                    <div class="compact-form-group form-grid-full">
                         <label><i class="fas fa-clock"></i> Time Zone</label>
                         <div class="timezone-selector-container">
                             <div class="autocomplete-container" style="position: relative;">
-                                <input type="text" name="time_zone" id="timezoneInput" value="{{ user.profile.time_zone|default:'' }}" class="form-input autocomplete-input" placeholder="Search for your timezone..." autocomplete="off">
-                                <input type="hidden" id="timezoneValue" name="time_zone" value="{{ user.profile.time_zone|default:'' }}">
+                                <input type="text" name="time_zone" id="timezoneInput" value="{{ user.profile.selected_timezone|default:'' }}" class="form-input autocomplete-input" placeholder="Search for your timezone..." autocomplete="off">
+                                <input type="hidden" id="timezoneValue" name="time_zone" value="{{ user.profile.selected_timezone|default:'' }}">
                                 <div class="autocomplete-suggestions" id="timezoneSuggestions"></div>
                             </div>
                             <div id="timezoneInfo" class="timezone-info" style="margin-top: 8px; font-size: 0.85rem; color: var(--dash-text-muted); display: none;">
-                                <span id="timezoneCurrentTime"></span>
+                                <div style="display: flex; flex-direction: column; gap: 2px;">
+                                    <span style="font-weight: 500; margin-bottom: 4px;">Selected timezone: <span id="selectedTimezoneDisplay"></span></span>
+                                    <span id="timezoneCurrentDate"></span>
+                                    <span id="timezoneCurrentTime"></span>
+                                </div>
+                            </div>
+                            <!-- Warning if selected != detected -->
+                            <div id="timezoneMismatchWarning" class="timezone-mismatch-warning" style="display: none; margin-top: 12px; padding: 12px 16px; background: rgba(239, 68, 68, 0.05); border-radius: 8px; border-left: 3px solid #ef4444;">
+                                <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+                                    <div style="display: flex; align-items: center; gap: 8px; flex: 1;">
+                                        <i class="fas fa-exclamation-triangle" style="color: #ef4444; font-size: 0.9rem;"></i>
+                                        <div style="display: flex; flex-direction: column; gap: 2px;">
+                                            <span style="font-size: 0.85rem; color: var(--dash-text-main); font-weight: 500;">Timezone mismatch detected</span>
+                                            <span style="font-size: 0.75rem; color: var(--dash-text-muted);">Your selected timezone doesn't match your detected location timezone.</span>
+                                        </div>
+                                    </div>
+                                    <button type="button" id="useDetectedTimezoneBtn" class="btn btn-outline btn-sm" style="white-space: nowrap; height: auto; padding: 6px 12px; font-size: 0.85rem;">
+                                        Use Detected
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 16px; margin-top: 12px;">
+                            <div class="timezone-detected-info" style="display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: rgba(16, 185, 129, 0.05); border-radius: 8px; border-left: 3px solid var(--dash-primary); flex: 1;">
+                                <i class="fas fa-info-circle" style="color: var(--dash-primary); font-size: 0.9rem;"></i>
+                                <div style="display: flex; flex-direction: column; gap: 2px;">
+                                    <span style="font-size: 0.75rem; color: var(--dash-text-muted); font-weight: 500;">Detected:</span>
+                                    <span id="detectedTimezoneDisplay" style="font-size: 0.85rem; color: var(--dash-text-main); font-weight: 500;">{{ user.profile.detected_timezone|default:"Not detected" }}</span>
+                                </div>
                             </div>
                         </div>
                         {{ common_timezones|json_script:"timezonesData" }}
@@ -539,8 +567,8 @@
             <!-- Blog Activity -->
             <div style="padding: 40px 24px; border-top: 1px solid var(--dash-border);">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                    <h4 style="margin: 0; font-size: 0.95rem; font-weight: 600; color: var(--dash-text-main);">
-                        Blog Activity
+                    <h4 style="margin: 0; font-size: 0.95rem; font-weight: 600; color: var(--dash-text-main); display: flex; align-items: center; gap: 8px;">
+                        <i class="fas fa-pen-nib" style="color: var(--dash-primary);"></i> Blog Activity
                     </h4>
                     <span style="font-size: 0.85rem; color: var(--dash-text-muted);">2/5</span>
                 </div>
@@ -557,8 +585,8 @@
 
             <!-- Marketing Content -->
             <div style="padding: 20px 24px ; border-top: 1px solid var(--dash-border);">
-                <h4 style="margin: 0 0 12px; font-size: 0.95rem; font-weight: 600; color: var(--dash-text-main);">
-                    Marketing Content
+                <h4 style="margin: 0 0 12px; font-size: 0.95rem; font-weight: 600; color: var(--dash-text-main); display: flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-bullhorn" style="color: var(--dash-primary);"></i> Marketing Content
                 </h4>
                 <p style="margin: 0 0 20px; font-size: 0.85rem; color: var(--dash-text-muted); line-height: 1.5;">
                     Use our tools to quickly and easily create your own quizzes, workshops, and more to share on social media. Engage with your audience and create connections that can turn into new clients.
@@ -611,19 +639,12 @@
 
             <!-- Your Community -->
             <div style="padding: 20px 24px; border-top: 1px solid var(--dash-border);">
-                <div style="display: flex; align-items: flex-start; gap: 16px; margin-bottom: 16px;">
-                    <div style="width: 40px; height: 40px; border-radius: 10px; background: rgba(59, 130, 246, 0.1); display: flex; align-items: center; justify-content: center; color: #3b82f6; flex-shrink: 0;">
-                        <i class="fas fa-users"></i>
-                    </div>
-                    <div>
-                        <h4 style="margin: 0 0 6px; font-size: 0.95rem; font-weight: 600; color: var(--dash-text-main);">
-                            Your Community
-                        </h4>
-                        <p style="margin: 0; font-size: 0.85rem; color: var(--dash-text-muted); line-height: 1.5;">
-                            Build a following! Use your marketing content to attract new people and create a vibrant community. Engaging with your community makes it easier to turn followers into loyal clients.
-                        </p>
-                    </div>
-                </div>
+                <h4 style="margin: 0 0 12px; font-size: 0.95rem; font-weight: 600; color: var(--dash-text-main); display: flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-users" style="color: var(--dash-primary);"></i> Your Community
+                </h4>
+                <p style="margin: 0 0 16px; font-size: 0.85rem; color: var(--dash-text-muted); line-height: 1.5;">
+                    Build a following! Use your marketing content to attract new people and create a vibrant community. Engaging with your community makes it easier to turn followers into loyal clients.
+                </p>
                 <a href="#" class="btn btn-outline btn-sm" style="width: 100%; text-align: center; display: inline-block;">
                     Grow your Community
                 </a>
@@ -631,26 +652,19 @@
 
             <!-- Your Courses -->
             <div style="padding: 20px 24px; border-top: 1px solid var(--dash-border);">
-                <div style="display: flex; align-items: flex-start; gap: 16px; margin-bottom: 16px;">
-                    <div style="width: 40px; height: 40px; border-radius: 10px; background: rgba(16, 185, 129, 0.1); display: flex; align-items: center; justify-content: center; color: #10b981; flex-shrink: 0;">
-                        <i class="fas fa-graduation-cap"></i>
-                    </div>
-                    <div>
-                        <h4 style="margin: 0 0 6px; font-size: 0.95rem; font-weight: 600; color: var(--dash-text-main);">
-                            Your Courses
-                        </h4>
-                        <p style="margin: 0; font-size: 0.85rem; color: var(--dash-text-muted); line-height: 1.5;">
-                            Unlock a new revenue stream! Create online courses to share your expertise and generate additional income alongside your mentoring sessions.
-                        </p>
-                    </div>
-                </div>
+                <h4 style="margin: 0 0 12px; font-size: 0.95rem; font-weight: 600; color: var(--dash-text-main); display: flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-graduation-cap" style="color: var(--dash-primary);"></i> Your Courses
+                </h4>
+                <p style="margin: 0 0 16px; font-size: 0.85rem; color: var(--dash-text-muted); line-height: 1.5;">
+                    Unlock a new revenue stream! Create online courses to share your expertise and generate additional income alongside your mentoring sessions.
+                </p>
                 <a href="#" class="btn btn-outline btn-sm" style="width: 100%; text-align: center; display: inline-block;">
                     Create Course
                 </a>
             </div>
             <div style="padding: 20px 24px; border-top: 1px solid var(--dash-border);">
-                <h4 style="margin: 0 0 12px; font-size: 0.95rem; font-weight: 600; color: var(--dash-text-main);">
-                    Clients Reviews
+                <h4 style="margin: 0 0 12px; font-size: 0.95rem; font-weight: 600; color: var(--dash-text-main); display: flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-star" style="color: var(--dash-primary);"></i> Clients Reviews
                 </h4>
                 <p style="margin: 0 0 20px; font-size: 0.85rem; color: var(--dash-text-muted); line-height: 1.5;">
                     Build trust and credibility with client reviews. Aim for at least three reviews to showcase your expertise and help potential clients make informed decisions.
@@ -884,7 +898,11 @@ function initializeTimezoneSelector() {
     const timezoneValue = document.getElementById('timezoneValue');
     const timezoneSuggestions = document.getElementById('timezoneSuggestions');
     const timezoneInfo = document.getElementById('timezoneInfo');
+    const timezoneCurrentDate = document.getElementById('timezoneCurrentDate');
     const timezoneCurrentTime = document.getElementById('timezoneCurrentTime');
+    const selectedTimezoneDisplay = document.getElementById('selectedTimezoneDisplay');
+    const timezoneMismatchWarning = document.getElementById('timezoneMismatchWarning');
+    const useDetectedTimezoneBtn = document.getElementById('useDetectedTimezoneBtn');
     const timezonesData = document.getElementById('timezonesData');
     
     if (!timezoneInput || !timezoneValue || !timezoneSuggestions || !timezonesData) return;
@@ -892,29 +910,61 @@ function initializeTimezoneSelector() {
     const timezones = JSON.parse(timezonesData.textContent);
     let selectedTimezone = null;
     let timezoneUpdateInterval = null;
+    let initialTimezoneValue = timezoneValue.value; // Track initial value to detect changes
     
-    // Auto-detect timezone on page load if not set
-    if (!timezoneValue.value || timezoneValue.value.trim() === '') {
-        try {
-            const detectedTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-            // Try to find matching timezone in our list
-            const matchingTz = timezones.find(tz => tz.id === detectedTz);
-            if (matchingTz) {
-                selectedTimezone = matchingTz;
-                timezoneInput.value = matchingTz.name + ' (' + matchingTz.offset + ')';
-                timezoneValue.value = matchingTz.id;
-                updateTimezoneDisplay();
-            }
-        } catch (e) {
-            console.log('Could not auto-detect timezone:', e);
+    // Get detected timezone (with test mode support)
+    let detectedTimezone;
+    try {
+        detectedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        
+        // For testing: Check sessionStorage first (set by test button), then window.TEST_TIMEZONE (set by console)
+        const testTimezone = sessionStorage.getItem('TEST_TIMEZONE') || window.TEST_TIMEZONE;
+        if (testTimezone) {
+            console.log('⚠️ TEST MODE: Using test timezone:', testTimezone);
+            detectedTimezone = testTimezone;
         }
-    } else {
-        // Find and display current timezone
+    } catch (e) {
+        detectedTimezone = null;
+    }
+    
+    // Find and display current timezone from DB (selected_timezone)
+    if (timezoneValue.value && timezoneValue.value.trim() !== '') {
         const currentTz = timezones.find(tz => tz.id === timezoneValue.value);
         if (currentTz) {
             selectedTimezone = currentTz;
-            timezoneInput.value = currentTz.name + ' (' + currentTz.offset + ')';
+            timezoneInput.value = currentTz.name + ' (' + (currentTz.offset || '') + ')';
             updateTimezoneDisplay();
+            checkTimezoneMismatch();
+        }
+    }
+    
+    // Update detected timezone display
+    const detectedTimezoneDisplay = document.getElementById('detectedTimezoneDisplay');
+    if (detectedTimezoneDisplay && detectedTimezone) {
+        const detectedTzObj = timezones.find(tz => tz.id === detectedTimezone);
+        if (detectedTzObj) {
+            detectedTimezoneDisplay.textContent = detectedTzObj.name + ' (' + (detectedTzObj.offset || '') + ')';
+        } else {
+            detectedTimezoneDisplay.textContent = detectedTimezone;
+        }
+    }
+    
+    function checkTimezoneMismatch() {
+        if (!timezoneMismatchWarning || !detectedTimezone) return;
+        
+        // Get current selected timezone value (from hidden input or selectedTimezone object)
+        const currentSelectedTzId = selectedTimezone ? selectedTimezone.id : (timezoneValue ? timezoneValue.value : null);
+        
+        if (!currentSelectedTzId) {
+            timezoneMismatchWarning.style.display = 'none';
+            return;
+        }
+        
+        // Always show warning if there's a mismatch, regardless of confirmed_timezone_mismatch
+        if (currentSelectedTzId !== detectedTimezone) {
+            timezoneMismatchWarning.style.display = 'block';
+        } else {
+            timezoneMismatchWarning.style.display = 'none';
         }
     }
     
@@ -923,22 +973,64 @@ function initializeTimezoneSelector() {
         
         try {
             const now = new Date();
-            const formatter = new Intl.DateTimeFormat('en-US', {
+            
+            // Update selected timezone display
+            if (selectedTimezoneDisplay) {
+                selectedTimezoneDisplay.textContent = selectedTimezone.name + ' (' + (selectedTimezone.offset || '') + ')';
+            }
+            
+            // Date formatter (weekday, month, day)
+            const dateFormatter = new Intl.DateTimeFormat('en-US', {
                 timeZone: selectedTimezone.id,
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit',
-                hour12: true,
                 weekday: 'short',
                 month: 'short',
                 day: 'numeric'
             });
-            const formatted = formatter.format(now);
-            timezoneCurrentTime.textContent = `Current time: ${formatted}`;
-            timezoneInfo.style.display = 'block';
+            
+            // Time formatter (hour, minute, second)
+            const timeFormatter = new Intl.DateTimeFormat('en-US', {
+                timeZone: selectedTimezone.id,
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: true
+            });
+            
+            const formattedDate = dateFormatter.format(now);
+            const formattedTime = timeFormatter.format(now);
+            
+            if (timezoneCurrentDate) timezoneCurrentDate.textContent = `Current time: ${formattedDate}`;
+            if (timezoneCurrentTime) timezoneCurrentTime.textContent = formattedTime;
+            if (timezoneInfo) timezoneInfo.style.display = 'block';
+            
+            // Check for mismatch
+            checkTimezoneMismatch();
         } catch (e) {
-            timezoneInfo.style.display = 'none';
+            if (timezoneInfo) timezoneInfo.style.display = 'none';
         }
+    }
+    
+    // Check mismatch on page load (after a short delay to ensure all elements are ready)
+    setTimeout(function() {
+        checkTimezoneMismatch();
+    }, 100);
+    
+    // Button to use detected timezone
+    if (useDetectedTimezoneBtn && detectedTimezone) {
+        useDetectedTimezoneBtn.addEventListener('click', function() {
+            const detectedTzObj = timezones.find(tz => tz.id === detectedTimezone);
+            if (detectedTzObj) {
+                selectedTimezone = detectedTzObj;
+                timezoneInput.value = detectedTzObj.name + ' (' + (detectedTzObj.offset || '') + ')';
+                timezoneValue.value = detectedTzObj.id;
+                updateTimezoneDisplay();
+                
+                // Show notification
+                if (typeof showNotification !== 'undefined') {
+                    showNotification('Don\'t forget to save your profile to apply the changes.', 'note');
+                }
+            }
+        });
     }
     
     // Update time display every second
@@ -994,7 +1086,7 @@ function initializeTimezoneSelector() {
                 `;
                 item.addEventListener('click', function() {
                     selectedTimezone = tz;
-                    timezoneInput.value = tz.name + ' (' + tz.offset + ')';
+                    timezoneInput.value = tz.name + ' (' + (tz.offset || '') + ')';
                     timezoneValue.value = tz.id;
                     timezoneSuggestions.style.display = 'none';
                     updateTimezoneDisplay();
@@ -1002,6 +1094,11 @@ function initializeTimezoneSelector() {
                         clearInterval(timezoneUpdateInterval);
                     }
                     timezoneUpdateInterval = setInterval(updateTimezoneDisplay, 1000);
+                    
+                    // Show notification if timezone changed
+                    if (timezoneValue.value !== initialTimezoneValue && typeof showNotification !== 'undefined') {
+                        showNotification('Don\'t forget to save your profile to apply the changes.', 'note');
+                    }
                 });
                 timezoneSuggestions.appendChild(item);
             });

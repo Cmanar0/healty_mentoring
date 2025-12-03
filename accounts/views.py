@@ -11,6 +11,7 @@ from django.urls import reverse
 from django.http import HttpResponse
 from general.email_service import EmailService
 import os
+import json
 
 class RegisterView(View):
     def get(self, request):
@@ -59,6 +60,18 @@ class RegisterView(View):
                     }
                 ]
                 
+                # Auto-detect timezone from request headers (if available) or use UTC as fallback
+                # Note: This is a best-effort approach. JavaScript will detect the actual browser timezone
+                # and the timezone checker will prompt to update if different
+                detected_timezone = None
+                try:
+                    # Try to get timezone from Accept-Language or other headers
+                    # For now, we'll let JavaScript handle the detection on first login
+                    # But we could use a geolocation API here if needed
+                    pass
+                except:
+                    pass
+                
                 # Create appropriate profile based on role
                 if role == 'mentor':
                     MentorProfile.objects.create(
@@ -66,7 +79,9 @@ class RegisterView(View):
                         first_name=first_name,
                         last_name=last_name,
                         role='mentor',
-                        manuals=default_manuals
+                        manuals=default_manuals,
+                        # time_zone will be auto-detected by JavaScript on first login
+                        # and saved via the timezone checker modal
                     )
                     print(f"DEBUG: MentorProfile created for {email}.")
                 else:  # role == 'user'
@@ -75,7 +90,9 @@ class RegisterView(View):
                         first_name=first_name,
                         last_name=last_name,
                         role='user',
-                        manuals=default_manuals
+                        manuals=default_manuals,
+                        # time_zone will be auto-detected by JavaScript on first login
+                        # and saved via the timezone checker modal
                     )
                     print(f"DEBUG: UserProfile created for {email}.")
                 

@@ -24,6 +24,31 @@
     <div class="dashboard-top-actions">
       {% if user.is_authenticated and user.profile.first_name and user.profile.last_name %}
         <div class="dashboard-top-actions-group">
+          <!-- Timezone Test Button (for testing only - only shown in DEBUG mode) -->
+          {% if debug %}
+          <div class="timezone-test-dropdown">
+            <button class="timezone-test-btn" id="timezoneTestBtn" aria-label="Test Timezone Checker" title="Test Timezone Checker">
+              <i class="fas fa-globe"></i>
+            </button>
+            <div class="timezone-test-menu" id="timezoneTestMenu">
+              <div class="timezone-test-header">
+                <h4>Test Timezone Checker</h4>
+                <p>Select a test timezone to simulate mismatch</p>
+              </div>
+              <div class="timezone-test-options">
+                <button class="timezone-test-option" data-timezone="Europe/London">Europe/London</button>
+                <button class="timezone-test-option" data-timezone="America/New_York">America/New_York</button>
+                <button class="timezone-test-option" data-timezone="Asia/Tokyo">Asia/Tokyo</button>
+                <button class="timezone-test-option" data-timezone="Australia/Sydney">Australia/Sydney</button>
+                <button class="timezone-test-option" data-timezone="Europe/Berlin">Europe/Berlin</button>
+                <button class="timezone-test-option" data-timezone="America/Los_Angeles">America/Los_Angeles</button>
+              </div>
+              <div class="timezone-test-footer">
+                <button class="timezone-test-reset" id="timezoneTestReset">Reset to Actual</button>
+              </div>
+            </div>
+          </div>
+          {% endif %}
           <!-- Notification Bell -->
           <div class="notification-dropdown">
             <button class="notification-bell" id="notificationBell" aria-label="Notifications">
@@ -182,7 +207,7 @@
         </li>
         <li>
           <a href="#" class="sidebar-link" title="Clients">
-            <i class="fas fa-users"></i>
+            <i class="fas fa-user-tie"></i>
             <span class="sidebar-text">Clients</span>
           </a>
         </li>
@@ -215,6 +240,12 @@
           <a href="/dashboard/mentor/profile/" class="sidebar-link sidebar-link-your" title="Your Profile">
             <i class="fas fa-id-badge"></i>
             <span class="sidebar-text">Your Profile</span>
+          </a>
+        </li>
+        <li>
+          <a href="#" class="sidebar-link sidebar-link-your" title="Your Community">
+            <i class="fas fa-users"></i>
+            <span class="sidebar-text">Your Community</span>
           </a>
         </li>
         <li>
@@ -270,10 +301,25 @@
 
 <!-- Manuals Data (JSON) -->
 {{ user.profile.manuals|json_script:"manualsData" }}
+
+<!-- User Profile Data (for timezone checking) -->
+<script id="userProfileData" type="application/json">
+{
+    "detected_timezone": "{{ user.profile.detected_timezone|default:'' }}",
+    "selected_timezone": "{{ user.profile.selected_timezone|default:'' }}",
+    "confirmed_timezone_mismatch": {{ user.profile.confirmed_timezone_mismatch|yesno:"true,false" }}
+}
+</script>
+
+<!-- Timezones Data (for timezone checker) -->
+{% if common_timezones %}
+{{ common_timezones|json_script:"timezonesData" }}
+{% endif %}
 {% endblock %}
 
 {% block scripts %}
 <script src="{% static 'js/notifications.js' %}"></script>
+<script src="{% static 'js/timezone-checker.js' %}"></script>
 {{ block.super }}
 <style>
 :root {
@@ -450,6 +496,122 @@
   display: flex;
   align-items: center;
   gap: 16px;
+}
+
+/* Timezone Test Button (for testing only) */
+.timezone-test-dropdown {
+  position: relative;
+}
+
+.timezone-test-btn {
+  position: relative;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 8px;
+  color: var(--text-dark);
+  font-size: 1rem;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.timezone-test-btn:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--primary);
+}
+
+.timezone-test-btn i {
+  display: block;
+}
+
+.timezone-test-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+  min-width: 240px;
+  padding: 0;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-10px);
+  transition: all 0.2s ease;
+  z-index: 1000;
+}
+
+.timezone-test-dropdown.active .timezone-test-menu {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.timezone-test-header {
+  padding: 16px;
+  border-bottom: 1px solid var(--dash-border);
+}
+
+.timezone-test-header h4 {
+  margin: 0 0 4px 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-dark);
+}
+
+.timezone-test-header p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text-light);
+}
+
+.timezone-test-options {
+  padding: 8px 0;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.timezone-test-option {
+  display: block;
+  width: 100%;
+  padding: 10px 16px;
+  background: white;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: var(--text-dark);
+  transition: background 0.2s;
+}
+
+.timezone-test-option:hover {
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--primary);
+}
+
+.timezone-test-footer {
+  padding: 12px 16px;
+  border-top: 1px solid var(--dash-border);
+}
+
+.timezone-test-reset {
+  width: 100%;
+  padding: 8px 16px;
+  background: transparent;
+  border: 1px solid var(--dash-border);
+  border-radius: 8px;
+  color: var(--text-dark);
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.timezone-test-reset:hover {
+  background: #f8fafc;
+  border-color: var(--primary);
+  color: var(--primary);
 }
 
 /* Notification Bell */
@@ -718,6 +880,116 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
 
+  // Timezone Test Dropdown
+  const timezoneTestBtn = document.getElementById('timezoneTestBtn');
+  const timezoneTestMenu = document.getElementById('timezoneTestMenu');
+  const timezoneTestDropdown = document.querySelector('.timezone-test-dropdown');
+  const timezoneTestOptions = document.querySelectorAll('.timezone-test-option');
+  const timezoneTestReset = document.getElementById('timezoneTestReset');
+
+  if (timezoneTestBtn && timezoneTestMenu) {
+    timezoneTestBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      timezoneTestDropdown.classList.toggle('active');
+      // Close other dropdowns
+      if (notificationDropdown) notificationDropdown.classList.remove('active');
+      if (userProfileDropdown) userProfileDropdown.classList.remove('active');
+      
+      // Log current timezone status
+      const userProfileData = document.getElementById('userProfileData');
+      const savedTimezone = userProfileData ? JSON.parse(userProfileData.textContent).time_zone : 'Not found';
+      const detectedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const testTimezone = sessionStorage.getItem('TEST_TIMEZONE') || window.TEST_TIMEZONE || null;
+      
+      console.log('🌐 === TIMEZONE STATUS ===');
+      console.log('📌 Saved timezone:', savedTimezone || '(not set)');
+      console.log('🔍 Detected timezone:', detectedTimezone);
+      console.log('🧪 Test timezone:', testTimezone || '(none - using detected)');
+      console.log('📊 Will use for check:', testTimezone || detectedTimezone);
+      console.log('========================');
+    });
+
+    // Handle timezone option clicks
+    timezoneTestOptions.forEach(option => {
+      option.addEventListener('click', function() {
+        const testTimezone = this.getAttribute('data-timezone');
+        console.log('[Timezone Test] Setting test timezone:', testTimezone);
+        
+        // Set test timezone in sessionStorage (survives page reload)
+        sessionStorage.setItem('TEST_TIMEZONE', testTimezone);
+        window.TEST_TIMEZONE = testTimezone; // Also set in window for immediate use
+        
+        // Close dropdown
+        timezoneTestDropdown.classList.remove('active');
+        
+        // Reload page to trigger timezone check with test timezone
+        console.log('[Timezone Test] Reloading page to show modal...');
+        window.location.reload();
+      });
+    });
+
+    // Reset button
+    if (timezoneTestReset) {
+      timezoneTestReset.addEventListener('click', function() {
+        sessionStorage.removeItem('TEST_TIMEZONE');
+        delete window.TEST_TIMEZONE;
+        console.log('[Timezone Test] Reset - using actual detected timezone and clearing confirmed mismatch');
+        
+        // Get detected timezone
+        let detectedTz;
+        try {
+          detectedTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        } catch (e) {
+          console.error('[Timezone Test] Could not detect timezone:', e);
+          timezoneTestDropdown.classList.remove('active');
+          window.location.reload();
+          return;
+        }
+        
+        // Clear confirmed_timezone_mismatch and set selected to detected via AJAX
+        fetch('/dashboard/update-timezone/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+          },
+          body: JSON.stringify({
+            action: 'use_detected',
+            detected_timezone: detectedTz
+          })
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            console.log('[Timezone Test] Confirmed mismatch cleared, selected timezone set to detected');
+          }
+          timezoneTestDropdown.classList.remove('active');
+          window.location.reload();
+        })
+        .catch(error => {
+          console.error('[Timezone Test] Error clearing mismatch:', error);
+          timezoneTestDropdown.classList.remove('active');
+          window.location.reload();
+        });
+      });
+    }
+    
+    function getCookie(name) {
+      let cookieValue = null;
+      if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+          const cookie = cookies[i].trim();
+          if (cookie.substring(0, name.length + 1) === (name + '=')) {
+            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+            break;
+          }
+        }
+      }
+      return cookieValue;
+    }
+  }
+
   // User Profile Dropdown
   const userProfileTrigger = document.getElementById('userProfileTrigger');
   const userDropdownMenu = document.getElementById('userDropdownMenu');
@@ -742,7 +1014,36 @@ document.addEventListener('DOMContentLoaded', function() {
     if (notificationDropdown && !notificationDropdown.contains(event.target)) {
       notificationDropdown.classList.remove('active');
     }
+    if (timezoneTestDropdown && !timezoneTestDropdown.contains(event.target)) {
+      timezoneTestDropdown.classList.remove('active');
+    }
   });
+
+  // Helper function to check timezone status (available in console)
+  window.checkTimezone = function() {
+    const userProfileData = document.getElementById('userProfileData');
+    const savedTimezone = userProfileData ? JSON.parse(userProfileData.textContent).time_zone : 'Not found';
+    const detectedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const testTimezone = sessionStorage.getItem('TEST_TIMEZONE') || window.TEST_TIMEZONE || null;
+    
+    console.log('🌐 === TIMEZONE STATUS ===');
+    console.log('📌 Saved timezone:', savedTimezone || '(not set)');
+    console.log('🔍 Detected timezone:', detectedTimezone);
+    console.log('🧪 Test timezone:', testTimezone || '(none - using detected)');
+    console.log('📊 Will use for check:', testTimezone || detectedTimezone);
+    console.log('💾 sessionStorage.TEST_TIMEZONE:', sessionStorage.getItem('TEST_TIMEZONE') || '(not set)');
+    console.log('🪟 window.TEST_TIMEZONE:', window.TEST_TIMEZONE || '(not set)');
+    console.log('========================');
+    
+    return {
+      saved: savedTimezone,
+      detected: detectedTimezone,
+      test: testTimezone,
+      willUse: testTimezone || detectedTimezone
+    };
+  };
+  
+  console.log('💡 Tip: Type checkTimezone() in console to see current timezone status');
 
   // Tutorial Manual System
   let manuals = [];

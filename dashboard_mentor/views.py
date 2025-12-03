@@ -1,5 +1,6 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
+from django.conf import settings
 from dashboard_mentor.models import Qualification
 from dashboard_mentor.constants import (
     PREDEFINED_MENTOR_TYPES, PREDEFINED_TAGS, 
@@ -13,7 +14,10 @@ def dashboard(request):
     # Ensure only mentors can access
     if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
         return redirect('general:index')
-    return render(request, 'dashboard_mentor/dashboard_mentor.html')
+    return render(request, 'dashboard_mentor/dashboard_mentor.html', {
+        'common_timezones': COMMON_TIMEZONES,
+        'debug': settings.DEBUG,
+    })
 
 @login_required
 def account(request):
@@ -143,6 +147,7 @@ def account(request):
         request,
         'dashboard_mentor/account.html',
         {
+            'debug': settings.DEBUG,
             "profile_completion": profile_completion,
             "missing_fields": missing_fields,
             "content_percentage": contentPercentage,
@@ -195,6 +200,10 @@ def profile(request):
             if last_name is not None:
                 profile.last_name = last_name
             profile.time_zone = time_zone
+            # Also update selected_timezone and clear confirmed mismatch when user updates via profile form
+            if time_zone:
+                profile.selected_timezone = time_zone
+                profile.confirmed_timezone_mismatch = False
             
             # Handle mentor type - just store as string
             if mentor_type:
@@ -419,6 +428,7 @@ def profile(request):
         'predefined_languages': PREDEFINED_LANGUAGES,
         'predefined_categories': PREDEFINED_CATEGORIES,
         'common_timezones': COMMON_TIMEZONES,
+        'debug': settings.DEBUG,
     })
 
 @login_required
@@ -446,11 +456,16 @@ def billing(request):
             return redirect("/dashboard/mentor/billing/")
     
     return render(request, 'dashboard_mentor/billing.html', {
-        'billing': profile.billing or {}
+        'billing': profile.billing or {},
+        'common_timezones': COMMON_TIMEZONES,
+        'debug': settings.DEBUG,
     })
 
 @login_required
 def my_sessions(request):
     if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
         return redirect('general:index')
-    return render(request, 'dashboard_mentor/my_sessions.html')
+    return render(request, 'dashboard_mentor/my_sessions.html', {
+        'common_timezones': COMMON_TIMEZONES,
+        'debug': settings.DEBUG,
+    })

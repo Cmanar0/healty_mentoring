@@ -43,6 +43,11 @@ class UserProfile(models.Model):
     first_name = models.CharField(max_length=150)
     last_name = models.CharField(max_length=150)
     role = models.CharField(max_length=10, choices=ROLE_CHOICES, default='user', editable=False)  # Not changeable
+    # Timezone fields
+    detected_timezone = models.CharField(max_length=64, blank=True, null=True, help_text="Browser-detected timezone, updated on each page load")
+    selected_timezone = models.CharField(max_length=64, blank=True, null=True, help_text="User's selected/preferred timezone")
+    confirmed_timezone_mismatch = models.BooleanField(default=False, help_text="True if user confirmed they want to keep a different timezone than detected")
+    # Legacy field (kept for backward compatibility, will be migrated)
     time_zone = models.CharField(max_length=64, blank=True, null=True)
     profile_picture = models.ImageField(upload_to="profiles/", blank=True, null=True)
     mentors = models.ManyToManyField("accounts.MentorProfile", related_name="users", blank=True)
@@ -99,6 +104,11 @@ class MentorProfile(models.Model):
     role = models.CharField(max_length=10, choices=ROLE_CHOICES, default='mentor', editable=False)  # Not changeable
     
     # Personal Info (could be JSON, but using separate fields for better querying)
+    # Timezone fields
+    detected_timezone = models.CharField(max_length=64, blank=True, null=True, help_text="Browser-detected timezone, updated on each page load")
+    selected_timezone = models.CharField(max_length=64, blank=True, null=True, help_text="User's selected/preferred timezone")
+    confirmed_timezone_mismatch = models.BooleanField(default=False, help_text="True if user confirmed they want to keep a different timezone than detected")
+    # Legacy field (kept for backward compatibility, will be migrated)
     time_zone = models.CharField(max_length=64, blank=True, null=True)
     qualifications = models.ManyToManyField("dashboard_mentor.Qualification", related_name="mentors", blank=True)
     
