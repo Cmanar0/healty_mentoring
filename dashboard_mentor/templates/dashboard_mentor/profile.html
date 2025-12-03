@@ -271,7 +271,7 @@
                                         {% for lang in predefined_languages %}
                                             {% if lang.id == lang_id %}
                                                 <div class="tag-item" data-lang-id="{{ lang.id }}">
-                                                    <span class="tag-text">{{ lang.name }}</span>
+                                                    <span class="tag-text">{% if lang.flag_code %}<span class="fi fi-{{ lang.flag_code|lower }}" style="margin-right: 6px; vertical-align: middle;"></span>{% else %}{{ lang.flag }} {% endif %}{{ lang.name }}</span>
                                                     <button type="button" class="remove-tag-btn">
                                                         <i class="fas fa-times"></i>
                                                     </button>
@@ -285,7 +285,26 @@
                             </div>
                             <div class="compact-form-group">
                                 <label><i class="fas fa-flag"></i> Nationality</label>
-                                <input type="text" name="nationality" value="{{ user.profile.nationality|default:'' }}" class="form-input" placeholder="e.g., American, British">
+                                <div class="autocomplete-container" style="position: relative; margin-bottom: 0;">
+                                    <input type="text" id="nationalityInput" class="form-input autocomplete-input" placeholder="Type to search nationalities..." style="width: 100%; padding: 12px 16px; font-size: 0.95rem; margin-bottom: 0;" autocomplete="off">
+                                    <div class="autocomplete-suggestions" id="nationalitySuggestions"></div>
+                                </div>
+                                <div id="nationalitiesList" style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; min-height: 20px;">
+                                    {% for nat_id in user.profile.nationality %}
+                                        {% for nat in predefined_nationalities %}
+                                            {% if nat.id == nat_id %}
+                                                <div class="tag-item" data-nat-id="{{ nat.id }}">
+                                                    <span class="tag-text">{% if nat.flag_code %}<span class="fi fi-{{ nat.flag_code|lower }}" style="margin-right: 6px; vertical-align: middle;"></span>{% else %}{{ nat.flag }} {% endif %}{{ nat.name }}</span>
+                                                    <button type="button" class="remove-tag-btn">
+                                                        <i class="fas fa-times"></i>
+                                                    </button>
+                                                </div>
+                                            {% endif %}
+                                        {% endfor %}
+                                    {% endfor %}
+                                </div>
+                                <input type="hidden" name="nationalities_data" id="nationalitiesData" value="">
+                                {{ predefined_nationalities|json_script:"predefinedNationalitiesData" }}
                             </div>
                         </div>
                     </div>
@@ -1697,6 +1716,18 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize tags data on page load
     updateTagsData();
 
+    // Helper function to render flag icon or emoji fallback
+    function renderFlag(item) {
+        if (item.flag_code) {
+            // Use flag-icon-css if flag_code is available
+            return `<span class="fi fi-${item.flag_code.toLowerCase()}" style="margin-right: 6px; vertical-align: middle;"></span>`;
+        } else if (item.flag) {
+            // Fallback to emoji
+            return item.flag + ' ';
+        }
+        return '';
+    }
+
     // Languages management
     const languageInput = document.getElementById('languageInput');
     const languagesList = document.getElementById('languagesList');
@@ -1744,7 +1775,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 const langText = document.createElement('span');
                 langText.className = 'tag-text';
-                langText.textContent = lang.name;
+                langText.innerHTML = renderFlag(lang) + lang.name;
                 
                 const removeBtn = document.createElement('button');
                 removeBtn.type = 'button';
@@ -1788,7 +1819,7 @@ document.addEventListener('DOMContentLoaded', function() {
             item.className = 'suggestion-item';
             if (index === 0) item.classList.add('first-item');
             if (index === suggestions.length - 1) item.classList.add('last-item');
-            item.textContent = lang.name;
+            item.innerHTML = renderFlag(lang) + lang.name;
             item.addEventListener('click', function() {
                 if (!languagesArray.includes(lang.id)) {
                     languagesArray.push(lang.id);
@@ -2032,6 +2063,168 @@ document.addEventListener('DOMContentLoaded', function() {
 
     updateCategoriesData();
 
+    // Nationalities management
+    const nationalityInput = document.getElementById('nationalityInput');
+    const nationalitiesList = document.getElementById('nationalitiesList');
+    const nationalitiesData = document.getElementById('nationalitiesData');
+    const nationalitySuggestions = document.getElementById('nationalitySuggestions');
+    const predefinedNationalitiesData = document.getElementById('predefinedNationalitiesData');
+    const predefinedNationalities = predefinedNationalitiesData ? JSON.parse(predefinedNationalitiesData.textContent) : [];
+    let nationalitiesArray = [];
+    let nationalityDebounceTimer;
+
+    // Initialize nationalities array from existing nationalities
+    const existingNationalities = nationalitiesList.querySelectorAll('.tag-item');
+    existingNationalities.forEach(natItem => {
+        const natId = natItem.getAttribute('data-nat-id');
+        if (natId && !nationalitiesArray.includes(natId)) {
+            nationalitiesArray.push(natId);
+        }
+        // Add event listener to existing remove button
+        const removeBtn = natItem.querySelector('.remove-tag-btn');
+        if (removeBtn) {
+            removeBtn.addEventListener('click', function() {
+                const index = nationalitiesArray.indexOf(natId);
+                if (index > -1) {
+                    nationalitiesArray.splice(index, 1);
+                    renderNationalitiesList();
+                    updateNationalitiesData();
+                    showNotification('Don\'t forget to save your profile to apply the changes.', 'note');
+                }
+            });
+        }
+    });
+
+    function updateNationalitiesData() {
+        nationalitiesData.value = JSON.stringify(nationalitiesArray);
+    }
+
+    function renderNationalitiesList() {
+        nationalitiesList.innerHTML = '';
+        nationalitiesArray.forEach(natId => {
+            const nat = predefinedNationalities.find(n => n.id === natId);
+            if (nat) {
+                const natItem = document.createElement('div');
+                natItem.className = 'tag-item';
+                natItem.setAttribute('data-nat-id', natId);
+                
+                const natText = document.createElement('span');
+                natText.className = 'tag-text';
+                natText.innerHTML = renderFlag(nat) + nat.name;
+                
+                const removeBtn = document.createElement('button');
+                removeBtn.type = 'button';
+                removeBtn.className = 'remove-tag-btn';
+                removeBtn.innerHTML = '<i class="fas fa-times"></i>';
+                removeBtn.addEventListener('click', function() {
+                    const index = nationalitiesArray.indexOf(natId);
+                    if (index > -1) {
+                        nationalitiesArray.splice(index, 1);
+                        renderNationalitiesList();
+                        updateNationalitiesData();
+                        showNotification('Don\'t forget to save your profile to apply the changes.', 'note');
+                    }
+                });
+                
+                natItem.appendChild(natText);
+                natItem.appendChild(removeBtn);
+                nationalitiesList.appendChild(natItem);
+            }
+        });
+        updateNationalitiesData();
+    }
+
+    function filterNationalitySuggestions(query) {
+        const filtered = predefinedNationalities.filter(nat => 
+            nat.name.toLowerCase().includes(query.toLowerCase()) && !nationalitiesArray.includes(nat.id)
+        );
+        displayNationalitySuggestions(filtered);
+    }
+
+    function displayNationalitySuggestions(suggestions) {
+        if (suggestions.length === 0) {
+            nationalitySuggestions.style.display = 'none';
+            return;
+        }
+
+        nationalitySuggestions.innerHTML = '';
+        suggestions.forEach((nat, index) => {
+            const item = document.createElement('div');
+            item.className = 'suggestion-item';
+            if (index === 0) item.classList.add('first-item');
+            if (index === suggestions.length - 1) item.classList.add('last-item');
+            item.innerHTML = renderFlag(nat) + nat.name;
+            item.addEventListener('click', function() {
+                if (!nationalitiesArray.includes(nat.id)) {
+                    nationalitiesArray.push(nat.id);
+                    nationalityInput.value = '';
+                    nationalitySuggestions.style.display = 'none';
+                    renderNationalitiesList();
+                    showNotification('Don\'t forget to save your profile to apply the changes.', 'note');
+                }
+            });
+            nationalitySuggestions.appendChild(item);
+        });
+
+        nationalitySuggestions.style.display = 'block';
+        nationalitySuggestions.style.maxHeight = '300px';
+        nationalitySuggestions.style.overflowY = 'auto';
+    }
+
+    if (nationalityInput && nationalitySuggestions) {
+        nationalityInput.addEventListener('focus', function() {
+            const query = this.value.trim();
+            if (query.length > 0) {
+                filterNationalitySuggestions(query);
+            } else {
+                displayNationalitySuggestions(predefinedNationalities.filter(nat => !nationalitiesArray.includes(nat.id)));
+            }
+        });
+
+        nationalityInput.addEventListener('input', function() {
+            clearTimeout(nationalityDebounceTimer);
+            const query = this.value.trim();
+            
+            nationalityDebounceTimer = setTimeout(() => {
+                if (query.length > 0) {
+                    filterNationalitySuggestions(query);
+                } else {
+                    displayNationalitySuggestions(predefinedNationalities.filter(nat => !nationalitiesArray.includes(nat.id)));
+                }
+            }, 200);
+        });
+
+        nationalityInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                e.stopPropagation();
+                const query = nationalityInput.value.trim();
+                const nat = predefinedNationalities.find(n => n.name.toLowerCase() === query.toLowerCase());
+                
+                if (nat && !nationalitiesArray.includes(nat.id)) {
+                    nationalitiesArray.push(nat.id);
+                    nationalityInput.value = '';
+                    nationalitySuggestions.style.display = 'none';
+                    renderNationalitiesList();
+                    showNotification('Don\'t forget to save your profile to apply the changes.', 'note');
+                } else if (query && !nat) {
+                    showNotification('Please select a nationality from the suggestions.', 'error');
+                    if (query.length > 0) {
+                        filterNationalitySuggestions(query);
+                    }
+                }
+            }
+        });
+
+        document.addEventListener('click', function(event) {
+            if (!nationalityInput.contains(event.target) && !nationalitySuggestions.contains(event.target)) {
+                nationalitySuggestions.style.display = 'none';
+            }
+        });
+    }
+
+    updateNationalitiesData();
+
     // Update credentials data on form submit
     const profileForm = document.getElementById('profileForm');
     if (profileForm) {
@@ -2058,6 +2251,7 @@ document.addEventListener('DOMContentLoaded', function() {
             updateTagsData();
             updateLanguagesData();
             updateCategoriesData();
+            updateNationalitiesData();
             
             // Update bio textarea with Quill content
             if (window.bioQuill) {

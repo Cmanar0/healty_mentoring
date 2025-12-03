@@ -5,7 +5,7 @@ from dashboard_mentor.models import Qualification
 from dashboard_mentor.constants import (
     PREDEFINED_MENTOR_TYPES, PREDEFINED_TAGS, 
     PREDEFINED_LANGUAGES, PREDEFINED_CATEGORIES,
-    COMMON_TIMEZONES
+    PREDEFINED_NATIONALITIES, COMMON_TIMEZONES
 )
 import json
 
@@ -286,7 +286,18 @@ def profile(request):
             profile.instagram_name = instagram_name.strip() if instagram_name else None
             profile.linkedin_name = linkedin_name.strip() if linkedin_name else None
             profile.personal_website = personal_website.strip() if personal_website else None
-            profile.nationality = nationality.strip() if nationality else None
+            
+            # Handle nationalities (from JSON array) - only allow predefined nationality IDs
+            nationalities_data = request.POST.get("nationalities_data", "")
+            if nationalities_data:
+                try:
+                    nationalities_list = json.loads(nationalities_data)
+                    valid_nationality_ids = [nat_id for nat_id in nationalities_list if nat_id in [nat['id'] for nat in PREDEFINED_NATIONALITIES]]
+                    profile.nationality = valid_nationality_ids
+                except json.JSONDecodeError:
+                    profile.nationality = []
+            else:
+                profile.nationality = []
             
             profile.save()
             
@@ -427,6 +438,7 @@ def profile(request):
         'predefined_tags': PREDEFINED_TAGS,
         'predefined_languages': PREDEFINED_LANGUAGES,
         'predefined_categories': PREDEFINED_CATEGORIES,
+        'predefined_nationalities': PREDEFINED_NATIONALITIES,
         'common_timezones': COMMON_TIMEZONES,
         'debug': settings.DEBUG,
     })

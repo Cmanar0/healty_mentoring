@@ -3572,6 +3572,28 @@ textarea.form-input {
   transition: all 0.2s ease;
 }
 
+/* Flag Icons Styling */
+.fi {
+  display: inline-block;
+  width: 1.2em;
+  height: 0.9em;
+  vertical-align: middle;
+  border-radius: 2px;
+  box-shadow: 0 0 1px rgba(0, 0, 0, 0.1);
+}
+
+.tag-item .fi {
+  margin-right: 6px;
+  width: 1.1em;
+  height: 0.85em;
+}
+
+.suggestion-item .fi {
+  margin-right: 8px;
+  width: 1.2em;
+  height: 0.9em;
+}
+
 .timezone-item {
   padding: 10px 12px;
 }
