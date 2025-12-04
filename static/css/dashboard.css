@@ -2661,26 +2661,6 @@ textarea.form-input {
   margin-bottom: 24px;
 }
 
-/* Email modal header with button - vertical centering */
-.email-modal-header-with-button {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 24px;
-  text-align: left;
-}
-
-.modal-header-content {
-  flex: 1;
-}
-
-.modal-header-button-container {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
 .modal-title {
   font-size: 1.5rem;
   font-weight: 700;
@@ -3296,7 +3276,7 @@ textarea.form-input {
   padding: 0;
   min-width: 220px;
   max-width: 280px;
-  z-index: 1000;
+  z-index: 10; /* Lower z-index so it doesn't appear on top of cards */
   opacity: 0;
   visibility: hidden;
   transition: all 0.2s ease;
@@ -3612,6 +3592,34 @@ textarea.form-input {
   margin-right: 8px;
   width: 1.2em;
   height: 0.9em;
+}
+
+/* Email Verified Badge - with larger hover area to prevent flickering */
+.email-verified-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background-color: var(--dash-primary);
+  color: white;
+  font-size: 0.7rem;
+  cursor: help;
+  position: relative;
+  z-index: 1;
+  padding: 6px; /* Add padding to increase hover area */
+  margin: -6px 4px -6px 8px; /* Adjust margins to compensate for padding */
+  transition: background-color 0.2s ease;
+}
+
+/* Ensure popover trigger has relative positioning */
+.completion-popover-trigger {
+  position: relative;
+}
+
+.email-verified-badge:hover {
+  background-color: #059669; /* Slightly darker green on hover */
 }
 
 /* Email verification "I already have code" button - no green hover */

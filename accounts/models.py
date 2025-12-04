@@ -7,6 +7,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     email = models.EmailField("email address", unique=True)
     is_staff = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
+    is_email_verified = models.BooleanField(default=False, help_text="Designates whether this user's email has been verified.")
     date_joined = models.DateTimeField(default=timezone.now)
 
     USERNAME_FIELD = "email"

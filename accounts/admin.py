@@ -16,16 +16,31 @@ class UserAdmin(BaseUserAdmin):
     add_form = CustomUserCreationForm
     form = CustomUserChangeForm
     model = CustomUser
-    list_display = ("email", "is_staff", "is_superuser")
+    list_display = ("email", "is_email_verified", "is_staff", "is_superuser")
+    list_filter = ("is_email_verified", "is_staff", "is_superuser")
     ordering = ("email",)
+    actions = ["verify_emails", "unverify_emails"]
     fieldsets = (
         (None, {"fields": ("email", "password")}),
+        ("Email Verification", {"fields": ("is_email_verified",)}),
         ("Permissions", {"fields": ("is_staff","is_superuser", "groups", "user_permissions")}),
         ("Important dates", {"fields": ("last_login",)}),
     )
     add_fieldsets = (
         (None, {"classes": ("wide",), "fields": ("email", "password1", "password2")}),
     )
+    
+    def verify_emails(self, request, queryset):
+        """Admin action to verify selected users' emails"""
+        updated = queryset.update(is_email_verified=True)
+        self.message_user(request, f"{updated} user(s) email(s) verified successfully.")
+    verify_emails.short_description = "Verify email for selected users"
+    
+    def unverify_emails(self, request, queryset):
+        """Admin action to unverify selected users' emails"""
+        updated = queryset.update(is_email_verified=False)
+        self.message_user(request, f"{updated} user(s) email(s) unverified.")
+    unverify_emails.short_description = "Unverify email for selected users"
 
 # User Profile Admin
 class UserProfileAdmin(admin.ModelAdmin):

@@ -48,10 +48,20 @@ def account(request):
         new_password_again = request.POST.get("new_password_again")
         if new_password and new_password_again and new_password == new_password_again:
             from django.contrib.auth import update_session_auth_hash
+            from general.email_service import EmailService
 
             user.set_password(new_password)
             user.save()
             update_session_auth_hash(request, user)
+            
+            # Send password changed confirmation email
+            try:
+                EmailService.send_password_changed_email(user)
+            except Exception as e:
+                # Log error but don't fail the request
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"Error sending password changed email: {str(e)}")
 
         return redirect("/dashboard/mentor/account/")
 

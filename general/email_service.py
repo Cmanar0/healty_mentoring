@@ -159,6 +159,35 @@ class EmailService:
         )
 
     @staticmethod
+    def send_password_changed_email(user) -> bool:
+        """
+        Send password changed confirmation email to a user.
+        
+        Args:
+            user: User instance (should have email and profile attributes)
+            
+        Returns:
+            bool: True if email was sent successfully
+        """
+        # Get user's name
+        user_name = "there"
+        if hasattr(user, 'profile') and user.profile:
+            if hasattr(user.profile, 'first_name') and user.profile.first_name:
+                user_name = user.profile.first_name
+        
+        context = {
+            'user': user,
+            'user_name': user_name,
+        }
+        
+        return EmailService.send_email(
+            subject="Your password has been changed",
+            recipient_email=user.email,
+            template_name='password_changed',
+            context=context,
+        )
+    
+    @staticmethod
     def send_email_change_otp(user, new_email, otp):
         """
         Send OTP for email change verification.

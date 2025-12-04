@@ -2,13 +2,15 @@ from django.shortcuts import render, redirect
 from django.contrib.auth import login, authenticate, logout
 from django.views import View
 from django.contrib import messages
+from django.contrib.auth.views import LoginView as BaseLoginView
+from django.contrib.auth.forms import AuthenticationForm
 from .forms import RegisterForm
 from .models import CustomUser, UserProfile, MentorProfile
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, force_str
 from django.contrib.auth.tokens import default_token_generator
 from django.urls import reverse
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from general.email_service import EmailService
 import os
 import json
@@ -98,8 +100,13 @@ class RegisterView(View):
                 
                 # Send verification email
                 print("DEBUG: Attempting to send verification email...")
-                send_verification_email(request, user)
-                print("DEBUG: Email sent successfully.")
+                try:
+                    send_verification_email(request, user)
+                    print("DEBUG: Email sent successfully.")
+                except Exception as e:
+                    print(f"ERROR: Failed to send verification email: {e}")
+                    # Still show success page, but log the error
+                    # User can request resend if needed
                 
                 return render(request, "accounts/email_verify_sent.html", {"email": email})
             except Exception as e:
@@ -132,6 +139,7 @@ class VerifyEmailView(View):
             user = None
         if user is not None and default_token_generator.check_token(user, token):
             user.is_active = True
+            user.is_email_verified = True
             user.save()
             
             # Send welcome email
@@ -225,6 +233,7 @@ def verify_email_change(request):
         # Update email
         user = request.user
         user.email = session_email
+        user.is_email_verified = True  # Email is verified when OTP is confirmed
         user.save()
         
         # Clear session
@@ -265,3 +274,82 @@ def check_pending_email_change(request):
             'has_pending': False,
             'email': None
         })
+
+class CustomLoginView(BaseLoginView):
+    """Custom login view that checks email verification"""
+    template_name = "accounts/login.html"
+    redirect_authenticated_user = True
+    
+    def form_valid(self, form):
+        """Check if email is verified before allowing login"""
+        email = form.cleaned_data.get('username')
+        password = form.cleaned_data.get('password')
+        
+        # Authenticate user
+        user = authenticate(self.request, username=email, password=password)
+        
+        if user is not None:
+            # Check if email is verified
+            if not user.is_email_verified:
+                # Don't log them in, show error message
+                form.add_error(None, 'Please verify your email address before logging in. Check your inbox for the verification email.')
+                return self.form_invalid(form)
+        
+        # If email is verified, proceed with normal login
+        return super().form_valid(form)
+    
+    def form_invalid(self, form):
+        """Handle invalid form, including unverified email case"""
+        # Check if user exists but email is not verified
+        email = form.data.get('username', '').lower()
+        password = form.data.get('password', '')
+        
+        try:
+            user = CustomUser.objects.get(email=email)
+            # Check if password is correct but email not verified
+            if user.check_password(password) and not user.is_email_verified:
+                # User exists and password is correct, but email not verified
+                return render(self.request, self.template_name, {
+                    'form': form,
+                    'email_not_verified': True,
+                    'user_email': email,
+                })
+        except CustomUser.DoesNotExist:
+            pass
+        
+        return super().form_invalid(form)
+
+def resend_verification_email(request):
+    """Resend verification email to user"""
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            email = data.get('email', '').strip().lower()
+            
+            if not email:
+                return JsonResponse({'success': False, 'error': 'Email is required'}, status=400)
+            
+            try:
+                user = CustomUser.objects.get(email=email)
+                
+                # Only send if email is not already verified
+                if user.is_email_verified:
+                    return JsonResponse({'success': False, 'error': 'Email is already verified'}, status=400)
+                
+                # Send verification email
+                try:
+                    send_verification_email(request, user)
+                    return JsonResponse({'success': True, 'message': 'Verification email sent successfully'})
+                except Exception as email_error:
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.error(f"Error sending verification email: {str(email_error)}")
+                    return JsonResponse({'success': False, 'error': 'Failed to send verification email. Please try again later.'}, status=500)
+            except CustomUser.DoesNotExist:
+                return JsonResponse({'success': False, 'error': 'User with this email does not exist'}, status=404)
+        except json.JSONDecodeError:
+            return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)}, status=500)
+    
+    return JsonResponse({'success': False, 'error': 'Method not allowed'}, status=405)

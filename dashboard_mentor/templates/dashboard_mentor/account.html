@@ -188,17 +188,21 @@
                                 <h4><i class="fas fa-envelope"></i> Email</h4>
                                 <span class="field-value">
                                     {{ user.email }}
-                                    <span class="email-verified-badge completion-popover-trigger" data-popover="emailVerifiedPopover" style="margin-left: 8px; color: var(--dash-primary); cursor: help;">
+                                    {% if user.is_email_verified %}
+                                    <span class="email-verified-badge completion-popover-trigger" data-popover="emailVerifiedPopover">
                                         <i class="fas fa-check-circle"></i>
                                     </span>
+                                    {% endif %}
                                 </span>
-                                <!-- Email Verified Popover -->
-                                <div class="completion-popover" id="emailVerifiedPopover">
-                                    <div class="popover-content">
-                                        <p style="margin: 0; color: var(--dash-primary);">✓ Email is verified</p>
-                                    </div>
+                            </div>
+                            <!-- Email Verified Popover - positioned relative to badge -->
+                            {% if user.is_email_verified %}
+                            <div class="completion-popover" id="emailVerifiedPopover">
+                                <div class="popover-content">
+                                    <p style="margin: 0; color: var(--dash-primary);">✓ Email is verified</p>
                                 </div>
                             </div>
+                            {% endif %}
                             <button type="button" class="btn-change-email btn-fixed-width-email" onclick="openEmailModal()">Change email</button>
                         </div>
                     </div>
@@ -331,13 +335,11 @@
         
         <!-- Step 1: New Email Input -->
         <div id="emailStep1">
-            <div class="modal-header email-modal-header-with-button">
-                <div class="modal-header-content">
-                    <h3 class="modal-title">Change Email Address</h3>
-                    <p class="modal-subtitle">Enter your new email address. We'll send you a verification code.</p>
-                </div>
+            <div class="modal-header">
+                <h3 class="modal-title">Change Email Address</h3>
+                <p class="modal-subtitle">Enter your new email address. We'll send you a verification code.</p>
                 <!-- Button to show verification code input if user already has code -->
-                <div class="modal-header-button-container">
+                <div style="margin-top: 16px; text-align: center;">
                     <button type="button" class="btn btn-outline btn-no-green-hover" id="showCodeInputBtn" onclick="showCodeInput()" style="display: none; width: auto; padding: 8px 16px; font-size: 0.9rem;">
                         I already have the verification code
                     </button>
@@ -356,8 +358,13 @@
                     <input type="email" id="newEmailInput" class="form-input" placeholder="name@example.com" required>
                 </div>
                 <div class="modal-actions">
-                    <button type="submit" class="btn btn-primary btn-full">Send Verification Code</button>
-                    <button type="button" class="btn btn-outline" onclick="closeEmailModal()">Cancel</button>
+                    <button type="submit" id="sendVerificationCodeBtn" class="btn btn-primary btn-full">
+                        <span class="btn-text">Send Verification Code</span>
+                        <span class="btn-loading" style="display: none;">
+                            <i class="fas fa-spinner fa-spin" style="margin-right: 8px;"></i>Sending...
+                        </span>
+                    </button>
+                    <button type="button" class="btn btn-outline" onclick="closeEmailModal()" id="cancelEmailBtn">Cancel</button>
                 </div>
             </form>
       </div>
@@ -390,8 +397,13 @@
       </div>
 
                 <div class="modal-actions">
-                    <button type="submit" class="btn btn-primary btn-full">Verify & Update Email</button>
-                    <button type="button" class="btn btn-outline" onclick="backToStep1()">Back</button>
+                    <button type="submit" id="verifyEmailBtn" class="btn btn-primary btn-full">
+                        <span class="btn-text">Verify & Update Email</span>
+                        <span class="btn-loading" style="display: none;">
+                            <i class="fas fa-spinner fa-spin" style="margin-right: 8px;"></i>Processing...
+                        </span>
+                    </button>
+                    <button type="button" class="btn btn-outline" onclick="backToStep1()" id="backToStep1Btn">Back</button>
                 </div>
     </form>
   </div>
@@ -476,10 +488,18 @@ document.addEventListener('DOMContentLoaded', function() {
         const popover = document.getElementById(popoverId);
         
         if (popover) {
+            // Ensure popover is positioned relative to trigger's parent (email-label-group)
+            // The popover should be a sibling of the email-label-group, not moved around
+            const emailLabelGroup = trigger.closest('.email-label-group');
+            if (emailLabelGroup && popover.parentElement !== emailLabelGroup.parentElement) {
+                // Move popover to be next to email-label-group
+                emailLabelGroup.parentElement.insertBefore(popover, emailLabelGroup.nextSibling);
+            }
+            
             trigger.addEventListener('mouseenter', function() {
                 popover.style.display = 'block';
                 
-                // Calculate position
+                // Calculate position relative to trigger badge using fixed positioning
                 const triggerRect = trigger.getBoundingClientRect();
                 const popoverRect = popover.getBoundingClientRect();
                 const viewportHeight = window.innerHeight;
@@ -490,17 +510,33 @@ document.addEventListener('DOMContentLoaded', function() {
                 const spaceBelow = viewportHeight - triggerRect.bottom;
                 const popoverHeight = popoverRect.height || 200; // Estimate if not yet rendered
                 
+                // Reset positioning
+                popover.style.position = 'fixed';
+                popover.style.left = '';
+                popover.style.right = '';
+                popover.style.top = '';
+                popover.style.bottom = '';
+                popover.style.transform = '';
+                
+                // Calculate horizontal position relative to trigger
+                const triggerCenterX = triggerRect.left + triggerRect.width / 2;
+                const popoverWidth = popoverRect.width || 250;
+                
                 // Position popover above or below based on available space
                 if (spaceAbove >= popoverHeight + 20 || spaceAbove > spaceBelow) {
                     // Position above
-                    popover.style.bottom = 'calc(100% + 12px)';
+                    popover.style.bottom = `${window.innerHeight - triggerRect.top + 12}px`;
                     popover.style.top = 'auto';
+                    popover.style.left = `${triggerCenterX}px`;
+                    popover.style.transform = 'translateX(-50%)';
                     popover.classList.remove('popover-below');
                     popover.classList.add('popover-above');
                 } else {
                     // Position below
-                    popover.style.top = 'calc(100% + 12px)';
+                    popover.style.top = `${triggerRect.bottom + 12}px`;
                     popover.style.bottom = 'auto';
+                    popover.style.left = `${triggerCenterX}px`;
+                    popover.style.transform = 'translateX(-50%)';
                     popover.classList.remove('popover-above');
                     popover.classList.add('popover-below');
                 }
@@ -733,10 +769,42 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Step 2 Form Submission (Verify OTP)
     const emailFormStep2 = document.getElementById('emailFormStep2');
+    const verifyEmailBtn = document.getElementById('verifyEmailBtn');
+    const backToStep1Btn = document.getElementById('backToStep1Btn');
+    
+    function enableEmailButtons() {
+        if (verifyEmailBtn) {
+            verifyEmailBtn.disabled = false;
+            verifyEmailBtn.style.opacity = '1';
+            verifyEmailBtn.style.cursor = 'pointer';
+            verifyEmailBtn.querySelector('.btn-text').style.display = 'inline';
+            verifyEmailBtn.querySelector('.btn-loading').style.display = 'none';
+        }
+        if (backToStep1Btn) {
+            backToStep1Btn.disabled = false;
+        }
+    }
+    
+    function disableEmailButtons() {
+        if (verifyEmailBtn) {
+            verifyEmailBtn.disabled = true;
+            verifyEmailBtn.style.opacity = '0.6';
+            verifyEmailBtn.style.cursor = 'not-allowed';
+            verifyEmailBtn.querySelector('.btn-text').style.display = 'none';
+            verifyEmailBtn.querySelector('.btn-loading').style.display = 'inline';
+        }
+        if (backToStep1Btn) {
+            backToStep1Btn.disabled = true;
+        }
+    }
+    
     if (emailFormStep2) {
         emailFormStep2.addEventListener('submit', function(e) {
             e.preventDefault();
             hideEmailErrors();
+            
+            // Disable button and show loading
+            disableEmailButtons();
             
             // Collect OTP
             let otp = '';
@@ -746,6 +814,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             if (otp.length !== 6) {
                 showEmailError(2, 'Please enter the full 6-digit code');
+                enableEmailButtons();
                 return;
             }
             
@@ -773,11 +842,13 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Clear verification inputs on error
                     document.querySelectorAll('.verification-digit').forEach(input => input.value = '');
                     setTimeout(() => document.querySelector('.verification-digit').focus(), 100);
+                    enableEmailButtons();
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
                 showEmailError(2, 'An error occurred. Please try again.');
+                enableEmailButtons();
             });
         });
     }
@@ -885,6 +956,20 @@ function handleEmailStep1(e) {
         return;
     }
     
+    // Disable button and show loading
+    const sendBtn = document.getElementById('sendVerificationCodeBtn');
+    const cancelBtn = document.getElementById('cancelEmailBtn');
+    if (sendBtn) {
+        sendBtn.disabled = true;
+        sendBtn.style.opacity = '0.6';
+        sendBtn.style.cursor = 'not-allowed';
+        sendBtn.querySelector('.btn-text').style.display = 'none';
+        sendBtn.querySelector('.btn-loading').style.display = 'inline';
+    }
+    if (cancelBtn) {
+        cancelBtn.disabled = true;
+    }
+    
     // Send request to initiate email change
     fetch('{% url "accounts:initiate_email_change" %}', {
         method: 'POST',
@@ -896,6 +981,18 @@ function handleEmailStep1(e) {
     })
     .then(response => response.json())
     .then(data => {
+        // Re-enable button
+        if (sendBtn) {
+            sendBtn.disabled = false;
+            sendBtn.style.opacity = '1';
+            sendBtn.style.cursor = 'pointer';
+            sendBtn.querySelector('.btn-text').style.display = 'inline';
+            sendBtn.querySelector('.btn-loading').style.display = 'none';
+        }
+        if (cancelBtn) {
+            cancelBtn.disabled = false;
+        }
+        
         if (data.success) {
             document.getElementById('emailStep1').style.display = 'none';
             document.getElementById('emailStep2').style.display = 'block';
@@ -913,6 +1010,17 @@ function handleEmailStep1(e) {
     .catch(error => {
         console.error('Error:', error);
         showEmailError(1, 'An error occurred. Please try again.');
+        // Re-enable button on error
+        if (sendBtn) {
+            sendBtn.disabled = false;
+            sendBtn.style.opacity = '1';
+            sendBtn.style.cursor = 'pointer';
+            sendBtn.querySelector('.btn-text').style.display = 'inline';
+            sendBtn.querySelector('.btn-loading').style.display = 'none';
+        }
+        if (cancelBtn) {
+            cancelBtn.disabled = false;
+        }
     });
 }
 

@@ -26,6 +26,23 @@
         </div>
       </div>
 
+      {% if email_not_verified %}
+      <div class="form-errors email-not-verified-error" style="background-color: #fef2f2; border-left: 4px solid #ef4444; padding: 16px; margin-bottom: 20px; border-radius: 8px;">
+        <div style="display: flex; align-items: flex-start; gap: 12px;">
+          <i class="fas fa-exclamation-circle" style="color: #ef4444; font-size: 1.2rem; margin-top: 2px;"></i>
+          <div style="flex: 1;">
+            <p style="color: #991b1b; font-weight: 600; margin: 0 0 8px 0;">Email Not Verified</p>
+            <p style="color: #7f1d1d; margin: 0 0 12px 0; line-height: 1.5;">Please verify your email address before logging in. Check your inbox for the verification email.</p>
+            <button type="button" id="resendVerificationBtn" class="btn-resend-verification" style="background-color: #10b981; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 500; transition: background-color 0.2s;">
+              <i class="fas fa-paper-plane" style="margin-right: 6px;"></i>
+              Resend Verification Email
+            </button>
+            <p id="resendMessage" style="margin: 8px 0 0 0; color: #059669; font-size: 0.9rem; display: none;"></p>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
       {% if form.non_field_errors %}
       <div class="form-errors">
         {{ form.non_field_errors }}
@@ -72,5 +89,57 @@
       </div>
     </div>
   </div>
+
+  {% if email_not_verified %}
+  <script>
+    document.getElementById('resendVerificationBtn').addEventListener('click', function() {
+      const btn = this;
+      const messageDiv = document.getElementById('resendMessage');
+      const userEmail = '{{ user_email|escapejs }}';
+      
+      // Disable button
+      btn.disabled = true;
+      btn.style.opacity = '0.6';
+      btn.style.cursor = 'not-allowed';
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin" style="margin-right: 6px;"></i>Sending...';
+      
+      // Send AJAX request
+      fetch('{% url "accounts:resend_verification_email" %}', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({ email: userEmail })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          messageDiv.textContent = 'Verification email sent! Please check your inbox.';
+          messageDiv.style.display = 'block';
+          btn.innerHTML = '<i class="fas fa-check" style="margin-right: 6px;"></i>Email Sent';
+        } else {
+          messageDiv.textContent = data.error || 'Failed to send email. Please try again later.';
+          messageDiv.style.color = '#ef4444';
+          messageDiv.style.display = 'block';
+          btn.disabled = false;
+          btn.style.opacity = '1';
+          btn.style.cursor = 'pointer';
+          btn.innerHTML = '<i class="fas fa-paper-plane" style="margin-right: 6px;"></i>Resend Verification Email';
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        messageDiv.textContent = 'An error occurred. Please try again later.';
+        messageDiv.style.color = '#ef4444';
+        messageDiv.style.display = 'block';
+        btn.disabled = false;
+        btn.style.opacity = '1';
+        btn.style.cursor = 'pointer';
+        btn.innerHTML = '<i class="fas fa-paper-plane" style="margin-right: 6px;"></i>Resend Verification Email';
+      });
+    });
+  </script>
+  {% endif %}
 </body>
 </html>
