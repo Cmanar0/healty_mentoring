@@ -2,6 +2,12 @@
 {% block title %}Find Your Mentor — Healthy Mentoring{% endblock %}
 {% load static %}
 
+{% block extra_css %}
+{{ block.super }}
+<!-- Flag Icons CSS -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flag-icons@7.0.0/css/flag-icons.min.css">
+{% endblock %}
+
 {% block content %}
 <!-- Mentors Page Header -->
 <section class="mentors-page-header">
@@ -29,7 +35,7 @@
   </div>
   
   <div class="search-filters">
-    <div class="filter-group">
+    <div class="filter-group filter-group-compact">
       <label><i class="fas fa-tag"></i> Category</label>
       <div class="autocomplete-container" style="position: relative;">
         <input type="text" id="categoryInput" class="form-input autocomplete-input" placeholder="Type to search categories..." autocomplete="off" value="{% if current_filters.category %}{% for cat in predefined_categories %}{% if cat.id == current_filters.category %}{{ cat.name }}{% endif %}{% endfor %}{% endif %}">
@@ -48,7 +54,7 @@
       </div>
     </div>
     
-    <div class="filter-group">
+    <div class="filter-group filter-group-compact">
       <label><i class="fas fa-globe"></i> Language</label>
       <div class="autocomplete-container" style="position: relative;">
         <input type="text" id="languageInput" class="form-input autocomplete-input" placeholder="Type to search languages..." autocomplete="off" value="{% if current_filters.language %}{% for lang in predefined_languages %}{% if lang.id == current_filters.language %}{{ lang.name }}{% endif %}{% endfor %}{% endif %}">
@@ -57,9 +63,17 @@
       </div>
     </div>
     
-    <div class="filter-group">
-      <label><i class="fas fa-gift"></i> First Session Free</label>
-      <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 8px;">
+    <div class="filter-group filter-group-compact">
+      <label>
+        <i class="fas fa-gift"></i> First Session Free
+        <span class="info-icon-popover-trigger" data-popover="firstSessionFreePopover">
+          <i class="fas fa-info-circle" style="color: var(--text-light); font-size: 0.85rem; margin-left: 4px; cursor: help;"></i>
+        </span>
+        <div class="info-popover" id="firstSessionFreePopover" style="display: none;">
+          Show only mentors offering free first session
+        </div>
+      </label>
+      <div style="display: flex; align-items: center; gap: 12px; margin-top: 8px;">
         <div class="toggle-wrapper">
           <label class="toggle-switch">
             <input type="checkbox" id="firstSessionFree" {% if current_filters.first_session_free %}checked{% endif %}>
@@ -69,7 +83,6 @@
             {% if current_filters.first_session_free %}Enabled{% else %}Disabled{% endif %}
           </span>
         </div>
-        <span style="font-size: 0.9rem; color: var(--text-light);">Show only mentors offering free first session</span>
       </div>
     </div>
   </div>

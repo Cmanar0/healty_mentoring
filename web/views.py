@@ -61,8 +61,11 @@ def mentors(request):
     if max_price:
         try:
             max_price_decimal = float(max_price)
-            # Only show mentors with price_per_hour <= max_price (exclude null prices)
-            mentors = mentors.filter(price_per_hour__lte=max_price_decimal)
+            # If max_price is 200 (the slider max), treat it as "200+" (no upper limit)
+            # Otherwise, filter by price_per_hour <= max_price
+            if max_price_decimal < 200:
+                mentors = mentors.filter(price_per_hour__lte=max_price_decimal)
+            # If max_price is 200, don't filter by price (show all prices)
         except ValueError:
             pass
     
@@ -215,7 +218,11 @@ def mentors_load_more(request):
     if max_price:
         try:
             max_price_decimal = float(max_price)
-            mentors = mentors.filter(price_per_hour__lte=max_price_decimal)
+            # If max_price is 200 (the slider max), treat it as "200+" (no upper limit)
+            # Otherwise, filter by price_per_hour <= max_price
+            if max_price_decimal < 200:
+                mentors = mentors.filter(price_per_hour__lte=max_price_decimal)
+            # If max_price is 200, don't filter by price (show all prices)
         except ValueError:
             pass
     

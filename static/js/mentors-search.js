@@ -27,6 +27,20 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // --- Autocomplete Logic ---
     
+    // Render flag function - same as in profile template
+    function renderFlag(item) {
+        // For languages: use flag_code if available, otherwise use id
+        const flagCode = item.flag_code || item.id;
+        if (flagCode) {
+            // Use flag-icon-css if flag_code/id is available
+            return `<span class="fi fi-${flagCode.toLowerCase()}" style="margin-right: 6px; vertical-align: middle;"></span>`;
+        } else if (item.flag) {
+            // Fallback to emoji
+            return item.flag + ' ';
+        }
+        return '';
+    }
+    
     function setupAutocomplete(input, suggestionsContainer, data, valueInput, onSelect) {
         if (!input || !suggestionsContainer) return;
         
@@ -41,12 +55,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     const div = document.createElement('div');
                     div.className = 'suggestion-item';
                     
-                    // Handle flag for languages
+                    // Handle flag for languages - use renderFlag function
                     let content = item.name;
-                    if (item.flag_code) {
-                        content = `<span class="fi fi-${item.flag_code}"></span> ${item.name}`;
-                    } else if (item.flag) {
-                        content = `${item.flag} ${item.name}`;
+                    if (item.flag_code || item.flag) {
+                        content = renderFlag(item) + item.name;
                     }
                     
                     div.innerHTML = content;
@@ -105,12 +117,42 @@ document.addEventListener('DOMContentLoaded', function() {
       const max = parseFloat(priceSlider.max);
       const min = parseFloat(priceSlider.min);
       const percentage = ((value - min) / (max - min)) * 100;
-      priceValue.textContent = `$0 - $${Math.round(value)}`;
+      
+      // Show "200+" when at max, otherwise show range
+      if (value >= max) {
+        priceValue.textContent = '$0 - $200+';
+      } else {
+        priceValue.textContent = `$0 - $${Math.round(value)}`;
+      }
+      
       priceSlider.style.background = `linear-gradient(to right, var(--primary) 0%, var(--primary) ${percentage}%, #e2e8f0 ${percentage}%, #e2e8f0 100%)`;
     };
     
+    // Load price from URL parameters on page load
+    function loadPriceFromURL() {
+        if (!priceSlider) return;
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.has('price')) {
+            const price = parseFloat(urlParams.get('price'));
+            if (!isNaN(price)) {
+                priceSlider.value = price;
+                // Update slider display after setting value
+                // Use setTimeout to ensure the value is set before updating
+                setTimeout(() => {
+                    updateSlider();
+                }, 0);
+            }
+        }
+    }
+    
     if (priceSlider) {
+      // Load price from URL first
+      loadPriceFromURL();
+      
+      // Also update on initial load (in case no URL param)
       setTimeout(updateSlider, 0);
+      
+      // Then set up event listeners
       priceSlider.addEventListener('input', updateSlider);
       priceSlider.addEventListener('change', () => {
           updateSlider();
