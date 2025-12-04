@@ -4,7 +4,7 @@ from django.views import View
 from django.contrib import messages
 from django.contrib.auth.views import LoginView as BaseLoginView
 from django.contrib.auth.forms import AuthenticationForm
-from .forms import RegisterForm
+from .forms import RegisterForm, CustomAuthenticationForm
 from .models import CustomUser, UserProfile, MentorProfile
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, force_str
@@ -174,6 +174,7 @@ def initiate_email_change(request):
         if new_email == request.user.email:
             return JsonResponse({'success': False, 'error': 'New email must be different from current email'}, status=400)
             
+        # new_email is already normalized to lowercase in line 169
         if CustomUser.objects.filter(email=new_email).exists():
             return JsonResponse({'success': False, 'error': 'This email is already in use'}, status=400)
             
@@ -278,14 +279,16 @@ def check_pending_email_change(request):
 class CustomLoginView(BaseLoginView):
     """Custom login view that checks email verification"""
     template_name = "accounts/login.html"
+    form_class = CustomAuthenticationForm
     redirect_authenticated_user = True
     
     def form_valid(self, form):
         """Check if email is verified before allowing login"""
-        email = form.cleaned_data.get('username')
+        # Email is already normalized to lowercase by CustomAuthenticationForm
+        email = form.cleaned_data.get('username', '').strip()
         password = form.cleaned_data.get('password')
         
-        # Authenticate user
+        # Authenticate user with normalized email
         user = authenticate(self.request, username=email, password=password)
         
         if user is not None:

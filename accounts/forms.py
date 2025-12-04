@@ -2,6 +2,14 @@ from django import forms
 from django.contrib.auth.forms import ReadOnlyPasswordHashField, UserCreationForm, UserChangeForm, AuthenticationForm
 from .models import CustomUser, UserProfile
 
+class CustomAuthenticationForm(AuthenticationForm):
+    """Custom authentication form that normalizes email to lowercase"""
+    def clean_username(self):
+        username = self.cleaned_data.get('username')
+        if username:
+            return username.lower().strip()
+        return username
+
 class CustomUserCreationForm(UserCreationForm):
     email = forms.EmailField(required=True)
 
@@ -29,8 +37,10 @@ class RegisterForm(forms.Form):
 
     def clean_email(self):
         email = self.cleaned_data.get("email")
-        if email and CustomUser.objects.filter(email=email).exists():
-            raise forms.ValidationError("A user with this email already exists.")
+        if email:
+            email = email.lower().strip()
+            if CustomUser.objects.filter(email=email).exists():
+                raise forms.ValidationError("A user with this email already exists.")
         return email
 
     def clean(self):

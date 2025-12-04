@@ -19,6 +19,12 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         verbose_name = "User"
         verbose_name_plural = "Users"
 
+    def save(self, *args, **kwargs):
+        """Override save to ensure email is always stored in lowercase"""
+        if self.email:
+            self.email = self.email.lower().strip()
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return self.email
 
