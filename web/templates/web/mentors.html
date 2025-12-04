@@ -32,7 +32,7 @@
     <div class="filter-group">
       <label><i class="fas fa-tag"></i> Category</label>
       <div class="autocomplete-container" style="position: relative;">
-        <input type="text" id="categoryInput" class="autocomplete-input" placeholder="Select a category..." autocomplete="off" value="{% if current_filters.category %}{% for cat in predefined_categories %}{% if cat.id == current_filters.category %}{{ cat.name }}{% endif %}{% endfor %}{% endif %}">
+        <input type="text" id="categoryInput" class="form-input autocomplete-input" placeholder="Type to search categories..." autocomplete="off" value="{% if current_filters.category %}{% for cat in predefined_categories %}{% if cat.id == current_filters.category %}{{ cat.name }}{% endif %}{% endfor %}{% endif %}">
         <div class="autocomplete-suggestions" id="categorySuggestions"></div>
         <input type="hidden" id="categoryValue" value="{{ current_filters.category }}">
       </div>
@@ -51,7 +51,7 @@
     <div class="filter-group">
       <label><i class="fas fa-globe"></i> Language</label>
       <div class="autocomplete-container" style="position: relative;">
-        <input type="text" id="languageInput" class="autocomplete-input" placeholder="Select a language..." autocomplete="off" value="{% if current_filters.language %}{% for lang in predefined_languages %}{% if lang.id == current_filters.language %}{{ lang.name }}{% endif %}{% endfor %}{% endif %}">
+        <input type="text" id="languageInput" class="form-input autocomplete-input" placeholder="Type to search languages..." autocomplete="off" value="{% if current_filters.language %}{% for lang in predefined_languages %}{% if lang.id == current_filters.language %}{{ lang.name }}{% endif %}{% endfor %}{% endif %}">
         <div class="autocomplete-suggestions" id="languageSuggestions"></div>
         <input type="hidden" id="languageValue" value="{{ current_filters.language }}">
       </div>
@@ -59,31 +59,17 @@
     
     <div class="filter-group">
       <label><i class="fas fa-gift"></i> First Session Free</label>
-      <div style="display: flex; align-items: center; margin-top: 8px;">
-        <label class="toggle-switch" style="margin: 0;">
-          <input type="checkbox" id="firstSessionFree" {% if current_filters.first_session_free %}checked{% endif %}>
-          <span class="toggle-slider"></span>
-        </label>
-        <span style="margin-left: 8px; font-size: 0.9rem; color: var(--text-light);">Show only mentors offering free first session</span>
-      </div>
-    </div>
-    
-    <div class="filter-group">
-      <label><i class="fas fa-clock"></i> Time Zone</label>
-      <div style="display: flex; gap: 8px; align-items: center; margin-top: 8px;">
-        <div class="autocomplete-container" style="position: relative; flex: 1;">
-          <input type="text" id="timezoneMinInput" class="autocomplete-input" placeholder="Min timezone..." autocomplete="off" value="{% if current_filters.timezone_min %}{% for tz in common_timezones %}{% if tz.id == current_filters.timezone_min %}{{ tz.name }}{% endif %}{% endfor %}{% endif %}">
-          <div class="autocomplete-suggestions" id="timezoneMinSuggestions"></div>
-          <input type="hidden" id="timezoneMinValue" value="{{ current_filters.timezone_min }}">
+      <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 8px;">
+        <div class="toggle-wrapper">
+          <label class="toggle-switch">
+            <input type="checkbox" id="firstSessionFree" {% if current_filters.first_session_free %}checked{% endif %}>
+            <span class="toggle-slider"></span>
+          </label>
+          <span class="toggle-status-text" id="firstSessionStatusText">
+            {% if current_filters.first_session_free %}Enabled{% else %}Disabled{% endif %}
+          </span>
         </div>
-        <span style="color: var(--text-light);">to</span>
-        <div class="autocomplete-container" style="position: relative; flex: 1;">
-          <input type="text" id="timezoneMaxInput" class="autocomplete-input" placeholder="Max timezone..." autocomplete="off" value="{% if current_filters.timezone_max %}{% for tz in common_timezones %}{% if tz.id == current_filters.timezone_max %}{{ tz.name }}{% endif %}{% endfor %}{% endif %}">
-          <div class="autocomplete-suggestions" id="timezoneMaxSuggestions"></div>
-          <input type="hidden" id="timezoneMaxValue" value="{{ current_filters.timezone_max }}">
-        </div>
-        <button type="button" id="timezoneRangePlus" class="timezone-range-btn" title="Expand range">+</button>
-        <button type="button" id="timezoneRangeMinus" class="timezone-range-btn" title="Narrow range">-</button>
+        <span style="font-size: 0.9rem; color: var(--text-light);">Show only mentors offering free first session</span>
       </div>
     </div>
   </div>
@@ -198,7 +184,6 @@
 <!-- Predefined data for filters -->
 {{ predefined_categories|json_script:"predefinedCategoriesData" }}
 {{ predefined_languages|json_script:"predefinedLanguagesData" }}
-{{ common_timezones|json_script:"commonTimezonesData" }}
 {{ current_page|json_script:"currentPageData" }}
 {{ has_next|json_script:"hasNextData" }}
 

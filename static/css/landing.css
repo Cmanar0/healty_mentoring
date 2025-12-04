@@ -720,6 +720,141 @@ h1, h2, h3, h4 {
   color: var(--primary);
 }
 
+/* Autocomplete styling - copied from dashboard.css */
+.autocomplete-container {
+  position: relative;
+}
+
+.autocomplete-input {
+  width: 100%;
+}
+
+.autocomplete-suggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  margin-top: 4px;
+  max-height: 300px;
+  overflow-y: auto;
+  z-index: 1000;
+  display: none;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.suggestion-item {
+  padding: 12px 16px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  color: var(--text-dark);
+  font-size: 0.95rem;
+}
+
+.suggestion-item:hover {
+  background: rgba(16, 185, 129, 0.08);
+  color: var(--primary);
+}
+
+.suggestion-item.first-item {
+  border-radius: 8px 8px 0 0;
+}
+
+.suggestion-item.last-item {
+  border-radius: 0 0 8px 8px;
+}
+
+.suggestion-item:only-child {
+  border-radius: 8px;
+}
+
+/* Mentor suggestion item specific styling */
+.suggestion-item.mentor-suggestion-item {
+  padding: 12px 16px;
+}
+
+/* First Session Free Toggle - copied from dashboard.css */
+.session-free-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 8px;
+}
+
+.setting-description {
+  font-size: 0.9rem;
+  color: var(--text-light);
+  margin: 0;
+  flex: 1;
+}
+
+/* Toggle Switch */
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 52px;
+  height: 28px;
+}
+
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #cbd5e1;
+  transition: .4s;
+  border-radius: 34px;
+}
+
+.toggle-slider:before {
+  position: absolute;
+  content: "";
+  height: 20px;
+  width: 20px;
+  left: 4px;
+  bottom: 4px;
+  background-color: white;
+  transition: .4s;
+  border-radius: 50%;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+input:checked + .toggle-slider {
+  background-color: var(--primary);
+}
+
+input:focus + .toggle-slider {
+  box-shadow: 0 0 1px var(--primary);
+}
+
+input:checked + .toggle-slider:before {
+  transform: translateX(24px);
+}
+
+.toggle-wrapper {
+  min-width: 130px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.toggle-status-text {
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--text-dark);
+}
+
 /* Custom Select Styling */
 .custom-select {
   position: relative;

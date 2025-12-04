@@ -4,7 +4,7 @@ from django.db.models import Q, Min, Max
 from django.db.models.functions import Coalesce
 from django.db import models
 from accounts.models import CustomUser, MentorProfile
-from dashboard_mentor.constants import PREDEFINED_CATEGORIES, PREDEFINED_LANGUAGES, COMMON_TIMEZONES
+from dashboard_mentor.constants import PREDEFINED_CATEGORIES, PREDEFINED_LANGUAGES
 import json
 
 def landing(request):
@@ -17,8 +17,6 @@ def mentors(request):
     language_id = request.GET.get('language', '').strip()
     max_price = request.GET.get('price', '').strip()
     first_session_free = request.GET.get('first_session_free', '').strip() == 'true'
-    timezone_min = request.GET.get('timezone_min', '').strip()
-    timezone_max = request.GET.get('timezone_max', '').strip()
     page = int(request.GET.get('page', 1))
     per_page = 12  # Number of mentors per page
     
@@ -72,17 +70,6 @@ def mentors(request):
     if first_session_free:
         mentors = mentors.filter(first_session_free=True)
     
-    # Filter by timezone range (if both min and max are provided)
-    if timezone_min and timezone_max:
-        # Get timezone offsets for filtering
-        min_tz = next((tz for tz in COMMON_TIMEZONES if tz['id'] == timezone_min), None)
-        max_tz = next((tz for tz in COMMON_TIMEZONES if tz['id'] == timezone_max), None)
-        if min_tz and max_tz:
-            # Filter mentors whose selected_timezone is in the range
-            # This is a simplified approach - you might want to parse UTC offsets for more accurate filtering
-            mentors = mentors.filter(
-                selected_timezone__isnull=False
-            )
     
     # Order by name
     mentors = mentors.order_by('first_name', 'last_name')
@@ -118,7 +105,6 @@ def mentors(request):
         'mentors': mentors_page,
         'predefined_categories': PREDEFINED_CATEGORIES,
         'predefined_languages': PREDEFINED_LANGUAGES,
-        'common_timezones': COMMON_TIMEZONES,
         'min_price': min_price,
         'max_price': max_price,
         'current_page': page,
@@ -130,8 +116,6 @@ def mentors(request):
             'language': language_id,
             'price': max_price if not max_price else (int(max_price) if max_price else max_price),
             'first_session_free': first_session_free,
-            'timezone_min': timezone_min,
-            'timezone_max': timezone_max,
         }
     }
     
@@ -192,8 +176,6 @@ def mentors_load_more(request):
     language_id = request.GET.get('language', '').strip()
     max_price = request.GET.get('price', '').strip()
     first_session_free = request.GET.get('first_session_free', '').strip() == 'true'
-    timezone_min = request.GET.get('timezone_min', '').strip()
-    timezone_max = request.GET.get('timezone_max', '').strip()
     page = int(request.GET.get('page', 1))
     per_page = 12
     
@@ -240,8 +222,6 @@ def mentors_load_more(request):
     if first_session_free:
         mentors = mentors.filter(first_session_free=True)
     
-    if timezone_min and timezone_max:
-        mentors = mentors.filter(selected_timezone__isnull=False)
     
     # Order by name
     mentors = mentors.order_by('first_name', 'last_name')
