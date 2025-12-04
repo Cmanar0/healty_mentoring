@@ -1,0 +1,19 @@
+{% extends 'emails/base.html' %}
+
+{% block content %}
+<h1>Verify your new email</h1>
+
+<p>Hi {{ user_name }},</p>
+
+<p>We received a request to change the email address for your {{ site_name }} account.</p>
+
+<p>Please use the following verification code to complete the process:</p>
+
+<div class="otp-box">
+    <span class="otp-code">{{ otp }}</span>
+</div>
+
+<p>This code will expire in 10 minutes.</p>
+
+<p>If you didn't request this change, please contact our support team immediately.</p>
+{% endblock %}

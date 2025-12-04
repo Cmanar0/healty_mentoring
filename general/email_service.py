@@ -44,6 +44,7 @@ class EmailService:
         # Add default context variables
         context.setdefault('site_domain', os.getenv('SITE_DOMAIN', 'http://localhost:8000'))
         context.setdefault('site_name', 'Healthy Mentoring')
+        context.setdefault('development_mode', os.getenv('DEVELOPMENT_MODE', 'dev').lower())
         
         # Render the email template
         html_content = render_to_string(
@@ -95,7 +96,7 @@ class EmailService:
         return EmailService.send_email(
             subject="Verify your Healthy Mentoring account",
             recipient_email=user.email,
-            template_name='verification',
+            template_name='registration_verification',
             context=context,
         )
     
@@ -154,6 +155,38 @@ class EmailService:
             subject="Welcome to Healthy Mentoring!",
             recipient_email=user.email,
             template_name='welcome',
+            context=context,
+        )
+
+    @staticmethod
+    def send_email_change_otp(user, new_email, otp):
+        """
+        Send OTP for email change verification.
+        
+        Args:
+            user (CustomUser): The user requesting the change
+            new_email (str): The new email address
+            otp (str): The verification code
+            
+        Returns:
+            bool: True if email was sent successfully
+        """
+        user_name = "there"
+        if hasattr(user, 'profile') and user.profile:
+            if hasattr(user.profile, 'first_name') and user.profile.first_name:
+                user_name = user.profile.first_name
+                
+        context = {
+            'user': user,
+            'user_name': user_name,
+            'new_email': new_email,
+            'otp': otp,
+        }
+        
+        return EmailService.send_email(
+            subject="Verify your new email address",
+            recipient_email=new_email,
+            template_name='email_change_verify',
             context=context,
         )
 

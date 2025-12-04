@@ -2661,6 +2661,26 @@ textarea.form-input {
   margin-bottom: 24px;
 }
 
+/* Email modal header with button - vertical centering */
+.email-modal-header-with-button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  text-align: left;
+}
+
+.modal-header-content {
+  flex: 1;
+}
+
+.modal-header-button-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
 .modal-title {
   font-size: 1.5rem;
   font-weight: 700;
@@ -3592,6 +3612,16 @@ textarea.form-input {
   margin-right: 8px;
   width: 1.2em;
   height: 0.9em;
+}
+
+/* Email verification "I already have code" button - no green hover */
+#showCodeInputBtn:hover {
+  background: rgba(0, 0, 0, 0.05) !important;
+  border-color: var(--dash-border);
+}
+
+#showCodeInputBtn:active {
+  background: rgba(0, 0, 0, 0.1) !important;
 }
 
 .timezone-item {

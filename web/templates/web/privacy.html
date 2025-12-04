@@ -1,0 +1,278 @@
+{% extends "base.html" %}
+{% block navbar %}{% endblock %}
+{% load static %}
+
+{% block title %}Privacy Policy{% endblock %}
+
+{% block content %}
+<div class="terms-page">
+  <div class="terms-container">
+    <div class="terms-header">
+      <a href="{% url 'web:landing' %}" class="back-link">
+        <i class="fas fa-arrow-left"></i> Back to Home
+      </a>
+      <h1>Privacy Policy</h1>
+      <p class="last-updated">Last updated: December 3, 2024</p>
+    </div>
+
+    <div class="terms-content">
+      <section>
+        <h2>1. Introduction</h2>
+        <p>Welcome to Healthy Mentoring ("we," "our," or "us"). We are committed to protecting your personal information and your right to privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our platform and services.</p>
+        <p>By using Healthy Mentoring, you agree to the collection and use of information in accordance with this policy. If you do not agree with our policies and practices, please do not use our services.</p>
+      </section>
+
+      <section>
+        <h2>2. Information We Collect</h2>
+        <h3>2.1 Information You Provide</h3>
+        <p>We collect information that you provide directly to us, including:</p>
+        <ul>
+          <li><strong>Account Information:</strong> Name, email address, password, profile picture, and other account details</li>
+          <li><strong>Profile Information:</strong> Bio, qualifications, expertise, languages, nationality, mentor type, pricing information, and session preferences</li>
+          <li><strong>Contact Information:</strong> Email address, phone number (if provided), and billing address</li>
+          <li><strong>Payment Information:</strong> Billing details, payment method information (processed securely through third-party payment processors)</li>
+          <li><strong>Communication Data:</strong> Messages, session notes, and other communications sent through our platform</li>
+          <li><strong>Content:</strong> Blog posts, marketing content, reviews, and other content you create or share</li>
+        </ul>
+
+        <h3>2.2 Automatically Collected Information</h3>
+        <p>When you use our platform, we automatically collect certain information, including:</p>
+        <ul>
+          <li><strong>Usage Data:</strong> Pages visited, features used, time spent on the platform, and interaction patterns</li>
+          <li><strong>Device Information:</strong> IP address, browser type, device type, operating system, and device identifiers</li>
+          <li><strong>Location Data:</strong> Timezone information (detected automatically for scheduling purposes)</li>
+          <li><strong>Cookies and Tracking Technologies:</strong> We use cookies and similar technologies to enhance your experience and analyze platform usage</li>
+        </ul>
+
+        <h3>2.3 Information from Third Parties</h3>
+        <p>We may receive information about you from third-party services, such as:</p>
+        <ul>
+          <li>Payment processors (for transaction information)</li>
+          <li>Authentication services (if you log in through third-party providers)</li>
+          <li>Analytics providers (for usage statistics)</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>3. How We Use Your Information</h2>
+        <p>We use the information we collect for the following purposes:</p>
+        <ul>
+          <li><strong>To Provide Our Services:</strong> Create and manage your account, facilitate mentor-mentee connections, process payments, and enable session scheduling</li>
+          <li><strong>To Communicate:</strong> Send you service-related notifications, respond to your inquiries, and provide customer support</li>
+          <li><strong>To Improve Our Platform:</strong> Analyze usage patterns, identify technical issues, and enhance user experience</li>
+          <li><strong>To Personalize Your Experience:</strong> Customize content, recommendations, and features based on your preferences</li>
+          <li><strong>To Ensure Security:</strong> Detect and prevent fraud, abuse, and unauthorized access</li>
+          <li><strong>To Comply with Legal Obligations:</strong> Meet legal requirements, respond to legal requests, and protect our rights</li>
+          <li><strong>To Send Marketing Communications:</strong> With your consent, send promotional emails and updates about our services</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>4. How We Share Your Information</h2>
+        <p>We may share your information in the following circumstances:</p>
+        <ul>
+          <li><strong>With Other Users:</strong> Your public profile information (name, bio, qualifications, expertise) is visible to other users on the platform to facilitate mentor-mentee matching</li>
+          <li><strong>With Service Providers:</strong> We share information with third-party service providers who perform services on our behalf, such as payment processing, email delivery, and analytics</li>
+          <li><strong>For Legal Reasons:</strong> We may disclose information if required by law, court order, or government regulation, or to protect our rights and the safety of our users</li>
+          <li><strong>In Case of Business Transfer:</strong> If we are involved in a merger, acquisition, or sale of assets, your information may be transferred as part of that transaction</li>
+          <li><strong>With Your Consent:</strong> We may share your information with your explicit consent for specific purposes</li>
+        </ul>
+        <p>We do not sell your personal information to third parties.</p>
+      </section>
+
+      <section>
+        <h2>5. Data Security</h2>
+        <p>We implement appropriate technical and organizational measures to protect your personal information against unauthorized access, alteration, disclosure, or destruction. These measures include:</p>
+        <ul>
+          <li>Encryption of sensitive data in transit and at rest</li>
+          <li>Secure authentication and access controls</li>
+          <li>Regular security assessments and updates</li>
+          <li>Secure payment processing through certified third-party providers</li>
+        </ul>
+        <p>However, no method of transmission over the internet or electronic storage is 100% secure. While we strive to protect your information, we cannot guarantee absolute security.</p>
+      </section>
+
+      <section>
+        <h2>6. Your Privacy Rights</h2>
+        <p>Depending on your location, you may have the following rights regarding your personal information:</p>
+        <ul>
+          <li><strong>Access:</strong> Request access to the personal information we hold about you</li>
+          <li><strong>Correction:</strong> Request correction of inaccurate or incomplete information</li>
+          <li><strong>Deletion:</strong> Request deletion of your personal information (subject to legal retention requirements)</li>
+          <li><strong>Portability:</strong> Request transfer of your data to another service provider</li>
+          <li><strong>Objection:</strong> Object to certain processing activities, such as marketing communications</li>
+          <li><strong>Restriction:</strong> Request restriction of processing in certain circumstances</li>
+          <li><strong>Withdraw Consent:</strong> Withdraw consent for processing where consent is the legal basis</li>
+        </ul>
+        <p>To exercise these rights, please contact us using the information provided in the "Contact Us" section below.</p>
+      </section>
+
+      <section>
+        <h2>7. Cookies and Tracking Technologies</h2>
+        <p>We use cookies and similar tracking technologies to:</p>
+        <ul>
+          <li>Remember your preferences and settings</li>
+          <li>Analyze how you use our platform</li>
+          <li>Provide personalized content and advertisements</li>
+          <li>Improve our services and user experience</li>
+        </ul>
+        <p>You can control cookies through your browser settings. However, disabling cookies may limit your ability to use certain features of our platform.</p>
+      </section>
+
+      <section>
+        <h2>8. Data Retention</h2>
+        <p>We retain your personal information for as long as necessary to:</p>
+        <ul>
+          <li>Provide our services to you</li>
+          <li>Comply with legal obligations</li>
+          <li>Resolve disputes and enforce our agreements</li>
+          <li>Maintain security and prevent fraud</li>
+        </ul>
+        <p>When you delete your account, we will delete or anonymize your personal information, except where we are required to retain it for legal or legitimate business purposes.</p>
+      </section>
+
+      <section>
+        <h2>9. Children's Privacy</h2>
+        <p>Our services are not intended for individuals under the age of 18. We do not knowingly collect personal information from children. If you believe we have collected information from a child, please contact us immediately, and we will take steps to delete such information.</p>
+      </section>
+
+      <section>
+        <h2>10. International Data Transfers</h2>
+        <p>Your information may be transferred to and processed in countries other than your country of residence. These countries may have data protection laws that differ from those in your country. We take appropriate safeguards to ensure your information receives adequate protection in accordance with this Privacy Policy.</p>
+      </section>
+
+      <section>
+        <h2>11. Changes to This Privacy Policy</h2>
+        <p>We may update this Privacy Policy from time to time to reflect changes in our practices or for other operational, legal, or regulatory reasons. We will notify you of any material changes by:</p>
+        <ul>
+          <li>Posting the updated Privacy Policy on this page</li>
+          <li>Updating the "Last updated" date</li>
+          <li>Sending you an email notification (for significant changes)</li>
+        </ul>
+        <p>Your continued use of our platform after such changes constitutes your acceptance of the updated Privacy Policy.</p>
+      </section>
+
+      <section>
+        <h2>12. Third-Party Links</h2>
+        <p>Our platform may contain links to third-party websites or services. We are not responsible for the privacy practices of these third parties. We encourage you to review the privacy policies of any third-party websites or services you visit.</p>
+      </section>
+
+      <section>
+        <h2>13. Contact Us</h2>
+        <p>If you have any questions, concerns, or requests regarding this Privacy Policy or our data practices, please contact us at:</p>
+        <p><strong>Email:</strong> privacy@healthymentoring.com</p>
+        <p><strong>Address:</strong> Healthy Mentoring Privacy Team</p>
+        <p>We will respond to your inquiry within a reasonable timeframe.</p>
+      </section>
+    </div>
+  </div>
+</div>
+
+<style>
+.terms-page {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #f8fffe 0%, #f0fdf9 100%);
+  padding: 40px 20px;
+}
+
+.terms-container {
+  max-width: 900px;
+  margin: 0 auto;
+  background: white;
+  border-radius: 24px;
+  padding: 48px;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.08);
+}
+
+.terms-header {
+  margin-bottom: 40px;
+}
+
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #10b981;
+  text-decoration: none;
+  font-weight: 500;
+  margin-bottom: 24px;
+  transition: color 0.2s;
+}
+
+.back-link:hover {
+  color: #059669;
+}
+
+.terms-header h1 {
+  font-family: 'Outfit', sans-serif;
+  font-size: 2.5rem;
+  color: #0f172a;
+  margin-bottom: 8px;
+}
+
+.last-updated {
+  color: #94a3b8;
+  font-size: 0.95rem;
+}
+
+.terms-content section {
+  margin-bottom: 32px;
+}
+
+.terms-content h2 {
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.5rem;
+  color: #0f172a;
+  margin-bottom: 16px;
+}
+
+.terms-content h3 {
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.2rem;
+  color: #0f172a;
+  margin-top: 20px;
+  margin-bottom: 12px;
+}
+
+.terms-content p {
+  color: #1e293b;
+  line-height: 1.7;
+  margin-bottom: 12px;
+}
+
+.terms-content ul {
+  margin-left: 24px;
+  margin-bottom: 12px;
+}
+
+.terms-content li {
+  color: #1e293b;
+  line-height: 1.7;
+  margin-bottom: 8px;
+}
+
+.terms-content strong {
+  color: #0f172a;
+  font-weight: 600;
+}
+
+@media (max-width: 768px) {
+  .terms-container {
+    padding: 32px 24px;
+  }
+  
+  .terms-header h1 {
+    font-size: 2rem;
+  }
+  
+  .terms-content h2 {
+    font-size: 1.3rem;
+  }
+  
+  .terms-content h3 {
+    font-size: 1.1rem;
+  }
+}
+</style>
+{% endblock %}
+

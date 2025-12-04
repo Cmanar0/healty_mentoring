@@ -1,0 +1,22 @@
+﻿{% extends 'emails/base.html' %}
+
+{% block content %}
+<h1>Verify your email address</h1>
+
+<p>Hi {{ user_name }},</p>
+
+<p>Thanks for getting started with {{ site_name }}! We're excited to have you on board.</p>
+
+<p>Please verify your email address to complete your registration and unlock full access to your account.</p>
+
+<div class="btn-container">
+    <a href="{{ verification_url }}" class="btn">Verify Email Address</a>
+</div>
+
+<p>If the button above doesn't work, you can also copy and paste the following link into your browser:</p>
+<p><a href="{{ verification_url }}">{{ verification_url }}</a></p>
+
+<div class="divider"></div>
+
+<p style="font-size: 14px; color: #6b7280;">If you didn't create an account with {{ site_name }}, you can safely ignore this email.</p>
+{% endblock %}

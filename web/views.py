@@ -10,6 +10,9 @@ def mentors(request):
 def terms(request):
     return render(request, "web/terms.html")
 
+def privacy(request):
+    return render(request, "web/privacy.html")
+
 def mentor_profile_detail(request, user_id):
     mentor_user = get_object_or_404(CustomUser, id=user_id)
     try:

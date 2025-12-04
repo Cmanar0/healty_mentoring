@@ -133,6 +133,135 @@ class VerifyEmailView(View):
         if user is not None and default_token_generator.check_token(user, token):
             user.is_active = True
             user.save()
+            
+            # Send welcome email
+            try:
+                EmailService.send_welcome_email(user)
+            except Exception as e:
+                print(f"Error sending welcome email: {e}")
+                
             return render(request, "accounts/verify_success.html")
         else:
             return HttpResponse("Invalid verification link", status=400)
+
+import random
+from django.http import JsonResponse
+from django.views.decorators.http import require_POST
+from django.contrib.auth.decorators import login_required
+import time
+
+@login_required
+@require_POST
+def initiate_email_change(request):
+    """
+    Initiate email change process: generate OTP and send to new email.
+    """
+    try:
+        data = json.loads(request.body)
+        new_email = data.get('new_email', '').strip().lower()
+        
+        if not new_email:
+            return JsonResponse({'success': False, 'error': 'Email is required'}, status=400)
+            
+        if new_email == request.user.email:
+            return JsonResponse({'success': False, 'error': 'New email must be different from current email'}, status=400)
+            
+        if CustomUser.objects.filter(email=new_email).exists():
+            return JsonResponse({'success': False, 'error': 'This email is already in use'}, status=400)
+            
+        # Generate 6-digit OTP
+        otp = ''.join([str(random.randint(0, 9)) for _ in range(6)])
+        
+        # Store in session with expiry (10 minutes)
+        request.session['email_change_otp'] = otp
+        request.session['email_change_new_email'] = new_email
+        request.session['email_change_expiry'] = time.time() + 600  # 10 minutes
+        
+        # Send email with error handling
+        try:
+            email_sent = EmailService.send_email_change_otp(request.user, new_email, otp)
+            if not email_sent:
+                return JsonResponse({'success': False, 'error': 'Failed to send verification email. Please try again.'}, status=500)
+        except Exception as email_error:
+            # Log the error but don't expose details to user
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error sending email change OTP: {str(email_error)}")
+            return JsonResponse({'success': False, 'error': 'Failed to send verification email. Please check your email settings and try again.'}, status=500)
+        
+        return JsonResponse({'success': True, 'message': 'Verification code sent'})
+        
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+@login_required
+@require_POST
+def verify_email_change(request):
+    """
+    Verify OTP and update email.
+    """
+    try:
+        data = json.loads(request.body)
+        otp = data.get('otp', '').strip()
+        
+        if not otp:
+            return JsonResponse({'success': False, 'error': 'OTP is required'}, status=400)
+            
+        session_otp = request.session.get('email_change_otp')
+        session_email = request.session.get('email_change_new_email')
+        session_expiry = request.session.get('email_change_expiry')
+        
+        if not session_otp or not session_email or not session_expiry:
+            return JsonResponse({'success': False, 'error': 'No pending email change request'}, status=400)
+            
+        if time.time() > session_expiry:
+            return JsonResponse({'success': False, 'error': 'Verification code expired'}, status=400)
+            
+        if otp != session_otp:
+            return JsonResponse({'success': False, 'error': 'Invalid verification code'}, status=400)
+            
+        # Update email
+        user = request.user
+        user.email = session_email
+        user.save()
+        
+        # Clear session
+        del request.session['email_change_otp']
+        del request.session['email_change_new_email']
+        del request.session['email_change_expiry']
+        
+        return JsonResponse({'success': True, 'message': 'Email updated successfully'})
+        
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+@login_required
+def check_pending_email_change(request):
+    """
+    Check if there's a pending email change in the session.
+    """
+    session_otp = request.session.get('email_change_otp')
+    session_email = request.session.get('email_change_new_email')
+    session_expiry = request.session.get('email_change_expiry')
+    
+    has_pending = bool(session_otp and session_email and session_expiry)
+    is_expired = False
+    
+    if has_pending and session_expiry:
+        is_expired = time.time() > session_expiry
+    
+    # Return email only if not expired
+    if has_pending and not is_expired:
+        return JsonResponse({
+            'has_pending': True,
+            'email': session_email
+        })
+    else:
+        return JsonResponse({
+            'has_pending': False,
+            'email': None
+        })
