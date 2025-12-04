@@ -60,6 +60,14 @@ from django.urls import reverse
 import os
 
 class CustomPasswordResetForm(PasswordResetForm):
+    """Custom password reset form that normalizes email to lowercase"""
+    
+    def clean_email(self):
+        email = self.cleaned_data.get('email')
+        if email:
+            return email.lower().strip()
+        return email
+    
     def send_mail(self, subject_template_name, email_template_name,
                   context, from_email, to_email, html_email_template_name=None):
         """
