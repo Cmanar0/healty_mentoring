@@ -38,12 +38,14 @@
       </div>
     </div>
     
-    <div class="filter-group">
+    <div class="filter-group price-slider-group">
       <label class="price-label">
         <span><i class="fas fa-dollar-sign" style="margin-right: 5px;"></i> Session Price</span>
         <span class="price-value" id="priceValue">$0 - ${{ max_price|default:200 }}</span>
       </label>
-      <input type="range" min="{{ min_price|default:0 }}" max="{{ max_price|default:200 }}" value="{% if current_filters.price %}{{ current_filters.price }}{% else %}{{ max_price|default:200 }}{% endif %}" class="price-slider" id="priceSlider">
+      <div class="price-slider-wrapper">
+        <input type="range" min="{{ min_price|default:0 }}" max="{{ max_price|default:200 }}" value="{% if current_filters.price %}{{ current_filters.price }}{% else %}{{ max_price|default:200 }}{% endif %}" class="price-slider" id="priceSlider">
+      </div>
     </div>
     
     <div class="filter-group">

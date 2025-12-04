@@ -103,7 +103,8 @@ def mentors(request):
     )
     
     # Default to 0-200 if no prices found
-    min_price = int(price_stats['min_price'] or 0)
+    # Always allow slider to go from 0, regardless of actual min price in DB
+    min_price = 0
     max_price = int(price_stats['max_price'] or 200)
     
     # Ensure max is at least 200 for better UX
