@@ -21,13 +21,37 @@ document.addEventListener('DOMContentLoaded', function() {
   const priceValue = document.getElementById('priceValue');
   
   if (priceSlider && priceValue) {
-    priceSlider.addEventListener('input', function() {
-      const value = this.value;
+    // Function to update slider appearance
+    const updateSlider = function() {
+      const value = parseFloat(priceSlider.value);
+      const max = parseFloat(priceSlider.max);
+      const min = parseFloat(priceSlider.min);
+      
+      // Calculate percentage based on value (0-100%)
+      const percentage = ((value - min) / (max - min)) * 100;
+      
+      // Update price display
       priceValue.textContent = `$0 - $${value}`;
       
-      // Update slider gradient
-      const percentage = (value / this.max) * 100;
-      this.style.background = `linear-gradient(to right, var(--primary) 0%, var(--primary) ${percentage}%, #e2e8f0 ${percentage}%, #e2e8f0 100%)`;
-    });
+      // The browser positions the thumb center linearly based on the value percentage
+      // So we can directly use the percentage for the gradient
+      // This ensures perfect synchronization between thumb center and progress bar
+      const gradientPercentage = percentage;
+      
+      // Update slider gradient - synchronized with thumb's center position
+      priceSlider.style.background = `linear-gradient(to right, var(--primary) 0%, var(--primary) ${gradientPercentage}%, #e2e8f0 ${gradientPercentage}%, #e2e8f0 100%)`;
+    };
+    
+    // Initialize slider on page load (after a small delay to ensure layout is calculated)
+    setTimeout(updateSlider, 0);
+    
+    // Update on input (while dragging)
+    priceSlider.addEventListener('input', updateSlider);
+    
+    // Also update on change (when released)
+    priceSlider.addEventListener('change', updateSlider);
+    
+    // Update on window resize to recalculate positions
+    window.addEventListener('resize', updateSlider);
   }
 });

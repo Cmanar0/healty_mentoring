@@ -770,22 +770,32 @@ h1, h2, h3, h4 {
 /* Price Slider - Simplified */
 .price-slider {
   width: 100%;
-  height: 6px;
+  height: 16px;
   border-radius: 5px;
-  background: linear-gradient(to right, 
-    var(--primary) 0%, 
-    var(--primary) 50%, 
-    #e2e8f0 50%, 
-    #e2e8f0 100%
-  );
+  background: #e2e8f0;
   outline: none;
   -webkit-appearance: none;
   appearance: none;
   cursor: pointer;
+  /* Remove default padding/margins to allow thumb to reach edges */
+  padding: 0;
+  margin: 0;
+  box-sizing: border-box;
 }
 
 input.price-slider {
   margin-top: 16px !important;
+}
+
+.price-slider::-webkit-slider-runnable-track {
+  width: 100%;
+  height: 6px;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  /* Remove any default spacing */
+  padding: 0;
+  margin: 0;
 }
 
 .price-slider::-webkit-slider-thumb {
@@ -799,11 +809,26 @@ input.price-slider {
   cursor: pointer;
   transition: all 0.3s ease;
   box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  /* Center thumb vertically on track */
+  margin-top: -7px; /* (thumb height - track height) / 2 = (20 - 6) / 2 = 7 */
+  /* Allow thumb center to reach track edges */
+  position: relative;
 }
 
 .price-slider::-webkit-slider-thumb:hover {
   transform: scale(1.2);
   box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+}
+
+.price-slider::-moz-range-track {
+  width: 100%;
+  height: 6px;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  /* Remove any default spacing */
+  padding: 0;
+  margin: 0;
 }
 
 .price-slider::-moz-range-thumb {
@@ -814,6 +839,8 @@ input.price-slider {
   border: 3px solid var(--primary);
   cursor: pointer;
   box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  /* Remove default border styling */
+  -moz-appearance: none;
 }
 
 /* Mentors Container */
