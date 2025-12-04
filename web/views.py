@@ -8,7 +8,27 @@ from dashboard_mentor.constants import PREDEFINED_CATEGORIES, PREDEFINED_LANGUAG
 import json
 
 def landing(request):
-    return render(request, "web/landing.html")
+    # Pass predefined data for filters (same as mentors page)
+    from dashboard_mentor.constants import PREDEFINED_CATEGORIES, PREDEFINED_LANGUAGES
+    
+    # Get min and max prices for slider
+    all_mentors = MentorProfile.objects.filter(user__is_active=True, user__is_email_verified=True)
+    price_stats = all_mentors.aggregate(
+        min_price=Min('price_per_hour'),
+        max_price=Max('price_per_hour')
+    )
+    min_price = 0  # Always allow slider to go from 0
+    max_price = int(price_stats['max_price'] or 200)
+    if max_price < 200:
+        max_price = 200
+    
+    context = {
+        'predefined_categories': PREDEFINED_CATEGORIES,
+        'predefined_languages': PREDEFINED_LANGUAGES,
+        'min_price': min_price,
+        'max_price': max_price,
+    }
+    return render(request, "web/landing.html", context)
 
 def mentors(request):
     # Get filter parameters
@@ -276,6 +296,82 @@ def terms(request):
 
 def privacy(request):
     return render(request, "web/privacy.html")
+
+def landing_mentors_load(request):
+    """API endpoint for loading mentors on landing page with filters"""
+    search_query = request.GET.get('q', '').strip()
+    category_id = request.GET.get('category', '').strip()
+    language_id = request.GET.get('language', '').strip()
+    max_price = request.GET.get('price', '').strip()
+    first_session_free = request.GET.get('first_session_free', '').strip() == 'true'
+    
+    # Start with all active mentor profiles
+    mentors = MentorProfile.objects.filter(user__is_active=True, user__is_email_verified=True)
+    
+    # Apply filters (same logic as mentors view)
+    if search_query:
+        query_words = search_query.strip().split()
+        if len(query_words) >= 2:
+            first_word = query_words[0]
+            last_word = query_words[-1]
+            mentors = mentors.filter(
+                (Q(first_name__icontains=first_word) & Q(last_name__icontains=last_word)) |
+                (Q(first_name__icontains=last_word) & Q(last_name__icontains=first_word)) |
+                Q(first_name__icontains=search_query) |
+                Q(last_name__icontains=search_query) |
+                Q(user__email__icontains=search_query)
+            )
+        else:
+            mentors = mentors.filter(
+                Q(first_name__icontains=search_query) |
+                Q(last_name__icontains=search_query) |
+                Q(user__email__icontains=search_query)
+            )
+    
+    if category_id:
+        mentors = mentors.filter(categories__icontains=category_id)
+    
+    if language_id:
+        mentors = mentors.filter(languages__icontains=language_id)
+    
+    if max_price:
+        try:
+            max_price_decimal = float(max_price)
+            if max_price_decimal < 200:
+                mentors = mentors.filter(price_per_hour__lte=max_price_decimal)
+        except ValueError:
+            pass
+    
+    if first_session_free:
+        mentors = mentors.filter(first_session_free=True)
+    
+    mentors = mentors.order_by('first_name', 'last_name')[:12]  # Limit to 12 for landing page
+    
+    mentor_data = []
+    for mentor in mentors:
+        avatar_url = None
+        if mentor.profile_picture:
+            try:
+                avatar_url = mentor.profile_picture.url
+            except:
+                pass
+        
+        mentor_data.append({
+            'id': mentor.user.id,
+            'first_name': mentor.first_name,
+            'last_name': mentor.last_name,
+            'mentor_type': mentor.mentor_type or 'Mentor',
+            'profile_picture': avatar_url,
+            'quote': mentor.quote,
+            'bio': mentor.bio,
+            'tags': mentor.tags or [],
+            'price_per_hour': float(mentor.price_per_hour) if mentor.price_per_hour else None,
+        })
+    
+    return JsonResponse({
+        'mentors': mentor_data,
+        'count': len(mentor_data),
+    })
 
 def mentor_profile_detail(request, user_id):
     mentor_user = get_object_or_404(CustomUser, id=user_id)

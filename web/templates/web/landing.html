@@ -2,6 +2,12 @@
 {% block title %}Healthy Mentoring — Mentors platform{% endblock %}
 {% load static %}
 
+{% block extra_css %}
+{{ block.super }}
+<!-- Flag Icons CSS -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flag-icons@7.0.0/css/flag-icons.min.css">
+{% endblock %}
+
 {% block content %}
 <!-- Hero Section -->
 <section class="hero-section">
@@ -53,169 +59,76 @@
     <h2 class="search-title">Find Your Perfect Mentor</h2>
     <p class="search-subtitle">Browse our curated network of expert mentors across all life areas</p>
     <div class="search-bar-container">
-      <div class="search-bar">
+      <div class="search-bar" style="position: relative;">
         <i class="fas fa-search"></i>
-        <input type="text" id="searchInput" placeholder="Search for mentors by name, expertise, or keyword...">
+        <input type="text" id="searchInput" placeholder="Search for mentors by name, expertise, or keyword..." autocomplete="off">
         <button class="clear-btn" id="clearBtn" style="display: none;">
           <i class="fas fa-times"></i>
         </button>
         <button class="search-btn">Search</button>
+        <!-- Mentor suggestions dropdown -->
+        <div class="autocomplete-suggestions" id="mentorSuggestions" style="position: absolute; top: 100%; left: 0; right: 0; z-index: 1000; display: none;"></div>
       </div>
     </div>
   </div>
   
   <div class="search-filters">
-    <div class="filter-group">
+    <div class="filter-group filter-group-compact">
       <label><i class="fas fa-tag"></i> Category</label>
-      <div class="custom-select">
-        <select id="categorySelect">
-          <option value="">All Categories</option>
-          <option value="business">Business</option>
-          <option value="health">Health & Fitness</option>
-          <option value="career">Career</option>
-          <option value="mindfulness">Mindfulness</option>
-          <option value="finance">Finance</option>
-        </select>
-        <i class="fas fa-chevron-down"></i>
+      <div class="autocomplete-container" style="position: relative;">
+        <input type="text" id="categoryInput" class="form-input autocomplete-input" placeholder="Type to search categories..." autocomplete="off">
+        <div class="autocomplete-suggestions" id="categorySuggestions"></div>
+        <input type="hidden" id="categoryValue">
       </div>
     </div>
     
-    <div class="filter-group">
+    <div class="filter-group price-slider-group">
       <label class="price-label">
         <span><i class="fas fa-dollar-sign" style="margin-right: 5px;"></i> Session Price</span>
-        <span class="price-value" id="priceValue">$0 - $100</span>
+        <span class="price-value" id="priceValue">$0 - ${{ max_price|default:200 }}</span>
       </label>
-      <input type="range" min="0" max="200" value="100" class="price-slider" id="priceSlider">
+      <div class="price-slider-wrapper">
+        <input type="range" min="{{ min_price|default:0 }}" max="{{ max_price|default:200 }}" value="{{ max_price|default:200 }}" class="price-slider" id="priceSlider">
+      </div>
     </div>
     
-    <div class="filter-group">
+    <div class="filter-group filter-group-compact">
       <label><i class="fas fa-globe"></i> Language</label>
-      <div class="custom-select">
-        <select id="languageSelect">
-          <option value="">All Languages</option>
-          <option value="english">English</option>
-          <option value="czech">Czech</option>
-          <option value="spanish">Spanish</option>
-          <option value="german">German</option>
-          <option value="french">French</option>
-        </select>
-        <i class="fas fa-chevron-down"></i>
+      <div class="autocomplete-container" style="position: relative;">
+        <input type="text" id="languageInput" class="form-input autocomplete-input" placeholder="Type to search languages..." autocomplete="off">
+        <div class="autocomplete-suggestions" id="languageSuggestions"></div>
+        <input type="hidden" id="languageValue">
+      </div>
+    </div>
+    
+    <div class="filter-group filter-group-compact">
+      <label>
+        <i class="fas fa-gift"></i> First Session Free
+        <span class="info-icon-popover-trigger" data-popover="firstSessionFreePopover">
+          <i class="fas fa-info-circle" style="color: var(--text-light); font-size: 0.85rem; margin-left: 4px; cursor: help;"></i>
+        </span>
+        <div class="info-popover" id="firstSessionFreePopover" style="display: none;">
+          Show only mentors offering free first session
+        </div>
+      </label>
+      <div style="display: flex; align-items: center; gap: 12px; margin-top: 8px;">
+        <div class="toggle-wrapper">
+          <label class="toggle-switch">
+            <input type="checkbox" id="firstSessionFree">
+            <span class="toggle-slider"></span>
+          </label>
+          <span class="toggle-status-text" id="firstSessionStatusText">Disabled</span>
+        </div>
       </div>
     </div>
   </div>
   
-  <div class="mentors-container">
-    <!-- Mentor Card 1 -->
-    <div class="mentor-card" data-aos="fade-up">
-      <div class="mentor-header-content">
-        <div class="mentor-avatar">
-          <img src="https://i.pravatar.cc/150?img=12" alt="Sarah Johnson">
-        </div>
-        <div class="mentor-title">
-          <h4>Sarah Johnson</h4>
-          <p class="mentor-specialty">Business Strategy</p>
-        </div>
-      </div>
-      
-      <div class="mentor-details">
-        <p class="mentor-motto">"Turn your vision into a viable business."</p>
-        <p class="mentor-bio">Ex-McKinsey consultant with 10+ years helping startups scale from seed to Series B.</p>
-        <div class="mentor-tags">
-          <span class="mentor-tag">Startup</span>
-          <span class="mentor-tag">Strategy</span>
-          <span class="mentor-tag">Growth</span>
-        </div>
-      </div>
-      
-      <div class="mentor-footer">
-        <p class="mentor-price">$80<span>/session</span></p>
-        <a href="#" class="btn-mentor">View Profile <i class="fas fa-arrow-right"></i></a>
-      </div>
-    </div>
-    
-    <!-- Mentor Card 2 -->
-    <div class="mentor-card" data-aos="fade-up" data-aos-delay="100">
-      <div class="mentor-header-content">
-        <div class="mentor-avatar">
-          <img src="https://i.pravatar.cc/150?img=33" alt="Michael Chen">
-        </div>
-        <div class="mentor-title">
-          <h4>Michael Chen</h4>
-          <p class="mentor-specialty">Career Development</p>
-        </div>
-      </div>
-      
-      <div class="mentor-details">
-        <p class="mentor-motto">"Unlock your potential and lead with confidence."</p>
-        <p class="mentor-bio">Senior HR Director who has coached over 500 professionals to land their dream roles.</p>
-        <div class="mentor-tags">
-          <span class="mentor-tag">Leadership</span>
-          <span class="mentor-tag">Career</span>
-          <span class="mentor-tag">Interviewing</span>
-        </div>
-      </div>
-      
-      <div class="mentor-footer">
-        <p class="mentor-price">$65<span>/session</span></p>
-        <a href="#" class="btn-mentor">View Profile <i class="fas fa-arrow-right"></i></a>
-      </div>
-    </div>
-    
-    <!-- Mentor Card 3 -->
-    <div class="mentor-card" data-aos="fade-up" data-aos-delay="200">
-      <div class="mentor-header-content">
-        <div class="mentor-avatar">
-          <img src="https://i.pravatar.cc/150?img=44" alt="Emma Rodriguez">
-        </div>
-        <div class="mentor-title">
-          <h4>Emma Rodriguez</h4>
-          <p class="mentor-specialty">Mindfulness Coach</p>
-        </div>
-      </div>
-      
-      <div class="mentor-details">
-        <p class="mentor-motto">"Find peace in the chaos of success."</p>
-        <p class="mentor-bio">Certified mindfulness practitioner specializing in stress reduction for high-performers.</p>
-        <div class="mentor-tags">
-          <span class="mentor-tag">Mindfulness</span>
-          <span class="mentor-tag">Wellness</span>
-          <span class="mentor-tag">Balance</span>
-        </div>
-      </div>
-      
-      <div class="mentor-footer">
-        <p class="mentor-price">$55<span>/session</span></p>
-        <a href="#" class="btn-mentor">View Profile <i class="fas fa-arrow-right"></i></a>
-      </div>
-    </div>
-    
-    <!-- Mentor Card 4 -->
-    <div class="mentor-card" data-aos="fade-up" data-aos-delay="300">
-      <div class="mentor-header-content">
-        <div class="mentor-avatar">
-          <img src="https://i.pravatar.cc/150?img=68" alt="David Kim">
-        </div>
-        <div class="mentor-title">
-          <h4>David Kim</h4>
-          <p class="mentor-specialty">Startup Advisor</p>
-        </div>
-      </div>
-      
-      <div class="mentor-details">
-        <p class="mentor-motto">"Fail fast, learn faster, succeed sooner."</p>
-        <p class="mentor-bio">Serial entrepreneur with 3 exits. I help founders navigate the messy middle of building a company.</p>
-        <div class="mentor-tags">
-          <span class="mentor-tag">Fundraising</span>
-          <span class="mentor-tag">Product</span>
-          <span class="mentor-tag">LeanStartup</span>
-        </div>
-      </div>
-      
-      <div class="mentor-footer">
-        <p class="mentor-price">$90<span>/session</span></p>
-        <a href="#" class="btn-mentor">View Profile <i class="fas fa-arrow-right"></i></a>
-      </div>
-    </div>
+  <div class="mentors-container" id="mentorsContainer">
+    <!-- Mentor cards will be loaded dynamically -->
+  </div>
+  
+  <div class="text-center" style="margin-top: 40px; padding: 0 20px;">
+    <a href="#" id="seeMoreMentorsBtnLanding" class="btn btn-primary btn-lg" style="background-color: #3b82f6; padding: 16px 30px;">See More Mentors <i class="fas fa-arrow-right ml-2"></i></a>
   </div>
 
 </section>
@@ -286,7 +199,7 @@
     </div>
 
     <div class="text-center mt-5" data-aos="fade-up">
-      <a href="{% url 'web:mentors' %}" id="seeMoreMentorsBtn" class="btn btn-primary btn-lg">Find your mentor <i class="fas fa-arrow-right ml-2"></i></a>
+      <a href="{% url 'web:mentors' %}" id="seeMoreMentorsBtn" class="btn btn-primary btn-lg" style="padding: 16px 30px;">Find your mentor <i class="fas fa-arrow-right ml-2"></i></a>
     </div>
   </div>
 </section>
@@ -427,56 +340,454 @@
 {% block scripts %}
 <script src="{% static 'js/landing.js' %}"></script>
 <script src="{% static 'js/search-interactions.js' %}"></script>
+
+<!-- Predefined data for filters -->
+{{ predefined_categories|json_script:"predefinedCategoriesData" }}
+{{ predefined_languages|json_script:"predefinedLanguagesData" }}
+
 <script>
-  // Script to handle "See More Mentors" button click
-  const redirectToMentors = function(e) {
-    e.preventDefault();
+document.addEventListener('DOMContentLoaded', function() {
+    // Get predefined data
+    const predefinedCategoriesData = document.getElementById('predefinedCategoriesData');
+    const predefinedLanguagesData = document.getElementById('predefinedLanguagesData');
     
+    const predefinedCategories = predefinedCategoriesData ? JSON.parse(predefinedCategoriesData.textContent) : [];
+    const predefinedLanguages = predefinedLanguagesData ? JSON.parse(predefinedLanguagesData.textContent) : [];
+    
+    // Elements
     const searchInput = document.getElementById('searchInput');
-    const categorySelect = document.getElementById('categorySelect');
+    const clearBtn = document.getElementById('clearBtn');
     const priceSlider = document.getElementById('priceSlider');
-    const languageSelect = document.getElementById('languageSelect');
+    const priceValue = document.getElementById('priceValue');
+    const firstSessionFree = document.getElementById('firstSessionFree');
+    const firstSessionStatusText = document.getElementById('firstSessionStatusText');
+    const firstSessionInfoIcon = document.querySelector('[data-popover="firstSessionFreePopover"]');
+    const firstSessionPopover = document.getElementById('firstSessionFreePopover');
     
-    const params = new URLSearchParams();
+    // Filter Inputs
+    const categoryInput = document.getElementById('categoryInput');
+    const categorySuggestions = document.getElementById('categorySuggestions');
+    const categoryValue = document.getElementById('categoryValue');
     
-    if (searchInput && searchInput.value) {
-      params.append('q', searchInput.value);
+    const languageInput = document.getElementById('languageInput');
+    const languageSuggestions = document.getElementById('languageSuggestions');
+    const languageValue = document.getElementById('languageValue');
+    
+    // Render flag function - same as in mentors page
+    function renderFlag(item) {
+        const flagCode = item.flag_code || item.id;
+        if (flagCode) {
+            return `<span class="fi fi-${flagCode.toLowerCase()}" style="margin-right: 6px; vertical-align: middle;"></span>`;
+        } else if (item.flag) {
+            return item.flag + ' ';
+        }
+        return '';
     }
     
-    if (categorySelect && categorySelect.value && categorySelect.value !== 'All Categories') {
-      params.append('category', categorySelect.value);
+    // Autocomplete setup function
+    function setupAutocomplete(input, suggestionsContainer, data, valueInput, onSelectCallback) {
+        if (!input || !suggestionsContainer) return;
+        
+        input.addEventListener('input', function() {
+            const query = this.value.toLowerCase();
+            const matches = data.filter(item => item.name.toLowerCase().includes(query));
+            
+            suggestionsContainer.innerHTML = '';
+            
+            if (matches.length > 0) {
+                matches.forEach(item => {
+                    const div = document.createElement('div');
+                    div.className = 'suggestion-item';
+                    
+                    let content = item.name;
+                    if (item.flag_code || item.flag) {
+                        content = renderFlag(item) + item.name;
+                    }
+                    
+                    div.innerHTML = content;
+                    
+                    div.addEventListener('click', function() {
+                        input.value = item.name;
+                        if (valueInput) valueInput.value = item.id;
+                        suggestionsContainer.style.display = 'none';
+                        if (onSelectCallback) {
+                            onSelectCallback();
+                        }
+                    });
+                    suggestionsContainer.appendChild(div);
+                });
+                suggestionsContainer.style.display = 'block';
+                suggestionsContainer.style.maxHeight = '300px';
+                suggestionsContainer.style.overflowY = 'auto';
+            } else {
+                suggestionsContainer.style.display = 'none';
+            }
+        });
+        
+        input.addEventListener('focus', function() {
+            if (this.value.trim() === '') {
+                this.dispatchEvent(new Event('input'));
+            }
+        });
+        
+        document.addEventListener('click', function(e) {
+            if (!input.contains(e.target) && !suggestionsContainer.contains(e.target)) {
+                suggestionsContainer.style.display = 'none';
+            }
+        });
     }
+    
+    // Function to update mentors when filters change
+    function onFilterChange() {
+        loadMentors(true); // Scroll to search section
+    }
+    
+    // Initialize autocompletes with callback
+    setupAutocomplete(categoryInput, categorySuggestions, predefinedCategories, categoryValue, onFilterChange);
+    setupAutocomplete(languageInput, languageSuggestions, predefinedLanguages, languageValue, onFilterChange);
+    
+    // Price slider update function
+    const updateSlider = function() {
+        if (!priceSlider || !priceValue) return;
+        const value = parseFloat(priceSlider.value);
+        const max = parseFloat(priceSlider.max);
+        const min = parseFloat(priceSlider.min);
+        const percentage = ((value - min) / (max - min)) * 100;
+        
+        if (value >= max) {
+            priceValue.textContent = '$0 - $200+';
+        } else {
+            priceValue.textContent = `$0 - $${Math.round(value)}`;
+        }
+        
+        priceSlider.style.background = `linear-gradient(to right, var(--primary) 0%, var(--primary) ${percentage}%, #e2e8f0 ${percentage}%, #e2e8f0 100%)`;
+    };
     
     if (priceSlider) {
-      params.append('price', priceSlider.value);
+        setTimeout(updateSlider, 0);
+        priceSlider.addEventListener('input', updateSlider);
+        window.addEventListener('resize', updateSlider);
     }
     
-    if (languageSelect && languageSelect.value && languageSelect.value !== 'All Languages') {
-      params.append('language', languageSelect.value);
+    // First Session Free toggle
+    if (firstSessionFree && firstSessionStatusText) {
+        firstSessionFree.addEventListener('change', function() {
+            firstSessionStatusText.textContent = this.checked ? 'Enabled' : 'Disabled';
+        });
     }
     
-    window.location.href = "{% url 'web:mentors' %}?" + params.toString();
-  };
+    // Popover for First Session Free info icon
+    if (firstSessionInfoIcon && firstSessionPopover) {
+        let popoverTimeout;
 
-  const seeMoreBtn = document.getElementById('seeMoreMentorsBtn');
-  if (seeMoreBtn) {
-    seeMoreBtn.addEventListener('click', redirectToMentors);
-  }
+        firstSessionInfoIcon.addEventListener('mouseenter', () => {
+            clearTimeout(popoverTimeout);
+            firstSessionPopover.style.display = 'block';
+            const iconRect = firstSessionInfoIcon.getBoundingClientRect();
+            firstSessionPopover.style.left = `${iconRect.left + window.scrollX}px`;
+            firstSessionPopover.style.top = `${iconRect.bottom + window.scrollY + 8}px`;
+        });
 
-  // Also attach to the main Search button
-  const searchBtn = document.querySelector('.search-btn');
-  if (searchBtn) {
-    searchBtn.addEventListener('click', redirectToMentors);
-  }
-  
-  // And allow pressing Enter in search input
-  const searchInput = document.getElementById('searchInput');
-  if (searchInput) {
-    searchInput.addEventListener('keypress', function(e) {
-      if (e.key === 'Enter') {
-        redirectToMentors(e);
-      }
-    });
-  }
+        firstSessionInfoIcon.addEventListener('mouseleave', () => {
+            popoverTimeout = setTimeout(() => {
+                firstSessionPopover.style.display = 'none';
+            }, 100);
+        });
+
+        firstSessionPopover.addEventListener('mouseenter', () => {
+            clearTimeout(popoverTimeout);
+        });
+
+        firstSessionPopover.addEventListener('mouseleave', () => {
+            popoverTimeout = setTimeout(() => {
+                firstSessionPopover.style.display = 'none';
+            }, 100);
+        });
+    }
+    
+    // Mentor search suggestions
+    const mentorSuggestions = document.getElementById('mentorSuggestions');
+    const mentorsContainer = document.getElementById('mentorsContainer');
+    let mentorSearchTimer;
+    let selectedMentorId = null; // Track if user selected a mentor from suggestions
+    
+    // Function to search mentors by name
+    function searchMentors(query) {
+        if (query.length < 2) {
+            if (mentorSuggestions) mentorSuggestions.style.display = 'none';
+            return;
+        }
+        
+        const searchUrl = "{% url 'web:mentor_search_suggestions' %}";
+        fetch(`${searchUrl}?q=${encodeURIComponent(query)}`)
+            .then(response => response.json())
+            .then(data => {
+                displayMentorSuggestions(data.suggestions);
+            })
+            .catch(error => {
+                console.error('Error searching mentors:', error);
+                if (mentorSuggestions) mentorSuggestions.style.display = 'none';
+            });
+    }
+    
+    // Function to display mentor suggestions
+    function displayMentorSuggestions(suggestions) {
+        if (!mentorSuggestions) return;
+        if (suggestions.length === 0) {
+            mentorSuggestions.style.display = 'none';
+            return;
+        }
+        
+        mentorSuggestions.innerHTML = '';
+        suggestions.forEach((mentor) => {
+            const item = document.createElement('div');
+            item.className = 'suggestion-item mentor-suggestion-item';
+            
+            const avatarHtml = mentor.avatar_url 
+                ? `<img src="${mentor.avatar_url}" alt="${mentor.name}" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;">`
+                : `<div style="width: 32px; height: 32px; border-radius: 50%; background: #e2e8f0; display: flex; align-items: center; justify-content: center; color: #94a3b8; font-size: 0.8rem;">${mentor.name.charAt(0)}</div>`;
+            
+            item.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 12px; width: 100%;">
+                    ${avatarHtml}
+                    <div style="flex: 1; min-width: 0;">
+                        <div style="font-weight: 600; color: var(--text-dark); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${mentor.name}</div>
+                        <div style="font-size: 0.85rem; color: var(--text-light); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${mentor.mentor_type}</div>
+                    </div>
+                </div>
+            `;
+            
+            item.addEventListener('click', function() {
+                // Directly open mentor profile
+                window.location.href = `/mentor/${mentor.id}/`;
+            });
+            
+            mentorSuggestions.appendChild(item);
+        });
+        mentorSuggestions.style.display = 'block';
+        mentorSuggestions.style.maxHeight = '300px';
+        mentorSuggestions.style.overflowY = 'auto';
+    }
+    
+    // Search input with suggestions
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            const query = this.value.trim();
+            if (clearBtn) clearBtn.style.display = query ? 'flex' : 'none';
+            
+            clearTimeout(mentorSearchTimer);
+            selectedMentorId = null; // Reset selection
+            
+            if (query.length >= 2) {
+                mentorSearchTimer = setTimeout(() => {
+                    searchMentors(query);
+                }, 300);
+            } else {
+                if (mentorSuggestions) mentorSuggestions.style.display = 'none';
+            }
+        });
+        
+        searchInput.addEventListener('focus', function() {
+            if (this.value.trim().length >= 2) {
+                searchMentors(this.value.trim());
+            }
+        });
+        
+        document.addEventListener('click', function(event) {
+            if (!searchInput.contains(event.target) && (!mentorSuggestions || !mentorSuggestions.contains(event.target))) {
+                if (mentorSuggestions) mentorSuggestions.style.display = 'none';
+            }
+        });
+    }
+    
+    // Clear button functionality
+    if (clearBtn) {
+        clearBtn.addEventListener('click', function() {
+            if (searchInput) {
+                searchInput.value = '';
+                this.style.display = 'none';
+                if (mentorSuggestions) mentorSuggestions.style.display = 'none';
+                selectedMentorId = null;
+                loadMentors(); // Reload mentors when cleared
+            }
+        });
+    }
+    
+    // Function to create mentor card HTML
+    function createMentorCard(mentor) {
+        const avatarHtml = mentor.profile_picture 
+            ? `<img src="${mentor.profile_picture}" alt="${mentor.first_name} ${mentor.last_name}">`
+            : `<img src="https://i.pravatar.cc/150?img=${mentor.id}" alt="${mentor.first_name} ${mentor.last_name}">`;
+        
+        const tagsHtml = mentor.tags && mentor.tags.length > 0
+            ? `<div class="mentor-tags">${mentor.tags.slice(0, 5).map(tag => `<span class="mentor-tag">${tag}</span>`).join('')}</div>`
+            : '';
+        
+        const priceHtml = mentor.price_per_hour
+            ? `<p class="mentor-price">$${Math.round(mentor.price_per_hour)}<span>/session</span></p>`
+            : `<p class="mentor-price">Contact<span> for pricing</span></p>`;
+        
+        return `
+            <div class="mentor-card" data-aos="fade-up">
+                <div class="mentor-header-content">
+                    <div class="mentor-avatar">
+                        ${avatarHtml}
+                    </div>
+                    <div class="mentor-title">
+                        <h4>${mentor.first_name} ${mentor.last_name}</h4>
+                        <p class="mentor-specialty">${mentor.mentor_type}</p>
+                    </div>
+                </div>
+                <div class="mentor-details">
+                    ${mentor.quote ? `<p class="mentor-motto">"${mentor.quote}"</p>` : ''}
+                    ${mentor.bio ? `<p class="mentor-bio">${mentor.bio.length > 150 ? mentor.bio.substring(0, 150) + '...' : mentor.bio}</p>` : ''}
+                    ${tagsHtml}
+                </div>
+                <div class="mentor-footer">
+                    ${priceHtml}
+                    <a href="/mentor/${mentor.id}/" class="btn-mentor">View Profile <i class="fas fa-arrow-right"></i></a>
+                </div>
+            </div>
+        `;
+    }
+    
+    // Function to load mentors based on filters
+    function loadMentors(scrollToSearch = false) {
+        const params = new URLSearchParams();
+        
+        if (searchInput && searchInput.value.trim() && !selectedMentorId) {
+            params.append('q', searchInput.value.trim());
+        }
+        
+        if (categoryValue && categoryValue.value) {
+            params.append('category', categoryValue.value);
+        }
+        
+        if (priceSlider) {
+            const maxPrice = parseFloat(priceSlider.max);
+            const currentValue = parseFloat(priceSlider.value);
+            if (currentValue < maxPrice) {
+                params.append('price', currentValue);
+            }
+        }
+        
+        if (languageValue && languageValue.value) {
+            params.append('language', languageValue.value);
+        }
+        
+        if (firstSessionFree && firstSessionFree.checked) {
+            params.append('first_session_free', 'true');
+        }
+        
+        const loadUrl = "{% url 'web:landing_mentors_load' %}";
+        fetch(`${loadUrl}?${params.toString()}`)
+            .then(response => response.json())
+            .then(data => {
+                if (mentorsContainer) {
+                    if (data.mentors && data.mentors.length > 0) {
+                        mentorsContainer.innerHTML = data.mentors.map(mentor => createMentorCard(mentor)).join('');
+                    } else {
+                        mentorsContainer.innerHTML = `
+                            <div style="grid-column: 1 / -1; text-align: center; padding: 60px 20px;">
+                                <p style="font-size: 1.1rem; color: var(--text-light);">No mentors found matching your criteria.</p>
+                                <p style="font-size: 0.9rem; color: var(--text-light); margin-top: 8px;">Try adjusting your filters.</p>
+                            </div>
+                        `;
+                    }
+                }
+                
+                // Scroll to search section if requested
+                if (scrollToSearch) {
+                    const searchSection = document.getElementById('search');
+                    if (searchSection) {
+                        setTimeout(() => {
+                            searchSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }, 100);
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error loading mentors:', error);
+            });
+    }
+    
+    // Load mentors on page load
+    loadMentors();
+    
+    // Price slider - update on change
+    if (priceSlider) {
+        priceSlider.addEventListener('change', function() {
+            onFilterChange();
+        });
+    }
+    
+    // First Session Free toggle - update on change
+    if (firstSessionFree) {
+        firstSessionFree.addEventListener('change', function() {
+            onFilterChange();
+        });
+    }
+    
+    // Redirect to mentors page with filters (when search button is clicked)
+    const redirectToMentors = function(e) {
+        if (e) e.preventDefault();
+        
+        // If a mentor was selected from suggestions, don't redirect
+        if (selectedMentorId) {
+            return;
+        }
+        
+        const params = new URLSearchParams();
+        
+        if (searchInput && searchInput.value.trim()) {
+            params.append('q', searchInput.value.trim());
+        }
+        
+        if (categoryValue && categoryValue.value) {
+            params.append('category', categoryValue.value);
+        }
+        
+        if (priceSlider) {
+            const maxPrice = parseFloat(priceSlider.max);
+            const currentValue = parseFloat(priceSlider.value);
+            if (currentValue < maxPrice) {
+                params.append('price', currentValue);
+            }
+        }
+        
+        if (languageValue && languageValue.value) {
+            params.append('language', languageValue.value);
+        }
+        
+        if (firstSessionFree && firstSessionFree.checked) {
+            params.append('first_session_free', 'true');
+        }
+        
+        window.location.href = "{% url 'web:mentors' %}?" + params.toString();
+    };
+
+    const seeMoreBtn = document.getElementById('seeMoreMentorsBtn');
+    if (seeMoreBtn) {
+        seeMoreBtn.addEventListener('click', redirectToMentors);
+    }
+    
+    const seeMoreBtnLanding = document.getElementById('seeMoreMentorsBtnLanding');
+    if (seeMoreBtnLanding) {
+        seeMoreBtnLanding.addEventListener('click', redirectToMentors);
+    }
+
+    const searchBtn = document.querySelector('.search-btn');
+    if (searchBtn) {
+        searchBtn.addEventListener('click', redirectToMentors);
+    }
+    
+    if (searchInput) {
+        searchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                redirectToMentors(e);
+            }
+        });
+    }
+});
 </script>
 {% endblock %}

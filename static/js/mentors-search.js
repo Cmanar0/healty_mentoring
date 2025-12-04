@@ -268,10 +268,80 @@ document.addEventListener('DOMContentLoaded', function() {
       const params = new URLSearchParams();
       if (searchInput && searchInput.value.trim()) params.append('q', searchInput.value.trim());
       if (categoryValue && categoryValue.value) params.append('category', categoryValue.value);
-      if (priceSlider) params.append('price', priceSlider.value);
+      
+      // Only append price if it's not the "200+" state
+      if (priceSlider) {
+        const maxPrice = parseFloat(priceSlider.max);
+        const currentValue = parseFloat(priceSlider.value);
+        if (currentValue < maxPrice) {
+          params.append('price', currentValue);
+        }
+        // If currentValue is max, we don't append price, meaning no upper limit filter
+      }
+      
       if (languageValue && languageValue.value) params.append('language', languageValue.value);
       if (firstSessionFree && firstSessionFree.checked) params.append('first_session_free', 'true');
       
       window.location.href = window.location.pathname + "?" + params.toString();
-    };
+    }
+    
+    // Load filters from URL on page load
+    function loadFiltersFromURL() {
+        const urlParams = new URLSearchParams(window.location.search);
+        
+        // Load search query
+        if (urlParams.has('q') && searchInput) {
+            const query = urlParams.get('q');
+            searchInput.value = query;
+            if (clearBtn) clearBtn.style.display = query ? 'flex' : 'none';
+        }
+        
+        // Load category
+        if (urlParams.has('category')) {
+            const categoryId = urlParams.get('category');
+            if (categoryValue) categoryValue.value = categoryId;
+            const category = predefinedCategories.find(cat => cat.id === categoryId);
+            if (category && categoryInput) categoryInput.value = category.name;
+        }
+        
+        // Load language
+        if (urlParams.has('language')) {
+            const languageId = urlParams.get('language');
+            if (languageValue) languageValue.value = languageId;
+            const language = predefinedLanguages.find(lang => lang.id === languageId);
+            if (language && languageInput) languageInput.value = language.name;
+        }
+        
+        // Load first session free
+        if (urlParams.has('first_session_free') && firstSessionFree) {
+            firstSessionFree.checked = urlParams.get('first_session_free') === 'true';
+            if (firstSessionStatusText) {
+                firstSessionStatusText.textContent = firstSessionFree.checked ? 'Enabled' : 'Disabled';
+            }
+        }
+        
+        // Price is handled by loadPriceFromURL()
+    }
+    
+    // Load filters from URL on page load
+    loadFiltersFromURL();
+    
+    // Search button functionality
+    const searchBtn = document.querySelector('.search-btn');
+    if (searchBtn) {
+        searchBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            performSearch();
+        });
+    }
+    
+    // Enter key in search input
+    if (searchInput) {
+        searchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                performSearch();
+            }
+        });
+    }
 });

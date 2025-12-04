@@ -1030,7 +1030,7 @@ input:checked + .toggle-slider:before {
 /* Mentors Container */
 .mentors-container {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  grid-template-columns: repeat(4, 1fr);
   gap: 30px;
   max-width: 1400px;
   margin: 0 auto;
@@ -1273,6 +1273,10 @@ input:checked + .toggle-slider:before {
 /* Responsive */
 @media (max-width: 992px) {
   .search-filters {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .mentors-container {
     grid-template-columns: repeat(2, 1fr);
   }
 }
