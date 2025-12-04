@@ -2,14 +2,14 @@ from django.shortcuts import render, redirect
 from django.contrib.auth import login, authenticate, logout
 from django.views import View
 from django.contrib import messages
-from django.contrib.auth.views import LoginView as BaseLoginView
+from django.contrib.auth.views import LoginView as BaseLoginView, PasswordResetConfirmView as BasePasswordResetConfirmView
 from django.contrib.auth.forms import AuthenticationForm
 from .forms import RegisterForm, CustomAuthenticationForm
 from .models import CustomUser, UserProfile, MentorProfile
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, force_str
 from django.contrib.auth.tokens import default_token_generator
-from django.urls import reverse
+from django.urls import reverse, reverse_lazy
 from django.http import HttpResponse, JsonResponse
 from general.email_service import EmailService
 import os
@@ -124,7 +124,12 @@ def send_verification_email(request, user):
     """Send email verification email using the universal email service."""
     token = default_token_generator.make_token(user)
     uid = urlsafe_base64_encode(force_bytes(user.pk))
-    domain = os.getenv("SITE_DOMAIN", "http://localhost:8000")
+    # Determine domain based on environment
+    development_mode = os.getenv("DEVELOPMENT_MODE", "dev").lower()
+    if development_mode == 'prod':
+        domain = "https://healthymentoring.com"
+    else:
+        domain = "http://localhost:8000"
     verify_url = f"{domain}{reverse('accounts:verify_email', kwargs={'uidb64': uid, 'token': token})}"
     
     # Use the universal email service
@@ -321,6 +326,18 @@ class CustomLoginView(BaseLoginView):
             pass
         
         return super().form_invalid(form)
+
+class CustomPasswordResetConfirmView(BasePasswordResetConfirmView):
+    """Custom password reset confirm view that shows better error messages"""
+    template_name = "accounts/password_reset_confirm.html"
+    success_url = reverse_lazy("accounts:password_reset_complete")
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # Django's PasswordResetConfirmView sets 'validlink' to False if token is invalid/expired
+        if not context.get('validlink', True):
+            context['error_message'] = 'The password reset link is invalid or has expired. Password reset links can only be used once and expire after 24 hours.'
+        return context
 
 def resend_verification_email(request):
     """Resend verification email to user"""

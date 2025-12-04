@@ -32,7 +32,7 @@
       </div>
       {% endif %}
 
-      <form method="post" class="auth-form">
+      <form method="post" class="auth-form" id="registerForm">
         {% csrf_token %}
         
         <!-- Role Selection -->
@@ -73,7 +73,12 @@
         <div class="form-row">
           <div class="form-group">
             <label for="id_first_name">First Name</label>
-            <input type="text" name="first_name" id="id_first_name" value="{{ form.first_name.value|default:'' }}" required placeholder="First name">
+            <div class="input-wrapper">
+              <input type="text" name="first_name" id="id_first_name" value="{{ form.first_name.value|default:'' }}" required placeholder="First name">
+              <button type="button" class="input-clear-btn" onclick="clearInput('id_first_name')">
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
             {% if form.first_name.errors %}
             <ul class="errorlist">
               {% for error in form.first_name.errors %}
@@ -85,7 +90,12 @@
 
           <div class="form-group">
             <label for="id_last_name">Last Name</label>
-            <input type="text" name="last_name" id="id_last_name" value="{{ form.last_name.value|default:'' }}" required placeholder="Last name">
+            <div class="input-wrapper">
+              <input type="text" name="last_name" id="id_last_name" value="{{ form.last_name.value|default:'' }}" required placeholder="Last name">
+              <button type="button" class="input-clear-btn" onclick="clearInput('id_last_name')">
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
             {% if form.last_name.errors %}
             <ul class="errorlist">
               {% for error in form.last_name.errors %}
@@ -99,7 +109,12 @@
         <!-- Email -->
         <div class="form-group">
           <label for="id_email">Email Address</label>
-          <input type="email" name="email" id="id_email" value="{{ form.email.value|default:'' }}" required placeholder="your@email.com">
+          <div class="input-wrapper">
+            <input type="email" name="email" id="id_email" value="{{ form.email.value|default:'' }}" required placeholder="your@email.com">
+            <button type="button" class="input-clear-btn" onclick="clearInput('id_email')">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
           {% if form.email.errors %}
           <ul class="errorlist">
             {% for error in form.email.errors %}
@@ -113,7 +128,15 @@
         <div class="form-row">
           <div class="form-group">
             <label for="id_password1">Password</label>
-            <input type="password" name="password1" id="id_password1" required placeholder="Password">
+            <div class="input-wrapper">
+              <input type="password" name="password1" id="id_password1" required placeholder="Password">
+              <button type="button" class="password-toggle-btn" onclick="togglePassword('id_password1', this)">
+                <i class="fas fa-eye"></i>
+              </button>
+              <button type="button" class="input-clear-btn" onclick="clearInput('id_password1')">
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
             {% if form.password1.errors %}
             <ul class="errorlist">
               {% for error in form.password1.errors %}
@@ -125,7 +148,15 @@
 
           <div class="form-group">
             <label for="id_password2">Confirm</label>
-            <input type="password" name="password2" id="id_password2" required placeholder="Confirm">
+            <div class="input-wrapper">
+              <input type="password" name="password2" id="id_password2" required placeholder="Confirm">
+              <button type="button" class="password-toggle-btn" onclick="togglePassword('id_password2', this)">
+                <i class="fas fa-eye"></i>
+              </button>
+              <button type="button" class="input-clear-btn" onclick="clearInput('id_password2')">
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
             {% if form.password2.errors %}
             <ul class="errorlist">
               {% for error in form.password2.errors %}
@@ -146,7 +177,12 @@
         </div>
 
         <!-- Submit Button -->
-        <button type="submit" class="btn-submit" id="register-btn">Create Account</button>
+        <button type="submit" class="btn-submit" id="register-btn">
+          <span class="btn-text">Create Account</span>
+          <span class="btn-loading" style="display: none;">
+            <i class="fas fa-spinner fa-spin" style="margin-right: 8px;"></i>Creating...
+          </span>
+        </button>
       </form>
 
       <!-- Links -->
@@ -157,6 +193,50 @@
   </div>
 
   <script>
+    // Clear input function
+    function clearInput(inputId) {
+      const input = document.getElementById(inputId);
+      if (input) {
+        input.value = '';
+        input.focus();
+        updateClearButton(inputId);
+        if (inputId === 'id_password1' || inputId === 'id_password2') {
+          validatePasswords();
+        }
+      }
+    }
+
+    // Toggle password visibility
+    function togglePassword(inputId, btn) {
+      const input = document.getElementById(inputId);
+      const icon = btn.querySelector('i');
+      if (input.type === 'password') {
+        input.type = 'text';
+        icon.classList.remove('fa-eye');
+        icon.classList.add('fa-eye-slash');
+      } else {
+        input.type = 'password';
+        icon.classList.remove('fa-eye-slash');
+        icon.classList.add('fa-eye');
+      }
+    }
+
+    // Update clear button visibility
+    function updateClearButton(inputId) {
+      const input = document.getElementById(inputId);
+      if (input) {
+        const wrapper = input.closest('.input-wrapper');
+        const clearBtn = wrapper ? wrapper.querySelector('.input-clear-btn') : null;
+        if (clearBtn) {
+          if (input.value && input.value.trim() !== '') {
+            clearBtn.classList.add('show');
+          } else {
+            clearBtn.classList.remove('show');
+          }
+        }
+      }
+    }
+
     document.addEventListener('DOMContentLoaded', function() {
       const p1 = document.getElementById('id_password1');
       const p2 = document.getElementById('id_password2');
@@ -167,22 +247,62 @@
         if (p1.value && p2.value) {
           if (p1.value !== p2.value) {
             errorDiv.style.display = 'block';
+            p2.style.borderColor = '#ef4444';
             btn.disabled = true;
             btn.style.opacity = '0.5';
           } else {
             errorDiv.style.display = 'none';
+            p2.style.borderColor = '';
             btn.disabled = false;
             btn.style.opacity = '1';
           }
         } else {
           errorDiv.style.display = 'none';
+          p2.style.borderColor = '';
           btn.disabled = false;
           btn.style.opacity = '1';
         }
       }
 
-      p1.addEventListener('input', validatePasswords);
-      p2.addEventListener('input', validatePasswords);
+      p1.addEventListener('input', function() {
+        updateClearButton('id_password1');
+        validatePasswords();
+      });
+      p2.addEventListener('input', function() {
+        updateClearButton('id_password2');
+        validatePasswords();
+      });
+
+      // Initialize clear buttons for all inputs
+      ['id_first_name', 'id_last_name', 'id_email', 'id_password1', 'id_password2'].forEach(function(inputId) {
+        const input = document.getElementById(inputId);
+        if (input) {
+          input.addEventListener('input', function() {
+            updateClearButton(inputId);
+          });
+          updateClearButton(inputId);
+        }
+      });
+      
+      // Add form submit handler for loading state and validation
+      document.getElementById('registerForm').addEventListener('submit', function(e) {
+        // Frontend validation
+        if (p1.value !== p2.value) {
+          e.preventDefault();
+          errorDiv.style.display = 'block';
+          p2.style.borderColor = '#ef4444';
+          return false;
+        }
+
+        const btn = document.getElementById('register-btn');
+        if (btn && !btn.disabled) {
+          btn.disabled = true;
+          btn.style.opacity = '0.6';
+          btn.style.cursor = 'not-allowed';
+          btn.querySelector('.btn-text').style.display = 'none';
+          btn.querySelector('.btn-loading').style.display = 'inline';
+        }
+      });
     });
   </script>
 </body>

@@ -1,6 +1,6 @@
-from django.urls import path
+from django.urls import path, reverse_lazy
 from django.contrib.auth import views as auth_views
-from .views import RegisterView, VerifyEmailView, CustomLoginView, resend_verification_email
+from .views import RegisterView, VerifyEmailView, CustomLoginView, CustomPasswordResetConfirmView, resend_verification_email
 from .forms import CustomPasswordResetForm
 from . import views
 
@@ -13,10 +13,11 @@ urlpatterns = [
     # Password reset
     path("password_reset/", auth_views.PasswordResetView.as_view(
         template_name="accounts/password_reset.html",
-        form_class=CustomPasswordResetForm
+        form_class=CustomPasswordResetForm,
+        success_url=reverse_lazy("accounts:password_reset_done")
     ), name="password_reset"),
     path("password_reset/done/", auth_views.PasswordResetDoneView.as_view(template_name="accounts/password_reset_done.html"), name="password_reset_done"),
-    path("reset/<uidb64>/<token>/", auth_views.PasswordResetConfirmView.as_view(template_name="accounts/password_reset_confirm.html"), name="password_reset_confirm"),
+    path("reset/<uidb64>/<token>/", CustomPasswordResetConfirmView.as_view(), name="password_reset_confirm"),
     path("reset/done/", auth_views.PasswordResetCompleteView.as_view(template_name="accounts/password_reset_complete.html"), name="password_reset_complete"),
     # Email Change
     path("email/initiate/", views.initiate_email_change, name="initiate_email_change"),

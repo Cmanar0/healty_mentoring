@@ -55,7 +55,12 @@
         <!-- Email -->
         <div class="form-group">
           <label for="id_username">Email Address</label>
-          <input type="email" name="username" id="id_username" value="{{ form.username.value|default:'' }}" required placeholder="your@email.com" autocomplete="email">
+          <div class="input-wrapper">
+            <input type="email" name="username" id="id_username" value="{{ form.username.value|default:'' }}" required placeholder="your@email.com" autocomplete="email">
+            <button type="button" class="input-clear-btn" onclick="clearInput('id_username')">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
           {% if form.username.errors %}
           <ul class="errorlist">
             {% for error in form.username.errors %}
@@ -68,7 +73,15 @@
         <!-- Password -->
         <div class="form-group">
           <label for="id_password">Password</label>
-          <input type="password" name="password" id="id_password" required placeholder="Enter your password" autocomplete="current-password">
+          <div class="input-wrapper">
+            <input type="password" name="password" id="id_password" required placeholder="Enter your password" autocomplete="current-password">
+            <button type="button" class="password-toggle-btn" onclick="togglePassword('id_password', this)">
+              <i class="fas fa-eye"></i>
+            </button>
+            <button type="button" class="input-clear-btn" onclick="clearInput('id_password')">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
           {% if form.password.errors %}
           <ul class="errorlist">
             {% for error in form.password.errors %}
@@ -141,5 +154,68 @@
     });
   </script>
   {% endif %}
+  
+  <script>
+    // Clear input function
+    function clearInput(inputId) {
+      const input = document.getElementById(inputId);
+      if (input) {
+        input.value = '';
+        input.focus();
+        updateClearButton(inputId);
+      }
+    }
+
+    // Toggle password visibility
+    function togglePassword(inputId, btn) {
+      const input = document.getElementById(inputId);
+      const icon = btn.querySelector('i');
+      if (input.type === 'password') {
+        input.type = 'text';
+        icon.classList.remove('fa-eye');
+        icon.classList.add('fa-eye-slash');
+      } else {
+        input.type = 'password';
+        icon.classList.remove('fa-eye-slash');
+        icon.classList.add('fa-eye');
+      }
+    }
+
+    // Update clear button visibility
+    function updateClearButton(inputId) {
+      const input = document.getElementById(inputId);
+      if (input) {
+        const wrapper = input.closest('.input-wrapper');
+        const clearBtn = wrapper ? wrapper.querySelector('.input-clear-btn') : null;
+        if (clearBtn) {
+          if (input.value && input.value.trim() !== '') {
+            clearBtn.classList.add('show');
+          } else {
+            clearBtn.classList.remove('show');
+          }
+        }
+      }
+    }
+
+    // Initialize clear buttons
+    document.addEventListener('DOMContentLoaded', function() {
+      const usernameInput = document.getElementById('id_username');
+      const passwordInput = document.getElementById('id_password');
+      
+      if (usernameInput) {
+        usernameInput.addEventListener('input', function() {
+          updateClearButton('id_username');
+        });
+        updateClearButton('id_username');
+      }
+      
+      if (passwordInput) {
+        passwordInput.addEventListener('input', function() {
+          updateClearButton('id_password');
+        });
+        updateClearButton('id_password');
+      }
+    });
+  </script>
 </body>
 </html>

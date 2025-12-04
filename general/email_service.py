@@ -42,9 +42,15 @@ class EmailService:
             from_email = settings.DEFAULT_FROM_EMAIL
         
         # Add default context variables
-        context.setdefault('site_domain', os.getenv('SITE_DOMAIN', 'http://localhost:8000'))
+        # Determine site domain based on environment
+        development_mode = os.getenv('DEVELOPMENT_MODE', 'dev').lower()
+        if development_mode == 'prod':
+            site_domain = 'https://healthymentoring.com'
+        else:
+            site_domain = 'http://localhost:8000'
+        context.setdefault('site_domain', site_domain)
         context.setdefault('site_name', 'Healthy Mentoring')
-        context.setdefault('development_mode', os.getenv('DEVELOPMENT_MODE', 'dev').lower())
+        context.setdefault('development_mode', development_mode)
         
         # Render the email template
         html_content = render_to_string(
