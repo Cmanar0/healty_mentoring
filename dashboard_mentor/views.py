@@ -79,8 +79,9 @@ def account(request):
     consider(profile.first_name, 'first_name', 'First Name')
     consider(profile.last_name, 'last_name', 'Last Name')
     
-    # Field 3: Time Zone
-    consider(profile.time_zone, 'time_zone', 'Time Zone')
+    # Field 3: Time Zone (use selected_timezone, fallback to time_zone for backward compatibility)
+    timezone_value = profile.selected_timezone or profile.time_zone
+    consider(timezone_value, 'time_zone', 'Time Zone')
     
     # Field 4-5: Content
     consider(profile.bio, 'bio', 'Bio')
@@ -103,18 +104,21 @@ def account(request):
     consider(len(profile.languages) > 0 if profile.languages else False, 'languages', 'Languages')
     consider(len(profile.categories) > 0 if profile.categories else False, 'categories', 'Categories')
     
-    # Field 12: Nationality
-    consider(profile.nationality, 'nationality', 'Nationality')
+    # Field 12: Nationality (check if array has at least one item)
+    consider(len(profile.nationality) > 0 if profile.nationality else False, 'nationality', 'Nationality')
     
     # Field 13-14: Pricing
     consider(profile.price_per_hour, 'price_per_hour', 'Price per Hour')
-    consider(profile.session_length, 'session_length', 'Session Length')
+    # Session Configuration: Track standard session length (not First Session Free)
+    has_session_length = profile.session_length and profile.session_length > 0
+    consider(has_session_length, 'session_length', 'Session Length')
     
     # Field 15: Social Media (at least one of: Instagram, LinkedIn, or Website)
     has_social = bool(profile.instagram_name or profile.linkedin_name or profile.personal_website)
     consider(has_social, 'social_media', 'Social Media (Instagram, LinkedIn, or Website)')
     
     # Note: Billing and Subscription are NOT included in profile completion
+    # Note: First Session Free is NOT tracked (only standard session length is tracked)
     # Total: 15 fields, each contributing 100/15 = ~6.67% to completion
 
     profile_completion = int(round((filled / total) * 100)) if total else 0
@@ -366,8 +370,9 @@ def profile(request):
     consider(profile.first_name, 'first_name', 'First Name')
     consider(profile.last_name, 'last_name', 'Last Name')
     
-    # Field 3: Time Zone
-    consider(profile.time_zone, 'time_zone', 'Time Zone')
+    # Field 3: Time Zone (use selected_timezone, fallback to time_zone for backward compatibility)
+    timezone_value = profile.selected_timezone or profile.time_zone
+    consider(timezone_value, 'time_zone', 'Time Zone')
     
     # Field 4-5: Content
     consider(profile.bio, 'bio', 'Bio')
@@ -390,18 +395,21 @@ def profile(request):
     consider(len(profile.languages) > 0 if profile.languages else False, 'languages', 'Languages')
     consider(len(profile.categories) > 0 if profile.categories else False, 'categories', 'Categories')
     
-    # Field 12: Nationality
-    consider(profile.nationality, 'nationality', 'Nationality')
+    # Field 12: Nationality (check if array has at least one item)
+    consider(len(profile.nationality) > 0 if profile.nationality else False, 'nationality', 'Nationality')
     
     # Field 13-14: Pricing
     consider(profile.price_per_hour, 'price_per_hour', 'Price per Hour')
-    consider(profile.session_length, 'session_length', 'Session Length')
+    # Session Configuration: Track standard session length (not First Session Free)
+    has_session_length = profile.session_length and profile.session_length > 0
+    consider(has_session_length, 'session_length', 'Session Length')
     
     # Field 15: Social Media (at least one of: Instagram, LinkedIn, or Website)
     has_social = bool(profile.instagram_name or profile.linkedin_name or profile.personal_website)
     consider(has_social, 'social_media', 'Social Media (Instagram, LinkedIn, or Website)')
     
     # Note: Billing and Subscription are NOT included in profile completion
+    # Note: First Session Free is NOT tracked (only standard session length is tracked)
     # Total: 15 fields, each contributing 100/15 = ~6.67% to completion
 
     profile_completion = int(round((filled / total) * 100)) if total else 0
