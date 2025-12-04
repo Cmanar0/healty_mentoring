@@ -1,30 +1,467 @@
 {% extends "base.html" %}
-{% block title %}{{ mentor_user.profile.first_name }} {{ mentor_user.profile.last_name }} — Mentor Profile{% endblock %}
 {% load static %}
 
+{% block title %}{{ mentor_profile.first_name }} {{ mentor_profile.last_name }} — Mentor Profile{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Custom styles for mentor profile to ensure premium look */
+    :root {
+        --mp-primary: #10b981;
+        --mp-primary-dark: #059669;
+        --mp-primary-light: #d1fae5;
+        --mp-text-main: #1e293b;
+        --mp-text-muted: #64748b;
+        --mp-bg-light: #f8fafc;
+        --mp-border: #e2e8f0;
+        --mp-card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        --mp-card-shadow-hover: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    }
+
+    .mp-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 24px 60px;
+    }
+
+    /* Hero Section */
+    .mp-hero {
+        position: relative;
+        margin-bottom: 80px;
+    }
+
+    .mp-cover {
+        height: 280px;
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        border-radius: 0 0 24px 24px;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .mp-cover::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    }
+
+    .mp-profile-card {
+        background: white;
+        border-radius: 20px;
+        box-shadow: var(--mp-card-shadow);
+        padding: 32px;
+        margin-top: -100px;
+        position: relative;
+        z-index: 10;
+        display: flex;
+        gap: 32px;
+        align-items: flex-start;
+    }
+
+    .mp-avatar-wrapper {
+        flex-shrink: 0;
+        position: relative;
+    }
+
+    .mp-avatar {
+        width: 160px;
+        height: 160px;
+        border-radius: 20px;
+        object-fit: cover;
+        border: 4px solid white;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        background-color: #f1f5f9;
+    }
+
+    .mp-avatar-placeholder {
+        width: 160px;
+        height: 160px;
+        border-radius: 20px;
+        background-color: #f1f5f9;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 4px solid white;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        font-size: 4rem;
+        color: #cbd5e1;
+    }
+
+    .mp-info {
+        flex: 1;
+        padding-top: 12px;
+    }
+
+    .mp-name-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 8px;
+    }
+
+    .mp-name {
+        font-size: 2rem;
+        font-weight: 800;
+        color: var(--mp-text-main);
+        margin: 0;
+        line-height: 1.2;
+    }
+
+    .mp-role {
+        font-size: 1.1rem;
+        color: var(--mp-primary);
+        font-weight: 600;
+        margin-bottom: 16px;
+        display: inline-block;
+        background: var(--mp-primary-light);
+        padding: 4px 12px;
+        border-radius: 20px;
+    }
+
+    .mp-stats {
+        display: flex;
+        gap: 24px;
+        margin-bottom: 24px;
+        color: var(--mp-text-muted);
+        font-size: 0.95rem;
+    }
+
+    .mp-stat-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .mp-stat-item i {
+        color: var(--mp-primary);
+    }
+
+    .mp-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 24px;
+    }
+
+    .mp-tag {
+        background: #f1f5f9;
+        color: var(--mp-text-muted);
+        padding: 6px 12px;
+        border-radius: 8px;
+        font-size: 0.85rem;
+        font-weight: 500;
+        transition: all 0.2s;
+    }
+
+    .mp-tag:hover {
+        background: #e2e8f0;
+        color: var(--mp-text-main);
+    }
+
+    .mp-actions {
+        display: flex;
+        gap: 16px;
+    }
+
+    .btn-mp-primary {
+        background: var(--mp-primary);
+        color: white;
+        padding: 12px 24px;
+        border-radius: 12px;
+        font-weight: 600;
+        text-decoration: none;
+        transition: all 0.2s;
+        border: none;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        box-shadow: 0 4px 6px rgba(16, 185, 129, 0.2);
+    }
+
+    .btn-mp-primary:hover {
+        background: var(--mp-primary-dark);
+        transform: translateY(-1px);
+        box-shadow: 0 6px 8px rgba(16, 185, 129, 0.3);
+    }
+
+    .btn-mp-secondary {
+        background: white;
+        color: var(--mp-text-main);
+        padding: 12px 24px;
+        border-radius: 12px;
+        font-weight: 600;
+        text-decoration: none;
+        transition: all 0.2s;
+        border: 1px solid var(--mp-border);
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .btn-mp-secondary:hover {
+        background: #f8fafc;
+        border-color: #cbd5e1;
+        transform: translateY(-1px);
+    }
+
+    /* Content Grid */
+    .mp-grid {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: 40px;
+    }
+
+    /* Sections */
+    .mp-section {
+        margin-bottom: 48px;
+    }
+
+    .mp-section-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--mp-text-main);
+        margin-bottom: 24px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .mp-section-title::before {
+        content: '';
+        display: block;
+        width: 6px;
+        height: 24px;
+        background: var(--mp-primary);
+        border-radius: 3px;
+    }
+
+    .mp-bio {
+        font-size: 1.05rem;
+        line-height: 1.8;
+        color: var(--mp-text-main);
+    }
+
+    .mp-quote {
+        background: linear-gradient(to right, #f0fdf4, #fff);
+        border-left: 4px solid var(--mp-primary);
+        padding: 24px;
+        border-radius: 8px;
+        margin: 32px 0;
+        font-style: italic;
+        color: #334155;
+        font-size: 1.1rem;
+    }
+
+    /* Cards */
+    .mp-card {
+        background: white;
+        border-radius: 16px;
+        padding: 24px;
+        border: 1px solid var(--mp-border);
+        margin-bottom: 24px;
+        transition: all 0.2s;
+    }
+
+    .mp-card:hover {
+        border-color: var(--mp-primary);
+        box-shadow: var(--mp-card-shadow-hover);
+    }
+
+    /* Qualification Items */
+    .mp-qual-item {
+        display: flex;
+        gap: 16px;
+        margin-bottom: 20px;
+        padding-bottom: 20px;
+        border-bottom: 1px solid #f1f5f9;
+    }
+
+    .mp-qual-item:last-child {
+        margin-bottom: 0;
+        padding-bottom: 0;
+        border-bottom: none;
+    }
+
+    .mp-qual-icon {
+        width: 48px;
+        height: 48px;
+        background: var(--mp-primary-light);
+        color: var(--mp-primary);
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+        flex-shrink: 0;
+    }
+
+    /* Community Card */
+    .mp-community-card {
+        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+        color: white;
+        padding: 32px;
+        border-radius: 20px;
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .mp-community-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-image: url("data:image/svg+xml,%3Csvg width='20' height='20' viewBox='0 0 20 20' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M0 0h20L0 20z'/%3E%3C/g%3E%3C/svg%3E");
+        opacity: 0.3;
+    }
+
+    .mp-community-stats {
+        display: flex;
+        justify-content: center;
+        gap: 32px;
+        margin: 24px 0;
+    }
+
+    .mp-community-stat {
+        text-align: center;
+    }
+
+    .mp-community-stat-val {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--mp-primary);
+    }
+
+    .mp-community-stat-label {
+        font-size: 0.8rem;
+        color: #94a3b8;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+
+    /* Course Cards */
+    .mp-course-card {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+    }
+
+    .mp-course-img {
+        height: 160px;
+        background: #e2e8f0;
+        border-radius: 12px;
+        margin-bottom: 16px;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .mp-course-img img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .mp-course-tag {
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        background: rgba(0,0,0,0.7);
+        color: white;
+        padding: 4px 8px;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    /* Review Cards */
+    .mp-review-card {
+        background: #f8fafc;
+        padding: 20px;
+        border-radius: 12px;
+        margin-bottom: 16px;
+    }
+
+    .mp-review-header {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 12px;
+    }
+
+    .mp-stars {
+        color: #fbbf24;
+    }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+        .mp-profile-card {
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            margin-top: -60px;
+        }
+
+        .mp-name-row {
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .mp-stats {
+            justify-content: center;
+        }
+
+        .mp-tags {
+            justify-content: center;
+        }
+
+        .mp-actions {
+            justify-content: center;
+        }
+
+        .mp-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div style="max-width: 1200px; margin: 0 auto; padding: 40px 24px;">
-    <div style="background: white; border-radius: 16px; padding: 40px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);">
-        <!-- Profile Header -->
-        <div style="display: flex; gap: 32px; margin-bottom: 40px; align-items: flex-start;">
-            <!-- Avatar -->
-            <div style="flex-shrink: 0;">
+<div class="mp-container">
+    <!-- Hero Section -->
+    <div class="mp-hero">
+        <div class="mp-cover"></div>
+        
+        <div class="mp-profile-card">
+            <div class="mp-avatar-wrapper">
                 {% if mentor_profile.profile_picture %}
-                    <img src="{{ mentor_profile.profile_picture.url }}" alt="{{ mentor_user.profile.first_name }} {{ mentor_user.profile.last_name }}" style="width: 150px; height: 150px; border-radius: 50%; object-fit: cover; border: 4px solid white; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);">
+                    <img src="{{ mentor_profile.profile_picture.url }}" alt="{{ mentor_profile.first_name }}" class="mp-avatar">
                 {% else %}
-                    <div style="width: 150px; height: 150px; border-radius: 50%; background: #f1f5f9; display: flex; align-items: center; justify-content: center; border: 4px solid white; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);">
-                        <i class="fas fa-user" style="font-size: 4rem; color: #94a3b8;"></i>
+                    <div class="mp-avatar-placeholder">
+                        <i class="fas fa-user"></i>
                     </div>
                 {% endif %}
             </div>
             
-            <!-- Profile Info -->
-            <div style="flex: 1;">
-                <h1 style="margin: 0 0 8px; font-size: 2rem; color: #1e293b; font-weight: 700;">
-                    {{ mentor_profile.first_name }} {{ mentor_profile.last_name }}
-                </h1>
+            <div class="mp-info">
+                <div class="mp-name-row">
+                    <h1 class="mp-name">{{ mentor_profile.first_name }} {{ mentor_profile.last_name }}</h1>
+                    {% if mentor_profile.price_per_hour %}
+                        <div style="text-align: right;">
+                            <span style="font-size: 1.5rem; font-weight: 700; color: var(--mp-text-main);">${{ mentor_profile.price_per_hour|floatformat:0 }}</span>
+                            <span style="color: var(--mp-text-muted); font-size: 0.9rem;">/ session</span>
+                        </div>
+                    {% endif %}
+                </div>
+                
                 {% if mentor_profile.mentor_type %}
-                    <p style="margin: 0 0 16px; font-size: 1.1rem; color: #64748b; font-weight: 500;">
+                    <span class="mp-role">
                         {% if mentor_profile.mentor_type == 'life_coach' %}Life Coach
                         {% elif mentor_profile.mentor_type == 'career_coach' %}Career Coach
                         {% elif mentor_profile.mentor_type == 'business_coach' %}Business Coach
@@ -32,66 +469,223 @@
                         {% elif mentor_profile.mentor_type == 'other' %}Other
                         {% else %}{{ mentor_profile.mentor_type|title }}
                         {% endif %}
-                    </p>
+                    </span>
                 {% endif %}
                 
-                <!-- Tags/Expertise -->
-                {% if mentor_profile.tags.all %}
-                    <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px;">
-                        {% for tag in mentor_profile.tags.all %}
-                            <span style="padding: 6px 12px; background: rgba(16, 185, 129, 0.1); color: #059669; border-radius: 20px; font-size: 0.875rem; font-weight: 500;">
-                                {{ tag.name }}
-                            </span>
+                <div class="mp-stats">
+                    <div class="mp-stat-item" title="Community Members">
+                        <i class="fas fa-users"></i>
+                        <span>500+ Members</span>
+                    </div>
+                    <div class="mp-stat-item" title="Rating">
+                        <i class="fas fa-star"></i>
+                        <span>4.9 (120 Reviews)</span>
+                    </div>
+                    {% if mentor_profile.languages %}
+                    <div class="mp-stat-item" title="Languages">
+                        <i class="fas fa-globe"></i>
+                        <span>
+                            {% for lang_id in mentor_profile.languages %}
+                                {% for lang in predefined_languages %}
+                                    {% if lang.id == lang_id %}{{ lang.name }}{% if not forloop.last %}, {% endif %}{% endif %}
+                                {% endfor %}
+                            {% endfor %}
+                        </span>
+                    </div>
+                    {% endif %}
+                </div>
+                
+                {% if mentor_profile.tags %}
+                    <div class="mp-tags">
+                        {% for tag in mentor_profile.tags %}
+                            <span class="mp-tag">{{ tag }}</span>
                         {% endfor %}
                     </div>
                 {% endif %}
                 
-                <!-- Quote -->
-                {% if mentor_profile.quote %}
-                    <p style="margin: 0; font-size: 1rem; color: #334155; font-style: italic; line-height: 1.6;">
-                        "{{ mentor_profile.quote }}"
-                    </p>
-                {% endif %}
+                <div class="mp-actions">
+                    <button class="btn-mp-primary">
+                        <i class="fas fa-calendar-check"></i>
+                        {% if mentor_profile.first_session_free %}
+                            Schedule Free Session
+                        {% else %}
+                            Schedule Session
+                        {% endif %}
+                    </button>
+                    <button class="btn-mp-secondary">
+                        <i class="fas fa-user-plus"></i>
+                        Join Community
+                    </button>
+                </div>
             </div>
         </div>
-        
-        <!-- Bio Section -->
-        {% if mentor_profile.bio %}
-            <div style="margin-bottom: 40px; padding-top: 32px; border-top: 1px solid #e2e8f0;">
-                <h2 style="margin: 0 0 16px; font-size: 1.5rem; color: #1e293b; font-weight: 600;">About</h2>
-                <div style="font-size: 1rem; color: #334155; line-height: 1.8;">{{ mentor_profile.bio|safe }}</div>
+    </div>
+
+    <div class="mp-grid">
+        <!-- Left Column: Bio, Qualifications, Reviews -->
+        <div class="mp-main-content">
+            <!-- About Section -->
+            {% if mentor_profile.bio %}
+            <div class="mp-section">
+                <h2 class="mp-section-title">About Me</h2>
+                <div class="mp-bio">
+                    {{ mentor_profile.bio|safe }}
+                </div>
+                {% if mentor_profile.quote %}
+                    <div class="mp-quote">
+                        "{{ mentor_profile.quote }}"
+                    </div>
+                {% endif %}
             </div>
-        {% endif %}
-        
-        <!-- Qualifications Section -->
-        {% if mentor_profile.get_qualifications_ordered %}
-            <div style="margin-bottom: 40px; padding-top: 32px; border-top: 1px solid #e2e8f0;">
-                <h2 style="margin: 0 0 16px; font-size: 1.5rem; color: #1e293b; font-weight: 600;">Qualifications</h2>
-                <div style="display: flex; flex-direction: column; gap: 12px;">
+            {% endif %}
+
+            <!-- Qualifications Section -->
+            {% if mentor_profile.get_qualifications_ordered %}
+            <div class="mp-section">
+                <h2 class="mp-section-title">Qualifications</h2>
+                <div class="mp-card">
                     {% for mpq in mentor_profile.get_qualifications_ordered %}
                         {% with qual=mpq.qualification %}
-                        <div style="padding: 16px; background: #f8fafc; border-radius: 8px; border-left: 4px solid #10b981;">
-                            <h3 style="margin: 0 0 4px; font-size: 1rem; color: #1e293b; font-weight: 600;">{{ qual.title }}</h3>
-                            {% if qual.subtitle %}
-                                <p style="margin: 0 0 4px; font-size: 0.95rem; color: #1e293b; font-weight: 500;">{{ qual.subtitle }}</p>
-                            {% endif %}
-                            {% if qual.description %}
-                                <p style="margin: 0; font-size: 0.9rem; color: #64748b;">{{ qual.description }}</p>
-                            {% endif %}
+                        <div class="mp-qual-item">
+                            <div class="mp-qual-icon">
+                                <i class="fas fa-certificate"></i>
+                            </div>
+                            <div>
+                                <h3 style="margin: 0 0 4px; font-size: 1.1rem; font-weight: 600;">{{ qual.title }}</h3>
+                                {% if qual.subtitle %}
+                                    <div style="color: var(--mp-primary); font-weight: 500; margin-bottom: 4px;">{{ qual.subtitle }}</div>
+                                {% endif %}
+                                {% if qual.description %}
+                                    <div style="color: var(--mp-text-muted); font-size: 0.95rem;">{{ qual.description }}</div>
+                                {% endif %}
+                            </div>
                         </div>
                         {% endwith %}
                     {% endfor %}
                 </div>
             </div>
-        {% endif %}
-        
-        <!-- Contact/CTA Section -->
-        <div style="padding-top: 32px; border-top: 1px solid #e2e8f0; text-align: center;">
-            <a href="{% url 'web:mentors' %}" class="btn btn-primary" style="display: inline-flex; align-items: center; gap: 8px; padding: 12px 24px; font-size: 1rem;">
-                <i class="fas fa-arrow-left"></i> Back to Mentors
-            </a>
+            {% endif %}
+
+            <!-- Reviews Section (Mockup) -->
+            <div class="mp-section">
+                <h2 class="mp-section-title">Client Reviews</h2>
+                <div class="mp-review-card">
+                    <div class="mp-review-header">
+                        <div style="display: flex; gap: 12px; align-items: center;">
+                            <div style="width: 40px; height: 40px; background: #e2e8f0; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 600; color: #64748b;">JD</div>
+                            <div>
+                                <div style="font-weight: 600;">John Doe</div>
+                                <div style="font-size: 0.8rem; color: #94a3b8;">2 weeks ago</div>
+                            </div>
+                        </div>
+                        <div class="mp-stars">
+                            <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
+                        </div>
+                    </div>
+                    <p style="color: #475569; margin: 0;">"{{ mentor_profile.first_name }} has been an incredible mentor. The insights I've gained have completely transformed my approach to my career. Highly recommended!"</p>
+                </div>
+                <div class="mp-review-card">
+                    <div class="mp-review-header">
+                        <div style="display: flex; gap: 12px; align-items: center;">
+                            <div style="width: 40px; height: 40px; background: #e2e8f0; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 600; color: #64748b;">AS</div>
+                            <div>
+                                <div style="font-weight: 600;">Alice Smith</div>
+                                <div style="font-size: 0.8rem; color: #94a3b8;">1 month ago</div>
+                            </div>
+                        </div>
+                        <div class="mp-stars">
+                            <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
+                        </div>
+                    </div>
+                    <p style="color: #475569; margin: 0;">"I was skeptical at first, but the free session convinced me. The community access alone is worth it. Great value!"</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Community, Courses, Resources -->
+        <div class="mp-sidebar">
+            <!-- Community CTA -->
+            <div class="mp-community-card">
+                <div style="position: relative; z-index: 1;">
+                    <h3 style="margin: 0 0 12px; font-size: 1.5rem;">Join My Inner Circle</h3>
+                    <p style="color: #cbd5e1; margin-bottom: 24px;">Get free access to my network, exclusive updates, and weekly tips.</p>
+                    
+                    <div class="mp-community-stats">
+                        <div class="mp-community-stat">
+                            <div class="mp-community-stat-val">500+</div>
+                            <div class="mp-community-stat-label">Members</div>
+                        </div>
+                        <div class="mp-community-stat">
+                            <div class="mp-community-stat-val">Daily</div>
+                            <div class="mp-community-stat-label">Updates</div>
+                        </div>
+                    </div>
+
+                    <button class="btn-mp-primary" style="width: 100%; justify-content: center;">
+                        Join for Free
+                    </button>
+                </div>
+            </div>
+
+            <!-- Courses (Mockup) -->
+            <div style="margin-top: 40px;">
+                <h3 style="font-size: 1.2rem; font-weight: 700; color: var(--mp-text-main); margin-bottom: 20px;">Featured Courses</h3>
+                
+                <div class="mp-card mp-course-card">
+                    <div class="mp-course-img">
+                        <div style="width: 100%; height: 100%; background: linear-gradient(45deg, #3b82f6, #8b5cf6);"></div>
+                        <span class="mp-course-tag">Best Seller</span>
+                    </div>
+                    <h4 style="margin: 0 0 8px; font-size: 1.1rem;">Mastering Your Potential</h4>
+                    <p style="color: var(--mp-text-muted); font-size: 0.9rem; margin-bottom: 16px;">A comprehensive guide to unlocking your true capabilities.</p>
+                    <div style="margin-top: auto; display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-weight: 700; font-size: 1.2rem;">$99</span>
+                        <button class="btn-mp-secondary" style="padding: 8px 16px; font-size: 0.9rem;">View Course</button>
+                    </div>
+                </div>
+
+                <div class="mp-card mp-course-card">
+                    <div class="mp-course-img">
+                        <div style="width: 100%; height: 100%; background: linear-gradient(45deg, #f59e0b, #ef4444);"></div>
+                    </div>
+                    <h4 style="margin: 0 0 8px; font-size: 1.1rem;">Advanced Leadership</h4>
+                    <p style="color: var(--mp-text-muted); font-size: 0.9rem; margin-bottom: 16px;">Take your leadership skills to the next level.</p>
+                    <div style="margin-top: auto; display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-weight: 700; font-size: 1.2rem;">$149</span>
+                        <button class="btn-mp-secondary" style="padding: 8px 16px; font-size: 0.9rem;">View Course</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Free Resources (Mockup) -->
+            <div style="margin-top: 40px;">
+                <h3 style="font-size: 1.2rem; font-weight: 700; color: var(--mp-text-main); margin-bottom: 20px;">Free Resources</h3>
+                
+                <div class="mp-card" style="padding: 16px;">
+                    <div style="display: flex; gap: 16px; align-items: center;">
+                        <div style="width: 48px; height: 48px; background: #f0fdf4; color: #10b981; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">
+                            <i class="fas fa-file-pdf"></i>
+                        </div>
+                        <div>
+                            <h4 style="margin: 0 0 4px; font-size: 1rem;">Ultimate Success Checklist</h4>
+                            <a href="#" style="color: var(--mp-primary); font-size: 0.9rem; font-weight: 600; text-decoration: none;">Download Now</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mp-card" style="padding: 16px;">
+                    <div style="display: flex; gap: 16px; align-items: center;">
+                        <div style="width: 48px; height: 48px; background: #eff6ff; color: #3b82f6; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">
+                            <i class="fas fa-book-open"></i>
+                        </div>
+                        <div>
+                            <h4 style="margin: 0 0 4px; font-size: 1rem;">5-Day Mindset Challenge</h4>
+                            <a href="#" style="color: var(--mp-primary); font-size: 0.9rem; font-weight: 600; text-decoration: none;">Read Guide</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
 {% endblock %}
-

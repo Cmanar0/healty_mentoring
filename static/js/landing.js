@@ -7,7 +7,9 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 
   // Radar Chart Initialization
-  const ctx = document.getElementById('lifeBalanceChart').getContext('2d');
+  const chartElement = document.getElementById('lifeBalanceChart');
+  if (!chartElement) return; // Exit if chart element doesn't exist (e.g., on mentors page)
+  const ctx = chartElement.getContext('2d');
   
   // Custom Chart Data
   const data = {

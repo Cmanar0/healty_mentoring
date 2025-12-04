@@ -15,13 +15,15 @@
 <section id="search" class="search-section-new mentors-page-search">
   <div class="search-header">
     <div class="search-bar-container">
-      <div class="search-bar">
+      <div class="search-bar" style="position: relative;">
         <i class="fas fa-search"></i>
-        <input type="text" id="searchInput" placeholder="Search for mentors by name, expertise, or keyword...">
+        <input type="text" id="searchInput" placeholder="Search for mentors by name..." autocomplete="off">
         <button class="clear-btn" id="clearBtn" style="display: none;">
           <i class="fas fa-times"></i>
         </button>
         <button class="search-btn">Search</button>
+        <!-- Mentor suggestions dropdown -->
+        <div class="autocomplete-suggestions" id="mentorSuggestions" style="position: absolute; top: 100%; left: 0; right: 0; z-index: 1000; display: none;"></div>
       </div>
     </div>
   </div>
@@ -29,156 +31,129 @@
   <div class="search-filters">
     <div class="filter-group">
       <label><i class="fas fa-tag"></i> Category</label>
-      <div class="custom-select">
-        <select id="categorySelect">
-          <option value="">All Categories</option>
-          <option value="business">Business</option>
-          <option value="health">Health & Fitness</option>
-          <option value="career">Career</option>
-          <option value="mindfulness">Mindfulness</option>
-          <option value="finance">Finance</option>
-        </select>
-        <i class="fas fa-chevron-down"></i>
+      <div class="autocomplete-container" style="position: relative;">
+        <input type="text" id="categoryInput" class="autocomplete-input" placeholder="Select a category..." autocomplete="off" value="{% if current_filters.category %}{% for cat in predefined_categories %}{% if cat.id == current_filters.category %}{{ cat.name }}{% endif %}{% endfor %}{% endif %}">
+        <div class="autocomplete-suggestions" id="categorySuggestions"></div>
+        <input type="hidden" id="categoryValue" value="{{ current_filters.category }}">
       </div>
     </div>
     
     <div class="filter-group">
       <label class="price-label">
         <span><i class="fas fa-dollar-sign" style="margin-right: 5px;"></i> Session Price</span>
-        <span class="price-value" id="priceValue">$0 - $100</span>
+        <span class="price-value" id="priceValue">$0 - ${{ max_price|default:200 }}</span>
       </label>
-      <input type="range" min="0" max="200" value="100" class="price-slider" id="priceSlider">
+      <input type="range" min="{{ min_price|default:0 }}" max="{{ max_price|default:200 }}" value="{% if current_filters.price %}{{ current_filters.price }}{% else %}{{ max_price|default:200 }}{% endif %}" class="price-slider" id="priceSlider">
     </div>
     
     <div class="filter-group">
       <label><i class="fas fa-globe"></i> Language</label>
-      <div class="custom-select">
-        <select id="languageSelect">
-          <option value="">All Languages</option>
-          <option value="english">English</option>
-          <option value="czech">Czech</option>
-          <option value="spanish">Spanish</option>
-          <option value="german">German</option>
-          <option value="french">French</option>
-        </select>
-        <i class="fas fa-chevron-down"></i>
+      <div class="autocomplete-container" style="position: relative;">
+        <input type="text" id="languageInput" class="autocomplete-input" placeholder="Select a language..." autocomplete="off" value="{% if current_filters.language %}{% for lang in predefined_languages %}{% if lang.id == current_filters.language %}{{ lang.name }}{% endif %}{% endfor %}{% endif %}">
+        <div class="autocomplete-suggestions" id="languageSuggestions"></div>
+        <input type="hidden" id="languageValue" value="{{ current_filters.language }}">
+      </div>
+    </div>
+    
+    <div class="filter-group">
+      <label><i class="fas fa-gift"></i> First Session Free</label>
+      <div style="display: flex; align-items: center; margin-top: 8px;">
+        <label class="toggle-switch" style="margin: 0;">
+          <input type="checkbox" id="firstSessionFree" {% if current_filters.first_session_free %}checked{% endif %}>
+          <span class="toggle-slider"></span>
+        </label>
+        <span style="margin-left: 8px; font-size: 0.9rem; color: var(--text-light);">Show only mentors offering free first session</span>
+      </div>
+    </div>
+    
+    <div class="filter-group">
+      <label><i class="fas fa-clock"></i> Time Zone</label>
+      <div style="display: flex; gap: 8px; align-items: center; margin-top: 8px;">
+        <div class="autocomplete-container" style="position: relative; flex: 1;">
+          <input type="text" id="timezoneMinInput" class="autocomplete-input" placeholder="Min timezone..." autocomplete="off" value="{% if current_filters.timezone_min %}{% for tz in common_timezones %}{% if tz.id == current_filters.timezone_min %}{{ tz.name }}{% endif %}{% endfor %}{% endif %}">
+          <div class="autocomplete-suggestions" id="timezoneMinSuggestions"></div>
+          <input type="hidden" id="timezoneMinValue" value="{{ current_filters.timezone_min }}">
+        </div>
+        <span style="color: var(--text-light);">to</span>
+        <div class="autocomplete-container" style="position: relative; flex: 1;">
+          <input type="text" id="timezoneMaxInput" class="autocomplete-input" placeholder="Max timezone..." autocomplete="off" value="{% if current_filters.timezone_max %}{% for tz in common_timezones %}{% if tz.id == current_filters.timezone_max %}{{ tz.name }}{% endif %}{% endfor %}{% endif %}">
+          <div class="autocomplete-suggestions" id="timezoneMaxSuggestions"></div>
+          <input type="hidden" id="timezoneMaxValue" value="{{ current_filters.timezone_max }}">
+        </div>
+        <button type="button" id="timezoneRangePlus" class="timezone-range-btn" title="Expand range">+</button>
+        <button type="button" id="timezoneRangeMinus" class="timezone-range-btn" title="Narrow range">-</button>
       </div>
     </div>
   </div>
   
-  <div class="mentors-container list-view">
-    <!-- Mentor Card 1 -->
-    <div class="mentor-card" data-aos="fade-up">
-      <div class="mentor-header-content">
-        <div class="mentor-avatar">
-          <img src="https://i.pravatar.cc/150?img=12" alt="Sarah Johnson">
+  <div class="mentors-container list-view" id="mentorsContainer">
+    {% if mentors %}
+      {% for mentor in mentors %}
+      <div class="mentor-card" data-aos="fade-up" data-mentor-id="{{ mentor.user.id }}">
+        <div class="mentor-header-content">
+          <div class="mentor-avatar">
+            {% if mentor.profile_picture %}
+              <img src="{{ mentor.profile_picture.url }}" alt="{{ mentor.first_name }} {{ mentor.last_name }}">
+            {% else %}
+              <img src="https://i.pravatar.cc/150?img={{ mentor.user.id }}" alt="{{ mentor.first_name }} {{ mentor.last_name }}">
+            {% endif %}
+          </div>
+          <div class="mentor-title">
+            <h4>{{ mentor.first_name }} {{ mentor.last_name }}</h4>
+            <p class="mentor-specialty">{{ mentor.mentor_type|default:"Mentor" }}</p>
+          </div>
         </div>
-        <div class="mentor-title">
-          <h4>Sarah Johnson</h4>
-          <p class="mentor-specialty">Business Strategy</p>
+        
+        <div class="mentor-details">
+          {% if mentor.quote %}
+            <p class="mentor-motto">"{{ mentor.quote }}"</p>
+          {% endif %}
+          {% if mentor.bio %}
+            <p class="mentor-bio">{{ mentor.bio|truncatewords:30 }}</p>
+          {% endif %}
+          {% if mentor.tags %}
+            <div class="mentor-tags">
+              {% for tag in mentor.tags|slice:":5" %}
+                <span class="mentor-tag">{{ tag }}</span>
+              {% endfor %}
+            </div>
+          {% endif %}
         </div>
-      </div>
-      
-      <div class="mentor-details">
-        <p class="mentor-motto">"Turn your vision into a viable business."</p>
-        <p class="mentor-bio">Ex-McKinsey consultant with 10+ years helping startups scale from seed to Series B. Expert in go-to-market strategy and fundraising.</p>
-        <div class="mentor-tags">
-          <span class="mentor-tag">Startup</span>
-          <span class="mentor-tag">Strategy</span>
-          <span class="mentor-tag">Growth</span>
-        </div>
-      </div>
-      
-      <div class="mentor-footer">
-        <p class="mentor-price">$80<span>/session</span></p>
-        <a href="#" class="btn-mentor">View Profile </a>
-      </div>
-    </div>
-    
-    <!-- Mentor Card 2 -->
-    <div class="mentor-card" data-aos="fade-up" data-aos-delay="100">
-      <div class="mentor-header-content">
-        <div class="mentor-avatar">
-          <img src="https://i.pravatar.cc/150?img=33" alt="Michael Chen">
-        </div>
-        <div class="mentor-title">
-          <h4>Michael Chen</h4>
-          <p class="mentor-specialty">Career Development</p>
-        </div>
-      </div>
-      
-      <div class="mentor-details">
-        <p class="mentor-motto">"Unlock your potential and lead with confidence."</p>
-        <p class="mentor-bio">Senior HR Director who has coached over 500 professionals to land their dream roles. Specializing in executive presence and negotiation.</p>
-        <div class="mentor-tags">
-          <span class="mentor-tag">Leadership</span>
-          <span class="mentor-tag">Career</span>
-          <span class="mentor-tag">Interviewing</span>
+        
+        <div class="mentor-footer">
+          {% if mentor.price_per_hour %}
+            <p class="mentor-price">${{ mentor.price_per_hour|floatformat:0 }}<span>/session</span></p>
+          {% else %}
+            <p class="mentor-price">Contact<span> for pricing</span></p>
+          {% endif %}
+          <a href="{% url 'web:mentor_profile_detail' mentor.user.id %}" class="btn-mentor">View Profile</a>
         </div>
       </div>
-      
-      <div class="mentor-footer">
-        <p class="mentor-price">$65<span>/session</span></p>
-        <a href="#" class="btn-mentor">View Profile </a>
+      {% endfor %}
+    {% else %}
+      <div style="grid-column: 1 / -1; text-align: center; padding: 60px 20px;">
+        <p style="font-size: 1.1rem; color: var(--text-light);">No mentors found matching your criteria.</p>
+        <p style="font-size: 0.9rem; color: var(--text-light); margin-top: 8px;">Try adjusting your filters.</p>
       </div>
-    </div>
-    
-    <!-- Mentor Card 3 -->
-    <div class="mentor-card" data-aos="fade-up" data-aos-delay="200">
-      <div class="mentor-header-content">
-        <div class="mentor-avatar">
-          <img src="https://i.pravatar.cc/150?img=44" alt="Emma Rodriguez">
-        </div>
-        <div class="mentor-title">
-          <h4>Emma Rodriguez</h4>
-          <p class="mentor-specialty">Mindfulness Coach</p>
-        </div>
-      </div>
-      
-      <div class="mentor-details">
-        <p class="mentor-motto">"Find peace in the chaos of success."</p>
-        <p class="mentor-bio">Certified mindfulness practitioner specializing in stress reduction for high-performers. Helping you build resilience and mental clarity.</p>
-        <div class="mentor-tags">
-          <span class="mentor-tag">Mindfulness</span>
-          <span class="mentor-tag">Wellness</span>
-          <span class="mentor-tag">Balance</span>
-        </div>
-      </div>
-      
-      <div class="mentor-footer">
-        <p class="mentor-price">$55<span>/session</span></p>
-        <a href="#" class="btn-mentor">View Profile </a>
-      </div>
-    </div>
-    
-    <!-- Mentor Card 4 -->
-    <div class="mentor-card" data-aos="fade-up" data-aos-delay="300">
-      <div class="mentor-header-content">
-        <div class="mentor-avatar">
-          <img src="https://i.pravatar.cc/150?img=68" alt="David Kim">
-        </div>
-        <div class="mentor-title">
-          <h4>David Kim</h4>
-          <p class="mentor-specialty">Startup Advisor</p>
-        </div>
-      </div>
-      
-      <div class="mentor-details">
-        <p class="mentor-motto">"Fail fast, learn faster, succeed sooner."</p>
-        <p class="mentor-bio">Serial entrepreneur with 3 exits. I help founders navigate the messy middle of building a company. Focus on product-market fit and scaling.</p>
-        <div class="mentor-tags">
-          <span class="mentor-tag">Fundraising</span>
-          <span class="mentor-tag">Product</span>
-          <span class="mentor-tag">LeanStartup</span>
-        </div>
-      </div>
-      
-      <div class="mentor-footer">
-        <p class="mentor-price">$90<span>/session</span></p>
-        <a href="#" class="btn-mentor">View Profile </a>
-      </div>
-    </div>
+    {% endif %}
   </div>
+  
+  <!-- Loading indicator for infinite scroll -->
+  <div id="mentorsLoading" style="display: none; text-align: center; padding: 40px 20px;">
+    <div style="display: inline-block; width: 40px; height: 40px; border: 4px solid #e2e8f0; border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite;"></div>
+    <p style="margin-top: 16px; color: var(--text-light);">Loading more mentors...</p>
+  </div>
+  
+  <!-- No more mentors message -->
+  <div id="mentorsEnd" style="display: none; text-align: center; padding: 40px 20px;">
+    <p style="color: var(--text-light);">No more mentors to load.</p>
+  </div>
+  
+  <style>
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
 </section>
 
 <!-- Footer -->
@@ -217,114 +192,16 @@
 {% block scripts %}
 <script src="{% static 'js/landing.js' %}"></script>
 <script src="{% static 'js/search-interactions.js' %}"></script>
-<script>
-  // Script to populate filters from URL parameters and handle search
-  document.addEventListener('DOMContentLoaded', function() {
-    const urlParams = new URLSearchParams(window.location.search);
-    
-    const searchInput = document.getElementById('searchInput');
-    const categorySelect = document.getElementById('categorySelect');
-    const priceSlider = document.getElementById('priceSlider');
-    const languageSelect = document.getElementById('languageSelect');
-    const priceValue = document.getElementById('priceValue');
-    
-    // Function to update slider appearance (synchronized with thumb)
-    const updateSlider = function() {
-      if (!priceSlider || !priceValue) return;
-      const value = parseFloat(priceSlider.value);
-      const max = parseFloat(priceSlider.max);
-      const min = parseFloat(priceSlider.min);
-      
-      // Calculate percentage based on value (0-100%)
-      const percentage = ((value - min) / (max - min)) * 100;
-      
-      // Update price display
-      priceValue.textContent = `$0 - $${value}`;
-      
-      // The browser positions the thumb center linearly based on the value percentage
-      // So we can directly use the percentage for the gradient
-      // This ensures perfect synchronization between thumb center and progress bar
-      const gradientPercentage = percentage;
-      
-      // Update slider gradient - synchronized with thumb's center position
-      priceSlider.style.background = `linear-gradient(to right, var(--primary) 0%, var(--primary) ${gradientPercentage}%, #e2e8f0 ${gradientPercentage}%, #e2e8f0 100%)`;
-    };
-    
-    // Initialize slider on page load (after a small delay to ensure layout is calculated)
-    if (priceSlider) {
-      setTimeout(updateSlider, 0);
-      
-      // Update on input (while dragging)
-      priceSlider.addEventListener('input', updateSlider);
-      
-      // Also update on change (when released)
-      priceSlider.addEventListener('change', updateSlider);
-      
-      // Update on window resize to recalculate positions
-      window.addEventListener('resize', updateSlider);
-    }
-    
-    // Populate filters
-    if (urlParams.has('q')) {
-      searchInput.value = urlParams.get('q');
-      searchInput.dispatchEvent(new Event('input'));
-    }
-    
-    if (urlParams.has('category')) {
-      const category = urlParams.get('category').toLowerCase();
-      for (let i = 0; i < categorySelect.options.length; i++) {
-        if (categorySelect.options[i].text.toLowerCase().includes(category) || 
-            categorySelect.options[i].value.toLowerCase() === category) {
-          categorySelect.selectedIndex = i;
-          break;
-        }
-      }
-    }
-    
-    if (urlParams.has('price')) {
-      const price = parseInt(urlParams.get('price'));
-      if (!isNaN(price) && priceSlider) {
-        priceSlider.value = price;
-        updateSlider(); // Manually update after setting value
-      }
-    }
-    
-    if (urlParams.has('language')) {
-      const language = urlParams.get('language').toLowerCase();
-      for (let i = 0; i < languageSelect.options.length; i++) {
-        if (languageSelect.options[i].text.toLowerCase().includes(language) || 
-            languageSelect.options[i].value.toLowerCase() === language) {
-          languageSelect.selectedIndex = i;
-          break;
-        }
-      }
-    }
 
-    // Handle Search Submission
-    const performSearch = function() {
-      const params = new URLSearchParams();
-      
-      if (searchInput && searchInput.value) params.append('q', searchInput.value);
-      if (categorySelect && categorySelect.value) params.append('category', categorySelect.value);
-      if (priceSlider) params.append('price', priceSlider.value);
-      if (languageSelect && languageSelect.value) params.append('language', languageSelect.value);
-      
-      window.location.href = window.location.pathname + "?" + params.toString();
-    };
+<!-- Predefined data for filters -->
+{{ predefined_categories|json_script:"predefinedCategoriesData" }}
+{{ predefined_languages|json_script:"predefinedLanguagesData" }}
+{{ common_timezones|json_script:"commonTimezonesData" }}
+{{ current_page|json_script:"currentPageData" }}
+{{ has_next|json_script:"hasNextData" }}
 
-    const searchBtn = document.querySelector('.search-btn');
-    if (searchBtn) {
-      searchBtn.addEventListener('click', function(e) {
-        e.preventDefault();
-        performSearch();
-      });
-    }
-
-    if (searchInput) {
-      searchInput.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') performSearch();
-      });
-    }
-  });
+<script src="{% static 'js/mentors-search.js' %}"></script>
+<script data-search-url="{% url 'web:mentor_search_suggestions' %}" data-load-more-url="{% url 'web:mentors_load_more' %}">
+  // URLs are set via data attributes on this script tag
 </script>
 {% endblock %}
