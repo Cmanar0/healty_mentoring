@@ -116,47 +116,49 @@
                     </div>
                     {{ mentor_types|json_script:"mentorTypesData" }}
 
-                    <!-- Time Zone -->
+                    <!-- Time Zone (Redesigned) -->
                     <div class="compact-form-group form-grid-full">
                         <label><i class="fas fa-clock"></i> Time Zone</label>
-                        <div class="timezone-selector-container">
-                            <div class="autocomplete-container" style="position: relative;">
-                                <input type="text" name="time_zone" id="timezoneInput" value="{{ user.profile.selected_timezone|default:'' }}" class="form-input autocomplete-input" placeholder="Search for your timezone..." autocomplete="off">
-                                <input type="hidden" id="timezoneValue" name="time_zone" value="{{ user.profile.selected_timezone|default:'' }}">
-                                <div class="autocomplete-suggestions" id="timezoneSuggestions"></div>
-                            </div>
-                            <div id="timezoneInfo" class="timezone-info" style="margin-top: 8px; font-size: 0.85rem; color: var(--dash-text-muted); display: none;">
-                                <div style="display: flex; flex-direction: column; gap: 2px;">
-                                    <span style="font-weight: 500; margin-bottom: 4px;">Selected timezone: <span id="selectedTimezoneDisplay"></span></span>
-                                    <span id="timezoneCurrentDate"></span>
-                                    <span id="timezoneCurrentTime"></span>
+                        
+                        <div class="timezone-settings-card">
+                            <!-- Header / Input Area -->
+                            <div class="timezone-card-body">
+                                <div class="autocomplete-container" style="position: relative;">
+                                    <input type="text" name="time_zone" id="timezoneInput" value="{{ user.profile.selected_timezone|default:'' }}" class="form-input autocomplete-input timezone-main-input" placeholder="Search for your timezone..." autocomplete="off">
+                                    <input type="hidden" id="timezoneValue" name="time_zone" value="{{ user.profile.selected_timezone|default:'' }}">
+                                    <div class="autocomplete-suggestions" id="timezoneSuggestions"></div>
                                 </div>
-                            </div>
-                            <!-- Warning if selected != detected -->
-                            <div id="timezoneMismatchWarning" class="timezone-mismatch-warning" style="display: none; margin-top: 12px; padding: 12px 16px; background: rgba(239, 68, 68, 0.05); border-radius: 8px; border-left: 3px solid #ef4444;">
-                                <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px;">
-                                    <div style="display: flex; align-items: center; gap: 8px; flex: 1;">
-                                        <i class="fas fa-exclamation-triangle" style="color: #ef4444; font-size: 0.9rem;"></i>
-                                        <div style="display: flex; flex-direction: column; gap: 2px;">
-                                            <span style="font-size: 0.85rem; color: var(--dash-text-main); font-weight: 500;">Timezone mismatch detected</span>
-                                            <span style="font-size: 0.75rem; color: var(--dash-text-muted);">Your selected timezone doesn't match your detected location timezone.</span>
+                                
+                                <!-- Live Clock & Status -->
+                                <div class="timezone-status-row">
+                                    <!-- Current Time (Left) -->
+                                    <div id="timezoneInfo" class="timezone-live-clock" style="display: none;">
+                                        <i class="far fa-clock"></i>
+                                        <span id="timezoneCurrentTime">--:--</span>
+                                        <span id="timezoneCurrentDate" class="timezone-date-small"></span>
+                                    </div>
+
+                                    <!-- Detection Status (Right) -->
+                                    <div class="timezone-detection-status">
+                                        <!-- Match State -->
+                                        <div id="timezoneMatchBadge" class="status-badge status-match" style="display: none;">
+                                            <i class="fas fa-check-circle"></i> Matches your location
+                                        </div>
+                                        
+                                        <!-- Mismatch State -->
+                                        <div id="timezoneMismatchBadge" class="status-badge status-mismatch" style="display: none;">
+                                            <span class="mismatch-text">Detected: <span id="detectedTimezoneName"></span></span>
+                                            <button type="button" id="useDetectedTimezoneBtn" class="btn-update-timezone">
+                                                Update
+                                            </button>
                                         </div>
                                     </div>
-                                    <button type="button" id="useDetectedTimezoneBtn" class="btn btn-outline btn-sm" style="white-space: nowrap; height: auto; padding: 6px 12px; font-size: 0.85rem;">
-                                        Use Detected
-                                    </button>
                                 </div>
                             </div>
                         </div>
-                        <div style="display: flex; gap: 16px; margin-top: 12px;">
-                            <div class="timezone-detected-info" style="display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: rgba(16, 185, 129, 0.05); border-radius: 8px; border-left: 3px solid var(--dash-primary); flex: 1;">
-                                <i class="fas fa-info-circle" style="color: var(--dash-primary); font-size: 0.9rem;"></i>
-                                <div style="display: flex; flex-direction: column; gap: 2px;">
-                                    <span style="font-size: 0.75rem; color: var(--dash-text-muted); font-weight: 500;">Detected:</span>
-                                    <span id="detectedTimezoneDisplay" style="font-size: 0.85rem; color: var(--dash-text-main); font-weight: 500;">{{ user.profile.detected_timezone|default:"Not detected" }}</span>
-                                </div>
-                            </div>
-                        </div>
+                        
+                        <!-- Hidden detected timezone for logic -->
+                        <input type="hidden" id="detectedTimezoneValue" value="{{ user.profile.detected_timezone|default:'' }}">
                         {{ common_timezones|json_script:"timezonesData" }}
                     </div>
 
@@ -913,15 +915,22 @@ function calculateEarnings() {
 
 // Timezone Management
 function initializeTimezoneSelector() {
+    // Timezone Management (Redesigned)
     const timezoneInput = document.getElementById('timezoneInput');
     const timezoneValue = document.getElementById('timezoneValue');
     const timezoneSuggestions = document.getElementById('timezoneSuggestions');
+    
+    // New Elements
     const timezoneInfo = document.getElementById('timezoneInfo');
-    const timezoneCurrentDate = document.getElementById('timezoneCurrentDate');
     const timezoneCurrentTime = document.getElementById('timezoneCurrentTime');
-    const selectedTimezoneDisplay = document.getElementById('selectedTimezoneDisplay');
-    const timezoneMismatchWarning = document.getElementById('timezoneMismatchWarning');
+    const timezoneCurrentDate = document.getElementById('timezoneCurrentDate');
+    
+    const timezoneMatchBadge = document.getElementById('timezoneMatchBadge');
+    const timezoneMismatchBadge = document.getElementById('timezoneMismatchBadge');
+    const detectedTimezoneName = document.getElementById('detectedTimezoneName');
     const useDetectedTimezoneBtn = document.getElementById('useDetectedTimezoneBtn');
+    const detectedTimezoneValue = document.getElementById('detectedTimezoneValue');
+    
     const timezonesData = document.getElementById('timezonesData');
     
     if (!timezoneInput || !timezoneValue || !timezoneSuggestions || !timezonesData) return;
@@ -929,74 +938,62 @@ function initializeTimezoneSelector() {
     const timezones = JSON.parse(timezonesData.textContent);
     let selectedTimezone = null;
     let timezoneUpdateInterval = null;
-    let initialTimezoneValue = timezoneValue.value; // Track initial value to detect changes
+    let initialTimezoneValue = timezoneValue.value;
     
-    // Get detected timezone (with test mode support)
-    let detectedTimezone;
-    try {
-        detectedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-        
-        // For testing: Check sessionStorage first (set by test button), then window.TEST_TIMEZONE (set by console)
-        const testTimezone = sessionStorage.getItem('TEST_TIMEZONE') || window.TEST_TIMEZONE;
-        if (testTimezone) {
-            console.log('⚠️ TEST MODE: Using test timezone:', testTimezone);
-            detectedTimezone = testTimezone;
+    // Get detected timezone from hidden input (populated by backend or JS)
+    let detectedTimezone = detectedTimezoneValue ? detectedTimezoneValue.value : null;
+    
+    // If not in backend, try browser detection
+    if (!detectedTimezone) {
+        try {
+            detectedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        } catch (e) {
+            console.log('Could not detect timezone');
         }
-    } catch (e) {
-        detectedTimezone = null;
     }
     
-    // Find and display current timezone from DB (selected_timezone)
+    // Initialize selected timezone
     if (timezoneValue.value && timezoneValue.value.trim() !== '') {
         const currentTz = timezones.find(tz => tz.id === timezoneValue.value);
         if (currentTz) {
             selectedTimezone = currentTz;
-            timezoneInput.value = currentTz.name + ' (' + (currentTz.offset || '') + ')';
+            // Don't overwrite input value if it's already set correctly, just ensure object is linked
+            if (timezoneInput.value === '') {
+                 timezoneInput.value = currentTz.name + ' (' + (currentTz.offset || '') + ')';
+            }
             updateTimezoneDisplay();
             checkTimezoneMismatch();
         }
     }
     
-    // Update detected timezone display
-    const detectedTimezoneDisplay = document.getElementById('detectedTimezoneDisplay');
-    if (detectedTimezoneDisplay && detectedTimezone) {
-        const detectedTzObj = timezones.find(tz => tz.id === detectedTimezone);
-        if (detectedTzObj) {
-            detectedTimezoneDisplay.textContent = detectedTzObj.name + ' (' + (detectedTzObj.offset || '') + ')';
-        } else {
-            detectedTimezoneDisplay.textContent = detectedTimezone;
-        }
-    }
-    
     function checkTimezoneMismatch() {
-        if (!timezoneMismatchWarning || !detectedTimezone) return;
+        if (!detectedTimezone || !selectedTimezone) return;
         
-        // Get current selected timezone value (from hidden input or selectedTimezone object)
-        const currentSelectedTzId = selectedTimezone ? selectedTimezone.id : (timezoneValue ? timezoneValue.value : null);
+        // Hide both first
+        if (timezoneMatchBadge) timezoneMatchBadge.style.display = 'none';
+        if (timezoneMismatchBadge) timezoneMismatchBadge.style.display = 'none';
         
-        if (!currentSelectedTzId) {
-            timezoneMismatchWarning.style.display = 'none';
-            return;
-        }
-        
-        // Always show warning if there's a mismatch, regardless of confirmed_timezone_mismatch
-        if (currentSelectedTzId !== detectedTimezone) {
-            timezoneMismatchWarning.style.display = 'block';
+        if (selectedTimezone.id === detectedTimezone) {
+            // Match
+            if (timezoneMatchBadge) timezoneMatchBadge.style.display = 'inline-flex';
         } else {
-            timezoneMismatchWarning.style.display = 'none';
+            // Mismatch
+            if (timezoneMismatchBadge) {
+                timezoneMismatchBadge.style.display = 'inline-flex';
+                if (detectedTimezoneName) {
+                    // Try to find nice name for detected timezone
+                    const detectedObj = timezones.find(tz => tz.id === detectedTimezone);
+                    detectedTimezoneName.textContent = detectedObj ? detectedObj.name : detectedTimezone;
+                }
+            }
         }
     }
     
     function updateTimezoneDisplay() {
-        if (!selectedTimezone) return;
+        if (!selectedTimezone || !timezoneInfo) return;
         
         try {
             const now = new Date();
-            
-            // Update selected timezone display
-            if (selectedTimezoneDisplay) {
-                selectedTimezoneDisplay.textContent = selectedTimezone.name + ' (' + (selectedTimezone.offset || '') + ')';
-            }
             
             // Date formatter (weekday, month, day)
             const dateFormatter = new Intl.DateTimeFormat('en-US', {
@@ -1011,25 +1008,26 @@ function initializeTimezoneSelector() {
                 timeZone: selectedTimezone.id,
                 hour: '2-digit',
                 minute: '2-digit',
-                second: '2-digit',
+                // second: '2-digit', // Removed seconds for cleaner look
                 hour12: true
             });
             
             const formattedDate = dateFormatter.format(now);
             const formattedTime = timeFormatter.format(now);
             
-            if (timezoneCurrentDate) timezoneCurrentDate.textContent = `Current time: ${formattedDate}`;
+            if (timezoneCurrentDate) timezoneCurrentDate.textContent = formattedDate;
             if (timezoneCurrentTime) timezoneCurrentTime.textContent = formattedTime;
-            if (timezoneInfo) timezoneInfo.style.display = 'block';
+            
+            timezoneInfo.style.display = 'flex';
             
             // Check for mismatch
             checkTimezoneMismatch();
         } catch (e) {
-            if (timezoneInfo) timezoneInfo.style.display = 'none';
+            timezoneInfo.style.display = 'none';
         }
     }
     
-    // Check mismatch on page load (after a short delay to ensure all elements are ready)
+    // Check mismatch on page load
     setTimeout(function() {
         checkTimezoneMismatch();
     }, 100);
@@ -1046,17 +1044,15 @@ function initializeTimezoneSelector() {
                 
                 // Show notification
                 if (typeof showNotification !== 'undefined') {
-                    showNotification('Don\'t forget to save your profile to apply the changes.', 'note');
+                    showNotification('Updated to detected timezone. Don\'t forget to save.', 'success');
                 }
             }
         });
     }
     
-    // Update time display every second
-    if (selectedTimezone) {
-        updateTimezoneDisplay();
-        timezoneUpdateInterval = setInterval(updateTimezoneDisplay, 1000);
-    }
+    // Update time display every minute (seconds removed, so minute update is enough)
+    if (timezoneUpdateInterval) clearInterval(timezoneUpdateInterval);
+    timezoneUpdateInterval = setInterval(updateTimezoneDisplay, 10000); // 10s is responsive enough
     
     function filterTimezoneSuggestions(query) {
         const lowerQuery = query.toLowerCase();

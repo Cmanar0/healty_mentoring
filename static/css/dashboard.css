@@ -3921,3 +3921,135 @@ textarea.form-input {
     width: 100%;
   }
 }
+
+/* Time Zone Settings Card Redesign */
+.timezone-settings-card {
+    background: var(--dash-bg);
+    border: 1px solid var(--dash-border);
+    border-radius: 12px;
+    overflow: visible;
+    transition: all 0.2s ease;
+}
+
+.timezone-settings-card:hover {
+    border-color: var(--dash-primary-light);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+
+.timezone-card-body {
+    padding: 16px;
+}
+
+.timezone-main-input {
+    border: 1px solid var(--dash-border);
+    background: var(--dash-bg-light);
+    font-size: 1rem;
+    padding: 14px 16px;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+.timezone-main-input:focus {
+    background: var(--dash-bg);
+    border-color: var(--dash-primary);
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+}
+
+.timezone-status-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--dash-border);
+    min-height: 36px;
+}
+
+.timezone-live-clock {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--dash-text-main);
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.timezone-live-clock i {
+    color: var(--dash-primary);
+}
+
+#timezoneCurrentTime {
+    font-family: 'Courier New', monospace;
+    font-weight: 700;
+    font-size: 1rem;
+    letter-spacing: -0.5px;
+}
+
+.timezone-date-small {
+    font-size: 0.8rem;
+    color: var(--dash-text-muted);
+    font-weight: 400;
+    margin-left: 4px;
+}
+
+.timezone-detection-status {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+}
+
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.status-match {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--dash-primary);
+}
+
+.status-mismatch {
+    background: rgba(59, 130, 246, 0.1); /* Blue for info/action, not red warning */
+    color: #2563eb;
+    padding-right: 4px; /* Less padding on right for button */
+}
+
+.mismatch-text {
+    margin-right: 8px;
+}
+
+.btn-update-timezone {
+    background: #2563eb;
+    color: white;
+    border: none;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-update-timezone:hover {
+    background: #1d4ed8;
+    transform: translateY(-1px);
+}
+
+@media (max-width: 640px) {
+    .timezone-status-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+    
+    .timezone-detection-status {
+        width: 100%;
+        justify-content: flex-start;
+    }
+}
