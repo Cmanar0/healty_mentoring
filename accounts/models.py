@@ -141,6 +141,7 @@ class MentorProfile(models.Model):
     bio = models.TextField(blank=True)
     quote = models.TextField(blank=True)
     profile_picture = models.ImageField(upload_to="profiles/", blank=True, null=True)
+    cover_image = models.ImageField(upload_to="profiles/covers/", blank=True, null=True, help_text="Cover/banner image for profile")
     
     # Billing Info (JSON for flexibility)
     billing = models.JSONField(default=dict, blank=True)

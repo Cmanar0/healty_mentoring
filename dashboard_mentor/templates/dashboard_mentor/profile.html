@@ -14,41 +14,74 @@
 
 {% block dashboard_content %}
 <div class="dashboard-content-container">
-    <div class="dashboard-grid" style="display: grid; grid-template-columns: 1fr 380px; gap: 24px;">
-        <!-- Main Profile Card -->
-        <div class="dashboard-card profile-card-compact">
-            <div class="card-header">
-                <h3 class="card-title">Your Profile</h3>
-                <div style="display: flex; flex-direction: column; gap: 8px; align-items: flex-end;">
-                    <a href="{% url 'web:mentor_profile_detail' user.id %}" class="btn btn-outline btn-sm btn-profile-preview" style="display: inline-flex; align-items: center; gap: 8px;" target="_blank">
-                        <i class="fas fa-eye"></i> Profile Preview
+    <div class="dashboard-grid" style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px;">
+        <!-- Main Profile Card (2/3 width) -->
+        <div class="dashboard-card profile-card-compact" style="padding: 0; overflow: hidden;">
+            
+            <!-- Cover Image Section -->
+            <div class="profile-cover-section">
+                <!-- Action Buttons Overlay -->
+                <div class="cover-actions-overlay">
+                    <a href="{% url 'web:mentor_profile_detail' user.id %}" class="btn btn-sm btn-glass" target="_blank">
+                        <i class="fas fa-eye"></i> Preview
                     </a>
-                    <a href="/dashboard/mentor/account/" class="btn btn-outline btn-sm" style="display: inline-flex; align-items: center; gap: 8px;">
-                        <i class="fas fa-user-circle"></i> My account
+                    <a href="/dashboard/mentor/account/" class="btn btn-sm btn-glass">
+                        <i class="fas fa-user-circle"></i> My Account
                     </a>
                 </div>
-            </div>
-            <!-- Compact Header with Profile Picture -->
-            <div class="profile-header-compact">
-                <form method="post" enctype="multipart/form-data" id="pictureForm" style="margin: 0;">
+
+                <form method="post" enctype="multipart/form-data" id="coverImageForm" style="margin: 0; height: 100%;">
                     {% csrf_token %}
-                    <input type="hidden" name="action" value="update_picture">
-                    <label for="profilePictureInput" class="profile-avatar-compact profile-avatar-hover">
-                        {% if user.profile.profile_picture %}
-                            <img src="{{ user.profile.profile_picture.url }}" alt="Profile" id="profileImagePreview">
+                    <input type="hidden" name="action" value="update_cover_image">
+                    <label for="coverImageInput" class="profile-cover-upload">
+                        {% if user.profile.cover_image %}
+                            <img src="{{ user.profile.cover_image.url }}" alt="Cover" id="coverImagePreview" class="cover-image-preview">
                         {% else %}
-                            <i class="fas fa-user" id="profileImageIcon"></i>
+                            <div class="cover-image-placeholder">
+                                <i class="fas fa-image"></i>
+                                <span>Add Cover Photo</span>
+                            </div>
                         {% endif %}
-                        <div class="avatar-overlay">
-                            <i class="fas {% if user.profile.profile_picture %}fa-camera{% else %}fa-plus{% endif %}"></i>
+                        <div class="cover-overlay">
+                            <i class="fas fa-camera"></i>
+                            <span>Change Cover</span>
                         </div>
-                        <input type="file" name="profile_picture" id="profilePictureInput" accept="image/*" style="display: none;" onchange="document.getElementById('pictureForm').submit()">
+                        <input type="file" name="cover_image" id="coverImageInput" accept="image/*" style="display: none;" onchange="previewCoverImage(this); document.getElementById('coverImageForm').submit()">
                     </label>
                 </form>
+            </div>
+
+            <!-- Profile Header (Avatar + Info) -->
+            <div class="profile-header-compact">
+                <div class="profile-avatar-wrapper">
+                    <form method="post" enctype="multipart/form-data" id="pictureForm" style="margin: 0;">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="update_picture">
+                        <label for="profilePictureInput" class="profile-avatar-compact profile-avatar-hover">
+                            {% if user.profile.profile_picture %}
+                                <img src="{{ user.profile.profile_picture.url }}" alt="Profile" id="profileImagePreview">
+                            {% else %}
+                                <div class="avatar-placeholder">
+                                    <i class="fas fa-user"></i>
+                                </div>
+                            {% endif %}
+                            <div class="avatar-overlay">
+                                <i class="fas fa-camera"></i>
+                            </div>
+                            <input type="file" name="profile_picture" id="profilePictureInput" accept="image/*" style="display: none;" onchange="document.getElementById('pictureForm').submit()">
+                        </label>
+                    </form>
+                </div>
+                
                 <div class="profile-header-info">
-                    <h2>{{ user.profile.first_name }} {{ user.profile.last_name }}</h2>
+                    <div class="profile-name-row">
+                        <h2 class="profile-name">{{ user.profile.first_name }} {{ user.profile.last_name }}</h2>
+                        {% if user.profile.is_verified %}
+                            <span class="verified-badge" title="Verified Mentor"><i class="fas fa-check-circle"></i></span>
+                        {% endif %}
+                    </div>
                     {% if user.profile.mentor_type %}
-                        <p style="color: var(--dash-text-muted); margin: 0;">
+                        <p class="profile-title">
                             {% if user.profile.mentor_type == 'life_coach' %}Life Coach
                             {% elif user.profile.mentor_type == 'career_coach' %}Career Coach
                             {% elif user.profile.mentor_type == 'business_coach' %}Business Coach
@@ -61,7 +94,7 @@
                 </div>
             </div>
 
-            <!-- Messages will be shown via notification system -->
+            <!-- Messages -->
             {% if messages %}
             <div id="django-messages" style="display: none;">
                 {% for message in messages %}
@@ -70,12 +103,13 @@
             </div>
             {% endif %}
 
-            <!-- Compact Form Grid -->
-            <form method="post" id="profileForm">
-                {% csrf_token %}
-                <input type="hidden" name="action" value="update_profile">
-                
-                <div class="form-grid">
+            <!-- Main Form Content -->
+            <div class="profile-content-wrapper" style="padding: 0 24px 24px 24px;">
+                <form method="post" id="profileForm">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="update_profile">
+                    
+                    <div class="form-grid">
                     <!-- First Name -->
                     <div class="compact-form-group">
                         <label><i class="fas fa-user"></i> First Name</label>
@@ -452,9 +486,10 @@
                     <button type="submit" class="btn btn-primary">Save Changes</button>
                 </div>
             </form>
+            </div>
         </div>
 
-        <!-- Tracking Card -->
+        <!-- Profile Credibility Card (1/3 width) -->
         <div class="dashboard-card" style="height: fit-content;">
             <div class="card-header">
                 <h3 class="card-title">Profile Credibility</h3>
@@ -899,6 +934,36 @@ function previewImage(input) {
                 img.style.borderRadius = '50%';
                 icon.parentElement.appendChild(img);
                 icon.style.display = 'none';
+            }
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
+function previewCoverImage(input) {
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const preview = document.getElementById('coverImagePreview');
+            const placeholder = document.querySelector('.cover-image-placeholder');
+            if (preview) {
+                preview.src = e.target.result;
+                preview.style.display = 'block';
+            } else {
+                // Create preview if it doesn't exist
+                const coverUpload = document.querySelector('.profile-cover-upload');
+                if (coverUpload && placeholder) {
+                    const img = document.createElement('img');
+                    img.id = 'coverImagePreview';
+                    img.src = e.target.result;
+                    img.alt = 'Cover';
+                    img.className = 'cover-image-preview';
+                    coverUpload.insertBefore(img, placeholder);
+                    placeholder.style.display = 'none';
+                }
+            }
+            if (placeholder) {
+                placeholder.style.display = 'none';
             }
         };
         reader.readAsDataURL(input.files[0]);

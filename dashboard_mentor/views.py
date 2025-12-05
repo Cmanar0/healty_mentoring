@@ -193,6 +193,19 @@ def profile(request):
                 profile.save()
             return redirect("/dashboard/mentor/profile/")
         
+        elif action == "update_cover_image":
+            if 'cover_image' in request.FILES:
+                # Delete old cover image if it exists
+                if profile.cover_image:
+                    old_cover = profile.cover_image
+                    # Delete the file from storage
+                    old_cover.delete(save=False)
+                
+                # Save new cover image
+                profile.cover_image = request.FILES['cover_image']
+                profile.save()
+            return redirect("/dashboard/mentor/profile/")
+        
         elif action == "update_profile":
             # Update basic fields
             first_name = request.POST.get("first_name")
