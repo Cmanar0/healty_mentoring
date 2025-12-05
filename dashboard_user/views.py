@@ -22,8 +22,12 @@ def account(request):
             # Delete old profile picture if it exists
             if profile.profile_picture:
                 old_picture = profile.profile_picture
-                # Delete the file from storage
-                old_picture.delete(save=False)
+                # Delete the file from storage using storage API
+                if old_picture.name:
+                    old_picture.storage.delete(old_picture.name)
+                # Clear the field reference
+                profile.profile_picture = None
+                profile.save(update_fields=['profile_picture'])
             
             # Save new profile picture
             profile.profile_picture = request.FILES.get("profile_picture")

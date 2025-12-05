@@ -185,8 +185,12 @@ def profile(request):
                 # Delete old profile picture if it exists
                 if profile.profile_picture:
                     old_picture = profile.profile_picture
-                    # Delete the file from storage
-                    old_picture.delete(save=False)
+                    # Delete the file from storage using storage API
+                    if old_picture.name:
+                        old_picture.storage.delete(old_picture.name)
+                    # Clear the field reference
+                    profile.profile_picture = None
+                    profile.save(update_fields=['profile_picture'])
                 
                 # Save new profile picture
                 profile.profile_picture = request.FILES['profile_picture']
@@ -198,8 +202,12 @@ def profile(request):
                 # Delete old cover image if it exists
                 if profile.cover_image:
                     old_cover = profile.cover_image
-                    # Delete the file from storage
-                    old_cover.delete(save=False)
+                    # Delete the file from storage using storage API
+                    if old_cover.name:
+                        old_cover.storage.delete(old_cover.name)
+                    # Clear the field reference
+                    profile.cover_image = None
+                    profile.save(update_fields=['cover_image'])
                 
                 # Save new cover image
                 profile.cover_image = request.FILES['cover_image']

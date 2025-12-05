@@ -940,6 +940,79 @@ function previewImage(input) {
     }
 }
 
+// Function to detect image brightness and adjust button styles
+function detectCoverImageBrightness(imageElement, callback) {
+    if (!imageElement || !imageElement.complete) {
+        // Wait for image to load
+        imageElement.onload = function() {
+            detectCoverImageBrightness(imageElement, callback);
+        };
+        return;
+    }
+    
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = Math.min(imageElement.width, 200); // Sample size for performance
+    canvas.height = Math.min(imageElement.height, 200);
+    
+    ctx.drawImage(imageElement, 0, 0, canvas.width, canvas.height);
+    
+    try {
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imageData.data;
+        let brightnessSum = 0;
+        let pixelCount = 0;
+        
+        // Sample pixels (every 4th pixel for performance)
+        for (let i = 0; i < data.length; i += 16) {
+            const r = data[i];
+            const g = data[i + 1];
+            const b = data[i + 2];
+            // Calculate perceived brightness using luminance formula
+            const brightness = (r * 0.299 + g * 0.587 + b * 0.114) / 255;
+            brightnessSum += brightness;
+            pixelCount++;
+        }
+        
+        const averageBrightness = brightnessSum / pixelCount;
+        callback(averageBrightness);
+    } catch (e) {
+        console.error('Error detecting brightness:', e);
+        // Default to dark if error
+        callback(0.5);
+    }
+}
+
+// Function to apply button styles based on brightness
+function applyCoverButtonStyles(brightness) {
+    const overlay = document.querySelector('.cover-actions-overlay');
+    const coverSection = document.querySelector('.profile-cover-section');
+    const coverUpload = document.querySelector('.profile-cover-upload');
+    
+    // Remove existing classes
+    if (overlay) {
+        overlay.classList.remove('light-image', 'dark-image');
+    }
+    if (coverSection) {
+        coverSection.classList.remove('light-image', 'dark-image');
+    }
+    if (coverUpload) {
+        coverUpload.classList.remove('light-image', 'dark-image');
+    }
+    
+    // Threshold: if brightness > 0.5, image is light (use dark buttons)
+    // if brightness <= 0.5, image is dark (use light buttons)
+    if (brightness > 0.5) {
+        if (overlay) overlay.classList.add('light-image');
+        if (coverSection) coverSection.classList.add('light-image');
+        if (coverUpload) coverUpload.classList.add('light-image');
+    } else {
+        if (overlay) overlay.classList.add('dark-image');
+        if (coverSection) coverSection.classList.add('dark-image');
+        if (coverUpload) coverUpload.classList.add('dark-image');
+    }
+}
+
 function previewCoverImage(input) {
     if (input.files && input.files[0]) {
         const reader = new FileReader();
@@ -949,6 +1022,8 @@ function previewCoverImage(input) {
             if (preview) {
                 preview.src = e.target.result;
                 preview.style.display = 'block';
+                // Detect brightness of new image
+                detectCoverImageBrightness(preview, applyCoverButtonStyles);
             } else {
                 // Create preview if it doesn't exist
                 const coverUpload = document.querySelector('.profile-cover-upload');
@@ -960,6 +1035,8 @@ function previewCoverImage(input) {
                     img.className = 'cover-image-preview';
                     coverUpload.insertBefore(img, placeholder);
                     placeholder.style.display = 'none';
+                    // Detect brightness of new image
+                    detectCoverImageBrightness(img, applyCoverButtonStyles);
                 }
             }
             if (placeholder) {
@@ -2515,8 +2592,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 const triggerCenterX = triggerRect.left + triggerRect.width / 2;
                 const popoverWidth = popoverRect.width || 250;
                 
+                // For Profile completeness and Profile content popovers, always position below
+                const alwaysBelowPopovers = ['completenessPopover', 'contentPopover'];
+                const shouldAlwaysBelow = alwaysBelowPopovers.includes(popoverId);
+                
                 // Position popover above or below based on available space
-                if (spaceAbove >= popoverHeight + 20 || spaceAbove > spaceBelow) {
+                // But always below for completeness and content popovers
+                if (!shouldAlwaysBelow && (spaceAbove >= popoverHeight + 20 || spaceAbove > spaceBelow)) {
                     // Position above
                     popover.style.bottom = `${window.innerHeight - triggerRect.top + 12}px`;
                     popover.style.top = 'auto';
@@ -2769,6 +2851,15 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             showNotification(messageText, type);
         });
+    }
+    
+    // Detect cover image brightness on page load
+    const coverImage = document.getElementById('coverImagePreview');
+    if (coverImage) {
+        detectCoverImageBrightness(coverImage, applyCoverButtonStyles);
+    } else {
+        // If no cover image, default to dark-image style (for placeholder gradient)
+        applyCoverButtonStyles(0.3); // Dark gradient
     }
 });
 </script>
