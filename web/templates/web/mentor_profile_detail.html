@@ -33,7 +33,8 @@
     .mp-cover {
         height: 280px;
         background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        border-radius: 0 0 24px 24px;
+        background-size: cover;
+        background-position: center;
         position: relative;
         overflow: hidden;
     }
@@ -46,14 +47,14 @@
         right: 0;
         bottom: 0;
         background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+        opacity: 0.5;
     }
 
     .mp-profile-card {
         background: white;
-        border-radius: 20px;
+        border-radius: 0 0 20px 20px;
         box-shadow: var(--mp-card-shadow);
-        padding: 32px;
-        margin-top: -100px;
+        padding: 0 32px 32px;
         position: relative;
         z-index: 10;
         display: flex;
@@ -64,12 +65,13 @@
     .mp-avatar-wrapper {
         flex-shrink: 0;
         position: relative;
+        margin-top: -80px; /* Overlap cover */
     }
 
     .mp-avatar {
         width: 160px;
         height: 160px;
-        border-radius: 20px;
+        border-radius: 50%; /* Circular */
         object-fit: cover;
         border: 4px solid white;
         box-shadow: 0 4px 6px rgba(0,0,0,0.1);
@@ -79,7 +81,7 @@
     .mp-avatar-placeholder {
         width: 160px;
         height: 160px;
-        border-radius: 20px;
+        border-radius: 50%; /* Circular */
         background-color: #f1f5f9;
         display: flex;
         align-items: center;
@@ -90,28 +92,36 @@
         color: #cbd5e1;
     }
 
-    .mp-info {
+    .mp-info-container {
         flex: 1;
-        padding-top: 12px;
-    }
-
-    .mp-name-row {
         display: flex;
         justify-content: space-between;
-        align-items: flex-start;
-        margin-bottom: 8px;
+        padding-top: 24px;
+        gap: 32px;
+    }
+
+    .mp-info-main {
+        flex: 1;
+    }
+
+    .mp-cta-column {
+        width: 280px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        align-items: flex-end;
     }
 
     .mp-name {
-        font-size: 2rem;
+        font-size: 2.2rem;
         font-weight: 800;
         color: var(--mp-text-main);
-        margin: 0;
+        margin: 0 0 8px;
         line-height: 1.2;
     }
 
     .mp-role {
-        font-size: 1.1rem;
+        font-size: 1rem;
         color: var(--mp-primary);
         font-weight: 600;
         margin-bottom: 16px;
@@ -121,10 +131,41 @@
         border-radius: 20px;
     }
 
+    /* Social Links */
+    .mp-social-links {
+        display: flex;
+        gap: 12px;
+        margin-bottom: 24px;
+        align-items: center;
+    }
+
+    .mp-social-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: #f1f5f9;
+        color: var(--mp-text-muted);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.1rem;
+        transition: all 0.2s;
+        text-decoration: none;
+        border: 1px solid transparent;
+    }
+
+    .mp-social-icon:hover {
+        background: var(--mp-primary);
+        color: white;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.3);
+    }
+
+    /* Stats */
     .mp-stats {
         display: flex;
         gap: 24px;
-        margin-bottom: 24px;
+        margin-bottom: 20px;
         color: var(--mp-text-muted);
         font-size: 0.95rem;
     }
@@ -139,11 +180,11 @@
         color: var(--mp-primary);
     }
 
+    /* Tags */
     .mp-tags {
         display: flex;
         flex-wrap: wrap;
         gap: 8px;
-        margin-bottom: 24px;
     }
 
     .mp-tag {
@@ -153,23 +194,31 @@
         border-radius: 8px;
         font-size: 0.85rem;
         font-weight: 500;
-        transition: all 0.2s;
     }
 
-    .mp-tag:hover {
-        background: #e2e8f0;
+    /* Price */
+    .mp-price-box {
+        text-align: right;
+        margin-bottom: 8px;
+    }
+
+    .mp-price-val {
+        font-size: 2rem;
+        font-weight: 800;
         color: var(--mp-text-main);
+        line-height: 1;
     }
 
-    .mp-actions {
-        display: flex;
-        gap: 16px;
+    .mp-price-label {
+        color: var(--mp-text-muted);
+        font-size: 0.9rem;
+        font-weight: 500;
     }
 
-    .btn-mp-primary {
-        background: var(--mp-primary);
-        color: white;
-        padding: 12px 24px;
+    /* Action Buttons */
+    .btn-mp-action {
+        width: 100%;
+        padding: 12px 20px;
         border-radius: 12px;
         font-weight: 600;
         text-decoration: none;
@@ -178,35 +227,29 @@
         cursor: pointer;
         display: inline-flex;
         align-items: center;
+        justify-content: center;
         gap: 8px;
-        box-shadow: 0 4px 6px rgba(16, 185, 129, 0.2);
+        font-size: 1rem;
+        color: white;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
     }
 
-    .btn-mp-primary:hover {
-        background: var(--mp-primary-dark);
+    .btn-mp-action:hover {
         transform: translateY(-1px);
-        box-shadow: 0 6px 8px rgba(16, 185, 129, 0.3);
+        box-shadow: 0 6px 8px rgba(0,0,0,0.15);
+        filter: brightness(105%);
     }
 
-    .btn-mp-secondary {
-        background: white;
-        color: var(--mp-text-main);
-        padding: 12px 24px;
-        border-radius: 12px;
-        font-weight: 600;
-        text-decoration: none;
-        transition: all 0.2s;
-        border: 1px solid var(--mp-border);
-        cursor: pointer;
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
+    .btn-schedule {
+        background: #3b82f6; /* Blue */
     }
 
-    .btn-mp-secondary:hover {
-        background: #f8fafc;
-        border-color: #cbd5e1;
-        transform: translateY(-1px);
+    .btn-community {
+        background: #f97316; /* Orange */
+    }
+
+    .btn-blog {
+        background: #8b5cf6; /* Purple */
     }
 
     /* Content Grid */
@@ -404,24 +447,45 @@
             flex-direction: column;
             align-items: center;
             text-align: center;
+            margin-top: -40px;
+            padding: 0 24px 32px;
+        }
+
+        .mp-avatar-wrapper {
             margin-top: -60px;
         }
 
-        .mp-name-row {
+        .mp-avatar, .mp-avatar-placeholder {
+            width: 120px;
+            height: 120px;
+        }
+
+        .mp-info-container {
             flex-direction: column;
             align-items: center;
-            gap: 8px;
+            gap: 24px;
+            padding-top: 16px;
+        }
+
+        .mp-cta-column {
+            width: 100%;
+            align-items: center;
+        }
+
+        .mp-price-box {
+            text-align: center;
+        }
+
+        .mp-social-links {
+            justify-content: center;
         }
 
         .mp-stats {
             justify-content: center;
+            flex-wrap: wrap;
         }
 
         .mp-tags {
-            justify-content: center;
-        }
-
-        .mp-actions {
             justify-content: center;
         }
 
@@ -436,7 +500,7 @@
 <div class="mp-container">
     <!-- Hero Section -->
     <div class="mp-hero">
-        <div class="mp-cover"></div>
+        <div class="mp-cover" style="{% if mentor_profile.cover_image %}background-image: url('{{ mentor_profile.cover_image.url }}');{% endif %}"></div>
         
         <div class="mp-profile-card">
             <div class="mp-avatar-wrapper">
@@ -449,62 +513,77 @@
                 {% endif %}
             </div>
             
-            <div class="mp-info">
-                <div class="mp-name-row">
+            <div class="mp-info-container">
+                <div class="mp-info-main">
                     <h1 class="mp-name">{{ mentor_profile.first_name }} {{ mentor_profile.last_name }}</h1>
-                    {% if mentor_profile.price_per_hour %}
-                        <div style="text-align: right;">
-                            <span style="font-size: 1.5rem; font-weight: 700; color: var(--mp-text-main);">${{ mentor_profile.price_per_hour|floatformat:0 }}</span>
-                            <span style="color: var(--mp-text-muted); font-size: 0.9rem;">/ session</span>
+                    
+                    {% if mentor_profile.mentor_type %}
+                        <span class="mp-role">
+                            {% if mentor_profile.mentor_type == 'life_coach' %}Life Coach
+                            {% elif mentor_profile.mentor_type == 'career_coach' %}Career Coach
+                            {% elif mentor_profile.mentor_type == 'business_coach' %}Business Coach
+                            {% elif mentor_profile.mentor_type == 'health_coach' %}Health Coach
+                            {% elif mentor_profile.mentor_type == 'other' %}Other
+                            {% else %}{{ mentor_profile.mentor_type|title }}
+                            {% endif %}
+                        </span>
+                    {% endif %}
+
+                    <div class="mp-stats">
+                        <div class="mp-stat-item" title="Community Members">
+                            <i class="fas fa-users"></i>
+                            <span>500+ Community Members</span>
+                        </div>
+                        <div class="mp-stat-item" title="Rating">
+                            <i class="fas fa-star"></i>
+                            <span>4.9 (120 Reviews)</span>
+                        </div>
+                        {% if mentor_profile.languages %}
+                        <div class="mp-stat-item" title="Languages">
+                            <i class="fas fa-globe"></i>
+                            <span>
+                                {% for lang_id in mentor_profile.languages %}
+                                    {% for lang in predefined_languages %}
+                                        {% if lang.id == lang_id %}{{ lang.name }}{% if not forloop.last %}, {% endif %}{% endif %}
+                                    {% endfor %}
+                                {% endfor %}
+                            </span>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mp-social-links">
+                        {% if mentor_profile.linkedin_name %}
+                            <a href="https://linkedin.com/in/{{ mentor_profile.linkedin_name }}" target="_blank" class="mp-social-icon" title="LinkedIn">
+                                <i class="fab fa-linkedin-in"></i>
+                            </a>
+                        {% endif %}
+                        
+                        {% if mentor_profile.instagram_name %}
+                            <a href="https://instagram.com/{{ mentor_profile.instagram_name }}" target="_blank" class="mp-social-icon" title="Instagram">
+                                <i class="fab fa-instagram"></i>
+                            </a>
+                        {% endif %}
+                    </div>
+                    
+                    {% if mentor_profile.tags %}
+                        <div class="mp-tags">
+                            {% for tag in mentor_profile.tags %}
+                                <span class="mp-tag">{{ tag }}</span>
+                            {% endfor %}
                         </div>
                     {% endif %}
                 </div>
-                
-                {% if mentor_profile.mentor_type %}
-                    <span class="mp-role">
-                        {% if mentor_profile.mentor_type == 'life_coach' %}Life Coach
-                        {% elif mentor_profile.mentor_type == 'career_coach' %}Career Coach
-                        {% elif mentor_profile.mentor_type == 'business_coach' %}Business Coach
-                        {% elif mentor_profile.mentor_type == 'health_coach' %}Health Coach
-                        {% elif mentor_profile.mentor_type == 'other' %}Other
-                        {% else %}{{ mentor_profile.mentor_type|title }}
-                        {% endif %}
-                    </span>
-                {% endif %}
-                
-                <div class="mp-stats">
-                    <div class="mp-stat-item" title="Community Members">
-                        <i class="fas fa-users"></i>
-                        <span>500+ Community Members</span>
-                    </div>
-                    <div class="mp-stat-item" title="Rating">
-                        <i class="fas fa-star"></i>
-                        <span>4.9 (120 Reviews)</span>
-                    </div>
-                    {% if mentor_profile.languages %}
-                    <div class="mp-stat-item" title="Languages">
-                        <i class="fas fa-globe"></i>
-                        <span>
-                            {% for lang_id in mentor_profile.languages %}
-                                {% for lang in predefined_languages %}
-                                    {% if lang.id == lang_id %}{{ lang.name }}{% if not forloop.last %}, {% endif %}{% endif %}
-                                {% endfor %}
-                            {% endfor %}
-                        </span>
-                    </div>
+
+                <div class="mp-cta-column">
+                    {% if mentor_profile.price_per_hour %}
+                        <div class="mp-price-box">
+                            <div class="mp-price-val">${{ mentor_profile.price_per_hour|floatformat:0 }}</div>
+                            <div class="mp-price-label">per session</div>
+                        </div>
                     {% endif %}
-                </div>
-                
-                {% if mentor_profile.tags %}
-                    <div class="mp-tags">
-                        {% for tag in mentor_profile.tags %}
-                            <span class="mp-tag">{{ tag }}</span>
-                        {% endfor %}
-                    </div>
-                {% endif %}
-                
-                <div class="mp-actions">
-                    <button class="btn-mp-primary">
+
+                    <button class="btn-mp-action btn-schedule">
                         <i class="fas fa-calendar-check"></i>
                         {% if mentor_profile.first_session_free %}
                             Schedule Free Session
@@ -512,10 +591,17 @@
                             Schedule Session
                         {% endif %}
                     </button>
-                    <button class="btn-mp-secondary">
+                    
+                    <button class="btn-mp-action btn-community">
                         <i class="fas fa-user-plus"></i>
                         Join Community
                     </button>
+                    
+                    {% if mentor_profile.personal_website %}
+                        <a href="{{ mentor_profile.personal_website }}" target="_blank" class="btn-mp-action btn-blog">
+                            <i class="fas fa-rss"></i> My Blog
+                        </a>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -548,7 +634,7 @@
                         {% with qual=mpq.qualification %}
                         <div class="mp-qual-item">
                             <div class="mp-qual-icon">
-                                <i class="fas fa-certificate"></i>
+                                <i class="fas {{ qual.get_icon }}"></i>
                             </div>
                             <div>
                                 <h3 style="margin: 0 0 4px; font-size: 1.1rem; font-weight: 600;">{{ qual.title }}</h3>

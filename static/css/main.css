@@ -42,7 +42,7 @@ h1, h2, h3 { margin-top: 0; color: #1e293b; }
   align-items: center;
   position: sticky;
   top: 0;
-  z-index: 10;
+  z-index: 1000;
 }
 .top-nav {
   width: 100%;

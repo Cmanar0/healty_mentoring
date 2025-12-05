@@ -5,7 +5,7 @@ from dashboard_mentor.models import Qualification
 from dashboard_mentor.constants import (
     PREDEFINED_MENTOR_TYPES, PREDEFINED_TAGS, 
     PREDEFINED_LANGUAGES, PREDEFINED_CATEGORIES,
-    COMMON_TIMEZONES
+    COMMON_TIMEZONES, QUALIFICATION_TYPES
 )
 import json
 
@@ -336,16 +336,19 @@ def profile(request):
                         title = qual_data.get('title', '').strip()
                         subtitle = qual_data.get('subtitle', '').strip()
                         description = qual_data.get('description', '').strip()
+                        qual_type = qual_data.get('type', 'certificate').strip()
                         if title:
                             qual, created = Qualification.objects.get_or_create(
                                 title=title,
-                                defaults={'subtitle': subtitle, 'description': description}
+                                defaults={'subtitle': subtitle, 'description': description, 'type': qual_type}
                             )
                             if not created:
                                 if subtitle:
                                     qual.subtitle = subtitle
                                 if description:
                                     qual.description = description
+                                if qual_type:
+                                    qual.type = qual_type
                                 qual.save()
                             # Create through model instance with order
                             MentorProfileQualification.objects.create(
@@ -461,6 +464,7 @@ def profile(request):
         'predefined_tags': PREDEFINED_TAGS,
         'predefined_languages': PREDEFINED_LANGUAGES,
         'predefined_categories': PREDEFINED_CATEGORIES,
+        'qualification_types': QUALIFICATION_TYPES,
         'common_timezones': COMMON_TIMEZONES,
         'debug': settings.DEBUG,
     })

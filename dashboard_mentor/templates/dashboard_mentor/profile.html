@@ -258,7 +258,14 @@
                                 <input type="text" id="qualificationTitle" class="form-input" placeholder="Title" style="flex: 1; padding: 12px 16px; font-size: 0.95rem;">
                                 <input type="text" id="qualificationSubtitle" class="form-input" placeholder="Subtitle" style="flex: 1; padding: 12px 16px; font-size: 0.95rem;">
                             </div>
-                            <textarea id="qualificationDescription" class="form-input" placeholder="Description (max 450 characters)" rows="3" maxlength="450" style="width: 100%; padding: 12px 16px; font-size: 0.95rem; resize: vertical;"></textarea>
+                            <div style="display: flex; gap: 8px; align-items: stretch;">
+                                <select id="qualificationType" class="form-input" style="flex: 1; padding: 12px 16px; font-size: 0.95rem;">
+                                    {% for qtype in qualification_types %}
+                                        <option value="{{ qtype.id }}">{{ qtype.name }}</option>
+                                    {% endfor %}
+                                </select>
+                                <textarea id="qualificationDescription" class="form-input" placeholder="Description (max 450 characters)" rows="3" maxlength="450" style="flex: 2; padding: 12px 16px; font-size: 0.95rem; resize: vertical;"></textarea>
+                            </div>
                             <div style="display: flex; gap: 8px; align-items: center;">
                                 <button type="button" id="addQualificationBtn" class="btn btn-outline btn-sm" style="white-space: nowrap; height: 43px; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
                                     <i class="fas fa-plus"></i> Add
@@ -274,10 +281,13 @@
                         <div id="qualificationsList" style="display: flex; flex-direction: column; gap: 8px; margin-top: 12px;">
                             {% for mpq in user.profile.get_qualifications_ordered %}
                                 {% with qual=mpq.qualification %}
-                                <div class="qualification-item" data-title="{{ qual.title }}" data-subtitle="{{ qual.subtitle|default:'' }}" data-description="{{ qual.description|default:'' }}" draggable="true">
+                                <div class="qualification-item" data-title="{{ qual.title }}" data-subtitle="{{ qual.subtitle|default:'' }}" data-description="{{ qual.description|default:'' }}" data-type="{{ qual.type|default:'certificate' }}" draggable="true">
                                     <div class="qualification-item-content" style="display: flex; flex-direction: column; padding: 12px; background: var(--dash-bg); border: 1px solid var(--dash-border); border-radius: 8px; cursor: move;">
                                         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
-                                            <div style="font-weight: 600; color: var(--dash-text-main); flex: 1;">{{ qual.title }}</div>
+                                            <div style="display: flex; align-items: center; gap: 8px; flex: 1;">
+                                                <i class="fas {{ qual.get_icon }}" style="color: var(--dash-primary); font-size: 1.1rem;"></i>
+                                                <div style="font-weight: 600; color: var(--dash-text-main); flex: 1;">{{ qual.title }}</div>
+                                            </div>
                                             <div style="display: flex; align-items: center; gap: 8px;">
                                                 <button type="button" class="edit-qualification-btn" data-index="{{ forloop.counter0 }}">
                                                     <i class="fas fa-pen"></i>
@@ -1458,17 +1468,26 @@ document.addEventListener('DOMContentLoaded', function() {
     const qualificationTitle = document.getElementById('qualificationTitle');
     const qualificationSubtitle = document.getElementById('qualificationSubtitle');
     const qualificationDescription = document.getElementById('qualificationDescription');
+    const qualificationType = document.getElementById('qualificationType');
     const addQualificationBtn = document.getElementById('addQualificationBtn');
     const qualificationsList = document.getElementById('qualificationsList');
     const qualificationsData = document.getElementById('qualificationsData');
     let qualificationsArray = [];
+
+    // Qualification types mapping for icons
+    const qualificationTypes = {
+        {% for qtype in qualification_types %}
+        '{{ qtype.id }}': '{{ qtype.icon }}',
+        {% endfor %}
+    };
 
     // Load existing qualifications
     document.querySelectorAll('.qualification-item').forEach(item => {
         const title = item.getAttribute('data-title');
         const subtitle = item.getAttribute('data-subtitle');
         const description = item.getAttribute('data-description');
-        qualificationsArray.push({ title: title, subtitle: subtitle, description: description });
+        const type = item.getAttribute('data-type') || 'certificate';
+        qualificationsArray.push({ title: title, subtitle: subtitle, description: description, type: type });
     });
 
     function updateQualificationsData() {
@@ -1479,6 +1498,7 @@ document.addEventListener('DOMContentLoaded', function() {
         qualificationTitle.value = '';
         qualificationSubtitle.value = '';
         qualificationDescription.value = '';
+        qualificationType.value = 'certificate';
         editingQualificationIndex = null;
         addQualificationBtn.style.display = 'inline-flex';
         addQualificationBtn.style.alignItems = 'center';
@@ -1496,10 +1516,15 @@ document.addEventListener('DOMContentLoaded', function() {
             item.setAttribute('data-title', qual.title || '');
             item.setAttribute('data-subtitle', qual.subtitle || '');
             item.setAttribute('data-description', qual.description || '');
+            item.setAttribute('data-type', qual.type || 'certificate');
+            const icon = qualificationTypes[qual.type || 'certificate'] || 'fa-certificate';
             item.innerHTML = `
                 <div class="qualification-item-content" style="display: flex; flex-direction: column; padding: 12px; background: var(--dash-bg); border: 1px solid var(--dash-border); border-radius: 8px; cursor: move;">
                     <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
-                        <div style="font-weight: 600; color: var(--dash-text-main); flex: 1;">${qual.title}</div>
+                        <div style="display: flex; align-items: center; gap: 8px; flex: 1;">
+                            <i class="fas ${icon}" style="color: var(--dash-primary); font-size: 1.1rem;"></i>
+                            <div style="font-weight: 600; color: var(--dash-text-main); flex: 1;">${qual.title}</div>
+                        </div>
                         <div style="display: flex; align-items: center; gap: 8px;">
                             <button type="button" class="edit-qualification-btn" data-index="${index}">
                                 <i class="fas fa-pen"></i>
@@ -1526,14 +1551,15 @@ document.addEventListener('DOMContentLoaded', function() {
         initializeSortable();
     }
 
-    if (addQualificationBtn && qualificationTitle && qualificationSubtitle && qualificationDescription) {
+    if (addQualificationBtn && qualificationTitle && qualificationSubtitle && qualificationDescription && qualificationType) {
         addQualificationBtn.addEventListener('click', function() {
             const title = qualificationTitle.value.trim();
             const subtitle = qualificationSubtitle.value.trim();
             const description = qualificationDescription.value.trim();
+            const type = qualificationType.value || 'certificate';
             
             if (title) {
-                qualificationsArray.push({ title: title, subtitle: subtitle, description: description });
+                qualificationsArray.push({ title: title, subtitle: subtitle, description: description, type: type });
                 resetQualificationInputs();
                 renderQualificationsList();
                 showNotification('Don\'t forget to save your profile to apply the changes.', 'note');
@@ -1801,9 +1827,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 const title = qualificationTitle.value.trim();
                 const subtitle = qualificationSubtitle.value.trim();
                 const description = qualificationDescription.value.trim();
+                const type = qualificationType.value || 'certificate';
                 
                 if (title) {
-                    qualificationsArray[editingQualificationIndex] = { title: title, subtitle: subtitle, description: description };
+                    qualificationsArray[editingQualificationIndex] = { title: title, subtitle: subtitle, description: description, type: type };
                     resetQualificationInputs();
                     renderQualificationsList();
                     showNotification('Don\'t forget to save your profile to apply the changes.', 'note');
@@ -1830,6 +1857,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 qualificationTitle.value = qual.title || '';
                 qualificationSubtitle.value = qual.subtitle || '';
                 qualificationDescription.value = qual.description || '';
+                qualificationType.value = qual.type || 'certificate';
                 
                 editingQualificationIndex = index;
                 addQualificationBtn.style.display = 'none';

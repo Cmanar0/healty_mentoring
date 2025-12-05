@@ -1,3 +1,31 @@
+# Qualification types with icons
+QUALIFICATION_TYPES = [
+    {'id': 'degree', 'name': 'Degree', 'icon': 'fa-graduation-cap'},
+    {'id': 'certificate', 'name': 'Certificate', 'icon': 'fa-certificate'},
+    {'id': 'license', 'name': 'License', 'icon': 'fa-id-card'},
+    {'id': 'diploma', 'name': 'Diploma', 'icon': 'fa-scroll'},
+    {'id': 'award', 'name': 'Award', 'icon': 'fa-trophy'},
+    {'id': 'training', 'name': 'Training', 'icon': 'fa-chalkboard-teacher'},
+    {'id': 'workshop', 'name': 'Workshop', 'icon': 'fa-users'},
+    {'id': 'seminar', 'name': 'Seminar', 'icon': 'fa-microphone'},
+    {'id': 'conference', 'name': 'Conference', 'icon': 'fa-building'},
+    {'id': 'publication', 'name': 'Publication', 'icon': 'fa-book'},
+    {'id': 'research', 'name': 'Research', 'icon': 'fa-flask'},
+    {'id': 'experience', 'name': 'Experience', 'icon': 'fa-briefcase'},
+    {'id': 'membership', 'name': 'Membership', 'icon': 'fa-user-tie'},
+    {'id': 'accreditation', 'name': 'Accreditation', 'icon': 'fa-check-circle'},
+    {'id': 'endorsement', 'name': 'Endorsement', 'icon': 'fa-star'},
+    {'id': 'other', 'name': 'Other', 'icon': 'fa-certificate'},
+]
+
+# Helper function to get icon by type ID
+def get_qualification_icon(type_id):
+    """Get FontAwesome icon class for a qualification type"""
+    for qtype in QUALIFICATION_TYPES:
+        if qtype['id'] == type_id:
+            return qtype['icon']
+    return 'fa-certificate'  # Default icon
+
 # Predefined mentor types for autocomplete suggestions
 PREDEFINED_MENTOR_TYPES = [
     'Life Coach',

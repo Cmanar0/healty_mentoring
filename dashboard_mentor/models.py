@@ -2,9 +2,34 @@ from django.db import models
 
 class Qualification(models.Model):
     """Qualifications model for mentors"""
+    QUALIFICATION_TYPE_CHOICES = [
+        ('degree', 'Degree'),
+        ('certificate', 'Certificate'),
+        ('license', 'License'),
+        ('diploma', 'Diploma'),
+        ('award', 'Award'),
+        ('training', 'Training'),
+        ('workshop', 'Workshop'),
+        ('seminar', 'Seminar'),
+        ('conference', 'Conference'),
+        ('publication', 'Publication'),
+        ('research', 'Research'),
+        ('experience', 'Experience'),
+        ('membership', 'Membership'),
+        ('accreditation', 'Accreditation'),
+        ('endorsement', 'Endorsement'),
+        ('other', 'Other'),
+    ]
+    
     title = models.CharField(max_length=200)
     subtitle = models.CharField(max_length=200, blank=True)
     description = models.TextField(max_length=450, blank=True)
+    type = models.CharField(
+        max_length=20,
+        choices=QUALIFICATION_TYPE_CHOICES,
+        default='certificate',
+        help_text="Type of qualification to determine the icon displayed"
+    )
 
     class Meta:
         verbose_name = "Qualification"
@@ -13,6 +38,11 @@ class Qualification(models.Model):
 
     def __str__(self):
         return self.title
+    
+    def get_icon(self):
+        """Get FontAwesome icon class for this qualification type"""
+        from dashboard_mentor.constants import get_qualification_icon
+        return get_qualification_icon(self.type)
 
 class MentorProfileQualification(models.Model):
     """Through model for MentorProfile-Qualification relationship with order"""
