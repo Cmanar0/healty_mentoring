@@ -4,6 +4,7 @@
 {% block title %}{{ mentor_profile.first_name }} {{ mentor_profile.last_name }} — Mentor Profile{% endblock %}
 
 {% block extra_css %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flag-icons@7.0.0/css/flag-icons.min.css">
 <style>
     /* Custom styles for mentor profile to ensure premium look */
     :root {
@@ -27,11 +28,13 @@
     /* Hero Section */
     .mp-hero {
         position: relative;
-        margin-bottom: 80px;
+        margin-bottom: 46px;
     }
 
     .mp-cover {
-        height: 280px;
+        min-height: 400px;
+        max-height: 600px;
+        height: 50vh;
         background: linear-gradient(135deg, #10b981 0%, #059669 100%);
         background-size: cover;
         background-position: center;
@@ -244,12 +247,50 @@
         background: #3b82f6; /* Blue */
     }
 
+    .btn-schedule:hover {
+        background: #2563eb; /* Darker blue */
+        color: white !important;
+        filter: brightness(1);
+    }
+
     .btn-community {
         background: #f97316; /* Orange */
     }
 
+    .btn-community:hover {
+        background: #ea580c; /* Darker orange */
+        color: white !important;
+        filter: brightness(1);
+    }
+
     .btn-blog {
         background: #8b5cf6; /* Purple */
+        color: white !important;
+    }
+
+    .btn-blog:hover {
+        background: #7c3aed; /* Darker purple */
+        color: white !important;
+        filter: brightness(1);
+    }
+
+    .btn-blog:visited,
+    .btn-blog:active,
+    .btn-blog:focus {
+        color: white !important;
+    }
+
+    /* Languages display */
+    .mp-languages-list {
+        display: inline-flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 4px;
+    }
+
+    .mp-language-item {
+        display: inline-flex;
+        align-items: center;
     }
 
     /* Content Grid */
@@ -289,15 +330,36 @@
         color: var(--mp-text-main);
     }
 
+    .mp-quote-section {
+        margin-bottom: 48px;
+        display: flex;
+        justify-content: center;
+        width: 100%;
+    }
+
     .mp-quote {
-        background: linear-gradient(to right, #f0fdf4, #fff);
-        border-left: 4px solid var(--mp-primary);
-        padding: 24px;
-        border-radius: 8px;
-        margin: 32px 0;
+        position: relative;
+        max-width: 1200px;
+        width: 100%;
+        padding-bottom: 80px;
+        text-align: center;
+    }
+
+    .mp-quote-icon {
+        font-size: 3rem;
+        color: var(--mp-primary);
+        opacity: 0.2;
+        margin-bottom: 16px;
+    }
+
+    .mp-quote-text {
+        font-size: 1.5rem;
+        font-weight: 400;
+        line-height: 1.6;
+        color: var(--mp-text-main);
+        margin: 0;
         font-style: italic;
-        color: #334155;
-        font-size: 1.1rem;
+        letter-spacing: -0.02em;
     }
 
     /* Cards */
@@ -541,10 +603,20 @@
                         {% if mentor_profile.languages %}
                         <div class="mp-stat-item" title="Languages">
                             <i class="fas fa-globe"></i>
-                            <span>
+                            <span class="mp-languages-list">
                                 {% for lang_id in mentor_profile.languages %}
                                     {% for lang in predefined_languages %}
-                                        {% if lang.id == lang_id %}{{ lang.name }}{% if not forloop.last %}, {% endif %}{% endif %}
+                                        {% if lang.id == lang_id %}
+                                            <span class="mp-language-item">
+                                                {% if lang.flag_code %}
+                                                    <span class="fi fi-{{ lang.flag_code|lower }}" style="margin-right: 4px; vertical-align: middle;"></span>
+                                                {% elif lang.flag %}
+                                                    <span style="margin-right: 4px;">{{ lang.flag }}</span>
+                                                {% endif %}
+                                                {{ lang.name }}
+                                            </span>
+                                            {% if not forloop.last %}<span style="margin: 0 4px;">•</span>{% endif %}
+                                        {% endif %}
                                     {% endfor %}
                                 {% endfor %}
                             </span>
@@ -607,6 +679,18 @@
         </div>
     </div>
 
+    <!-- Quote Section (Between Profile Card and Grid) -->
+    {% if mentor_profile.quote %}
+    <div class="mp-quote-section">
+        <div class="mp-quote">
+            <div class="mp-quote-icon">
+                <i class="fas fa-quote-left"></i>
+            </div>
+            <p class="mp-quote-text">{{ mentor_profile.quote }}</p>
+        </div>
+    </div>
+    {% endif %}
+
     <div class="mp-grid">
         <!-- Left Column: Bio, Qualifications, Reviews -->
         <div class="mp-main-content">
@@ -617,11 +701,6 @@
                 <div class="mp-bio">
                     {{ mentor_profile.bio|safe }}
                 </div>
-                {% if mentor_profile.quote %}
-                    <div class="mp-quote">
-                        "{{ mentor_profile.quote }}"
-                    </div>
-                {% endif %}
             </div>
             {% endif %}
 

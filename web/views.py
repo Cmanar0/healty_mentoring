@@ -383,4 +383,5 @@ def mentor_profile_detail(request, user_id):
     return render(request, "web/mentor_profile_detail.html", {
         "mentor_user": mentor_user,
         "mentor_profile": mentor_profile,
+        "predefined_languages": PREDEFINED_LANGUAGES,
     })
