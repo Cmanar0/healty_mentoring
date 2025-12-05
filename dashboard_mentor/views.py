@@ -5,7 +5,7 @@ from dashboard_mentor.models import Qualification
 from dashboard_mentor.constants import (
     PREDEFINED_MENTOR_TYPES, PREDEFINED_TAGS, 
     PREDEFINED_LANGUAGES, PREDEFINED_CATEGORIES,
-    PREDEFINED_NATIONALITIES, COMMON_TIMEZONES
+    COMMON_TIMEZONES
 )
 import json
 
@@ -114,8 +114,6 @@ def account(request):
     consider(len(profile.languages) > 0 if profile.languages else False, 'languages', 'Languages')
     consider(len(profile.categories) > 0 if profile.categories else False, 'categories', 'Categories')
     
-    # Field 12: Nationality (check if array has at least one item)
-    consider(len(profile.nationality) > 0 if profile.nationality else False, 'nationality', 'Nationality')
     
     # Field 13-14: Pricing
     consider(profile.price_per_hour, 'price_per_hour', 'Price per Hour')
@@ -301,18 +299,6 @@ def profile(request):
             profile.linkedin_name = linkedin_name.strip() if linkedin_name else None
             profile.personal_website = personal_website.strip() if personal_website else None
             
-            # Handle nationalities (from JSON array) - only allow predefined nationality IDs
-            nationalities_data = request.POST.get("nationalities_data", "")
-            if nationalities_data:
-                try:
-                    nationalities_list = json.loads(nationalities_data)
-                    valid_nationality_ids = [nat_id for nat_id in nationalities_list if nat_id in [nat['id'] for nat in PREDEFINED_NATIONALITIES]]
-                    profile.nationality = valid_nationality_ids
-                except json.JSONDecodeError:
-                    profile.nationality = []
-            else:
-                profile.nationality = []
-            
             profile.save()
             
             # Handle qualifications (from JSON array)
@@ -405,8 +391,6 @@ def profile(request):
     consider(len(profile.languages) > 0 if profile.languages else False, 'languages', 'Languages')
     consider(len(profile.categories) > 0 if profile.categories else False, 'categories', 'Categories')
     
-    # Field 12: Nationality (check if array has at least one item)
-    consider(len(profile.nationality) > 0 if profile.nationality else False, 'nationality', 'Nationality')
     
     # Field 13-14: Pricing
     consider(profile.price_per_hour, 'price_per_hour', 'Price per Hour')
@@ -456,7 +440,6 @@ def profile(request):
         'predefined_tags': PREDEFINED_TAGS,
         'predefined_languages': PREDEFINED_LANGUAGES,
         'predefined_categories': PREDEFINED_CATEGORIES,
-        'predefined_nationalities': PREDEFINED_NATIONALITIES,
         'common_timezones': COMMON_TIMEZONES,
         'debug': settings.DEBUG,
     })

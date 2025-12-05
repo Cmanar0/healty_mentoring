@@ -113,7 +113,7 @@ class MentorProfileAdmin(admin.ModelAdmin):
             'fields': ('first_name', 'last_name', 'profile_picture')
         }),
         ('Personal Information', {
-            'fields': ('mentor_type', 'bio', 'quote', 'tags', 'languages', 'categories', 'nationality')
+            'fields': ('mentor_type', 'bio', 'quote', 'tags', 'languages', 'categories')
         }),
         ('Timezone Settings', {
             'fields': ('detected_timezone', 'selected_timezone', 'confirmed_timezone_mismatch'),

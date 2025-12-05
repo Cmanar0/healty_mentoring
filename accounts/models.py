@@ -138,7 +138,6 @@ class MentorProfile(models.Model):
     instagram_name = models.CharField(max_length=100, blank=True, null=True)
     linkedin_name = models.CharField(max_length=100, blank=True, null=True)
     personal_website = models.URLField(blank=True, null=True)
-    nationality = models.JSONField(default=list, blank=True, help_text="Array of nationality IDs from predefined list")
     bio = models.TextField(blank=True)
     quote = models.TextField(blank=True)
     profile_picture = models.ImageField(upload_to="profiles/", blank=True, null=True)
