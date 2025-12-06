@@ -42,6 +42,12 @@
         overflow: hidden;
     }
 
+    .mp-cover-has-image {
+        /* Background image set via JavaScript from data-cover-image attribute */
+        background-size: cover;
+        background-position: center;
+    }
+
     .mp-cover::after {
         content: '';
         position: absolute;
@@ -562,7 +568,7 @@
 <div class="mp-container">
     <!-- Hero Section -->
     <div class="mp-hero">
-        <div class="mp-cover" style="{% if mentor_profile.cover_image %}background-image: url('{{ mentor_profile.cover_image.url }}');{% endif %}"></div>
+        <div class="mp-cover{% if mentor_profile.cover_image %} mp-cover-has-image{% endif %}"{% if mentor_profile.cover_image %} data-cover-image="{{ mentor_profile.cover_image.url }}"{% endif %}></div>
         
         <div class="mp-profile-card">
             <div class="mp-avatar-wrapper">
@@ -853,4 +859,17 @@
         </div>
     </div>
 </div>
+
+<script>
+// Set cover image from data attribute
+document.addEventListener('DOMContentLoaded', function() {
+    const coverElement = document.querySelector('.mp-cover-has-image');
+    if (coverElement) {
+        const coverImageUrl = coverElement.getAttribute('data-cover-image');
+        if (coverImageUrl) {
+            coverElement.style.backgroundImage = 'url(\'' + coverImageUrl + '\')';
+        }
+    }
+});
+</script>
 {% endblock %}

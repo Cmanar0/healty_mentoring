@@ -366,6 +366,7 @@
                         </div>
                         <input type="hidden" name="categories_data" id="categoriesData" value="">
                         {{ predefined_categories|json_script:"predefinedCategoriesData" }}
+                        {{ qualification_types|json_script:"qualificationTypesData" }}
                     </div>
 
                     <!-- Price per Hour, Earnings, and View Subscriptions (Redesigned) -->
@@ -1475,11 +1476,14 @@ document.addEventListener('DOMContentLoaded', function() {
     let qualificationsArray = [];
 
     // Qualification types mapping for icons
-    const qualificationTypes = {
-        {% for qtype in qualification_types %}
-        '{{ qtype.id }}': '{{ qtype.icon }}',
-        {% endfor %}
-    };
+    const qualificationTypesDataEl = document.getElementById('qualificationTypesData');
+    const qualificationTypes = {};
+    if (qualificationTypesDataEl) {
+        const qualificationTypesData = JSON.parse(qualificationTypesDataEl.textContent);
+        qualificationTypesData.forEach(function(qtype) {
+            qualificationTypes[qtype.id] = qtype.icon;
+        });
+    }
 
     // Load existing qualifications
     document.querySelectorAll('.qualification-item').forEach(item => {
