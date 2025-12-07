@@ -1,0 +1,148 @@
+{% extends "dashboard_mentor/base.html" %}
+{% load static %}
+
+{% block page_title %}{{ notification.title }}{% endblock %}
+
+{% block dashboard_content %}
+<div class="notification-detail-page">
+  <div class="notification-detail-header">
+    <a href="{% url 'dashboard_mentor:notification_list' %}" class="back-link">
+      <i class="fas fa-arrow-left"></i> Back to Notifications
+    </a>
+  </div>
+
+  <div class="notification-detail-container">
+    <div class="notification-detail-card">
+      <div class="notification-detail-icon">
+        <i class="fas fa-bell"></i>
+      </div>
+      
+      <div class="notification-detail-content">
+        <h1 class="notification-detail-title">{{ notification.title }}</h1>
+        <p class="notification-detail-time">{{ notification.created_at|date:"F d, Y g:i A" }}</p>
+        <div class="notification-detail-description">
+          {{ notification.description|linebreaks }}
+        </div>
+      </div>
+
+      <div class="notification-detail-actions">
+        {% if not notification.is_opened %}
+          <form method="post" action="{% url 'dashboard_mentor:notification_mark_read' notification.id %}" style="display: inline;">
+            {% csrf_token %}
+            <button type="submit" class="btn-mark-read">Mark as read</button>
+          </form>
+        {% else %}
+          <span class="read-badge">Read</span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .notification-detail-page {
+    padding: 40px;
+    max-width: 800px;
+    margin: 0 auto;
+  }
+
+  .notification-detail-header {
+    margin-bottom: 30px;
+  }
+
+  .back-link {
+    color: var(--primary);
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: opacity 0.2s ease;
+  }
+
+  .back-link:hover {
+    opacity: 0.8;
+  }
+
+  .notification-detail-container {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    overflow: hidden;
+  }
+
+  .notification-detail-card {
+    padding: 40px;
+  }
+
+  .notification-detail-icon {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: rgba(16, 185, 129, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--primary);
+    font-size: 1.5rem;
+    margin-bottom: 24px;
+  }
+
+  .notification-detail-content {
+    margin-bottom: 30px;
+  }
+
+  .notification-detail-title {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--text-dark);
+    margin: 0 0 12px 0;
+  }
+
+  .notification-detail-time {
+    font-size: 0.9rem;
+    color: var(--text-light);
+    margin: 0 0 24px 0;
+  }
+
+  .notification-detail-description {
+    font-size: 1rem;
+    line-height: 1.7;
+    color: var(--text-dark);
+  }
+
+  .notification-detail-actions {
+    padding-top: 24px;
+    border-top: 1px solid rgba(0,0,0,0.05);
+  }
+
+  .btn-mark-read {
+    background: var(--primary);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s ease;
+  }
+
+  .btn-mark-read:hover {
+    background: #059669;
+  }
+
+  .read-badge {
+    display: inline-block;
+    padding: 6px 12px;
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--primary);
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 500;
+  }
+</style>
+</div>
+{% endblock %}
+

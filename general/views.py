@@ -1,7 +1,10 @@
-from django.shortcuts import redirect
+from django.shortcuts import redirect, render, get_object_or_404
 from django.contrib.auth.decorators import login_required
-from django.http import JsonResponse
-from django.views.decorators.http import require_POST
+from django.http import JsonResponse, HttpResponse
+from django.views.decorators.http import require_POST, require_http_methods
+from django.core.paginator import Paginator
+from django.contrib import messages
+from .models import Notification
 from dashboard_mentor.constants import COMMON_TIMEZONES
 import json
 
@@ -131,3 +134,94 @@ def update_timezone(request):
         return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+def notification_list(request):
+    """List all notifications for the logged-in user with pagination"""
+    notifications = Notification.objects.filter(user=request.user).order_by('-created_at')
+    
+    paginator = Paginator(notifications, 20)  # 20 notifications per page
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    unread_count = Notification.objects.filter(user=request.user, is_opened=False).count()
+    
+    return render(request, 'general/notifications/list.html', {
+        'page_obj': page_obj,
+        'notifications': page_obj,
+        'unread_count': unread_count,
+    })
+
+
+@login_required
+def notification_detail(request, notification_id):
+    """Display notification detail and mark as opened"""
+    notification = get_object_or_404(Notification, id=notification_id, user=request.user)
+    
+    # Mark as opened when viewing detail page
+    if not notification.is_opened:
+        notification.is_opened = True
+        notification.save()
+    
+    return render(request, 'general/notifications/detail.html', {
+        'notification': notification,
+    })
+
+
+@login_required
+@require_POST
+def notification_mark_read(request, notification_id):
+    """Mark a single notification as read"""
+    notification = get_object_or_404(Notification, id=notification_id, user=request.user)
+    notification.is_opened = True
+    notification.save()
+    
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return JsonResponse({'success': True})
+    
+    return redirect('general:notification_detail', notification_id=notification_id)
+
+
+@login_required
+@require_POST
+def notification_mark_all_read(request):
+    """Mark all notifications as read for the logged-in user"""
+    Notification.objects.filter(user=request.user, is_opened=False).update(is_opened=True)
+    
+    messages.success(request, 'All notifications marked as read.')
+    
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return JsonResponse({'success': True})
+    
+    return redirect('general:notification_list')
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def notification_modal_detail(request, notification_id):
+    """View for modal popup - returns notification details and marks as opened"""
+    notification = get_object_or_404(Notification, id=notification_id, user=request.user)
+    
+    # Mark as opened when viewing in modal
+    if not notification.is_opened:
+        notification.is_opened = True
+        notification.save()
+    
+    if request.method == 'POST':
+        # If POST, return JSON for AJAX requests
+        return JsonResponse({
+            'success': True,
+            'notification': {
+                'id': notification.id,
+                'title': notification.title,
+                'description': notification.description,
+                'created_at': notification.created_at.isoformat(),
+                'is_opened': notification.is_opened,
+            }
+        })
+    
+    # If GET, return HTML template for modal content
+    return render(request, 'general/notifications/modal_content.html', {
+        'notification': notification,
+    })

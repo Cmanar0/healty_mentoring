@@ -1,0 +1,142 @@
+{% load static %}
+
+<div class="notification-dropdown">
+  <button class="notification-bell" id="notificationBell" aria-label="Notifications">
+    <i class="fas fa-bell"></i>
+    {% if unread_count > 0 %}
+      <span class="notification-badge">{{ unread_count }}</span>
+    {% endif %}
+  </button>
+  <div class="notification-menu" id="notificationMenu">
+    <div class="notification-menu-header">
+      <h3>Notifications</h3>
+      {% if unread_count > 0 %}
+        <form method="post" action="{% url 'dashboard_mentor:notification_mark_all_read' %}" style="display: inline;" class="mark-all-read-form">
+          {% csrf_token %}
+          <button class="mark-all-read-btn" type="submit">Mark all as read</button>
+        </form>
+      {% endif %}
+    </div>
+    <div class="notification-list">
+      {% if latest_notifications %}
+        {% for notification in latest_notifications %}
+          <div class="notification-item {% if not notification.is_opened %}unread{% endif %}" 
+               data-notification-id="{{ notification.id }}"
+               data-notification-click="true">
+            <div class="notification-icon">
+              <i class="fas fa-bell"></i>
+            </div>
+            <div class="notification-content">
+              <p class="notification-title">{{ notification.title }}</p>
+              <p class="notification-time">{{ notification.created_at|timesince }} ago</p>
+            </div>
+          </div>
+        {% endfor %}
+      {% else %}
+        <div class="notification-empty">
+          <p>No notifications</p>
+        </div>
+      {% endif %}
+    </div>
+    <div class="notification-footer">
+      <a href="{% url 'dashboard_mentor:notification_list' %}" class="view-all-notifications">View all</a>
+    </div>
+  </div>
+</div>
+
+<!-- Modal -->
+<div id="notificationModal" class="notification-modal" style="display: none;">
+  <div class="notification-modal-overlay" onclick="closeNotificationModal()"></div>
+  <div class="notification-modal-dialog">
+    <button class="notification-modal-close" onclick="closeNotificationModal()">
+      <i class="fas fa-times"></i>
+    </button>
+    <div id="notificationModalContent"></div>
+  </div>
+</div>
+
+<script>
+  // Handle notification item clicks
+  document.addEventListener('DOMContentLoaded', function() {
+    const notificationItems = document.querySelectorAll('.notification-item[data-notification-click="true"]');
+    notificationItems.forEach(item => {
+      item.addEventListener('click', function() {
+        const notificationId = this.getAttribute('data-notification-id');
+        if (notificationId && typeof window.openNotificationModal === 'function') {
+          window.openNotificationModal(parseInt(notificationId));
+        }
+      });
+    });
+  });
+</script>
+
+<style>
+  .notification-empty {
+    padding: 40px 20px;
+    text-align: center;
+    color: var(--text-light);
+  }
+
+  .notification-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+  }
+
+  .notification-modal-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    pointer-events: auto;
+  }
+
+  .notification-modal-dialog {
+    position: relative;
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    max-width: 600px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    z-index: 10001;
+    pointer-events: auto;
+    margin: 0;
+  }
+
+  .notification-modal-close {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    background: transparent;
+    border: none;
+    font-size: 1.2rem;
+    color: var(--text-light);
+    cursor: pointer;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+    z-index: 10;
+  }
+
+  .notification-modal-close:hover {
+    background: rgba(0,0,0,0.05);
+    color: var(--text-dark);
+  }
+</style>
+

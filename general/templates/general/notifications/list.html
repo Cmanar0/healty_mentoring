@@ -1,0 +1,239 @@
+{% extends "dashboard_mentor/base.html" %}
+{% load static %}
+
+{% block page_title %}Notifications{% endblock %}
+
+{% block dashboard_content %}
+<div class="notifications-page">
+  <div class="notifications-header">
+    <h1>Notifications</h1>
+    {% if unread_count > 0 %}
+      <form method="post" action="{% url 'dashboard_mentor:notification_mark_all_read' %}" style="display: inline;">
+        {% csrf_token %}
+        <button type="submit" class="btn-mark-all-read">Mark all as read</button>
+      </form>
+    {% endif %}
+  </div>
+
+  <div class="notifications-container">
+    {% if notifications %}
+      <div class="notifications-list">
+        {% for notification in notifications %}
+          <a href="{% url 'dashboard_mentor:notification_detail' notification.id %}" class="notification-item-link">
+            <div class="notification-item {% if not notification.is_opened %}unread{% endif %}">
+              <div class="notification-icon">
+                <i class="fas fa-bell"></i>
+              </div>
+              <div class="notification-content">
+                <p class="notification-title">{{ notification.title }}</p>
+                <p class="notification-description">{{ notification.description|truncatewords:30 }}</p>
+                <p class="notification-time">{{ notification.created_at|timesince }} ago</p>
+              </div>
+              {% if not notification.is_opened %}
+                <div class="notification-unread-indicator"></div>
+              {% endif %}
+            </div>
+          </a>
+        {% endfor %}
+      </div>
+
+      <!-- Pagination -->
+      {% if notifications.has_other_pages %}
+        <div class="pagination">
+          {% if notifications.has_previous %}
+            <a href="?page={{ notifications.previous_page_number }}" class="pagination-link">Previous</a>
+          {% endif %}
+          
+          <span class="pagination-info">
+            Page {{ notifications.number }} of {{ notifications.paginator.num_pages }}
+          </span>
+          
+          {% if notifications.has_next %}
+            <a href="?page={{ notifications.next_page_number }}" class="pagination-link">Next</a>
+          {% endif %}
+        </div>
+      {% endif %}
+    {% else %}
+      <div class="no-notifications">
+        <i class="fas fa-bell-slash"></i>
+        <p>No notifications yet</p>
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+<style>
+  .notifications-page {
+    padding: 40px;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+
+  .notifications-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+  }
+
+  .notifications-header h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--text-dark);
+    margin: 0;
+  }
+
+  .btn-mark-all-read {
+    background: var(--primary);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s ease;
+  }
+
+  .btn-mark-all-read:hover {
+    background: #059669;
+  }
+
+  .notifications-container {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    overflow: hidden;
+  }
+
+  .notifications-list {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .notification-item-link {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+  }
+
+  .notification-item {
+    display: flex;
+    gap: 16px;
+    padding: 20px;
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+    transition: background 0.2s ease;
+    position: relative;
+  }
+
+  .notification-item:last-child {
+    border-bottom: none;
+  }
+
+  .notification-item:hover {
+    background: rgba(0,0,0,0.02);
+  }
+
+  .notification-item.unread {
+    background: rgba(16, 185, 129, 0.05);
+    border-left: 3px solid var(--primary);
+  }
+
+  .notification-item.unread:hover {
+    background: rgba(16, 185, 129, 0.08);
+  }
+
+  .notification-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: rgba(16, 185, 129, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: var(--primary);
+    font-size: 1.2rem;
+  }
+
+  .notification-content {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .notification-title {
+    margin: 0 0 8px 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-dark);
+  }
+
+  .notification-description {
+    margin: 0 0 8px 0;
+    font-size: 0.9rem;
+    color: var(--text-light);
+    line-height: 1.5;
+  }
+
+  .notification-time {
+    margin: 0;
+    font-size: 0.8rem;
+    color: var(--text-light);
+  }
+
+  .notification-unread-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--primary);
+    position: absolute;
+    top: 20px;
+    right: 20px;
+  }
+
+  .no-notifications {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-light);
+  }
+
+  .no-notifications i {
+    font-size: 3rem;
+    margin-bottom: 20px;
+    opacity: 0.3;
+  }
+
+  .no-notifications p {
+    font-size: 1.1rem;
+    margin: 0;
+  }
+
+  .pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 20px;
+    padding: 20px;
+    border-top: 1px solid rgba(0,0,0,0.05);
+  }
+
+  .pagination-link {
+    color: var(--primary);
+    text-decoration: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    transition: background 0.2s ease;
+  }
+
+  .pagination-link:hover {
+    background: rgba(16, 185, 129, 0.1);
+  }
+
+  .pagination-info {
+    color: var(--text-light);
+    font-size: 0.9rem;
+  }
+</style>
+</div>
+{% endblock %}
+

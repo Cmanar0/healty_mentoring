@@ -1,0 +1,157 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block title %}Create Notification{% endblock %}
+
+{% block content %}
+<h1>Create Notification</h1>
+
+<form method="post" id="notification-form">
+  {% csrf_token %}
+  
+  <fieldset class="module aligned">
+    <h2>Target Audience</h2>
+    <div class="form-row">
+      {{ form.target_type.errors }}
+      <div class="form-group">
+        {{ form.target_type }}
+      </div>
+    </div>
+    
+    <div class="form-row" id="user-select-row" style="display: none;">
+      {{ form.user.errors }}
+      <div class="form-group">
+        <label for="{{ form.user.id_for_label }}">{{ form.user.label }}</label>
+        {{ form.user }}
+        {% if form.user.help_text %}
+          <p class="help">{{ form.user.help_text }}</p>
+        {% endif %}
+      </div>
+    </div>
+  </fieldset>
+  
+  <fieldset class="module aligned">
+    <h2>Notification Content</h2>
+    <div class="form-row">
+      {{ form.title.errors }}
+      <div class="form-group">
+        <label for="{{ form.title.id_for_label }}">{{ form.title.label }}</label>
+        {{ form.title }}
+      </div>
+    </div>
+    
+    <div class="form-row">
+      {{ form.description.errors }}
+      <div class="form-group">
+        <label for="{{ form.description.id_for_label }}">{{ form.description.label }}</label>
+        {{ form.description }}
+      </div>
+    </div>
+  </fieldset>
+  
+  <div class="submit-row">
+    <input type="submit" value="Create Notification" class="default" name="_save">
+    <a href="{% url 'admin:general_notification_changelist' %}" class="button cancel-link">Cancel</a>
+  </div>
+</form>
+
+<script>
+  (function() {
+    const targetTypeInputs = document.querySelectorAll('input[name="target_type"]');
+    const userSelectRow = document.getElementById('user-select-row');
+    const userSelect = document.getElementById('id_user');
+    
+    function toggleUserSelect() {
+      const selectedValue = document.querySelector('input[name="target_type"]:checked')?.value;
+      if (selectedValue === 'single') {
+        userSelectRow.style.display = 'block';
+        userSelect.required = true;
+      } else {
+        userSelectRow.style.display = 'none';
+        userSelect.required = false;
+      }
+    }
+    
+    targetTypeInputs.forEach(input => {
+      input.addEventListener('change', toggleUserSelect);
+    });
+    
+    // Initialize on page load
+    toggleUserSelect();
+  })();
+</script>
+
+<style>
+  .form-group {
+    margin-bottom: 15px;
+  }
+  
+  .form-group label {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 5px;
+  }
+  
+  .form-group input[type="text"],
+  .form-group textarea,
+  .form-group select {
+    width: 100%;
+    max-width: 500px;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+  }
+  
+  .form-group textarea {
+    min-height: 150px;
+    resize: vertical;
+  }
+  
+  .form-group ul {
+    list-style: none;
+    padding: 0;
+    margin: 10px 0;
+  }
+  
+  .form-group ul li {
+    margin: 8px 0;
+  }
+  
+  .form-group ul li label {
+    font-weight: normal;
+    margin-left: 5px;
+  }
+  
+  .help {
+    font-size: 0.9em;
+    color: #666;
+    margin-top: 5px;
+  }
+  
+  .submit-row {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid #ddd;
+  }
+  
+  .submit-row input[type="submit"] {
+    background: #417690;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  
+  .submit-row input[type="submit"]:hover {
+    background: #205067;
+  }
+  
+  .cancel-link {
+    margin-left: 10px;
+    color: #417690;
+    text-decoration: none;
+  }
+</style>
+{% endblock %}
+
