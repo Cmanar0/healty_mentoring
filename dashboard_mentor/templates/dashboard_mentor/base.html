@@ -1202,7 +1202,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Show loading state
     content.innerHTML = '<div style="text-align: center; padding: 40px;"><i class="fas fa-spinner fa-spin"></i></div>';
-    modal.style.display = 'block';
+    modal.classList.add('active');
     
     // Fetch notification details
     const url = `/dashboard/mentor/notifications/${notificationId}/modal/`;
@@ -1229,7 +1229,7 @@ document.addEventListener('DOMContentLoaded', function() {
   window.closeNotificationModal = function() {
     const modal = document.getElementById('notificationModal');
     if (modal) {
-      modal.style.display = 'none';
+      modal.classList.remove('active');
       // Reload the page to refresh notifications
       window.location.reload();
     }
@@ -1239,11 +1239,21 @@ document.addEventListener('DOMContentLoaded', function() {
   document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {
       const modal = document.getElementById('notificationModal');
-      if (modal && modal.style.display !== 'none') {
+      if (modal && modal.classList.contains('active')) {
         window.closeNotificationModal();
       }
     }
   });
+  
+  // Close modal when clicking on overlay
+  const notificationModal = document.getElementById('notificationModal');
+  if (notificationModal) {
+    notificationModal.addEventListener('click', function(e) {
+      if (e.target === notificationModal) {
+        window.closeNotificationModal();
+      }
+    });
+  }
 });
 </script>
 {% endblock %}

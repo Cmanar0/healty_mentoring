@@ -8,7 +8,7 @@
   <div class="notifications-header">
     <h1>Notifications</h1>
     {% if unread_count > 0 %}
-      <form method="post" action="{% url 'dashboard_mentor:notification_mark_all_read' %}" style="display: inline;">
+      <form method="post" action="{% url 'general:dashboard_mentor:notification_mark_all_read' %}" style="display: inline;">
         {% csrf_token %}
         <button type="submit" class="btn-mark-all-read">Mark all as read</button>
       </form>
@@ -19,7 +19,7 @@
     {% if notifications %}
       <div class="notifications-list">
         {% for notification in notifications %}
-          <a href="{% url 'dashboard_mentor:notification_detail' notification.id %}" class="notification-item-link">
+          <a href="{% url 'general:dashboard_mentor:notification_detail' notification.id %}" class="notification-item-link">
             <div class="notification-item {% if not notification.is_opened %}unread{% endif %}">
               <div class="notification-icon">
                 <i class="fas fa-bell"></i>
@@ -65,6 +65,7 @@
 <style>
   .notifications-page {
     padding: 40px;
+    min-width: 600px;
     max-width: 900px;
     margin: 0 auto;
   }
