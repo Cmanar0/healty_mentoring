@@ -569,6 +569,48 @@ def confirm_mentor_invitation(request, token):
     })
 
 
+def welcome_redirect(request, uidb64, token):
+    """Secure welcome redirect that ensures correct user is logged in"""
+    try:
+        uid = force_str(urlsafe_base64_decode(uidb64))
+        user = CustomUser.objects.get(pk=uid)
+    except (TypeError, ValueError, OverflowError, CustomUser.DoesNotExist):
+        user = None
+    
+    # Verify token
+    if user is None or not default_token_generator.check_token(user, token):
+        messages.error(request, 'Invalid welcome link.')
+        return redirect('accounts:login')
+    
+    # Check if a different user is logged in
+    if request.user.is_authenticated and request.user != user:
+        # Log out the wrong user
+        logout(request)
+        messages.info(request, f'Please log in with {user.email} to access your dashboard.')
+        from django.urls import reverse
+        login_url = reverse('accounts:login')
+        return redirect(login_url)
+    
+    # If user is not logged in, redirect to login
+    if not request.user.is_authenticated:
+        messages.info(request, 'Please log in to access your dashboard.')
+        from django.urls import reverse
+        login_url = reverse('accounts:login')
+        return redirect(login_url)
+    
+    # User is logged in and matches - redirect to appropriate dashboard based on role
+    if hasattr(user, 'profile'):
+        if user.profile.role == 'mentor':
+            return redirect('/dashboard/mentor/')
+        elif user.profile.role == 'user':
+            return redirect('/dashboard/user/')
+        elif user.profile.role == 'admin':
+            return redirect('/admin/')
+    
+    # Fallback to general index
+    return redirect('general:index')
+
+
 @login_required
 @require_POST
 def respond_to_invitation(request, relationship_id):

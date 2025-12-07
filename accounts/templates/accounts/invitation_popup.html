@@ -197,11 +197,36 @@
   margin: 0;
 }
 
-.invitation-mentor-bio {
-  color: #4b5563;
+.invitation-profile-link {
+  margin: 16px 0;
+  padding-top: 16px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.view-profile-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #10b981;
+  text-decoration: none;
   font-size: 0.9rem;
-  line-height: 1.5;
-  margin: 12px 0;
+  font-weight: 500;
+  transition: all 0.2s;
+  padding: 8px 16px;
+  border-radius: 6px;
+  background: rgba(16, 185, 129, 0.05);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.view-profile-link:hover {
+  background: rgba(16, 185, 129, 0.1);
+  border-color: #10b981;
+  color: #059669;
+  transform: translateY(-1px);
+}
+
+.view-profile-link i {
+  font-size: 0.85rem;
 }
 
 .invitation-item-actions {
@@ -316,10 +341,9 @@
 </style>
 
 <script>
+{% if user.is_authenticated and user.is_email_verified and pending_invitations %}
 (function() {
-    // Only show popup for verified users with pending invitations
-    {% if user.is_authenticated and user.is_email_verified and pending_invitations %}
-  document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', function() {
     const popup = document.getElementById('invitationPopup');
     const closeBtn = document.getElementById('invitationPopupClose');
     const invitationsList = document.getElementById('invitationsList');
@@ -352,10 +376,10 @@
         {% for inv in pending_invitations %}
         {
           id: {{ inv.id }},
-          mentor_name: "{{ inv.mentor.first_name }} {{ inv.mentor.last_name }}",
-          mentor_type: "{{ inv.mentor.mentor_type|default:'Mentor' }}",
-          mentor_bio: "{{ inv.mentor.bio|default:''|truncatewords:20 }}",
-          profile_picture_url: {% if inv.mentor.profile_picture %}"{{ inv.mentor.profile_picture.url }}"{% else %}null{% endif %}
+          mentor_name: "{{ inv.mentor.first_name|escapejs }} {{ inv.mentor.last_name|escapejs }}",
+          mentor_type: "{{ inv.mentor.mentor_type|default:'Mentor'|escapejs }}",
+          mentor_user_id: {{ inv.mentor.user.id }},
+          profile_picture_url: {% if inv.mentor.profile_picture %}"{{ inv.mentor.profile_picture.url|escapejs }}"{% else %}null{% endif %}
         }{% if not forloop.last %},{% endif %}
         {% endfor %}
       ];
@@ -375,7 +399,12 @@
                   <p class="invitation-mentor-type">${escapeHtml(inv.mentor_type)}</p>
                 </div>
               </div>
-              ${inv.mentor_bio ? `<p class="invitation-mentor-bio">${escapeHtml(inv.mentor_bio)}</p>` : ''}
+              <div class="invitation-profile-link">
+                <a href="/mentor/${inv.mentor_user_id}/" target="_blank" rel="noopener noreferrer" class="view-profile-link">
+                  <i class="fas fa-external-link-alt"></i>
+                  View Mentor Profile
+                </a>
+              </div>
               <div class="invitation-message" id="message-${inv.id}"></div>
               <div class="invitation-item-actions">
                 <button class="invitation-btn invitation-btn-accept" onclick="acceptInvitation(${inv.id}, this)">
@@ -533,7 +562,7 @@
     // Display invitations after a short delay to ensure page is loaded
     setTimeout(displayInvitations, 500);
   });
-  {% endif %}
 })();
+{% endif %}
 </script>
 

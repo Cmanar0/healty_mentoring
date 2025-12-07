@@ -168,9 +168,22 @@ class EmailService:
             if hasattr(user.profile, 'first_name') and user.profile.first_name:
                 user_name = user.profile.first_name
         
+        # Generate a secure token for the welcome link using Django's token generator
+        from django.utils.http import urlsafe_base64_encode
+        from django.utils.encoding import force_bytes
+        from django.contrib.auth.tokens import default_token_generator
+        
+        token = default_token_generator.make_token(user)
+        uid = urlsafe_base64_encode(force_bytes(user.pk))
+        
+        # Build welcome URL
+        site_domain = EmailService.get_site_domain()
+        welcome_url = f"{site_domain}/accounts/welcome/{uid}/{token}/"
+        
         context = {
             'user': user,
             'user_name': user_name,
+            'welcome_url': welcome_url,
         }
         
         return EmailService.send_email(

@@ -31,4 +31,6 @@ urlpatterns = [
     path("confirm-mentor-invitation/<str:token>/", views.confirm_mentor_invitation, name="confirm_mentor_invitation"),
     # Respond to Invitation (accept/deny)
     path("respond-invitation/<int:relationship_id>/", views.respond_to_invitation, name="respond_to_invitation"),
+    # Welcome redirect (from welcome email)
+    path("welcome/<uidb64>/<token>/", views.welcome_redirect, name="welcome_redirect"),
 ]
