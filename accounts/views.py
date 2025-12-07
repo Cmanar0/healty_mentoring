@@ -1,16 +1,22 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import login, authenticate, logout
 from django.views import View
 from django.contrib import messages
-from django.contrib.auth.views import LoginView as BaseLoginView, PasswordResetConfirmView as BasePasswordResetConfirmView
+from django.contrib.auth.views import LoginView as BaseLoginView, PasswordResetConfirmView as BasePasswordResetConfirmView, LogoutView as BaseLogoutView
 from django.contrib.auth.forms import AuthenticationForm
+from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_http_methods
+from django.views.decorators.csrf import ensure_csrf_cookie
+from django.utils import timezone
 from .forms import RegisterForm, CustomAuthenticationForm
-from .models import CustomUser, UserProfile, MentorProfile
+from .models import CustomUser, UserProfile, MentorProfile, MentorClientRelationship
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, force_str
 from django.contrib.auth.tokens import default_token_generator
 from django.urls import reverse, reverse_lazy
 from django.http import HttpResponse, JsonResponse
+from django.middleware.csrf import get_token
+from django.views.decorators.http import require_POST
 from general.email_service import EmailService
 import os
 import json
@@ -124,12 +130,8 @@ def send_verification_email(request, user):
     """Send email verification email using the universal email service."""
     token = default_token_generator.make_token(user)
     uid = urlsafe_base64_encode(force_bytes(user.pk))
-    # Determine domain based on environment
-    development_mode = os.getenv("DEVELOPMENT_MODE", "dev").lower()
-    if development_mode == 'prod':
-        domain = "https://healthymentoring.com"
-    else:
-        domain = "http://localhost:8000"
+    # Get domain using EmailService helper
+    domain = EmailService.get_site_domain()
     verify_url = f"{domain}{reverse('accounts:verify_email', kwargs={'uidb64': uid, 'token': token})}"
     
     # Use the universal email service
@@ -339,6 +341,23 @@ class CustomPasswordResetConfirmView(BasePasswordResetConfirmView):
             context['error_message'] = 'The password reset link is invalid or has expired. Password reset links can only be used once and expire after 24 hours.'
         return context
 
+class CustomLogoutView(BaseLogoutView):
+    """Custom logout view that handles both GET and POST requests"""
+    next_page = reverse_lazy("accounts:login")
+    
+    def dispatch(self, request, *args, **kwargs):
+        # Allow both GET and POST for logout
+        # GET is convenient for users, POST is more secure
+        if request.method == 'GET':
+            # For GET requests, just log out without CSRF check
+            # This is acceptable for logout as it's not a sensitive operation
+            logout(request)
+            messages.success(request, 'You have been logged out successfully.')
+            return redirect(self.next_page)
+        # For POST requests, use the parent's dispatch which handles CSRF
+        return super().dispatch(request, *args, **kwargs)
+
+@ensure_csrf_cookie
 def resend_verification_email(request):
     """Resend verification email to user"""
     if request.method == 'POST':
@@ -370,6 +389,244 @@ def resend_verification_email(request):
         except json.JSONDecodeError:
             return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
         except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error in resend_verification_email: {str(e)}")
             return JsonResponse({'success': False, 'error': str(e)}, status=500)
     
+    # For GET requests, return the CSRF token (useful for AJAX)
+    if request.method == 'GET':
+        return JsonResponse({'csrf_token': get_token(request)})
+    
     return JsonResponse({'success': False, 'error': 'Method not allowed'}, status=405)
+
+
+@require_http_methods(["GET", "POST"])
+def complete_invitation(request, token):
+    """Complete registration for invited users
+    
+    The link can be clicked multiple times (GET requests) until:
+    - The user completes registration (POST request)
+    - The invitation expires (7 days)
+    - The relationship is deleted
+    """
+    # Look up relationship by token - token should persist until POST (registration completion)
+    try:
+        relationship = MentorClientRelationship.objects.get(invitation_token=token)
+    except MentorClientRelationship.DoesNotExist:
+        messages.error(request, 'Invalid or expired invitation link. The link may have been used or the invitation may have been cancelled.')
+        return redirect('accounts:login')
+    except MentorClientRelationship.MultipleObjectsReturned:
+        # This shouldn't happen due to unique constraint, but handle it gracefully
+        relationship = MentorClientRelationship.objects.filter(invitation_token=token).first()
+    
+    # Check if invitation has expired (7 days from when it was sent)
+    from datetime import timedelta
+    expiration_time = relationship.invited_at + timedelta(days=7)
+    if timezone.now() > expiration_time:
+        messages.error(request, 'This invitation link has expired (valid for 7 days). Please ask the mentor to send a new invitation.')
+        return redirect('accounts:login')
+    
+    # Check if already completed
+    if relationship.confirmed and relationship.status == 'confirmed':
+        messages.info(request, 'This invitation has already been completed. Please log in.')
+        return redirect('accounts:login')
+    
+    user = relationship.client.user
+    
+    if request.method == 'POST':
+        password1 = request.POST.get('password1', '').strip()
+        password2 = request.POST.get('password2', '').strip()
+        first_name = request.POST.get('first_name', '').strip()
+        last_name = request.POST.get('last_name', '').strip()
+        
+        errors = []
+        
+        if not first_name:
+            errors.append('First name is required.')
+        if not last_name:
+            errors.append('Last name is required.')
+        if not password1:
+            errors.append('Password is required.')
+        elif len(password1) < 8:
+            errors.append('Password must be at least 8 characters long.')
+        elif password1 != password2:
+            errors.append('Passwords do not match.')
+        
+        if errors:
+            for error in errors:
+                messages.error(request, error)
+        else:
+            # Update user profile
+            user_profile = relationship.client
+            user_profile.first_name = first_name
+            user_profile.last_name = last_name
+            user_profile.save()
+            
+            # Set password
+            user.set_password(password1)
+            user.is_email_verified = True  # Auto-verify email after registration completion
+            user.save()
+            
+            # Update relationship - automatically confirm after registration
+            relationship.confirmed = True
+            relationship.status = 'confirmed'
+            relationship.verified_at = timezone.now()
+            relationship.invitation_token = None  # Clear token after use
+            relationship.save()
+            
+            # Also add to the ManyToMany relationship if not already there
+            if relationship.client not in relationship.mentor.clients.all():
+                relationship.mentor.clients.add(relationship.client)
+            
+            messages.success(request, 'Registration completed successfully! Your email has been verified and you can now log in.')
+            return redirect('accounts:login')
+    
+    return render(request, 'accounts/complete_invitation.html', {
+        'relationship': relationship,
+        'mentor_name': f"{relationship.mentor.first_name} {relationship.mentor.last_name}",
+        'user_email': user.email,
+    })
+
+
+@require_http_methods(["GET", "POST"])
+def confirm_mentor_invitation(request, token):
+    """Confirm mentor invitation for existing users
+    
+    The link can be clicked multiple times (GET requests) until:
+    - The user accepts it (POST request)
+    - The invitation expires (7 days)
+    - The relationship is deleted
+    """
+    # Look up relationship by token - token should persist until POST (acceptance)
+    try:
+        relationship = MentorClientRelationship.objects.get(confirmation_token=token)
+    except MentorClientRelationship.DoesNotExist:
+        messages.error(request, 'Invalid or expired confirmation link. The link may have been used or the invitation may have been cancelled.')
+        return redirect('accounts:login')
+    except MentorClientRelationship.MultipleObjectsReturned:
+        # This shouldn't happen due to unique constraint, but handle it gracefully
+        relationship = MentorClientRelationship.objects.filter(confirmation_token=token).first()
+    
+    # Check if invitation has expired (7 days from when it was sent)
+    from datetime import timedelta
+    expiration_time = relationship.invited_at + timedelta(days=7)
+    if timezone.now() > expiration_time:
+        messages.error(request, 'This invitation link has expired (valid for 7 days). Please ask the mentor to send a new invitation.')
+        return redirect('accounts:login')
+    
+    # Check if already confirmed - if so, just redirect (token is still valid for viewing)
+    if relationship.confirmed and relationship.status == 'confirmed':
+        messages.info(request, 'This invitation has already been accepted.')
+        if request.user.is_authenticated:
+            return redirect('general:index')  # Will redirect to appropriate dashboard
+        return redirect('accounts:login')
+    
+    # Check if status is inactive and not confirmed - this is the only valid status for accepting
+    if relationship.status != 'inactive' or relationship.confirmed:
+        messages.error(request, 'This invitation is no longer valid.')
+        return redirect('accounts:login')
+    
+    # If user is not logged in, redirect to login with next parameter
+    if not request.user.is_authenticated:
+        messages.info(request, 'Please log in to accept this invitation.')
+        from django.urls import reverse
+        login_url = reverse('accounts:login') + f'?next={request.path}'
+        return redirect(login_url)
+    
+    # Verify the user matches - if wrong user is logged in, log them out first
+    if request.user != relationship.client.user:
+        # Log out the current user (whoever is logged in)
+        logout(request)
+        messages.warning(request, f'This invitation is for {relationship.client.user.email}. Please log in with that account to accept the invitation.')
+        from django.urls import reverse
+        login_url = reverse('accounts:login') + f'?next={request.path}'
+        return redirect(login_url)
+    
+    if request.method == 'POST':
+        # Confirm the relationship - set confirmed and status to confirmed
+        relationship.confirmed = True
+        relationship.status = 'confirmed'
+        relationship.verified_at = timezone.now()
+        relationship.confirmation_token = None  # Clear token after use
+        relationship.save(update_fields=['confirmed', 'status', 'verified_at', 'confirmation_token'])
+        
+        # Also add to the ManyToMany relationship if not already there
+        if relationship.client not in relationship.mentor.clients.all():
+            relationship.mentor.clients.add(relationship.client)
+        
+        messages.success(request, f'You have been successfully added as a client of {relationship.mentor.first_name} {relationship.mentor.last_name}.')
+        # Redirect to user dashboard
+        try:
+            from django.urls import reverse
+            return redirect(reverse('general:index'))  # Will redirect to appropriate dashboard
+        except:
+            return redirect('/dashboard/user/')
+    
+    return render(request, 'accounts/confirm_mentor_invitation.html', {
+        'relationship': relationship,
+        'mentor_name': f"{relationship.mentor.first_name} {relationship.mentor.last_name}",
+    })
+
+
+@login_required
+@require_POST
+def respond_to_invitation(request, relationship_id):
+    """Accept or deny a mentor invitation"""
+    if not hasattr(request.user, 'user_profile'):
+        return JsonResponse({'success': False, 'error': 'User profile not found'}, status=400)
+    
+    if not request.user.is_email_verified:
+        return JsonResponse({'success': False, 'error': 'Please verify your email first'}, status=400)
+    
+    user_profile = request.user.user_profile
+    
+    try:
+        relationship = MentorClientRelationship.objects.get(
+            id=relationship_id,
+            client=user_profile,
+            confirmed=False,
+            status='inactive'
+        )
+    except MentorClientRelationship.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Invitation not found or already processed'}, status=404)
+    
+    try:
+        data = json.loads(request.body)
+        action = data.get('action')  # 'accept' or 'deny'
+        
+        if action == 'accept':
+            # Confirm the relationship
+            relationship.confirmed = True
+            relationship.status = 'confirmed'
+            relationship.verified_at = timezone.now()
+            relationship.confirmation_token = None  # Clear token after use
+            relationship.save(update_fields=['confirmed', 'status', 'verified_at', 'confirmation_token'])
+            
+            # Also add to the ManyToMany relationship if not already there
+            if relationship.client not in relationship.mentor.clients.all():
+                relationship.mentor.clients.add(relationship.client)
+            
+            return JsonResponse({
+                'success': True,
+                'message': f'You have been successfully added as a client of {relationship.mentor.first_name} {relationship.mentor.last_name}.'
+            })
+        
+        elif action == 'deny':
+            # Set status to denied, confirmed stays False
+            relationship.status = 'denied'
+            relationship.confirmation_token = None  # Clear token
+            relationship.save(update_fields=['status', 'confirmation_token'])
+            
+            return JsonResponse({
+                'success': True,
+                'message': f'You have declined the invitation from {relationship.mentor.first_name} {relationship.mentor.last_name}.'
+            })
+        
+        else:
+            return JsonResponse({'success': False, 'error': 'Invalid action. Use "accept" or "deny".'}, status=400)
+            
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)

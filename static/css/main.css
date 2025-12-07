@@ -306,7 +306,6 @@ button:hover { background: var(--color-primary-hover); }
 .clients-table {
   width: 100%;
   border-collapse: collapse;
-  margin-top: 16px;
 }
 .clients-table th {
   text-align: left;

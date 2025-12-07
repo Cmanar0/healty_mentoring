@@ -50,6 +50,7 @@ class UserProfile(models.Model):
     first_name = models.CharField(max_length=150)
     last_name = models.CharField(max_length=150)
     role = models.CharField(max_length=10, choices=ROLE_CHOICES, default='user', editable=False)  # Not changeable
+    first_time_login = models.BooleanField(default=True, help_text="True if user hasn't completed first login timezone setup")
     # Timezone fields
     detected_timezone = models.CharField(max_length=64, blank=True, null=True, help_text="Browser-detected timezone, updated on each page load")
     selected_timezone = models.CharField(max_length=64, blank=True, null=True, help_text="User's selected/preferred timezone")
@@ -219,3 +220,35 @@ from django.dispatch import receiver
 def create_user_profile(sender, instance, created, **kwargs):
     """This signal will be handled by the registration view instead"""
     pass
+
+
+class MentorClientRelationship(models.Model):
+    """Relationship model between mentors and their clients"""
+    STATUS_CHOICES = [
+        ('confirmed', 'Confirmed'),
+        ('active', 'Active'),
+        ('inactive', 'Inactive'),
+        ('denied', 'Denied'),
+    ]
+    
+    mentor = models.ForeignKey("accounts.MentorProfile", on_delete=models.CASCADE, related_name="client_relationships")
+    client = models.ForeignKey("accounts.UserProfile", on_delete=models.CASCADE, related_name="mentor_relationships")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='inactive')
+    confirmed = models.BooleanField(default=False, help_text="True if the client has confirmed the invitation")
+    invitation_token = models.CharField(max_length=64, unique=True, blank=True, null=True, help_text="Token for new user invitation completion")
+    confirmation_token = models.CharField(max_length=64, unique=True, blank=True, null=True, help_text="Token for existing user confirmation")
+    sessions_count = models.PositiveIntegerField(default=0)
+    total_earnings = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    invited_at = models.DateTimeField(auto_now_add=True, help_text="When the invitation/confirmation was sent")
+    verified_at = models.DateTimeField(blank=True, null=True, help_text="When the client completed registration or confirmed")
+    
+    class Meta:
+        verbose_name = "Mentor-Client Relationship"
+        verbose_name_plural = "Mentor-Client Relationships"
+        unique_together = ['mentor', 'client']
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"{self.mentor.first_name} → {self.client.first_name} {self.client.last_name} ({self.status})"

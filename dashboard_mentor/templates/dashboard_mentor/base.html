@@ -132,7 +132,7 @@
           </a>
         </li>
         <li>
-          <a href="#" class="sidebar-link" title="Clients">
+          <a href="{% url 'general:dashboard_mentor:clients_list' %}" class="sidebar-link {% if request.resolver_match.url_name == 'clients_list' %}active{% endif %}" title="Clients">
             <i class="fas fa-user-tie"></i>
             <span class="sidebar-text">Clients</span>
           </a>

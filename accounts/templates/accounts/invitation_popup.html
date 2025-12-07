@@ -1,0 +1,539 @@
+{% load static %}
+<!-- Mentor Invitation Popup -->
+<div id="invitationPopup" class="invitation-popup" style="display: none;">
+  <div class="invitation-popup-overlay"></div>
+  <div class="invitation-popup-content">
+    <div class="invitation-popup-header">
+      <h2>
+        <i class="fas fa-envelope-open-text" style="margin-right: 10px; color: #10b981;"></i>
+        Mentor Invitations
+      </h2>
+      <button class="invitation-popup-close" id="invitationPopupClose" aria-label="Close">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    
+    <div class="invitation-popup-body">
+      <p class="invitation-popup-intro">
+        You have pending invitations from mentors who would like to work with you. Review and respond to each invitation below.
+      </p>
+      
+      <div id="invitationsList" class="invitations-list">
+        <!-- Invitations will be loaded here via JavaScript -->
+        <div class="invitation-loading">
+          <i class="fas fa-spinner fa-spin"></i>
+          <span>Loading invitations...</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+.invitation-popup {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.invitation-popup-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+}
+
+.invitation-popup-content {
+  position: relative;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  max-width: 600px;
+  width: 90%;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  z-index: 10001;
+  animation: popupSlideIn 0.3s ease-out;
+}
+
+@keyframes popupSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.invitation-popup-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24px 28px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.invitation-popup-header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #111827;
+  display: flex;
+  align-items: center;
+}
+
+.invitation-popup-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 8px;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+}
+
+.invitation-popup-close:hover {
+  background: #f3f4f6;
+  color: #111827;
+}
+
+.invitation-popup-body {
+  padding: 24px 28px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.invitation-popup-intro {
+  color: #6b7280;
+  margin: 0 0 24px 0;
+  line-height: 1.6;
+  font-size: 0.95rem;
+}
+
+.invitations-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.invitation-item {
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 20px;
+  transition: all 0.2s;
+  background: #f9fafb;
+}
+
+.invitation-item:hover {
+  border-color: #10b981;
+  background: white;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.1);
+}
+
+.invitation-item-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.invitation-mentor-avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #e5e7eb;
+  flex-shrink: 0;
+}
+
+.invitation-mentor-avatar-placeholder {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 1.5rem;
+  font-weight: 600;
+  flex-shrink: 0;
+  border: 2px solid #e5e7eb;
+}
+
+.invitation-mentor-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.invitation-mentor-name {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #111827;
+  margin: 0 0 4px 0;
+}
+
+.invitation-mentor-type {
+  font-size: 0.875rem;
+  color: #6b7280;
+  margin: 0;
+}
+
+.invitation-mentor-bio {
+  color: #4b5563;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  margin: 12px 0;
+}
+
+.invitation-item-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.invitation-btn {
+  flex: 1;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.invitation-btn-accept {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+}
+
+.invitation-btn-accept:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.invitation-btn-accept:active {
+  transform: translateY(0);
+}
+
+.invitation-btn-accept:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.invitation-btn-deny {
+  background: white;
+  color: #6b7280;
+  border: 2px solid #e5e7eb;
+}
+
+.invitation-btn-deny:hover {
+  background: #f9fafb;
+  border-color: #d1d5db;
+  color: #374151;
+}
+
+.invitation-btn-deny:active {
+  background: #f3f4f6;
+}
+
+.invitation-btn-deny:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.invitation-loading,
+.invitation-empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: #6b7280;
+}
+
+.invitation-loading i {
+  font-size: 2rem;
+  margin-bottom: 12px;
+  display: block;
+  color: #10b981;
+}
+
+.invitation-empty i {
+  font-size: 3rem;
+  margin-bottom: 16px;
+  display: block;
+  color: #d1d5db;
+}
+
+.invitation-empty p {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.invitation-message {
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-top: 12px;
+  font-size: 0.9rem;
+  display: none;
+}
+
+.invitation-message.success {
+  background: #d1fae5;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+  display: block;
+}
+
+.invitation-message.error {
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+  display: block;
+}
+</style>
+
+<script>
+(function() {
+    // Only show popup for verified users with pending invitations
+    {% if user.is_authenticated and user.is_email_verified and pending_invitations %}
+  document.addEventListener('DOMContentLoaded', function() {
+    const popup = document.getElementById('invitationPopup');
+    const closeBtn = document.getElementById('invitationPopupClose');
+    const invitationsList = document.getElementById('invitationsList');
+    
+    // Close popup handlers
+    function closePopup() {
+      popup.style.display = 'none';
+    }
+    
+    if (closeBtn) {
+      closeBtn.addEventListener('click', closePopup);
+    }
+    
+    // Close on overlay click
+    const overlay = popup.querySelector('.invitation-popup-overlay');
+    if (overlay) {
+      overlay.addEventListener('click', closePopup);
+    }
+    
+    // Close on Escape key
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape' && popup.style.display !== 'none') {
+        closePopup();
+      }
+    });
+    
+    // Display invitations from template context
+    function displayInvitations() {
+      const invitations = [
+        {% for inv in pending_invitations %}
+        {
+          id: {{ inv.id }},
+          mentor_name: "{{ inv.mentor.first_name }} {{ inv.mentor.last_name }}",
+          mentor_type: "{{ inv.mentor.mentor_type|default:'Mentor' }}",
+          mentor_bio: "{{ inv.mentor.bio|default:''|truncatewords:20 }}",
+          profile_picture_url: {% if inv.mentor.profile_picture %}"{{ inv.mentor.profile_picture.url }}"{% else %}null{% endif %}
+        }{% if not forloop.last %},{% endif %}
+        {% endfor %}
+      ];
+      
+      if (invitations.length > 0) {
+        invitationsList.innerHTML = invitations.map(inv => {
+          const avatarHtml = inv.profile_picture_url 
+            ? `<img src="${inv.profile_picture_url}" alt="${inv.mentor_name}" class="invitation-mentor-avatar">`
+            : `<div class="invitation-mentor-avatar-placeholder">${inv.mentor_name.charAt(0).toUpperCase()}</div>`;
+          
+          return `
+            <div class="invitation-item" data-invitation-id="${inv.id}">
+              <div class="invitation-item-header">
+                ${avatarHtml}
+                <div class="invitation-mentor-info">
+                  <h3 class="invitation-mentor-name">${escapeHtml(inv.mentor_name)}</h3>
+                  <p class="invitation-mentor-type">${escapeHtml(inv.mentor_type)}</p>
+                </div>
+              </div>
+              ${inv.mentor_bio ? `<p class="invitation-mentor-bio">${escapeHtml(inv.mentor_bio)}</p>` : ''}
+              <div class="invitation-message" id="message-${inv.id}"></div>
+              <div class="invitation-item-actions">
+                <button class="invitation-btn invitation-btn-accept" onclick="acceptInvitation(${inv.id}, this)">
+                  <i class="fas fa-check"></i>
+                  Accept
+                </button>
+                <button class="invitation-btn invitation-btn-deny" onclick="denyInvitation(${inv.id}, this)">
+                  <i class="fas fa-times"></i>
+                  Decline
+                </button>
+              </div>
+            </div>
+          `;
+        }).join('');
+        popup.style.display = 'flex';
+      }
+    }
+    
+    // Escape HTML to prevent XSS
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+    
+    // Accept invitation
+    window.acceptInvitation = function(invitationId, button) {
+      const messageDiv = document.getElementById(`message-${invitationId}`);
+      const item = button.closest('.invitation-item');
+      const acceptBtn = item.querySelector('.invitation-btn-accept');
+      const denyBtn = item.querySelector('.invitation-btn-deny');
+      
+      acceptBtn.disabled = true;
+      denyBtn.disabled = true;
+      acceptBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Accepting...';
+      
+      fetch(`/accounts/respond-invitation/${invitationId}/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCsrfToken()
+        },
+        credentials: 'same-origin',
+        body: JSON.stringify({ action: 'accept' })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          messageDiv.className = 'invitation-message success';
+          messageDiv.textContent = data.message || 'Invitation accepted successfully!';
+          setTimeout(() => {
+            item.style.opacity = '0.5';
+            item.style.pointerEvents = 'none';
+            // Remove from list after a moment
+            setTimeout(() => {
+              item.remove();
+              // If no more invitations, close popup
+              if (invitationsList.querySelectorAll('.invitation-item').length === 0) {
+                closePopup();
+              }
+            }, 1000);
+          }, 500);
+        } else {
+          messageDiv.className = 'invitation-message error';
+          messageDiv.textContent = data.error || 'Failed to accept invitation';
+          acceptBtn.disabled = false;
+          denyBtn.disabled = false;
+          acceptBtn.innerHTML = '<i class="fas fa-check"></i> Accept';
+        }
+      })
+      .catch(error => {
+        console.error('Error accepting invitation:', error);
+        messageDiv.className = 'invitation-message error';
+        messageDiv.textContent = 'An error occurred. Please try again.';
+        acceptBtn.disabled = false;
+        denyBtn.disabled = false;
+        acceptBtn.innerHTML = '<i class="fas fa-check"></i> Accept';
+      });
+    };
+    
+    // Deny invitation
+    window.denyInvitation = function(invitationId, button) {
+      if (!confirm('Are you sure you want to decline this invitation?')) {
+        return;
+      }
+      
+      const messageDiv = document.getElementById(`message-${invitationId}`);
+      const item = button.closest('.invitation-item');
+      const acceptBtn = item.querySelector('.invitation-btn-accept');
+      const denyBtn = item.querySelector('.invitation-btn-deny');
+      
+      acceptBtn.disabled = true;
+      denyBtn.disabled = true;
+      denyBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Declining...';
+      
+      fetch(`/accounts/respond-invitation/${invitationId}/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCsrfToken()
+        },
+        credentials: 'same-origin',
+        body: JSON.stringify({ action: 'deny' })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          messageDiv.className = 'invitation-message success';
+          messageDiv.textContent = data.message || 'Invitation declined.';
+          setTimeout(() => {
+            item.style.opacity = '0.5';
+            item.style.pointerEvents = 'none';
+            setTimeout(() => {
+              item.remove();
+              if (invitationsList.querySelectorAll('.invitation-item').length === 0) {
+                closePopup();
+              }
+            }, 1000);
+          }, 500);
+        } else {
+          messageDiv.className = 'invitation-message error';
+          messageDiv.textContent = data.error || 'Failed to decline invitation';
+          acceptBtn.disabled = false;
+          denyBtn.disabled = false;
+          denyBtn.innerHTML = '<i class="fas fa-times"></i> Decline';
+        }
+      })
+      .catch(error => {
+        console.error('Error declining invitation:', error);
+        messageDiv.className = 'invitation-message error';
+        messageDiv.textContent = 'An error occurred. Please try again.';
+        acceptBtn.disabled = false;
+        denyBtn.disabled = false;
+        denyBtn.innerHTML = '<i class="fas fa-times"></i> Decline';
+      });
+    };
+    
+    // Get CSRF token
+    function getCsrfToken() {
+      const name = 'csrftoken';
+      let cookieValue = null;
+      if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+          const cookie = cookies[i].trim();
+          if (cookie.substring(0, name.length + 1) === (name + '=')) {
+            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+            break;
+          }
+        }
+      }
+      return cookieValue || '';
+    }
+    
+    // Display invitations after a short delay to ensure page is loaded
+    setTimeout(displayInvitations, 500);
+  });
+  {% endif %}
+})();
+</script>
+

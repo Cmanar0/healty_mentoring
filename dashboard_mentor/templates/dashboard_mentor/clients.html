@@ -1,0 +1,631 @@
+{% extends "dashboard_mentor/base.html" %}
+{% load static %}
+
+{% block page_title %}Clients{% endblock %}
+
+{% block dashboard_content %}
+<div class="clients-page">
+  <div class="clients-header">
+    <h1>My Clients</h1>
+    <button class="btn-invite-client" onclick="openInviteClientModal()">
+      <i class="fas fa-user-plus"></i> Invite Client
+    </button>
+  </div>
+
+  <div class="clients-container">
+    {% if relationships %}
+      <div class="clients-table">
+        <div class="clients-table-header">
+          <div class="client-col-name">Name</div>
+          <div class="client-col-email">Email</div>
+          <div class="client-col-status">Status</div>
+          <div class="client-col-sessions">Sessions</div>
+          <div class="client-col-earnings">Earnings</div>
+          <div class="client-col-actions"></div>
+        </div>
+        <div class="clients-table-body">
+          {% for relationship in relationships %}
+            <div class="client-row {% if relationship.status == 'inactive' and not relationship.confirmed %}pending{% endif %}">
+              <div class="client-col-name">
+                {% if relationship.client.first_name or relationship.client.last_name %}
+                  {{ relationship.client.first_name }} {{ relationship.client.last_name }}
+                {% else %}
+                  <span style="color: #9ca3af; font-style: italic;">Not set</span>
+                {% endif %}
+              </div>
+              <div class="client-col-email">{{ relationship.client.user.email }}</div>
+              <div class="client-col-status">
+                {% if relationship.status == 'confirmed' and relationship.confirmed %}
+                  <span class="status-badge confirmed-badge">Confirmed</span>
+                {% elif relationship.status == 'active' %}
+                  <span class="status-badge active-badge">Active</span>
+                {% elif relationship.status == 'inactive' and not relationship.confirmed %}
+                  {% if relationship.client.user.is_email_verified %}
+                    <span class="status-badge waiting-badge">Waiting for Confirmation</span>
+                  {% else %}
+                    <span class="status-badge pending-badge">Pending Verification</span>
+                  {% endif %}
+                {% elif relationship.status == 'denied' %}
+                  <span class="status-badge denied-badge">Denied</span>
+                {% else %}
+                  <span class="status-badge inactive-badge">Inactive</span>
+                {% endif %}
+              </div>
+              <div class="client-col-sessions">{{ relationship.sessions_count }}</div>
+              <div class="client-col-earnings">€{{ relationship.total_earnings|floatformat:2 }}</div>
+              <div class="client-col-actions">
+                <div class="client-actions-dropdown">
+                  <button class="client-actions-btn" data-relationship-id="{{ relationship.id }}">
+                    <i class="fas fa-ellipsis-v"></i>
+                  </button>
+                  <div class="client-actions-menu" id="actions-menu-{{ relationship.id }}">
+                    {% if relationship.status == 'inactive' and not relationship.confirmed %}
+                      <button class="client-action-item resend-btn" data-relationship-id="{{ relationship.id }}">
+                        <i class="fas fa-paper-plane"></i> Resend Email
+                      </button>
+                    {% endif %}
+                    <button class="client-action-item danger delete-btn" data-relationship-id="{{ relationship.id }}">
+                      <i class="fas fa-trash"></i> Remove from List
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    {% else %}
+      <div class="no-clients">
+        <i class="fas fa-users"></i>
+        <p>No clients yet</p>
+        <button class="btn-invite-client" onclick="openInviteClientModal()">
+          <i class="fas fa-user-plus"></i> Invite Your First Client
+        </button>
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Invite Client Modal (same as dashboard) -->
+<div id="inviteClientModal" class="modal-overlay">
+    <div class="modal-content" style="max-width: 500px;">
+        <button type="button" class="modal-close" onclick="closeInviteClientModal()">
+            <i class="fas fa-times"></i>
+        </button>
+        
+        <div class="modal-header">
+            <h3 class="modal-title">Invite Client</h3>
+            <p class="modal-subtitle">Enter the email address of the client you want to invite.</p>
+        </div>
+        
+        <div style="margin-bottom: 20px; padding: 16px; background: rgba(16, 185, 129, 0.1); border-radius: 8px; border-left: 3px solid #10b981;">
+            <p style="margin: 0; font-size: 0.9rem; color: #065f46; line-height: 1.5;">
+                <strong>What happens when you invite:</strong><br>
+                • The user will be added to your client list immediately<br>
+                • An unverified account will be created for them<br>
+                • They will receive an invitation email<br>
+                • They can complete registration via a special link
+            </p>
+        </div>
+        
+        <form id="inviteClientForm">
+            {% csrf_token %}
+            <div style="margin-bottom: 20px;">
+                <label for="clientEmailInput" style="display: block; margin-bottom: 8px; font-weight: 500; color: var(--dash-text-main);">Email Address</label>
+                <input 
+                    type="email" 
+                    id="clientEmailInput" 
+                    name="email" 
+                    required 
+                    placeholder="client@example.com"
+                    style="width: 100%; padding: 12px; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 1rem; box-sizing: border-box;"
+                >
+            </div>
+            
+            <div id="inviteClientMessage" style="display: none; margin-bottom: 16px; padding: 12px; border-radius: 8px;"></div>
+            
+            <div style="display: flex; gap: 12px; justify-content: flex-end;">
+                <button type="button" onclick="closeInviteClientModal()" style="padding: 10px 20px; background: transparent; border: 1px solid #e5e7eb; border-radius: 8px; cursor: pointer; color: var(--dash-text-main);">
+                    Cancel
+                </button>
+                <button type="submit" id="inviteClientSubmit" style="padding: 10px 20px; background: var(--dash-primary); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500;">
+                    Send Invitation
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openInviteClientModal() {
+    document.getElementById('inviteClientModal').classList.add('active');
+    document.getElementById('clientEmailInput').focus();
+}
+
+function closeInviteClientModal() {
+    document.getElementById('inviteClientModal').classList.remove('active');
+    document.getElementById('inviteClientForm').reset();
+    const messageDiv = document.getElementById('inviteClientMessage');
+    if (messageDiv) {
+        messageDiv.style.display = 'none';
+    }
+}
+
+// Handle invite client form submission
+document.addEventListener('DOMContentLoaded', function() {
+    const inviteForm = document.getElementById('inviteClientForm');
+    if (inviteForm) {
+        inviteForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const email = document.getElementById('clientEmailInput').value.trim();
+            const submitBtn = document.getElementById('inviteClientSubmit');
+            const messageDiv = document.getElementById('inviteClientMessage');
+            
+            if (!email) {
+                if (messageDiv) {
+                    messageDiv.style.display = 'block';
+                    messageDiv.className = 'invite-message error';
+                    messageDiv.textContent = 'Please enter an email address.';
+                }
+                return;
+            }
+            
+            // Disable submit button
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Sending...';
+            
+            // Get CSRF token
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+            
+            fetch('{% url "general:dashboard_mentor:invite_client" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': csrfToken,
+                },
+                body: `email=${encodeURIComponent(email)}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    if (messageDiv) {
+                        messageDiv.style.display = 'block';
+                        messageDiv.className = 'invite-message success';
+                        messageDiv.textContent = data.message;
+                    }
+                    // Reload page after 2 seconds to show new client
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 2000);
+                } else {
+                    if (messageDiv) {
+                        messageDiv.style.display = 'block';
+                        messageDiv.className = 'invite-message error';
+                        messageDiv.textContent = data.error || 'An error occurred. Please try again.';
+                    }
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Send Invitation';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                if (messageDiv) {
+                    messageDiv.style.display = 'block';
+                    messageDiv.className = 'invite-message error';
+                    messageDiv.textContent = 'An error occurred. Please try again.';
+                }
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Send Invitation';
+            });
+        });
+    }
+    
+    // Close modal on overlay click
+    const inviteModal = document.getElementById('inviteClientModal');
+    if (inviteModal) {
+        inviteModal.addEventListener('click', function(e) {
+            if (e.target === inviteModal) {
+                closeInviteClientModal();
+            }
+        });
+    }
+});
+
+// Client actions dropdown - using event delegation
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle dropdown toggle
+    document.addEventListener('click', function(e) {
+        const actionsBtn = e.target.closest('.client-actions-btn');
+        if (actionsBtn) {
+            e.stopPropagation();
+            const relationshipId = actionsBtn.getAttribute('data-relationship-id');
+            const menu = document.getElementById(`actions-menu-${relationshipId}`);
+            const allMenus = document.querySelectorAll('.client-actions-menu');
+            
+            // Close all other menus
+            allMenus.forEach(m => {
+                if (m !== menu) {
+                    m.classList.remove('active');
+                }
+            });
+            
+            // Toggle current menu
+            if (menu) {
+                menu.classList.toggle('active');
+            }
+            return;
+        }
+        
+        // Handle resend button
+        const resendBtn = e.target.closest('.resend-btn');
+        if (resendBtn) {
+            e.stopPropagation();
+            const relationshipId = resendBtn.getAttribute('data-relationship-id');
+            resendInvitation(relationshipId);
+            return;
+        }
+        
+        // Handle delete button
+        const deleteBtn = e.target.closest('.delete-btn');
+        if (deleteBtn) {
+            e.stopPropagation();
+            const relationshipId = deleteBtn.getAttribute('data-relationship-id');
+            deleteClient(relationshipId);
+            return;
+        }
+        
+        // Close dropdowns when clicking outside
+        if (!e.target.closest('.client-actions-dropdown')) {
+            document.querySelectorAll('.client-actions-menu').forEach(menu => {
+                menu.classList.remove('active');
+            });
+        }
+    });
+});
+
+// Resend invitation/confirmation
+function resendInvitation(relationshipId) {
+    if (!confirm('Resend invitation email to this client?')) {
+        return;
+    }
+    
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    const url = '{% url "general:dashboard_mentor:resend_client_invitation" 0 %}'.replace('0', relationshipId);
+    
+    fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': csrfToken,
+        },
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            // Close menu
+            const menu = document.getElementById(`actions-menu-${relationshipId}`);
+            if (menu) {
+                menu.classList.remove('active');
+            }
+        } else {
+            alert(data.error || 'An error occurred. Please try again.');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred. Please try again.');
+    });
+}
+
+// Delete client relationship
+function deleteClient(relationshipId) {
+    if (!confirm('Are you sure you want to remove this client from your list? This will expire any pending invitations.')) {
+        return;
+    }
+    
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    const url = '{% url "general:dashboard_mentor:delete_client_relationship" 0 %}'.replace('0', relationshipId);
+    
+    fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': csrfToken,
+        },
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            // Reload page to refresh list
+            window.location.reload();
+        } else {
+            alert(data.error || 'An error occurred. Please try again.');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred. Please try again.');
+    });
+}
+</script>
+
+<style>
+.clients-page {
+  padding: 40px;
+  min-width: 600px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.clients-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+}
+
+.clients-header h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text-dark);
+  margin: 0;
+}
+
+.btn-invite-client {
+  background: var(--primary);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-invite-client:hover {
+  background: #059669;
+}
+
+.clients-container {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  overflow: visible;
+  position: relative;
+}
+
+.clients-table {
+  display: flex;
+  flex-direction: column;
+}
+
+.clients-table-header {
+  display: grid;
+  grid-template-columns: 2fr 2fr 1.5fr 1fr 1fr 60px;
+  gap: 16px;
+  padding: 16px 20px;
+  background: #f9fafb;
+  border-bottom: 2px solid #e5e7eb;
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--text-light);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.clients-table-body {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.client-row {
+  display: grid;
+  grid-template-columns: 2fr 2fr 1.5fr 1fr 1fr 60px;
+  gap: 16px;
+  padding: 20px;
+  border-bottom: 1px solid #e5e7eb;
+  transition: background 0.2s ease;
+  align-items: center;
+  position: relative;
+}
+
+.client-row:last-child {
+  border-bottom: none;
+}
+
+.client-row:hover {
+  background: #f9fafb;
+}
+
+.client-row.pending {
+  background: rgba(245, 158, 11, 0.05);
+  border-left: 3px solid #f59e0b;
+}
+
+.client-col-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.client-actions-dropdown {
+  position: relative;
+  z-index: 10;
+}
+
+.client-actions-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-light);
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+}
+
+.client-actions-btn:hover {
+  background: #f1f5f9;
+  color: var(--text-dark);
+}
+
+.client-actions-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  min-width: 180px;
+  z-index: 1000;
+  display: none;
+}
+
+.client-actions-menu.active {
+  display: block;
+}
+
+.client-action-item {
+  width: 100%;
+  padding: 12px 16px;
+  text-align: left;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: var(--text-dark);
+  transition: background 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.client-action-item:first-child {
+  border-radius: 8px 8px 0 0;
+}
+
+.client-action-item:last-child {
+  border-radius: 0 0 8px 8px;
+}
+
+.client-action-item:hover {
+  background: #f9fafb;
+}
+
+.client-action-item.danger {
+  color: #ef4444;
+}
+
+.client-action-item.danger:hover {
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.client-col-name {
+  font-weight: 500;
+  color: var(--text-dark);
+}
+
+.client-col-email {
+  color: var(--text-light);
+  font-size: 0.9rem;
+}
+
+.client-col-status {
+  display: flex;
+  align-items: center;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.pending-badge {
+  background: rgba(245, 158, 11, 0.1);
+  color: #92400e;
+}
+
+.waiting-badge {
+  background: rgba(59, 130, 246, 0.1);
+  color: #1e40af;
+}
+
+.confirmed-badge {
+  background: rgba(16, 185, 129, 0.1);
+  color: #065f46;
+}
+
+.active-badge {
+  background: rgba(59, 130, 246, 0.1);
+  color: #1e40af;
+}
+
+.inactive-badge {
+  background: rgba(107, 114, 128, 0.1);
+  color: #374151;
+}
+
+.denied-badge {
+  background: rgba(239, 68, 68, 0.1);
+  color: #991b1b;
+}
+
+.client-col-sessions,
+.client-col-earnings {
+  color: var(--text-dark);
+  font-weight: 500;
+}
+
+.no-clients {
+  text-align: center;
+  padding: 80px 20px;
+  color: var(--text-light);
+}
+
+.no-clients i {
+  font-size: 4rem;
+  margin-bottom: 20px;
+  opacity: 0.3;
+}
+
+.no-clients p {
+  font-size: 1.2rem;
+  margin: 0 0 30px 0;
+}
+
+.invite-message {
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.invite-message.success {
+  background: rgba(16, 185, 129, 0.1);
+  color: #065f46;
+  border-left: 3px solid #10b981;
+}
+
+.invite-message.error {
+  background: rgba(239, 68, 68, 0.1);
+  color: #991b1b;
+  border-left: 3px solid #ef4444;
+}
+</style>
+{% endblock %}
+

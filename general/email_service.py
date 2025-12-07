@@ -13,6 +13,25 @@ class EmailService:
     """Service for sending transactional emails with consistent templates."""
     
     @staticmethod
+    def get_site_domain() -> str:
+        """
+        Get the site domain based on DEVELOPMENT_MODE setting.
+        
+        Returns:
+            str: The full site domain URL (e.g., 'https://healthymentoring.com' or 'http://localhost:8000')
+        """
+        development_mode = getattr(settings, 'DEVELOPMENT_MODE', 'dev').lower()
+        if development_mode == 'prod':
+            # Use SITE_DOMAIN from env if available, otherwise default
+            site_domain = os.getenv('SITE_DOMAIN', 'https://healthymentoring.com')
+            # Ensure it has protocol
+            if not site_domain.startswith(('http://', 'https://')):
+                site_domain = f'https://{site_domain}'
+            return site_domain
+        else:
+            return 'http://localhost:8000'
+    
+    @staticmethod
     def send_email(
         subject: str,
         recipient_email: str,
@@ -43,11 +62,8 @@ class EmailService:
         
         # Add default context variables
         # Determine site domain based on environment
-        development_mode = os.getenv('DEVELOPMENT_MODE', 'dev').lower()
-        if development_mode == 'prod':
-            site_domain = 'https://healthymentoring.com'
-        else:
-            site_domain = 'http://localhost:8000'
+        site_domain = EmailService.get_site_domain()
+        development_mode = getattr(settings, 'DEVELOPMENT_MODE', 'dev').lower()
         context.setdefault('site_domain', site_domain)
         context.setdefault('site_name', 'Healthy Mentoring')
         context.setdefault('development_mode', development_mode)

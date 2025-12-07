@@ -1,12 +1,31 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
+from accounts.models import MentorClientRelationship
+from django.utils import timezone
+from datetime import timedelta
 
 @login_required
 def dashboard(request):
     # Ensure only users can access
     if not hasattr(request.user, 'profile') or request.user.profile.role != 'user':
         return redirect('general:index')
-    return render(request, 'dashboard_user/dashboard_user.html')
+    
+    # Get pending invitations for verified users (not confirmed yet, status is inactive)
+    pending_invitations = []
+    if request.user.is_email_verified and hasattr(request.user, 'user_profile'):
+        user_profile = request.user.user_profile
+        expiration_time = timezone.now() - timedelta(days=7)
+        
+        pending_invitations = MentorClientRelationship.objects.filter(
+            client=user_profile,
+            confirmed=False,
+            status='inactive',
+            invited_at__gte=expiration_time
+        ).select_related('mentor', 'mentor__user').order_by('-invited_at')
+    
+    return render(request, 'dashboard_user/dashboard_user.html', {
+        'pending_invitations': pending_invitations,
+    })
 
 @login_required
 def account(request):

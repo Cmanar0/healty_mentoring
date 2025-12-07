@@ -1,0 +1,61 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Confirm Mentor Invitation - Healthy Mentoring</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="{% static 'css/auth.css' %}">
+</head>
+<body>
+  <!-- Auth Container -->
+  <div class="auth-container">
+    <div class="auth-card">
+      <!-- Logo and Header -->
+      <div class="auth-header-wrapper">
+        <a href="{% url 'web:landing' %}" class="auth-logo">
+          <img src="{% static 'images/logo.png' %}" alt="Healthy Mentoring">
+        </a>
+        <div class="auth-header-text">
+          <h2>Mentor Invitation</h2>
+          <p class="subtitle"><strong>{{ mentor_name }}</strong> wants to add you as their client</p>
+        </div>
+      </div>
+
+      {% if messages %}
+      <div class="form-errors">
+        {% for message in messages %}
+          <div class="error-message">{{ message }}</div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <div style="text-align: center; padding: 20px 0;">
+        <p style="color: var(--text-main); margin-bottom: 30px;">
+          If you accept this invitation, you'll be able to work with <strong>{{ mentor_name }}</strong> and access their mentoring services.
+        </p>
+
+        <form method="post" class="auth-form" style="max-width: 300px; margin: 0 auto;">
+          {% csrf_token %}
+          <button type="submit" class="auth-btn-primary" style="width: 100%;">
+            Accept Invitation
+          </button>
+        </form>
+
+        <p style="margin-top: 30px; font-size: 0.9rem; color: var(--text-light);">
+          You can ignore this invitation if you don't want to work with this mentor.
+        </p>
+      </div>
+
+      <div class="auth-footer">
+        <p><a href="{% url 'general:index' %}">Go to Dashboard</a></p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+

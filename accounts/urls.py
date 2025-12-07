@@ -1,13 +1,13 @@
 from django.urls import path, reverse_lazy
 from django.contrib.auth import views as auth_views
-from .views import RegisterView, VerifyEmailView, CustomLoginView, CustomPasswordResetConfirmView, resend_verification_email
+from .views import RegisterView, VerifyEmailView, CustomLoginView, CustomPasswordResetConfirmView, CustomLogoutView, resend_verification_email
 from .forms import CustomPasswordResetForm
 from . import views
 
 app_name = "accounts"
 urlpatterns = [
     path("login/", CustomLoginView.as_view(), name="login"),
-    path("logout/", auth_views.LogoutView.as_view(), name="logout"),
+    path("logout/", CustomLogoutView.as_view(), name="logout"),
     path("register/", RegisterView.as_view(), name="register"),
     path("verify/<uidb64>/<token>/", VerifyEmailView.as_view(), name="verify_email"),
     # Password reset
@@ -25,4 +25,10 @@ urlpatterns = [
     path("email/check-pending/", views.check_pending_email_change, name="check_pending_email_change"),
     # Resend Verification Email
     path("resend-verification/", resend_verification_email, name="resend_verification_email"),
+    # Complete Invitation
+    path("complete-invitation/<str:token>/", views.complete_invitation, name="complete_invitation"),
+    # Confirm Mentor Invitation (for existing users)
+    path("confirm-mentor-invitation/<str:token>/", views.confirm_mentor_invitation, name="confirm_mentor_invitation"),
+    # Respond to Invitation (accept/deny)
+    path("respond-invitation/<int:relationship_id>/", views.respond_to_invitation, name="respond_to_invitation"),
 ]

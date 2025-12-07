@@ -1,13 +1,21 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.conf import settings
+from django.contrib import messages
+from django.http import JsonResponse
+from django.views.decorators.http import require_POST
+from django.utils.crypto import get_random_string
+from django.utils import timezone
+from accounts.models import CustomUser, UserProfile, MentorClientRelationship
 from dashboard_mentor.models import Qualification
 from dashboard_mentor.constants import (
     PREDEFINED_MENTOR_TYPES, PREDEFINED_TAGS, 
     PREDEFINED_LANGUAGES, PREDEFINED_CATEGORIES,
     COMMON_TIMEZONES, QUALIFICATION_TYPES
 )
+from general.email_service import EmailService
 import json
+import os
 
 @login_required
 def dashboard(request):
@@ -506,4 +514,240 @@ def my_sessions(request):
     return render(request, 'dashboard_mentor/my_sessions.html', {
         'common_timezones': COMMON_TIMEZONES,
         'debug': settings.DEBUG,
+    })
+
+
+@login_required
+@require_POST
+def invite_client(request):
+    """Invite a client by email - creates unverified user and sends invitation"""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        return JsonResponse({'success': False, 'error': 'Only mentors can invite clients'}, status=403)
+    
+    mentor_profile = request.user.mentor_profile
+    email = request.POST.get('email', '').strip().lower()
+    
+    if not email:
+        return JsonResponse({'success': False, 'error': 'Email is required'}, status=400)
+    
+    # Check if user already exists
+    try:
+        existing_user = CustomUser.objects.get(email=email)
+        # Check if user has a user_profile (not mentor_profile)
+        try:
+            user_profile = existing_user.user_profile
+            # Check if relationship already exists
+            existing_relationship = MentorClientRelationship.objects.filter(mentor=mentor_profile, client=user_profile).first()
+            if existing_relationship:
+                if existing_relationship.status == 'confirmed' and existing_relationship.confirmed:
+                    return JsonResponse({'success': False, 'error': 'This user is already in your client list'}, status=400)
+                # If relationship exists but not active/confirmed, resend confirmation
+                confirmation_token = get_random_string(64)
+                existing_relationship.confirmation_token = confirmation_token
+                existing_relationship.status = 'inactive'  # Reset to inactive
+                existing_relationship.confirmed = False  # Reset confirmation
+                existing_relationship.invited_at = timezone.now()
+                existing_relationship.save()
+            else:
+                # Create new relationship for existing user - needs confirmation
+                confirmation_token = get_random_string(64)
+                existing_relationship = MentorClientRelationship.objects.create(
+                    mentor=mentor_profile,
+                    client=user_profile,
+                    status='inactive',
+                    confirmed=False,
+                    confirmation_token=confirmation_token
+                )
+            
+            # Send confirmation email to existing user
+            site_domain = EmailService.get_site_domain()
+            confirmation_url = f"{site_domain}/accounts/confirm-mentor-invitation/{confirmation_token}/"
+            
+            EmailService.send_email(
+                subject=f"{mentor_profile.first_name} {mentor_profile.last_name} wants to add you as a client",
+                recipient_email=email,
+                template_name='client_confirmation',
+                context={
+                    'mentor_name': f"{mentor_profile.first_name} {mentor_profile.last_name}",
+                    'confirmation_url': confirmation_url,
+                }
+            )
+            
+            return JsonResponse({
+                'success': True,
+                'message': 'Confirmation email sent. The user will appear as pending until they accept.'
+            })
+        except UserProfile.DoesNotExist:
+            # User exists but doesn't have a user_profile - they might be a mentor
+            return JsonResponse({'success': False, 'error': 'This email belongs to a mentor account. Please use a different email.'}, status=400)
+    except CustomUser.DoesNotExist:
+        pass
+    
+    # Create new unverified user
+    try:
+        # Generate a random password (user will set their own during registration)
+        temp_password = get_random_string(32)
+        user = CustomUser.objects.create_user(
+            email=email,
+            password=temp_password,
+            is_email_verified=False,
+            is_active=True  # Allow them to complete registration
+        )
+        
+        # Create UserProfile with placeholder names (will be updated during registration)
+        user_profile = UserProfile.objects.create(
+            user=user,
+            first_name='',
+            last_name='',
+            role='user'
+        )
+        
+        # Generate invitation token
+        invitation_token = get_random_string(64)
+        
+        # Create mentor-client relationship
+        relationship = MentorClientRelationship.objects.create(
+            mentor=mentor_profile,
+            client=user_profile,
+            status='inactive',
+            confirmed=False,
+            invitation_token=invitation_token
+        )
+        
+        # Send invitation email
+        site_domain = EmailService.get_site_domain()
+        registration_url = f"{site_domain}/accounts/complete-invitation/{invitation_token}/"
+        
+        EmailService.send_email(
+            subject=f"You've been invited by {mentor_profile.first_name} {mentor_profile.last_name}",
+            recipient_email=email,
+            template_name='client_invitation',
+            context={
+                'mentor_name': f"{mentor_profile.first_name} {mentor_profile.last_name}",
+                'registration_url': registration_url,
+            }
+        )
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Invitation sent. The user will appear in your clients list once they complete registration.'
+        })
+        
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+def clients_list(request):
+    """Display list of all clients for the logged-in mentor"""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        return redirect('general:index')
+    
+    mentor_profile = request.user.mentor_profile
+    relationships = MentorClientRelationship.objects.filter(mentor=mentor_profile).select_related('client', 'client__user').order_by('-created_at')
+    
+    return render(request, 'dashboard_mentor/clients.html', {
+        'relationships': relationships,
+        'common_timezones': COMMON_TIMEZONES,
+        'debug': settings.DEBUG,
+    })
+
+
+@login_required
+@require_POST
+def resend_client_invitation(request, relationship_id):
+    """Resend invitation or confirmation email to a client"""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        return JsonResponse({'success': False, 'error': 'Only mentors can resend invitations'}, status=403)
+    
+    mentor_profile = request.user.mentor_profile
+    try:
+        relationship = MentorClientRelationship.objects.get(id=relationship_id, mentor=mentor_profile)
+    except MentorClientRelationship.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Relationship not found'}, status=404)
+    
+    site_domain = EmailService.get_site_domain()
+    client_user = relationship.client.user
+    
+    # Check if user is verified to determine which email to send
+    if not client_user.is_email_verified:
+        # Resend invitation email for new users (not verified yet)
+        if not relationship.invitation_token:
+            relationship.invitation_token = get_random_string(64)
+            relationship.save()
+        
+        registration_url = f"{site_domain}/accounts/complete-invitation/{relationship.invitation_token}/"
+        
+        EmailService.send_email(
+            subject=f"You've been invited by {mentor_profile.first_name} {mentor_profile.last_name}",
+            recipient_email=client_user.email,
+            template_name='client_invitation',
+            context={
+                'mentor_name': f"{mentor_profile.first_name} {mentor_profile.last_name}",
+                'registration_url': registration_url,
+            }
+        )
+        
+        relationship.invited_at = timezone.now()
+        relationship.save()
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Invitation email resent successfully.'
+        })
+    
+    elif not relationship.confirmed and relationship.status == 'inactive':
+        # Resend confirmation email for existing verified users
+        if not relationship.confirmation_token:
+            relationship.confirmation_token = get_random_string(64)
+            relationship.save()
+        
+        confirmation_url = f"{site_domain}/accounts/confirm-mentor-invitation/{relationship.confirmation_token}/"
+        
+        EmailService.send_email(
+            subject=f"{mentor_profile.first_name} {mentor_profile.last_name} wants to add you as a client",
+            recipient_email=client_user.email,
+            template_name='client_confirmation',
+            context={
+                'mentor_name': f"{mentor_profile.first_name} {mentor_profile.last_name}",
+                'confirmation_url': confirmation_url,
+            }
+        )
+        
+        relationship.invited_at = timezone.now()
+        relationship.save()
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Confirmation email resent successfully.'
+        })
+    
+    else:
+        return JsonResponse({'success': False, 'error': 'Cannot resend email for confirmed or denied relationships'}, status=400)
+
+
+@login_required
+@require_POST
+def delete_client_relationship(request, relationship_id):
+    """Delete a client relationship and expire tokens"""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        return JsonResponse({'success': False, 'error': 'Only mentors can delete relationships'}, status=403)
+    
+    mentor_profile = request.user.mentor_profile
+    try:
+        relationship = MentorClientRelationship.objects.get(id=relationship_id, mentor=mentor_profile)
+    except MentorClientRelationship.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Relationship not found'}, status=404)
+    
+    # Expire tokens by clearing them
+    relationship.invitation_token = None
+    relationship.confirmation_token = None
+    relationship.save()
+    
+    # Delete the relationship
+    relationship.delete()
+    
+    return JsonResponse({
+        'success': True,
+        'message': 'Client removed from your list successfully.'
     })

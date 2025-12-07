@@ -105,6 +105,25 @@
 
   {% if email_not_verified %}
   <script>
+    // Function to get CSRF token from cookie or form
+    function getCsrfToken() {
+      // Try to get from cookie first
+      const name = 'csrftoken';
+      let cookieValue = null;
+      if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+          const cookie = cookies[i].trim();
+          if (cookie.substring(0, name.length + 1) === (name + '=')) {
+            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+            break;
+          }
+        }
+      }
+      // Fallback to template variable
+      return cookieValue || '{{ csrf_token }}';
+    }
+
     document.getElementById('resendVerificationBtn').addEventListener('click', function() {
       const btn = this;
       const messageDiv = document.getElementById('resendMessage');
@@ -116,19 +135,34 @@
       btn.style.cursor = 'not-allowed';
       btn.innerHTML = '<i class="fas fa-spinner fa-spin" style="margin-right: 6px;"></i>Sending...';
       
+      // Get CSRF token
+      const csrfToken = getCsrfToken();
+      
       // Send AJAX request
       fetch('{% url "accounts:resend_verification_email" %}', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-CSRFToken': '{{ csrf_token }}'
+          'X-CSRFToken': csrfToken
         },
+        credentials: 'same-origin',
         body: JSON.stringify({ email: userEmail })
       })
-      .then(response => response.json())
+      .then(response => {
+        // Check if response is JSON
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          // If not JSON, it's probably an error page
+          return response.text().then(text => {
+            throw new Error('Server returned non-JSON response. This might be a CSRF error.');
+          });
+        }
+        return response.json();
+      })
       .then(data => {
         if (data.success) {
           messageDiv.textContent = 'Verification email sent! Please check your inbox.';
+          messageDiv.style.color = '#059669';
           messageDiv.style.display = 'block';
           btn.innerHTML = '<i class="fas fa-check" style="margin-right: 6px;"></i>Email Sent';
         } else {
@@ -143,7 +177,7 @@
       })
       .catch(error => {
         console.error('Error:', error);
-        messageDiv.textContent = 'An error occurred. Please try again later.';
+        messageDiv.textContent = 'An error occurred. Please refresh the page and try again.';
         messageDiv.style.color = '#ef4444';
         messageDiv.style.display = 'block';
         btn.disabled = false;

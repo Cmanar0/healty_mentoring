@@ -1,0 +1,26 @@
+{% extends "emails/base.html" %}
+
+{% block content %}
+<h1>Mentor Invitation</h1>
+
+<p class="content-text">
+    <span class="highlight">{{ mentor_name }}</span> would like to add you as their client on Healthy Mentoring.
+</p>
+
+<p class="content-text">
+    If you accept this invitation, you'll be able to work with this mentor and access their services.
+</p>
+
+<div class="btn-container">
+    <a href="{{ confirmation_url }}" class="btn">Accept Invitation</a>
+</div>
+
+<p class="content-text" style="font-size: 14px; color: #6b7280; margin-top: 32px;">
+    If you don't want to work with this mentor, you can safely ignore this email. No action is required.
+</p>
+
+<p class="content-text" style="font-size: 13px; color: #9ca3af; margin-top: 24px;">
+    This invitation will expire if you don't respond, or if the mentor removes you from their client list.
+</p>
+{% endblock %}
+

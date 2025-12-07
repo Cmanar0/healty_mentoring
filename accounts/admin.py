@@ -2,8 +2,9 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.models import Group
 from django import forms
+from django.utils import timezone
 from .models import (
-    CustomUser, UserProfile, MentorProfile
+    CustomUser, UserProfile, MentorProfile, MentorClientRelationship
 )
 from .forms import CustomUserCreationForm, CustomUserChangeForm
 from dashboard_mentor.models import MentorProfileQualification
@@ -166,6 +167,96 @@ class MentorProfileAdmin(admin.ModelAdmin):
         verbose_name = "Mentor Profile"
         verbose_name_plural = "Mentor Profiles"
 
+# Mentor-Client Relationship Admin
+class MentorClientRelationshipAdmin(admin.ModelAdmin):
+    list_display = ('mentor_name', 'client_name', 'client_email', 'status', 'confirmed', 'created_at', 'invited_at', 'verified_at')
+    list_filter = ('status', 'confirmed', 'created_at', 'invited_at', 'verified_at')
+    search_fields = ('mentor__first_name', 'mentor__last_name', 'mentor__user__email', 
+                    'client__first_name', 'client__last_name', 'client__user__email',
+                    'invitation_token', 'confirmation_token')
+    readonly_fields = ('created_at', 'updated_at', 'invited_at', 'verified_at', 'sessions_count', 'total_earnings')
+    fieldsets = (
+        ('Relationship', {
+            'fields': ('mentor', 'client', 'status', 'confirmed')
+        }),
+        ('Tokens', {
+            'fields': ('invitation_token', 'confirmation_token'),
+            'description': 'Tokens are used for invitation links. They are cleared after acceptance.'
+        }),
+        ('Statistics', {
+            'fields': ('sessions_count', 'total_earnings'),
+            'classes': ('collapse',)
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at', 'invited_at', 'verified_at'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    def mentor_name(self, obj):
+        return f"{obj.mentor.first_name} {obj.mentor.last_name}"
+    mentor_name.short_description = 'Mentor'
+    
+    def client_name(self, obj):
+        return f"{obj.client.first_name} {obj.client.last_name}"
+    client_name.short_description = 'Client'
+    
+    def client_email(self, obj):
+        return obj.client.user.email
+    client_email.short_description = 'Client Email'
+    
+    actions = ['reset_to_inactive', 'activate_relationship', 'deny_relationship']
+    
+    def reset_to_inactive(self, request, queryset):
+        """Reset selected relationships to inactive status (unconfirmed)"""
+        count = 0
+        for relationship in queryset:
+            relationship.status = 'inactive'
+            relationship.confirmed = False
+            # Regenerate confirmation token if user is verified, invitation token if not
+            from django.utils.crypto import get_random_string
+            if relationship.client.user.is_email_verified:
+                if not relationship.confirmation_token:
+                    relationship.confirmation_token = get_random_string(64)
+            else:
+                if not relationship.invitation_token:
+                    relationship.invitation_token = get_random_string(64)
+            relationship.save()
+            count += 1
+        self.message_user(request, f"{count} relationship(s) reset to inactive (unconfirmed).")
+    reset_to_inactive.short_description = "Reset to inactive (unconfirmed)"
+    
+    def activate_relationship(self, request, queryset):
+        """Confirm selected relationships"""
+        count = 0
+        for relationship in queryset:
+            relationship.confirmed = True
+            relationship.status = 'confirmed'
+            relationship.verified_at = relationship.verified_at or timezone.now()
+            # Clear tokens after confirmation
+            relationship.invitation_token = None
+            relationship.confirmation_token = None
+            # Add to ManyToMany if not already there
+            if relationship.client not in relationship.mentor.clients.all():
+                relationship.mentor.clients.add(relationship.client)
+            relationship.save()
+            count += 1
+        self.message_user(request, f"{count} relationship(s) confirmed.")
+    activate_relationship.short_description = "Confirm relationship(s)"
+    
+    def deny_relationship(self, request, queryset):
+        """Deny selected relationships"""
+        count = 0
+        for relationship in queryset:
+            relationship.status = 'denied'
+            relationship.confirmed = False
+            relationship.confirmation_token = None
+            relationship.invitation_token = None
+            relationship.save()
+            count += 1
+        self.message_user(request, f"{count} relationship(s) denied.")
+    deny_relationship.short_description = "Deny relationship(s)"
+
 # Register models
 admin.site.register(CustomUser, UserAdmin)
 
@@ -174,3 +265,6 @@ admin.site.register(UserProfile, UserProfileAdmin)
 
 # Group Mentor Profile related models
 admin.site.register(MentorProfile, MentorProfileAdmin)
+
+# Register Mentor-Client Relationship
+admin.site.register(MentorClientRelationship, MentorClientRelationshipAdmin)

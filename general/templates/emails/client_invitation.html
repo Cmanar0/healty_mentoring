@@ -1,0 +1,31 @@
+{% extends "emails/base.html" %}
+
+{% block content %}
+<h1>You've Been Invited!</h1>
+
+<p class="content-text">
+    <span class="highlight">{{ mentor_name }}</span> has invited you to join Healthy Mentoring as their client.
+</p>
+
+<p class="content-text">
+    To complete your registration and start working with your mentor, please click the button below to set up your account.
+</p>
+
+<div class="btn-container">
+    <a href="{{ registration_url }}" class="btn">Complete Registration</a>
+</div>
+
+<p class="content-text" style="font-size: 14px; color: #6b7280; margin-top: 32px;">
+    This invitation link will allow you to:
+</p>
+<ul style="font-size: 14px; color: #6b7280; padding-left: 20px; margin-top: 8px;">
+    <li>Set your password</li>
+    <li>Complete your profile</li>
+    <li>Start collaborating with your mentor</li>
+</ul>
+
+<p class="content-text" style="font-size: 13px; color: #9ca3af; margin-top: 24px;">
+    If you didn't expect this invitation, you can safely ignore this email.
+</p>
+{% endblock %}
+
