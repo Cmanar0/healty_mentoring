@@ -21,17 +21,15 @@
                         {% endif %}
                     </div>
                     <h3 style="margin: 0 0 4px; color: var(--dash-text-main);">{{ user.profile.first_name }} {{ user.profile.last_name }}</h3>
-                    {% with tag_list=user.profile.tags.all %}
-                        {% if tag_list %}
-                            <p style="margin: 0; color: var(--dash-text-muted); font-size: 0.9rem;">
-                                {% for tag in tag_list %}
-                                    {{ tag.name }}{% if not forloop.last %}, {% endif %}
-                                {% endfor %}
-                            </p>
-                        {% else %}
-                            <p style="margin: 0; color: var(--dash-text-muted);">Mentor</p>
-                        {% endif %}
-                    {% endwith %}
+                    {% if user.profile.tags %}
+                        <p style="margin: 0; color: var(--dash-text-muted); font-size: 0.9rem;">
+                            {% for tag in user.profile.tags %}
+                                {{ tag }}{% if not forloop.last %}, {% endif %}
+                            {% endfor %}
+                        </p>
+                    {% else %}
+                        <p style="margin: 0; color: var(--dash-text-muted);">Mentor</p>
+                    {% endif %}
 
                     <!-- Profile Completion Circles -->
                     <div style="margin-top: 24px; display: flex; justify-content: center; gap: 32px;">

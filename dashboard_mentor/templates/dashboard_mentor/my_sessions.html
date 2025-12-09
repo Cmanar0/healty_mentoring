@@ -3,18 +3,2223 @@
 
 {% block page_title %}My Sessions{% endblock %}
 
+{% block extra_css %}
+{{ block.super }}
+<style>
+    .sessions-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+        flex-wrap: wrap;
+        gap: 16px;
+    }
+
+    .view-toggle-buttons {
+        display: flex;
+        gap: 8px;
+        background: var(--dash-bg);
+        padding: 4px;
+        border-radius: 8px;
+        border: 1px solid var(--dash-border);
+    }
+
+    .view-toggle-btn {
+        padding: 8px 16px;
+        border: none;
+        background: transparent;
+        color: var(--dash-text-muted);
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 500;
+        font-size: 0.9rem;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .view-toggle-btn:hover {
+        background: #f1f5f9;
+        color: var(--dash-text-main);
+    }
+
+    .view-toggle-btn.active {
+        background: var(--dash-primary);
+        color: white;
+    }
+
+    .view-container {
+        display: none;
+    }
+
+    .view-container.active {
+        display: block;
+    }
+
+    /* Calendar View Styles */
+    .calendar-container {
+        background: var(--dash-card-bg);
+        border-radius: 12px;
+        padding: 24px;
+        border: 2px solid var(--dash-border);
+    }
+
+    .calendar-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+        gap: 16px;
+    }
+
+    .calendar-header-right {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 200px;
+        justify-content: flex-end;
+    }
+
+    .calendar-nav {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+    }
+
+    .calendar-nav-btn {
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+        border: 1px solid var(--dash-border);
+        background: var(--dash-bg);
+        color: var(--dash-text-main);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+    }
+
+    .calendar-nav-btn:hover {
+        background: #f1f5f9;
+        border-color: var(--dash-primary);
+    }
+
+    .calendar-month-year {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: var(--dash-text-main);
+        min-width: 180px;
+        text-align: center;
+    }
+
+    .calendar-weekdays {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 8px;
+        margin-bottom: 8px;
+    }
+
+    .calendar-weekday {
+        text-align: center;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--dash-text-muted);
+        padding: 8px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .calendar-days {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 8px;
+    }
+
+    .calendar-day {
+        aspect-ratio: 1;
+        border-radius: 8px;
+        border: 1px solid var(--dash-border);
+        background: var(--dash-bg);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-start;
+        padding: 8px 4px;
+        cursor: pointer;
+        transition: all 0.2s;
+        position: relative;
+    }
+
+    .calendar-day:hover {
+        background: #f1f5f9;
+        border-color: var(--dash-primary);
+    }
+
+    .calendar-day.other-month {
+        opacity: 0.3;
+        cursor: default;
+    }
+
+    .calendar-day.other-month:hover {
+        background: var(--dash-bg);
+        border-color: var(--dash-border);
+    }
+
+    .calendar-day.today {
+        background: #d1fae5;
+        border-color: var(--dash-primary);
+        font-weight: 600;
+    }
+
+    .calendar-day.has-sessions {
+        border-color: var(--dash-primary);
+    }
+
+    .calendar-day-number {
+        font-size: 0.9rem;
+        color: var(--dash-text-main);
+        margin-bottom: 4px;
+    }
+
+    .calendar-day-sessions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 2px;
+        justify-content: center;
+        width: 100%;
+    }
+
+    .calendar-session-dot {
+        width: 4px;
+        height: 4px;
+        border-radius: 50%;
+        background: var(--dash-primary);
+    }
+
+    .calendar-session-count {
+        font-size: 0.7rem;
+        color: var(--dash-primary);
+        font-weight: 600;
+    }
+
+    /* Timeline View Styles */
+    .timeline-container {
+        background: var(--dash-card-bg);
+        border-radius: 12px;
+        border: 1px solid var(--dash-border);
+        overflow: hidden;
+    }
+
+    .session-timeline-container {
+        padding: 24px;
+        max-height: calc(100vh - 300px);
+        overflow-y: auto;
+    }
+
+    .session-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        padding: 20px;
+        border-bottom: 1px solid var(--dash-border);
+        transition: all 0.2s;
+        position: relative;
+    }
+
+    .session-item:hover {
+        background: #f8fafc;
+    }
+
+    .session-item:last-child {
+        border-bottom: none;
+    }
+
+    .session-left {
+        display: flex;
+        gap: 16px;
+        flex: 1;
+    }
+
+    .session-date {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-width: 60px;
+        padding: 8px 12px;
+        background: var(--dash-bg);
+        border-radius: 8px;
+        border: 1px solid var(--dash-border);
+    }
+
+    .date-day {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--dash-text-main);
+        line-height: 1;
+    }
+
+    .date-month {
+        font-size: 0.75rem;
+        color: var(--dash-text-muted);
+        text-transform: uppercase;
+        font-weight: 600;
+        margin-top: 4px;
+    }
+
+    .session-info {
+        flex: 1;
+    }
+
+    .session-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: var(--dash-text-main);
+        margin: 0 0 8px;
+    }
+
+    .session-meta-row {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        flex-wrap: wrap;
+    }
+
+    .session-time {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        color: var(--dash-text-muted);
+        font-size: 0.9rem;
+    }
+
+    .conf-tag {
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .conf-tag.confirmed {
+        background: #d1fae5;
+        color: #059669;
+    }
+
+    .conf-tag.tbc {
+        background: #fef3c7;
+        color: #d97706;
+    }
+
+    .session-right {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+    }
+
+    .session-tasks {
+        display: flex;
+        gap: 8px;
+    }
+
+    .task-badge {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 6px 10px;
+        border-radius: 8px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        min-width: 60px;
+    }
+
+    .task-badge.completed {
+        background: #d1fae5;
+        color: #059669;
+    }
+
+    .task-badge.pending {
+        background: #dbeafe;
+        color: #2563eb;
+    }
+
+    .task-badge.missed {
+        background: #fee2e2;
+        color: #dc2626;
+    }
+
+    .task-label {
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .task-count {
+        font-size: 1rem;
+        font-weight: 700;
+        margin-top: 2px;
+    }
+
+    .session-action-btn {
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+        border: 1px solid var(--dash-border);
+        background: var(--dash-bg);
+        color: var(--dash-text-muted);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+    }
+
+    .session-action-btn:hover {
+        background: #f1f5f9;
+        border-color: var(--dash-primary);
+        color: var(--dash-primary);
+    }
+
+    .dropdown {
+        position: relative;
+    }
+
+    .dropdown-menu {
+        display: none;
+        position: absolute;
+        top: 100%;
+        right: 0;
+        margin-top: 8px;
+        background: white;
+        border: 1px solid var(--dash-border);
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        z-index: 100;
+        min-width: 160px;
+        overflow: hidden;
+    }
+
+    .dropdown-menu.show {
+        display: block;
+    }
+
+    .dropdown-item {
+        width: 100%;
+        padding: 10px 16px;
+        border: none;
+        background: transparent;
+        text-align: left;
+        cursor: pointer;
+        color: var(--dash-text-main);
+        font-size: 0.9rem;
+        transition: all 0.2s;
+    }
+
+    .dropdown-item:hover {
+        background: #f8fafc;
+    }
+
+    .dropdown-item:first-child {
+        border-top-left-radius: 8px;
+        border-top-right-radius: 8px;
+    }
+
+    .dropdown-item:last-child {
+        border-bottom-left-radius: 8px;
+        border-bottom-right-radius: 8px;
+    }
+
+    /* Status indicators */
+    .session-item.status-completed .session-left::after {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 4px;
+        height: 60%;
+        background: #10b981;
+        border-radius: 0 4px 4px 0;
+    }
+
+    .session-item.status-pending .session-left::after {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 4px;
+        height: 60%;
+        background: #3b82f6;
+        border-radius: 0 4px 4px 0;
+    }
+
+    .session-item.status-missed .session-left::after {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 4px;
+        height: 60%;
+        background: #ef4444;
+        border-radius: 0 4px 4px 0;
+    }
+
+    /* Mode Indicators */
+    .availability-mode-indicator,
+    .sessions-mode-indicator {
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-size: 0.9rem;
+        font-weight: 600;
+        text-align: center;
+        flex: 1;
+        margin: 0 16px;
+    }
+
+    .availability-mode-indicator {
+        display: none;
+        background: #dbeafe;
+        color: #1e40af;
+    }
+
+    .availability-mode-indicator.active {
+        display: block;
+    }
+
+    .sessions-mode-indicator {
+        display: block;
+        background: #d1fae5;
+        color: #059669;
+    }
+
+    .sessions-mode-indicator.hidden {
+        display: none;
+    }
+
+    .availability-mode-indicator i {
+        margin-right: 6px;
+    }
+
+    .calendar-container.availability-mode {
+        border: 2px solid #3b82f6;
+        background: #eff6ff;
+    }
+
+    .calendar-container.availability-mode .calendar-day {
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .calendar-container.availability-mode .calendar-day:hover {
+        background: #dbeafe;
+        transform: scale(1.05);
+    }
+
+    .calendar-day.has-availability {
+        border-left: 3px solid #3b82f6;
+    }
+
+    .calendar-day.has-availability.availability-mode-active {
+        background: #dbeafe;
+        border-color: #3b82f6;
+        border-width: 2px;
+    }
+
+    .calendar-day.has-sessions {
+        border-right: 3px solid var(--dash-primary);
+    }
+
+    .calendar-day.has-both {
+        border-left: 3px solid #3b82f6;
+        border-right: 3px solid var(--dash-primary);
+    }
+
+    .availability-actions {
+        display: none;
+        gap: 12px;
+    }
+
+    .availability-actions.active {
+        display: flex;
+    }
+
+    .availability-mode-indicator.active ~ .calendar-header-right .btn-add-availability {
+        display: none;
+    }
+
+    .btn-availability-primary {
+        max-width: 190px;
+        padding: 12px 24px;
+        background: #3b82f6;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        white-space: nowrap;
+    }
+
+    .btn-availability-primary:hover {
+        background: #2563eb;
+    }
+
+    .btn-availability-cancel {
+        max-width: 150px;
+        padding: 12px 24px;
+        background: white;
+        color: var(--dash-text-main);
+        border: 2px solid var(--dash-border);
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        white-space: nowrap;
+    }
+
+    .btn-availability-cancel:hover {
+        background: var(--dash-bg);
+        border-color: var(--dash-text-muted);
+    }
+
+    .btn-add-availability {
+        max-width: 200px;
+        padding: 12px 24px;
+        background: #3b82f6;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        white-space: nowrap;
+    }
+
+    .btn-add-availability:hover {
+        background: #2563eb;
+    }
+
+    /* Time Picker Modal */
+    .time-picker-modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .time-picker-modal.active {
+        display: flex;
+    }
+
+    .time-picker-content {
+        background: white;
+        border-radius: 16px;
+        padding: 32px;
+        max-width: 1200px;
+        width: 90%;
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        display: flex;
+        flex-direction: column;
+        max-height: 90vh;
+        overflow: hidden;
+    }
+
+    .time-picker-body {
+        display: grid;
+        grid-template-columns: 1fr 2fr;
+        gap: 32px;
+        overflow: hidden;
+        flex: 1;
+        min-height: 0;
+    }
+
+    .time-picker-left,
+    .time-picker-right {
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    .time-picker-left {
+        border-right: 2px solid var(--dash-border);
+        padding-right: 32px;
+    }
+
+    .time-picker-right {
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .time-picker-section-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: var(--dash-text-main);
+        margin-bottom: 16px;
+    }
+
+    .time-picker-field-full {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-bottom: 20px;
+    }
+
+    .time-picker-field-full label {
+        font-weight: 600;
+        color: var(--dash-text-main);
+        font-size: 0.9rem;
+    }
+
+    .time-picker-field-full input {
+        padding: 12px;
+        border: 2px solid var(--dash-border);
+        border-radius: 8px;
+        font-size: 1rem;
+        transition: all 0.2s;
+    }
+
+    .time-picker-field-full input:focus {
+        outline: none;
+        border-color: #3b82f6;
+    }
+
+    .session-length-display {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px;
+        background: #f8fafc;
+        border: 2px solid #e2e8f0;
+        border-radius: 8px;
+        margin-bottom: 20px;
+    }
+
+    .session-length-text {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .session-length-label {
+        font-size: 0.85rem;
+        color: var(--dash-text-muted);
+        font-weight: 500;
+    }
+
+    .session-length-value {
+        font-size: 1rem;
+        color: var(--dash-text-main);
+        font-weight: 600;
+    }
+
+    .session-length-note {
+        font-size: 0.75rem;
+        color: var(--dash-text-muted);
+        font-style: italic;
+    }
+
+    .btn-change-session-length {
+        padding: 8px 16px;
+        background: white;
+        color: #334156;
+        border: 2px solid #334156;
+        border-radius: 999px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        white-space: nowrap;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .btn-change-session-length:hover {
+        background: #334156;
+        color: white;
+        border: 2px solid #334156;
+    }
+
+    .btn-generate-sessions {
+        width: 100%;
+        padding: 12px 24px;
+        background: #334156;
+        color: white;
+        border: 2px solid #334156;
+        border-radius: 999px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        margin-top: 8px;
+        font-size: 0.95rem;
+    }
+
+    .btn-generate-sessions:hover {
+        background: white;
+        color: #334156;
+        border: 2px solid #334156;
+    }
+
+    /* Timeline Styles */
+    .timeline-container {
+        flex: 1;
+        position: relative;
+        overflow-y: auto;
+        overflow-x: hidden;
+        border: 2px solid var(--dash-border);
+        border-radius: 8px;
+        background: white;
+    }
+
+    .timeline-container::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .timeline-container::-webkit-scrollbar-track {
+        background: #f1f5f9;
+        border-radius: 3px;
+    }
+
+    .timeline-container::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 3px;
+    }
+
+    .timeline-container::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
+    }
+
+    .timeline-hours {
+        position: relative;
+        min-height: 100%;
+    }
+
+    .timeline-hour {
+        position: relative;
+        height: 60px;
+        border-bottom: 1px solid #e2e8f0;
+        display: flex;
+        align-items: flex-start;
+        padding-left: 12px;
+        padding-top: 4px;
+    }
+
+    .timeline-hour-label {
+        font-size: 0.75rem;
+        color: var(--dash-text-muted);
+        font-weight: 600;
+        min-width: 50px;
+    }
+
+    .timeline-hour-line {
+        position: absolute;
+        left: 60px;
+        right: 0;
+        top: 0;
+        height: 1px;
+        background: #e2e8f0;
+    }
+
+    .timeline-hour-marker {
+        position: absolute;
+        left: 60px;
+        right: 0;
+        top: 30px;
+        height: 1px;
+        background: #f1f5f9;
+    }
+
+    .timeline-sessions {
+        position: absolute;
+        top: 0;
+        left: 60px;
+        right: 0;
+        bottom: 0;
+    }
+
+    .session-suggestion-item {
+        position: absolute;
+        left: 8px;
+        right: 8px;
+        background: #3b82f6;
+        color: white;
+        border-radius: 6px;
+        padding: 8px 12px;
+        cursor: move;
+        cursor: grab;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        transition: all 0.2s;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        z-index: 10;
+        min-height: 40px;
+    }
+
+    .session-suggestion-item:active {
+        cursor: grabbing;
+    }
+
+    .session-suggestion-item:hover {
+        box-shadow: 0 4px 8px rgba(59, 130, 246, 0.2);
+        transform: scale(1.02);
+    }
+
+    .session-suggestion-item.dragging {
+        opacity: 0.7;
+        z-index: 100;
+        cursor: grabbing;
+    }
+
+    .session-suggestion-info {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .session-suggestion-time {
+        font-weight: 600;
+        font-size: 0.9rem;
+        color: white;
+    }
+
+    .session-suggestion-duration {
+        font-size: 0.75rem;
+        color: rgba(255, 255, 255, 0.8);
+    }
+
+    .session-suggestion-actions {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .session-recurrence-dropdown {
+        position: relative;
+    }
+
+    .session-recurrence-btn {
+        padding: 4px 8px;
+        background: rgba(255, 255, 255, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        border-radius: 4px;
+        font-size: 0.75rem;
+        cursor: pointer;
+        white-space: nowrap;
+        min-width: 90px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 4px;
+        color: white;
+        transition: all 0.2s;
+    }
+
+    .session-recurrence-btn:hover {
+        background: rgba(255, 255, 255, 0.3);
+        border-color: rgba(255, 255, 255, 0.5);
+    }
+
+    .session-recurrence-btn .recurrence-label,
+    .session-recurrence-btn i {
+        color: white;
+    }
+
+    .session-recurrence-menu {
+        display: none;
+        position: absolute;
+        top: 100%;
+        right: 0;
+        margin-top: 4px;
+        background: white;
+        border: 2px solid var(--dash-border);
+        border-radius: 8px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        z-index: 1000;
+        min-width: 180px;
+        overflow: hidden;
+    }
+
+    .session-recurrence-menu.show {
+        display: block;
+    }
+
+    .session-recurrence-item {
+        padding: 10px 16px;
+        border: none;
+        background: transparent;
+        text-align: left;
+        cursor: pointer;
+        color: var(--dash-text-main);
+        font-size: 0.9rem;
+        transition: all 0.2s;
+        width: 100%;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .session-recurrence-item i {
+        width: 16px;
+        color: var(--dash-text-muted);
+    }
+
+    .session-recurrence-item:hover {
+        background: #f8fafc;
+    }
+
+    .session-recurrence-item:hover i {
+        color: #3b82f6;
+    }
+
+    .btn-delete-session {
+        padding: 4px 8px;
+        background: rgba(239, 68, 68, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        color: white;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.8rem;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 28px;
+        height: 28px;
+    }
+
+    .btn-delete-session:hover {
+        background: rgba(239, 68, 68, 0.4);
+        border-color: rgba(255, 255, 255, 0.5);
+    }
+
+    .empty-sessions-message {
+        text-align: center;
+        padding: 40px 20px;
+        color: var(--dash-text-muted);
+        font-size: 0.9rem;
+    }
+
+    .time-picker-header {
+        margin-bottom: 0;
+    }
+
+    .time-picker-header h3 {
+        margin: 0 0 8px;
+        font-size: 1.5rem;
+        color: var(--dash-text-main);
+    }
+
+    .time-picker-header p {
+        margin: 0 0 24px;
+        color: var(--dash-text-muted);
+        font-size: 0.9rem;
+    }
+
+    .time-picker-fields {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+
+    .time-picker-field {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .time-picker-field label {
+        font-weight: 600;
+        color: var(--dash-text-main);
+        font-size: 0.9rem;
+    }
+
+    .time-picker-field input {
+        padding: 12px;
+        border: 2px solid var(--dash-border);
+        border-radius: 8px;
+        font-size: 1rem;
+        transition: all 0.2s;
+    }
+
+    .time-picker-field input:focus {
+        outline: none;
+        border-color: #3b82f6;
+    }
+
+    .time-picker-actions {
+        display: flex;
+        gap: 12px;
+        margin-top: 16px;
+        padding-top: 16px;
+    }
+
+    .time-picker-actions button {
+        flex: 1;
+        padding: 12px 24px;
+        border: 2px solid;
+        border-radius: 999px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        font-size: 0.95rem;
+    }
+
+    .time-picker-save {
+        background: var(--dash-primary, #10b981);
+        color: white;
+        border-color: var(--dash-primary, #10b981);
+    }
+
+    .time-picker-save:hover {
+        background: var(--dash-primary-hover, #059669);
+        border-color: var(--dash-primary-hover, #059669);
+    }
+
+    .time-picker-cancel {
+        background: white;
+        color: #334156;
+        border-color: white;
+    }
+
+    .time-picker-cancel:hover {
+        background: #334156;
+        color: white;
+        border-color: #334156;
+    }
+
+    .calendar-day.availability-selected {
+        background: #3b82f6;
+        color: white;
+        border-color: #2563eb;
+    }
+
+    .calendar-day.availability-selected .calendar-day-number {
+        color: white;
+    }
+
+    @media (max-width: 768px) {
+        .sessions-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .calendar-container {
+            padding: 16px;
+        }
+
+        .calendar-weekday,
+        .calendar-day {
+            font-size: 0.8rem;
+        }
+
+        .session-item {
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .session-right {
+            width: 100%;
+            justify-content: space-between;
+        }
+
+        .time-picker-content {
+            padding: 24px;
+        }
+
+        .time-picker-body {
+            grid-template-columns: 1fr;
+        }
+
+        .time-picker-left {
+            border-right: none;
+            border-bottom: 2px solid var(--dash-border);
+            padding-right: 0;
+            padding-bottom: 24px;
+            margin-bottom: 24px;
+        }
+
+        .time-picker-right {
+            padding: 0;
+        }
+
+        .time-picker-actions {
+            margin-top: 16px;
+        }
+    }
+</style>
+{% endblock %}
+
 {% block dashboard_content %}
 <div class="dashboard-content-container">
-    <h1 class="dashboard-page-title">My Sessions</h1>
-
-    <div class="dashboard-grid">
-        <div class="dashboard-card col-span-12">
-            <div class="empty-state">
+    <div class="sessions-header">
+        <h1 class="dashboard-page-title">My Sessions</h1>
+        <div class="view-toggle-buttons">
+            <button class="view-toggle-btn active" data-view="calendar">
                 <i class="fas fa-calendar-alt"></i>
-                <p>You have no sessions scheduled.</p>
-                <a href="#" class="btn btn-primary" style="margin-top: 16px;">Schedule Session</a>
+                Calendar
+            </button>
+            <button class="view-toggle-btn" data-view="timeline">
+                <i class="fas fa-list"></i>
+                Timeline
+            </button>
+        </div>
+    </div>
+
+    <!-- Calendar View -->
+    <div id="calendarView" class="view-container active">
+        <div class="calendar-container" id="calendarContainer">
+            <div class="calendar-header">
+                <div class="calendar-nav">
+                    <button class="calendar-nav-btn" id="prevMonth">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    <div class="calendar-month-year" id="currentMonthYear">December 2024</div>
+                    <button class="calendar-nav-btn" id="nextMonth">
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
+                <div class="sessions-mode-indicator" id="sessionsModeIndicator">
+                    <i class="fas fa-calendar-check"></i> Session Scheduling Mode
+                </div>
+                <div class="availability-mode-indicator" id="availabilityModeIndicator">
+                    <i class="fas fa-edit"></i> Availability Mode - Click on days to set your availability
+                </div>
+                <div class="calendar-header-right">
+                    <button class="btn-add-availability" id="addAvailabilityBtn">
+                        <i class="fas fa-plus"></i> <span id="availabilityBtnText">Add Availability</span>
+                    </button>
+                    <div class="availability-actions" id="availabilityActions">
+                        <button class="btn-availability-primary" id="saveAvailabilityBtn">
+                            <i class="fas fa-check"></i> Save
+                        </button>
+                        <button class="btn-availability-cancel" id="cancelAvailabilityBtn">
+                            <i class="fas fa-times"></i> Cancel
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="calendar-weekdays">
+                <div class="calendar-weekday">Sun</div>
+                <div class="calendar-weekday">Mon</div>
+                <div class="calendar-weekday">Tue</div>
+                <div class="calendar-weekday">Wed</div>
+                <div class="calendar-weekday">Thu</div>
+                <div class="calendar-weekday">Fri</div>
+                <div class="calendar-weekday">Sat</div>
+            </div>
+
+            <div class="calendar-days" id="calendarDays">
+                <!-- Calendar days will be generated by JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Timeline View -->
+    <div id="timelineView" class="view-container">
+        <div class="timeline-container">
+            <div class="session-timeline-container">
+                <!-- Session Item 1 -->
+                <div class="session-item confirmed status-completed">
+                    <div class="session-left">
+                        <div class="session-date">
+                            <span class="date-day">28</span>
+                            <span class="date-month">Nov</span>
+                        </div>
+                        <div class="session-info">
+                            <h4 class="session-title">Strategy Review with Anna</h4>
+                            <div class="session-meta-row">
+                                <span class="session-time">
+                                    <i class="far fa-clock"></i> 10:00 AM - 11:00 AM
+                                </span>
+                                <span class="conf-tag confirmed">Confirmed</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="session-right">
+                        <div class="session-tasks">
+                            <div class="task-badge completed">
+                                <span class="task-label">Completed</span>
+                                <span class="task-count">2</span>
+                            </div>
+                        </div>
+                        <div class="dropdown">
+                            <button class="session-action-btn" onclick="toggleDropdown(this)">
+                                <i class="fas fa-ellipsis-h"></i>
+                            </button>
+                            <div class="dropdown-menu">
+                                <button class="dropdown-item">View Details</button>
+                                <button class="dropdown-item">Edit Session</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Session Item 2 -->
+                <div class="session-item confirmed status-pending">
+                    <div class="session-left">
+                        <div class="session-date">
+                            <span class="date-day">05</span>
+                            <span class="date-month">Dec</span>
+                        </div>
+                        <div class="session-info">
+                            <h4 class="session-title">Leadership Workshop with Michael</h4>
+                            <div class="session-meta-row">
+                                <span class="session-time">
+                                    <i class="far fa-clock"></i> 2:00 PM - 3:30 PM
+                                </span>
+                                <span class="conf-tag confirmed">Confirmed</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="session-right">
+                        <div class="session-tasks">
+                            <div class="task-badge pending">
+                                <span class="task-label">Pending</span>
+                                <span class="task-count">1</span>
+                            </div>
+                        </div>
+                        <div class="dropdown">
+                            <button class="session-action-btn" onclick="toggleDropdown(this)">
+                                <i class="fas fa-ellipsis-h"></i>
+                            </button>
+                            <div class="dropdown-menu">
+                                <button class="dropdown-item">View Details</button>
+                                <button class="dropdown-item">Edit Session</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Session Item 3 -->
+                <div class="session-item tbc status-missed">
+                    <div class="session-left">
+                        <div class="session-date">
+                            <span class="date-day">12</span>
+                            <span class="date-month">Dec</span>
+                        </div>
+                        <div class="session-info">
+                            <h4 class="session-title">Quarterly Planning with Team</h4>
+                            <div class="session-meta-row">
+                                <span class="session-time">
+                                    <i class="far fa-clock"></i> 11:00 AM - 12:30 PM
+                                </span>
+                                <span class="conf-tag tbc">To Be Confirmed</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="session-right">
+                        <div class="session-tasks">
+                            <div class="task-badge completed">
+                                <span class="task-label">Completed</span>
+                                <span class="task-count">1</span>
+                            </div>
+                            <div class="task-badge missed">
+                                <span class="task-label">Missed</span>
+                                <span class="task-count">2</span>
+                            </div>
+                        </div>
+                        <div class="dropdown">
+                            <button class="session-action-btn" onclick="toggleDropdown(this)">
+                                <i class="fas fa-ellipsis-h"></i>
+                            </button>
+                            <div class="dropdown-menu">
+                                <button class="dropdown-item">View Details</button>
+                                <button class="dropdown-item">Edit Session</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Session Item 4 -->
+                <div class="session-item confirmed status-pending">
+                    <div class="session-left">
+                        <div class="session-date">
+                            <span class="date-day">15</span>
+                            <span class="date-month">Dec</span>
+                        </div>
+                        <div class="session-info">
+                            <h4 class="session-title">Career Development Session with Sarah</h4>
+                            <div class="session-meta-row">
+                                <span class="session-time">
+                                    <i class="far fa-clock"></i> 9:00 AM - 10:00 AM
+                                </span>
+                                <span class="conf-tag confirmed">Confirmed</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="session-right">
+                        <div class="session-tasks">
+                            <div class="task-badge pending">
+                                <span class="task-label">Pending</span>
+                                <span class="task-count">3</span>
+                            </div>
+                        </div>
+                        <div class="dropdown">
+                            <button class="session-action-btn" onclick="toggleDropdown(this)">
+                                <i class="fas fa-ellipsis-h"></i>
+                            </button>
+                            <div class="dropdown-menu">
+                                <button class="dropdown-item">View Details</button>
+                                <button class="dropdown-item">Edit Session</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 </div>
+
+<!-- Time Picker Modal -->
+<div class="time-picker-modal" id="timePickerModal">
+    <div class="time-picker-content">
+        <div class="time-picker-body">
+            <!-- Left Column -->
+            <div class="time-picker-left">
+                <div class="time-picker-header">
+                    <h3 id="timePickerDate">Select Time</h3>
+                    <p>Configure availability for this day</p>
+                </div>
+                <h4 class="time-picker-section-title">Time Range</h4>
+                <div class="time-picker-fields">
+                    <div class="time-picker-field">
+                        <label for="startTime">Start Time</label>
+                        <input type="time" id="startTime" value="09:00">
+                    </div>
+                    <div class="time-picker-field">
+                        <label for="endTime">End Time</label>
+                        <input type="time" id="endTime" value="17:00">
+                    </div>
+                </div>
+                <div class="session-length-display">
+                    <div class="session-length-text">
+                        <div class="session-length-label">Session Length</div>
+                        <div class="session-length-value">{{ session_length|default:60 }} minutes</div>
+                        <div class="session-length-note">Cannot be changed here</div>
+                    </div>
+                    <a href="{% url 'general:dashboard_mentor:profile' %}#session-configuration" class="btn-change-session-length">
+                        <i class="fas fa-edit"></i> Change
+                    </a>
+                </div>
+                <input type="hidden" id="sessionLength" value="{{ session_length|default:60 }}">
+                <div class="time-picker-field-full">
+                    <label for="breakDuration">Breaks Between Sessions (minutes)</label>
+                    <input type="number" id="breakDuration" min="0" step="5" value="10">
+                </div>
+                <button class="btn-generate-sessions" id="generateSessionsBtn">
+                    <i class="fas fa-magic"></i> Generate Session Suggestions
+                </button>
+            </div>
+            <!-- Right Column -->
+            <div class="time-picker-right">
+                <h4 class="time-picker-section-title">Available Sessions Timeline</h4>
+                <div class="timeline-container" id="timelineContainer">
+                    <div class="timeline-hours" id="timelineHours"></div>
+                    <div class="timeline-sessions" id="timelineSessions"></div>
+                    <div class="empty-sessions-message" id="emptySessionsMessage" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; color: var(--dash-text-muted); font-size: 0.9rem; pointer-events: none;">
+                        <i class="fas fa-info-circle" style="font-size: 2rem; margin-bottom: 12px; opacity: 0.3;"></i>
+                        <p>Click "Generate Session Suggestions" to create available time slots</p>
+                    </div>
+                </div>
+                <div class="time-picker-actions">
+                    <button class="time-picker-save" id="timePickerSave">Save Availability</button>
+                    <button class="time-picker-cancel" id="timePickerCancel">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Availability Data (JSON) -->
+{% if availability_data %}
+{{ availability_data|json_script:"availabilityDataJson" }}
+{% endif %}
+
+<script>
+    // View Toggle Functionality
+    document.addEventListener('DOMContentLoaded', function() {
+        const toggleButtons = document.querySelectorAll('.view-toggle-btn');
+        const views = document.querySelectorAll('.view-container');
+
+        toggleButtons.forEach(btn => {
+            btn.addEventListener('click', function() {
+                const viewName = this.getAttribute('data-view');
+                
+                // Update buttons
+                toggleButtons.forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                
+                // Update views
+                views.forEach(v => v.classList.remove('active'));
+                document.getElementById(viewName + 'View').classList.add('active');
+            });
+        });
+
+        // Calendar functionality
+        let currentDate = new Date();
+        let currentMonth = currentDate.getMonth();
+        let currentYear = currentDate.getFullYear();
+        let viewMode = 'sessions'; // 'sessions' or 'availability'
+        let pendingAvailability = {}; // Temporary storage for new availability
+        let selectedDateForTimePicker = null;
+        let generatedSessions = []; // Array of session objects: {start: 'HH:MM', end: 'HH:MM', length: minutes, recurrence: 'one_time'|'daily'|'weekly'|'monthly'}
+
+        // Mock sessions data (dates with sessions)
+        const sessionsData = {
+            '2024-11-28': { count: 1, sessions: ['Strategy Review with Anna'] },
+            '2024-12-05': { count: 1, sessions: ['Leadership Workshop with Michael'] },
+            '2024-12-12': { count: 1, sessions: ['Quarterly Planning with Team'] },
+            '2024-12-15': { count: 1, sessions: ['Career Development Session with Sarah'] },
+        };
+
+        // Load availability data from backend
+        let availabilityData = {};
+        const availabilityDataEl = document.getElementById('availabilityDataJson');
+        if (availabilityDataEl) {
+            const availabilityDataFromServer = JSON.parse(availabilityDataEl.textContent);
+            // Convert array format to object format
+            for (const [dateStr, availList] of Object.entries(availabilityDataFromServer)) {
+                if (availList && availList.length > 0) {
+                    availabilityData[dateStr] = {
+                        start: availList[0].start,
+                        end: availList[0].end
+                    };
+                }
+            }
+        }
+
+        function renderCalendar() {
+            const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                'July', 'August', 'September', 'October', 'November', 'December'];
+            
+            document.getElementById('currentMonthYear').textContent = 
+                `${monthNames[currentMonth]} ${currentYear}`;
+
+            const firstDay = new Date(currentYear, currentMonth, 1).getDay();
+            const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+            const daysInPrevMonth = new Date(currentYear, currentMonth, 0).getDate();
+            
+            const calendarDays = document.getElementById('calendarDays');
+            calendarDays.innerHTML = '';
+
+            // Previous month days
+            for (let i = firstDay - 1; i >= 0; i--) {
+                const day = daysInPrevMonth - i;
+                const dateStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                const dayElement = createDayElement(day, true, dateStr);
+                calendarDays.appendChild(dayElement);
+            }
+
+            // Current month days
+            const today = new Date();
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                const isToday = currentYear === today.getFullYear() && 
+                               currentMonth === today.getMonth() && 
+                               day === today.getDate();
+                const dayElement = createDayElement(day, false, dateStr, isToday);
+                calendarDays.appendChild(dayElement);
+            }
+
+            // Next month days to fill the grid
+            const totalCells = calendarDays.children.length;
+            const remainingCells = 42 - totalCells; // 6 rows * 7 days
+            for (let day = 1; day <= remainingCells; day++) {
+                const dateStr = `${currentYear}-${String(currentMonth + 2).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                const dayElement = createDayElement(day, true, dateStr);
+                calendarDays.appendChild(dayElement);
+            }
+        }
+
+        function createDayElement(day, isOtherMonth, dateStr, isToday = false) {
+            const dayElement = document.createElement('div');
+            dayElement.className = 'calendar-day';
+            if (isOtherMonth) dayElement.classList.add('other-month');
+            if (isToday) dayElement.classList.add('today');
+            dayElement.setAttribute('data-date', dateStr);
+
+            const dayNumber = document.createElement('div');
+            dayNumber.className = 'calendar-day-number';
+            dayNumber.textContent = day;
+            dayElement.appendChild(dayNumber);
+
+            const hasSessions = sessionsData[dateStr];
+            const hasAvailability = availabilityData[dateStr] || pendingAvailability[dateStr];
+            const combinedData = { ...availabilityData, ...pendingAvailability };
+            const hasAvail = combinedData[dateStr];
+
+            // Show sessions (prominent in sessions mode, hidden in availability mode)
+            if (hasSessions && viewMode === 'sessions') {
+                dayElement.classList.add('has-sessions');
+                const sessionsContainer = document.createElement('div');
+                sessionsContainer.className = 'calendar-day-sessions';
+                
+                if (sessionsData[dateStr].count <= 3) {
+                    for (let i = 0; i < sessionsData[dateStr].count; i++) {
+                        const dot = document.createElement('div');
+                        dot.className = 'calendar-session-dot';
+                        sessionsContainer.appendChild(dot);
+                    }
+                } else {
+                    const count = document.createElement('div');
+                    count.className = 'calendar-session-count';
+                    count.textContent = sessionsData[dateStr].count;
+                    sessionsContainer.appendChild(count);
+                }
+                
+                dayElement.appendChild(sessionsContainer);
+            }
+
+            // Show availability (subtle in sessions mode, prominent in availability mode)
+            if (hasAvail) {
+                dayElement.classList.add('has-availability');
+                if (viewMode === 'availability') {
+                    dayElement.classList.add('availability-mode-active');
+                    const availInfo = document.createElement('div');
+                    availInfo.className = 'calendar-day-availability';
+                    availInfo.style.cssText = 'font-size: 0.7rem; color: #3b82f6; margin-top: 4px; font-weight: 600;';
+                    const avail = combinedData[dateStr];
+                    availInfo.textContent = `${avail.start} - ${avail.end}`;
+                    dayElement.appendChild(availInfo);
+                } else {
+                    // Subtle indicator in sessions mode
+                    dayElement.style.borderLeft = '3px solid #3b82f6';
+                }
+            }
+
+            // Add click handler for availability mode
+            if (viewMode === 'availability' && !isOtherMonth) {
+                dayElement.style.cursor = 'pointer';
+                dayElement.addEventListener('click', function() {
+                    openTimePicker(dateStr, day);
+                });
+            }
+
+            // Add both classes if has both
+            if (hasSessions && hasAvail && viewMode === 'sessions') {
+                dayElement.classList.add('has-both');
+            }
+
+            return dayElement;
+        }
+
+        // Navigation
+        document.getElementById('prevMonth').addEventListener('click', function() {
+            currentMonth--;
+            if (currentMonth < 0) {
+                currentMonth = 11;
+                currentYear--;
+            }
+            renderCalendar();
+        });
+
+        document.getElementById('nextMonth').addEventListener('click', function() {
+            currentMonth++;
+            if (currentMonth > 11) {
+                currentMonth = 0;
+                currentYear++;
+            }
+            renderCalendar();
+        });
+
+        // Availability Mode Functions
+        function enterAvailabilityMode() {
+            viewMode = 'availability';
+            document.getElementById('calendarContainer').classList.add('availability-mode');
+            document.getElementById('sessionsModeIndicator').classList.add('hidden');
+            document.getElementById('availabilityModeIndicator').classList.add('active');
+            document.getElementById('addAvailabilityBtn').style.display = 'none';
+            document.getElementById('availabilityActions').classList.add('active');
+            renderCalendar();
+        }
+
+        function exitAvailabilityMode() {
+            viewMode = 'sessions';
+            document.getElementById('calendarContainer').classList.remove('availability-mode');
+            document.getElementById('sessionsModeIndicator').classList.remove('hidden');
+            document.getElementById('availabilityModeIndicator').classList.remove('active');
+            document.getElementById('addAvailabilityBtn').style.display = 'flex';
+            document.getElementById('availabilityActions').classList.remove('active');
+            pendingAvailability = {}; // Clear pending changes
+            renderCalendar();
+        }
+
+        function openTimePicker(dateStr, day) {
+            selectedDateForTimePicker = dateStr;
+            generatedSessions = []; // Reset sessions when opening modal
+            const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                'July', 'August', 'September', 'October', 'November', 'December'];
+            // Parse dateStr (format: YYYY-MM-DD)
+            const [year, month, dateDay] = dateStr.split('-');
+            const dateStrFormatted = `${monthNames[parseInt(month) - 1]} ${day}, ${year}`;
+            
+            document.getElementById('timePickerDate').textContent = dateStrFormatted;
+            
+            // Pre-fill if already has availability
+            const combinedData = { ...availabilityData, ...pendingAvailability };
+            if (combinedData[dateStr]) {
+                document.getElementById('startTime').value = combinedData[dateStr].start;
+                document.getElementById('endTime').value = combinedData[dateStr].end;
+            } else {
+                document.getElementById('startTime').value = '09:00';
+                document.getElementById('endTime').value = '17:00';
+            }
+            
+            // Initialize timeline
+            initializeTimeline();
+            renderSessionsList();
+            
+            document.getElementById('timePickerModal').classList.add('active');
+        }
+
+        function initializeTimeline() {
+            const startTime = document.getElementById('startTime').value;
+            const endTime = document.getElementById('endTime').value;
+            
+            if (!startTime || !endTime) return;
+            
+            const startHour = parseInt(startTime.split(':')[0]);
+            const endHour = parseInt(endTime.split(':')[0]);
+            const endMinute = parseInt(endTime.split(':')[1]);
+            
+            const timelineHours = document.getElementById('timelineHours');
+            timelineHours.innerHTML = '';
+            
+            // Create hour markers
+            for (let hour = startHour; hour <= endHour; hour++) {
+                const hourDiv = document.createElement('div');
+                hourDiv.className = 'timeline-hour';
+                hourDiv.style.height = '60px';
+                
+                const label = document.createElement('div');
+                label.className = 'timeline-hour-label';
+                label.textContent = `${String(hour).padStart(2, '0')}:00`;
+                hourDiv.appendChild(label);
+                
+                const line = document.createElement('div');
+                line.className = 'timeline-hour-line';
+                hourDiv.appendChild(line);
+                
+                const marker = document.createElement('div');
+                marker.className = 'timeline-hour-marker';
+                hourDiv.appendChild(marker);
+                
+                timelineHours.appendChild(hourDiv);
+            }
+            
+            // Set timeline height
+            const totalHours = endHour - startHour + 1;
+            const totalMinutes = endMinute;
+            const totalHeight = (totalHours * 60) + totalMinutes;
+            timelineHours.style.height = `${totalHeight}px`;
+            
+            // Update timeline sessions container height
+            document.getElementById('timelineSessions').style.height = `${totalHeight}px`;
+        }
+
+        function closeTimePicker() {
+            document.getElementById('timePickerModal').classList.remove('active');
+            selectedDateForTimePicker = null;
+            generatedSessions = [];
+        }
+
+        function timeToMinutes(timeStr) {
+            const [hours, minutes] = timeStr.split(':').map(Number);
+            return hours * 60 + minutes;
+        }
+
+        function minutesToTime(minutes) {
+            const hours = Math.floor(minutes / 60);
+            const mins = minutes % 60;
+            return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+        }
+
+        function generateSessions() {
+            const startTime = document.getElementById('startTime').value;
+            const endTime = document.getElementById('endTime').value;
+            const sessionLength = parseInt(document.getElementById('sessionLength').value) || 60;
+            const breakDuration = parseInt(document.getElementById('breakDuration').value) || 10;
+
+            if (!startTime || !endTime) {
+                if (typeof showNotification !== 'undefined') {
+                    showNotification('Please select start and end times', 'error');
+                }
+                return;
+            }
+
+            if (startTime >= endTime) {
+                if (typeof showNotification !== 'undefined') {
+                    showNotification('End time must be after start time', 'error');
+                }
+                return;
+            }
+
+            // Reinitialize timeline with new times
+            initializeTimeline();
+
+            const startMinutes = timeToMinutes(startTime);
+            const endMinutes = timeToMinutes(endTime);
+            const totalDuration = endMinutes - startMinutes;
+
+            if (totalDuration < sessionLength) {
+                if (typeof showNotification !== 'undefined') {
+                    showNotification('Time range is too short for the session length', 'error');
+                }
+                return;
+            }
+
+            generatedSessions = [];
+            let currentStart = startMinutes;
+
+            while (currentStart + sessionLength <= endMinutes) {
+                const sessionEnd = currentStart + sessionLength;
+                generatedSessions.push({
+                    start: minutesToTime(currentStart),
+                    end: minutesToTime(sessionEnd),
+                    length: sessionLength,
+                    recurrence: 'one_time'
+                });
+                currentStart = sessionEnd + breakDuration;
+            }
+
+            renderSessionsList();
+        }
+
+        function renderSessionsList() {
+            const timelineSessions = document.getElementById('timelineSessions');
+            const emptyMessage = document.getElementById('emptySessionsMessage');
+            
+            if (generatedSessions.length === 0) {
+                timelineSessions.innerHTML = '';
+                if (emptyMessage) emptyMessage.style.display = 'block';
+                return;
+            }
+
+            if (emptyMessage) emptyMessage.style.display = 'none';
+            
+            const startTime = document.getElementById('startTime').value;
+            const startMinutes = timeToMinutes(startTime);
+            
+            timelineSessions.innerHTML = generatedSessions.map((session, index) => {
+                const sessionStartMinutes = timeToMinutes(session.start);
+                const sessionEndMinutes = timeToMinutes(session.end);
+                const topPosition = sessionStartMinutes - startMinutes;
+                const height = sessionEndMinutes - sessionStartMinutes;
+                
+                return `
+                    <div class="session-suggestion-item" 
+                         data-index="${index}"
+                         style="top: ${topPosition}px; height: ${height}px;"
+                         draggable="true">
+                        <div class="session-suggestion-info">
+                            <div class="session-suggestion-time">${session.start} - ${session.end}</div>
+                            <div class="session-suggestion-duration">${session.length} min</div>
+                        </div>
+                        <div class="session-suggestion-actions">
+                            <div class="session-recurrence-dropdown">
+                                <button class="session-recurrence-btn" onclick="toggleRecurrenceDropdown(this, event)">
+                                    <span class="recurrence-label">${getRecurrenceLabel(session.recurrence)}</span>
+                                    <i class="fas fa-chevron-down"></i>
+                                </button>
+                                <div class="session-recurrence-menu">
+                                    <button class="session-recurrence-item" onclick="event.stopPropagation(); setRecurrence(${index}, 'one_time')">
+                                        <i class="fas fa-calendar-day"></i> One Time
+                                    </button>
+                                    <button class="session-recurrence-item" onclick="event.stopPropagation(); setRecurrence(${index}, 'daily')">
+                                        <i class="fas fa-redo"></i> Recurring Daily
+                                    </button>
+                                    <button class="session-recurrence-item" onclick="event.stopPropagation(); setRecurrence(${index}, 'weekly')">
+                                        <i class="fas fa-calendar-week"></i> Recurring Weekly
+                                    </button>
+                                    <button class="session-recurrence-item" onclick="event.stopPropagation(); setRecurrence(${index}, 'monthly')">
+                                        <i class="fas fa-calendar-alt"></i> Recurring Monthly
+                                    </button>
+                                </div>
+                            </div>
+                            <button class="btn-delete-session" onclick="event.stopPropagation(); deleteSession(${index})" title="Delete session">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            // Attach drag and drop handlers
+            attachDragAndDrop();
+        }
+
+        function attachDragAndDrop() {
+            const sessions = document.querySelectorAll('.session-suggestion-item');
+            const timelineSessions = document.getElementById('timelineSessions');
+            const startTime = document.getElementById('startTime').value;
+            const startMinutes = timeToMinutes(startTime);
+            
+            sessions.forEach(session => {
+                session.addEventListener('dragstart', function(e) {
+                    this.classList.add('dragging');
+                    e.dataTransfer.effectAllowed = 'move';
+                    e.dataTransfer.setData('text/html', this.outerHTML);
+                    e.dataTransfer.setData('text/plain', this.getAttribute('data-index'));
+                });
+                
+                session.addEventListener('dragend', function() {
+                    this.classList.remove('dragging');
+                });
+            });
+            
+            timelineSessions.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                
+                const dragging = document.querySelector('.dragging');
+                if (!dragging) return;
+                
+                const sessionIndex = parseInt(dragging.getAttribute('data-index'));
+                if (isNaN(sessionIndex) || !generatedSessions[sessionIndex]) return;
+                
+                const session = generatedSessions[sessionIndex];
+                const sessionLength = session.length;
+                
+                // Calculate new position based on mouse Y
+                const rect = timelineSessions.getBoundingClientRect();
+                const y = e.clientY - rect.top;
+                
+                // Snap to 5-minute intervals (each pixel represents 1 minute)
+                const snappedY = Math.round(y / 5) * 5;
+                const newStartMinutes = startMinutes + snappedY;
+                
+                // Ensure within bounds
+                const endTime = document.getElementById('endTime').value;
+                const endMinutes = timeToMinutes(endTime);
+                const maxStart = endMinutes - sessionLength;
+                
+                if (newStartMinutes >= startMinutes && newStartMinutes <= maxStart) {
+                    const newStartTime = minutesToTime(newStartMinutes);
+                    const newEndTime = minutesToTime(newStartMinutes + sessionLength);
+                    
+                    // Update session data
+                    generatedSessions[sessionIndex].start = newStartTime;
+                    generatedSessions[sessionIndex].end = newEndTime;
+                    
+                    // Update visual position immediately for smooth dragging
+                    dragging.style.top = `${snappedY}px`;
+                }
+            });
+            
+            timelineSessions.addEventListener('drop', function(e) {
+                e.preventDefault();
+                const sessionIndex = parseInt(e.dataTransfer.getData('text/plain'));
+                
+                if (!isNaN(sessionIndex) && generatedSessions[sessionIndex]) {
+                    // Re-render to ensure proper positioning and update all sessions
+                    renderSessionsList();
+                }
+            });
+        }
+
+        function getDragAfterElement(container, y) {
+            const draggableElements = [...container.querySelectorAll('.session-suggestion-item:not(.dragging)')];
+            
+            return draggableElements.reduce((closest, child) => {
+                const box = child.getBoundingClientRect();
+                const offset = y - box.top - box.height / 2;
+                
+                if (offset < 0 && offset > closest.offset) {
+                    return { offset: offset, element: child };
+                } else {
+                    return closest;
+                }
+            }, { offset: Number.NEGATIVE_INFINITY }).element;
+        }
+
+        function getRecurrenceLabel(recurrence) {
+            const labels = {
+                'one_time': 'One Time',
+                'daily': 'Daily',
+                'weekly': 'Weekly',
+                'monthly': 'Monthly'
+            };
+            return labels[recurrence] || 'One Time';
+        }
+
+        function toggleRecurrenceDropdown(button, event) {
+            if (event) {
+                event.stopPropagation();
+            }
+            const menu = button.nextElementSibling;
+            const isOpen = menu.classList.contains('show');
+            
+            // Close all dropdowns
+            document.querySelectorAll('.session-recurrence-menu').forEach(m => {
+                m.classList.remove('show');
+            });
+            
+            // Toggle current dropdown
+            if (!isOpen) {
+                menu.classList.add('show');
+            }
+        }
+
+        function setRecurrence(index, recurrence) {
+            if (generatedSessions[index]) {
+                generatedSessions[index].recurrence = recurrence;
+                renderSessionsList();
+            }
+            
+            // Close dropdown
+            document.querySelectorAll('.session-recurrence-menu').forEach(m => {
+                m.classList.remove('show');
+            });
+        }
+
+        function deleteSession(index) {
+            if (index >= 0 && index < generatedSessions.length) {
+                generatedSessions.splice(index, 1);
+                renderSessionsList();
+                
+                if (typeof showNotification !== 'undefined') {
+                    showNotification('Session removed', 'note');
+                }
+            }
+        }
+
+        function saveTimeSlot() {
+            if (!selectedDateForTimePicker) return;
+            
+            if (generatedSessions.length === 0) {
+                if (typeof showNotification !== 'undefined') {
+                    showNotification('Please generate session suggestions first', 'error');
+                } else {
+                    alert('Please generate session suggestions first');
+                }
+                return;
+            }
+
+            const startTime = document.getElementById('startTime').value;
+            const endTime = document.getElementById('endTime').value;
+            
+            if (startTime >= endTime) {
+                if (typeof showNotification !== 'undefined') {
+                    showNotification('End time must be after start time', 'error');
+                } else {
+                    alert('End time must be after start time');
+                }
+                return;
+            }
+            
+            // Store sessions for this date
+            if (!pendingAvailability[selectedDateForTimePicker]) {
+                pendingAvailability[selectedDateForTimePicker] = {
+                    start: startTime,
+                    end: endTime,
+                    sessions: []
+                };
+            }
+            
+            pendingAvailability[selectedDateForTimePicker].sessions = generatedSessions;
+            
+            closeTimePicker();
+            renderCalendar();
+        }
+
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        function saveAvailability() {
+            // Prepare availability data for server
+            const availabilityArray = [];
+            const combinedData = { ...availabilityData, ...pendingAvailability };
+            
+            for (const [dateStr, avail] of Object.entries(combinedData)) {
+                // If it's a new entry with sessions, send all sessions
+                if (avail.sessions && avail.sessions.length > 0) {
+                    avail.sessions.forEach(session => {
+                        availabilityArray.push({
+                            date: dateStr,
+                            start: session.start,
+                            end: session.end,
+                            is_recurring: session.recurrence !== 'one_time',
+                            recurrence_rule: session.recurrence === 'one_time' ? '' : session.recurrence
+                        });
+                    });
+                } else {
+                    // Legacy format - single time range
+                    availabilityArray.push({
+                        date: dateStr,
+                        start: avail.start,
+                        end: avail.end,
+                        is_recurring: false,
+                        recurrence_rule: ''
+                    });
+                }
+            }
+            
+            // Send to server
+            fetch('{% url "general:dashboard_mentor:save_availability" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({ availability: availabilityArray })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Merge pending availability into availabilityData
+                    Object.assign(availabilityData, pendingAvailability);
+                    
+                    // Update button text
+                    document.getElementById('availabilityBtnText').textContent = 'Update Availability';
+                    
+                    // Show success message
+                    if (typeof showNotification !== 'undefined') {
+                        showNotification(data.message || 'Availability saved successfully!', 'success');
+                    } else {
+                        alert(data.message || 'Availability saved successfully!');
+                    }
+                    
+                    exitAvailabilityMode();
+                } else {
+                    if (typeof showNotification !== 'undefined') {
+                        showNotification('Error saving availability: ' + (data.error || 'Unknown error'), 'error');
+                    } else {
+                        alert('Error saving availability: ' + (data.error || 'Unknown error'));
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                if (typeof showNotification !== 'undefined') {
+                    showNotification('Error saving availability. Please try again.', 'error');
+                } else {
+                    alert('Error saving availability. Please try again.');
+                }
+            });
+        }
+
+        // Event Listeners
+        document.getElementById('addAvailabilityBtn').addEventListener('click', function() {
+            enterAvailabilityMode();
+        });
+
+        document.getElementById('cancelAvailabilityBtn').addEventListener('click', function() {
+            exitAvailabilityMode();
+        });
+
+        document.getElementById('saveAvailabilityBtn').addEventListener('click', function() {
+            saveAvailability();
+        });
+
+        document.getElementById('generateSessionsBtn').addEventListener('click', function() {
+            generateSessions();
+        });
+
+        // Update timeline when time inputs change
+        document.getElementById('startTime').addEventListener('change', function() {
+            if (selectedDateForTimePicker) {
+                initializeTimeline();
+                renderSessionsList();
+            }
+        });
+
+        document.getElementById('endTime').addEventListener('change', function() {
+            if (selectedDateForTimePicker) {
+                initializeTimeline();
+                renderSessionsList();
+            }
+        });
+
+        document.getElementById('timePickerSave').addEventListener('click', function() {
+            saveTimeSlot();
+        });
+
+        document.getElementById('timePickerCancel').addEventListener('click', function() {
+            closeTimePicker();
+        });
+
+        // Close modal on overlay click
+        document.getElementById('timePickerModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeTimePicker();
+            }
+        });
+
+        // Check if user has availability and update button text
+        if (Object.keys(availabilityData).length > 0) {
+            document.getElementById('availabilityBtnText').textContent = 'Update Availability';
+        }
+
+        // Initial render
+        renderCalendar();
+    });
+
+    // Dropdown functionality
+    function toggleDropdown(button) {
+        const dropdown = button.nextElementSibling;
+        const isOpen = dropdown.classList.contains('show');
+        
+        // Close all dropdowns
+        document.querySelectorAll('.dropdown-menu').forEach(menu => {
+            menu.classList.remove('show');
+        });
+        
+        // Toggle current dropdown
+        if (!isOpen) {
+            dropdown.classList.add('show');
+        }
+    }
+
+    // Close dropdowns when clicking outside
+    document.addEventListener('click', function(event) {
+        if (!event.target.closest('.dropdown')) {
+            document.querySelectorAll('.dropdown-menu').forEach(menu => {
+                menu.classList.remove('show');
+            });
+        }
+        if (!event.target.closest('.session-recurrence-dropdown')) {
+            document.querySelectorAll('.session-recurrence-menu').forEach(menu => {
+                menu.classList.remove('show');
+            });
+        }
+    });
+</script>
 {% endblock %}

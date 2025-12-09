@@ -488,10 +488,101 @@ def billing(request):
 def my_sessions(request):
     if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
         return redirect('general:index')
+    
+    # Get existing availability for the mentor
+    from .models import MentorAvailability
+    availabilities = MentorAvailability.objects.filter(
+        mentor=request.user,
+        is_active=True
+    ).order_by('start_datetime')
+    
+    # Format availability data for frontend
+    availability_data = {}
+    for avail in availabilities:
+        date_str = avail.start_datetime.date().isoformat()
+        if date_str not in availability_data:
+            availability_data[date_str] = []
+        availability_data[date_str].append({
+            'start': avail.start_datetime.time().strftime('%H:%M'),
+            'end': avail.end_datetime.time().strftime('%H:%M'),
+            'id': avail.id
+        })
+    
+    # Get mentor profile for session_length
+    mentor_profile = request.user.mentor_profile if hasattr(request.user, 'mentor_profile') else None
+    session_length = mentor_profile.session_length if mentor_profile and mentor_profile.session_length else 60
+    
     return render(request, 'dashboard_mentor/my_sessions.html', {
         'common_timezones': COMMON_TIMEZONES,
         'debug': settings.DEBUG,
+        'availability_data': availability_data,
+        'session_length': session_length,
     })
+
+@login_required
+@require_POST
+def save_availability(request):
+    """Save mentor availability from frontend"""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        return JsonResponse({'success': False, 'error': 'Only mentors can save availability'}, status=403)
+    
+    try:
+        from .models import MentorAvailability
+        from datetime import datetime
+        
+        data = json.loads(request.body)
+        availability_list = data.get('availability', [])
+        
+        # Delete existing availability for this mentor (or you could update instead)
+        # For now, we'll replace all with new ones
+        MentorAvailability.objects.filter(mentor=request.user).delete()
+        
+        # Create new availability entries
+        created_count = 0
+        for avail_item in availability_list:
+            date_str = avail_item.get('date')
+            start_time = avail_item.get('start')
+            end_time = avail_item.get('end')
+            is_recurring = avail_item.get('is_recurring', False)
+            recurrence_rule = avail_item.get('recurrence_rule', '')
+            
+            if not all([date_str, start_time, end_time]):
+                continue
+            
+            # Combine date and time into datetime
+            start_datetime_str = f"{date_str} {start_time}"
+            end_datetime_str = f"{date_str} {end_time}"
+            
+            try:
+                start_datetime = datetime.strptime(start_datetime_str, '%Y-%m-%d %H:%M')
+                end_datetime = datetime.strptime(end_datetime_str, '%Y-%m-%d %H:%M')
+                
+                # Validate end > start
+                if end_datetime <= start_datetime:
+                    continue
+                
+                MentorAvailability.objects.create(
+                    mentor=request.user,
+                    start_datetime=start_datetime,
+                    end_datetime=end_datetime,
+                    is_recurring=is_recurring,
+                    recurrence_rule=recurrence_rule,
+                    is_active=True
+                )
+                created_count += 1
+            except ValueError as e:
+                continue
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Successfully saved {created_count} availability slot(s)',
+            'count': created_count
+        })
+        
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON data'}, status=400)
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 
 @login_required

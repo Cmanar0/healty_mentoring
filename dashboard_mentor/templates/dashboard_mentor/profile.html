@@ -424,7 +424,7 @@
                     </div>
 
                     <!-- Session Settings (Redesigned) -->
-                    <div class="session-settings-container">
+                    <div class="session-settings-container" id="session-configuration">
                         <div class="session-settings-header">
                             <h4 class="session-settings-title">
                                 <i class="fas fa-sliders-h" style="color: var(--dash-primary);"></i> Session Configuration
@@ -3147,5 +3147,25 @@ document.addEventListener('DOMContentLoaded', function() {
         </div>
     </div>
 </div>
+
+<script>
+    // Scroll to session configuration section if hash is present
+    document.addEventListener('DOMContentLoaded', function() {
+        if (window.location.hash === '#session-configuration') {
+            const targetElement = document.getElementById('session-configuration');
+            if (targetElement) {
+                setTimeout(function() {
+                    targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    // Highlight the section briefly
+                    targetElement.style.transition = 'box-shadow 0.3s ease';
+                    targetElement.style.boxShadow = '0 0 0 4px rgba(59, 130, 246, 0.3)';
+                    setTimeout(function() {
+                        targetElement.style.boxShadow = '';
+                    }, 2000);
+                }, 100);
+            }
+        }
+    });
+</script>
 {% endblock %}
 
