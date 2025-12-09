@@ -852,12 +852,40 @@
         left: 60px;
         right: 0;
         bottom: 0;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        padding: 0 8px;
+    }
+
+    .timeline-column {
+        position: relative;
+        height: 100%;
+    }
+
+    .timeline-column-right {
+        /* Right column for overlapping sessions */
+        border-left: 2px dashed var(--dash-border);
+        padding-left: 8px;
+    }
+
+    .timeline-column-label {
+        position: sticky;
+        top: 0;
+        background: white;
+        padding: 8px 12px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--dash-text-muted);
+        border-bottom: 2px solid var(--dash-border);
+        z-index: 5;
     }
 
     .session-suggestion-item {
         position: absolute;
-        left: 8px;
-        right: 8px;
+        left: 0;
+        right: 0;
+        max-width: 100%;
         background: #3b82f6;
         color: white;
         border-radius: 6px;
@@ -868,10 +896,37 @@
         align-items: center;
         justify-content: space-between;
         gap: 8px;
-        transition: all 0.2s;
+        transition: box-shadow 0.2s, transform 0.1s;
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         z-index: 10;
         min-height: 40px;
+        user-select: none;
+    }
+
+    .session-suggestion-item.dragging {
+        transition: none;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+
+    .session-drop-placeholder {
+        position: absolute;
+        left: 0;
+        right: 0;
+        background: rgba(59, 130, 246, 0.2);
+        border: 2px dashed #3b82f6;
+        border-radius: 6px;
+        pointer-events: none;
+        z-index: 5;
+        opacity: 0.6;
+    }
+
+    .session-drop-placeholder.overlapping {
+        background: rgba(239, 68, 68, 0.2);
+        border-color: #ef4444;
+    }
+
+    .session-suggestion-item.overlapping {
+        background: #ef4444;
     }
 
     .session-suggestion-item:active {
@@ -1699,20 +1754,11 @@
         }
 
         function initializeTimeline() {
-            const startTime = document.getElementById('startTime').value;
-            const endTime = document.getElementById('endTime').value;
-            
-            if (!startTime || !endTime) return;
-            
-            const startHour = parseInt(startTime.split(':')[0]);
-            const endHour = parseInt(endTime.split(':')[0]);
-            const endMinute = parseInt(endTime.split(':')[1]);
-            
             const timelineHours = document.getElementById('timelineHours');
             timelineHours.innerHTML = '';
             
-            // Create hour markers
-            for (let hour = startHour; hour <= endHour; hour++) {
+            // Create hour markers for full 24-hour day (0-23)
+            for (let hour = 0; hour < 24; hour++) {
                 const hourDiv = document.createElement('div');
                 hourDiv.className = 'timeline-hour';
                 hourDiv.style.height = '60px';
@@ -1733,10 +1779,8 @@
                 timelineHours.appendChild(hourDiv);
             }
             
-            // Set timeline height
-            const totalHours = endHour - startHour + 1;
-            const totalMinutes = endMinute;
-            const totalHeight = (totalHours * 60) + totalMinutes;
+            // Set timeline height for 24 hours (24 * 60 = 1440 pixels)
+            const totalHeight = 24 * 60;
             timelineHours.style.height = `${totalHeight}px`;
             
             // Update timeline sessions container height
@@ -1795,7 +1839,8 @@
             }
 
             generatedSessions = [];
-            let currentStart = startMinutes;
+            // Snap start time to nearest 5-minute interval
+            let currentStart = Math.round(startMinutes / 5) * 5;
 
             while (currentStart + sessionLength <= endMinutes) {
                 const sessionEnd = currentStart + sessionLength;
@@ -1803,9 +1848,11 @@
                     start: minutesToTime(currentStart),
                     end: minutesToTime(sessionEnd),
                     length: sessionLength,
-                    recurrence: 'one_time'
+                    recurrence: 'one_time',
+                    overlapping: false // Initialize as non-overlapping
                 });
-                currentStart = sessionEnd + breakDuration;
+                // Next session starts after break, also snapped to 5-minute interval
+                currentStart = Math.round((sessionEnd + breakDuration) / 5) * 5;
             }
 
             renderSessionsList();
@@ -1817,128 +1864,364 @@
             
             if (generatedSessions.length === 0) {
                 timelineSessions.innerHTML = '';
-                if (emptyMessage) emptyMessage.style.display = 'block';
+                if (emptyMessage) {
+                    emptyMessage.style.display = 'block';
+                    emptyMessage.style.gridColumn = '1 / -1';
+                }
                 return;
             }
 
             if (emptyMessage) emptyMessage.style.display = 'none';
             
-            const startTime = document.getElementById('startTime').value;
-            const startMinutes = timeToMinutes(startTime);
+            // Timeline starts at 0:00 (midnight), so positions are directly in minutes from midnight
             
-            timelineSessions.innerHTML = generatedSessions.map((session, index) => {
+            // Check for overlaps and calculate positions
+            // IMPORTANT: We only read from generatedSessions, never modify times here
+            // IMPORTANT: We use the stored 'overlapping' property for each session
+            // Only the dragged session's 'overlapping' property is updated during drag
+            const sessionPositions = generatedSessions.map((session, index) => {
+                // Parse times exactly as stored - no rounding or modification
                 const sessionStartMinutes = timeToMinutes(session.start);
                 const sessionEndMinutes = timeToMinutes(session.end);
-                const topPosition = sessionStartMinutes - startMinutes;
-                const height = sessionEndMinutes - sessionStartMinutes;
                 
-                return `
-                    <div class="session-suggestion-item" 
-                         data-index="${index}"
-                         style="top: ${topPosition}px; height: ${height}px;"
-                         draggable="true">
-                        <div class="session-suggestion-info">
-                            <div class="session-suggestion-time">${session.start} - ${session.end}</div>
-                            <div class="session-suggestion-duration">${session.length} min</div>
-                        </div>
-                        <div class="session-suggestion-actions">
-                            <div class="session-recurrence-dropdown">
-                                <button class="session-recurrence-btn" onclick="toggleRecurrenceDropdown(this, event)">
-                                    <span class="recurrence-label">${getRecurrenceLabel(session.recurrence)}</span>
-                                    <i class="fas fa-chevron-down"></i>
-                                </button>
-                                <div class="session-recurrence-menu">
-                                    <button class="session-recurrence-item" onclick="event.stopPropagation(); setRecurrence(${index}, 'one_time')">
-                                        <i class="fas fa-calendar-day"></i> One Time
-                                    </button>
-                                    <button class="session-recurrence-item" onclick="event.stopPropagation(); setRecurrence(${index}, 'daily')">
-                                        <i class="fas fa-redo"></i> Recurring Daily
-                                    </button>
-                                    <button class="session-recurrence-item" onclick="event.stopPropagation(); setRecurrence(${index}, 'weekly')">
-                                        <i class="fas fa-calendar-week"></i> Recurring Weekly
-                                    </button>
-                                    <button class="session-recurrence-item" onclick="event.stopPropagation(); setRecurrence(${index}, 'monthly')">
-                                        <i class="fas fa-calendar-alt"></i> Recurring Monthly
-                                    </button>
-                                </div>
-                            </div>
-                            <button class="btn-delete-session" onclick="event.stopPropagation(); deleteSession(${index})" title="Delete session">
-                                <i class="fas fa-times"></i>
+                // Use the stored 'overlapping' property - this is only set for the dragged session
+                // Other sessions keep their original overlapping status
+                const hasOverlap = session.overlapping || false;
+                
+                return {
+                    index,
+                    session: {
+                        ...session, // Preserve all session data exactly
+                        start: session.start, // Keep original time strings
+                        end: session.end
+                    },
+                    topPosition: sessionStartMinutes, // Direct minutes from midnight
+                    height: sessionEndMinutes - sessionStartMinutes,
+                    hasOverlap, // Use stored property, don't recalculate
+                    overlapCount: 0 // Not used anymore
+                };
+            });
+            
+            // Create two columns with labels
+            timelineSessions.innerHTML = `
+                <div class="timeline-column timeline-column-left" id="timelineColumnLeft">
+                    <div class="timeline-column-label">Available Sessions</div>
+                </div>
+                <div class="timeline-column timeline-column-right" id="timelineColumnRight">
+                    <div class="timeline-column-label">Overlapping Sessions</div>
+                </div>
+            `;
+            
+            const leftColumn = document.getElementById('timelineColumnLeft');
+            const rightColumn = document.getElementById('timelineColumnRight');
+            
+            // Render sessions into appropriate columns
+            const leftLabelHeight = leftColumn.querySelector('.timeline-column-label')?.offsetHeight || 0;
+            const rightLabelHeight = rightColumn.querySelector('.timeline-column-label')?.offsetHeight || 0;
+            
+            sessionPositions.forEach(({index, session, topPosition, height, hasOverlap, overlapCount}) => {
+                const overlapClass = hasOverlap ? 'overlapping' : '';
+                const targetColumn = hasOverlap ? rightColumn : leftColumn;
+                
+                const sessionDiv = document.createElement('div');
+                sessionDiv.className = `session-suggestion-item ${overlapClass}`;
+                sessionDiv.setAttribute('data-index', index);
+                sessionDiv.setAttribute('draggable', 'true');
+                const labelHeight = hasOverlap ? rightLabelHeight : leftLabelHeight;
+                sessionDiv.style.top = `${topPosition + labelHeight}px`;
+                sessionDiv.style.height = `${height}px`;
+                
+                sessionDiv.innerHTML = `
+                    <div class="session-suggestion-info">
+                        <div class="session-suggestion-time">${session.start} - ${session.end}</div>
+                        <div class="session-suggestion-duration">${session.length} min</div>
+                    </div>
+                    <div class="session-suggestion-actions">
+                        <div class="session-recurrence-dropdown">
+                            <button class="session-recurrence-btn" onclick="toggleRecurrenceDropdown(this, event)">
+                                <span class="recurrence-label">${getRecurrenceLabel(session.recurrence)}</span>
+                                <i class="fas fa-chevron-down"></i>
                             </button>
+                            <div class="session-recurrence-menu">
+                                <button class="session-recurrence-item" onclick="event.stopPropagation(); setRecurrence(${index}, 'one_time')">
+                                    <i class="fas fa-calendar-day"></i> One Time
+                                </button>
+                                <button class="session-recurrence-item" onclick="event.stopPropagation(); setRecurrence(${index}, 'daily')">
+                                    <i class="fas fa-redo"></i> Recurring Daily
+                                </button>
+                                <button class="session-recurrence-item" onclick="event.stopPropagation(); setRecurrence(${index}, 'weekly')">
+                                    <i class="fas fa-calendar-week"></i> Recurring Weekly
+                                </button>
+                                <button class="session-recurrence-item" onclick="event.stopPropagation(); setRecurrence(${index}, 'monthly')">
+                                    <i class="fas fa-calendar-alt"></i> Recurring Monthly
+                                </button>
+                            </div>
                         </div>
+                        <button class="btn-delete-session" onclick="event.stopPropagation(); deleteSession(${index})" title="Delete session">
+                            <i class="fas fa-times"></i>
+                        </button>
                     </div>
                 `;
-            }).join('');
+                
+                targetColumn.appendChild(sessionDiv);
+            });
             
             // Attach drag and drop handlers
             attachDragAndDrop();
         }
 
         function attachDragAndDrop() {
-            const sessions = document.querySelectorAll('.session-suggestion-item');
-            const timelineSessions = document.getElementById('timelineSessions');
-            const startTime = document.getElementById('startTime').value;
-            const startMinutes = timeToMinutes(startTime);
+            // Wait for interact.js to load
+            if (typeof interact === 'undefined') {
+                console.error('interact.js not loaded');
+                setTimeout(attachDragAndDrop, 100);
+                return;
+            }
+
+            const timelineContainer = document.getElementById('timelineContainer');
+            const leftColumn = document.getElementById('timelineColumnLeft');
+            const rightColumn = document.getElementById('timelineColumnRight');
             
-            sessions.forEach(session => {
-                session.addEventListener('dragstart', function(e) {
-                    this.classList.add('dragging');
-                    e.dataTransfer.effectAllowed = 'move';
-                    e.dataTransfer.setData('text/html', this.outerHTML);
-                    e.dataTransfer.setData('text/plain', this.getAttribute('data-index'));
-                });
-                
-                session.addEventListener('dragend', function() {
-                    this.classList.remove('dragging');
-                });
-            });
+            let draggedElement = null;
+            let draggedIndex = null;
+            let placeholder = null;
+            let grabOffsetY = 0; // Where user grabbed the element (pixels from top)
+            let timeDisplayElement = null; // Element that shows the time in the dragged session
             
-            timelineSessions.addEventListener('dragover', function(e) {
-                e.preventDefault();
-                e.dataTransfer.dropEffect = 'move';
-                
-                const dragging = document.querySelector('.dragging');
-                if (!dragging) return;
-                
-                const sessionIndex = parseInt(dragging.getAttribute('data-index'));
-                if (isNaN(sessionIndex) || !generatedSessions[sessionIndex]) return;
-                
-                const session = generatedSessions[sessionIndex];
-                const sessionLength = session.length;
-                
-                // Calculate new position based on mouse Y
-                const rect = timelineSessions.getBoundingClientRect();
-                const y = e.clientY - rect.top;
-                
-                // Snap to 5-minute intervals (each pixel represents 1 minute)
-                const snappedY = Math.round(y / 5) * 5;
-                const newStartMinutes = startMinutes + snappedY;
-                
-                // Ensure within bounds
-                const endTime = document.getElementById('endTime').value;
-                const endMinutes = timeToMinutes(endTime);
-                const maxStart = endMinutes - sessionLength;
-                
-                if (newStartMinutes >= startMinutes && newStartMinutes <= maxStart) {
-                    const newStartTime = minutesToTime(newStartMinutes);
-                    const newEndTime = minutesToTime(newStartMinutes + sessionLength);
-                    
-                    // Update session data
-                    generatedSessions[sessionIndex].start = newStartTime;
-                    generatedSessions[sessionIndex].end = newEndTime;
-                    
-                    // Update visual position immediately for smooth dragging
-                    dragging.style.top = `${snappedY}px`;
+            // Create placeholder element
+            function createPlaceholder() {
+                const ph = document.createElement('div');
+                ph.className = 'session-drop-placeholder';
+                ph.style.display = 'none';
+                return ph;
+            }
+            
+            // Update placeholder position
+            function updatePlaceholder(column, topMinutes, heightMinutes, isOverlapping) {
+                if (!placeholder) {
+                    placeholder = createPlaceholder();
+                    column.appendChild(placeholder);
                 }
-            });
-            
-            timelineSessions.addEventListener('drop', function(e) {
-                e.preventDefault();
-                const sessionIndex = parseInt(e.dataTransfer.getData('text/plain'));
                 
-                if (!isNaN(sessionIndex) && generatedSessions[sessionIndex]) {
-                    // Re-render to ensure proper positioning and update all sessions
-                    renderSessionsList();
+                const labelHeight = column.querySelector('.timeline-column-label')?.offsetHeight || 0;
+                placeholder.style.top = `${topMinutes + labelHeight}px`;
+                placeholder.style.height = `${heightMinutes}px`;
+                placeholder.style.display = 'block';
+                
+                if (isOverlapping) {
+                    placeholder.classList.add('overlapping');
+                } else {
+                    placeholder.classList.remove('overlapping');
+                }
+                
+                // Move placeholder to correct column if needed
+                const currentColumn = placeholder.parentElement;
+                if (currentColumn !== column) {
+                    column.appendChild(placeholder);
+                }
+            }
+            
+            function removePlaceholder() {
+                if (placeholder) {
+                    placeholder.style.display = 'none';
+                }
+            }
+            
+            // Update time display in dragged element
+            function updateTimeDisplay(startTime, endTime) {
+                if (timeDisplayElement) {
+                    timeDisplayElement.textContent = `${startTime} - ${endTime}`;
+                }
+            }
+            
+            // Use interact.js for drag and drop
+            interact('.session-suggestion-item').draggable({
+                ignoreFrom: 'button, .session-recurrence-menu, .session-recurrence-dropdown, .session-recurrence-btn, .btn-delete-session',
+                listeners: {
+                    start(event) {
+                        draggedElement = event.target.closest('.session-suggestion-item');
+                        if (!draggedElement) return;
+                        
+                        draggedIndex = parseInt(draggedElement.getAttribute('data-index'));
+                        
+                        if (draggedIndex === null || !generatedSessions[draggedIndex]) {
+                            event.preventDefault();
+                            return;
+                        }
+                        
+                        // Calculate grab offset (where user clicked relative to element top)
+                        const elementRect = draggedElement.getBoundingClientRect();
+                        grabOffsetY = event.client.y - elementRect.top;
+                        
+                        // Find the time display element
+                        timeDisplayElement = draggedElement.querySelector('.session-suggestion-time');
+                        
+                        draggedElement.classList.add('dragging');
+                        draggedElement.style.opacity = '0.7';
+                        draggedElement.style.zIndex = '1000';
+                    },
+                    
+                    move(event) {
+                        if (draggedIndex === null || !generatedSessions[draggedIndex] || !draggedElement) return;
+                        
+                        const session = generatedSessions[draggedIndex];
+                        const sessionLength = session.length;
+                        
+                        // Get timeline container position and scroll
+                        const timelineRect = timelineContainer.getBoundingClientRect();
+                        const scrollTop = timelineContainer.scrollTop;
+                        
+                        // Get current mouse position relative to timeline
+                        const mouseYViewport = event.client.y - timelineRect.top;
+                        const mouseYAbsolute = mouseYViewport + scrollTop;
+                        
+                        // Calculate where the top of the element should be based on mouse position
+                        // Subtract the grab offset to account for where user grabbed it
+                        const targetTopAbsolute = mouseYAbsolute - grabOffsetY;
+                        
+                        // Ensure we don't go negative
+                        const clampedY = Math.max(0, targetTopAbsolute);
+                        
+                        // Convert pixels to minutes and snap to 5-minute intervals
+                        const mouseMinutes = Math.round(clampedY);
+                        const snappedMinutes = Math.round(mouseMinutes / 5) * 5;
+                        
+                        // Ensure we don't exceed 24 hours
+                        const finalMinutes = Math.min(snappedMinutes, 1435);
+                        const maxStart = Math.min(1440 - sessionLength, finalMinutes);
+                        const finalStartMinutes = Math.max(0, maxStart);
+                        const finalY = finalStartMinutes;
+                        const finalEndMinutes = finalStartMinutes + sessionLength;
+                        
+                        // Convert to time strings for display
+                        const newStartTime = minutesToTime(finalStartMinutes);
+                        const newEndTime = minutesToTime(finalEndMinutes);
+                        
+                        // Update time display in real-time
+                        updateTimeDisplay(newStartTime, newEndTime);
+                        
+                        // Check for overlaps with other sessions
+                        // IMPORTANT: Only check collisions with sessions in the left column (non-overlapping)
+                        // Sessions in the right column (overlapping) should be ignored
+                        let hasOverlap = false;
+                        for (let i = 0; i < generatedSessions.length; i++) {
+                            if (i === draggedIndex) continue;
+                            
+                            const otherSession = generatedSessions[i];
+                            
+                            // Only check collisions with sessions that are NOT overlapping (left column)
+                            // Ignore sessions that are already in the overlapping column
+                            if (otherSession.overlapping === true) {
+                                continue; // Skip sessions in the right column
+                            }
+                            
+                            const otherStart = timeToMinutes(otherSession.start);
+                            const otherEnd = timeToMinutes(otherSession.end);
+                            
+                            if ((finalStartMinutes < otherEnd && finalEndMinutes > otherStart)) {
+                                hasOverlap = true;
+                                break;
+                            }
+                        }
+                        
+                        // Determine target column
+                        const targetColumn = hasOverlap ? rightColumn : leftColumn;
+                        const targetLabelHeight = targetColumn.querySelector('.timeline-column-label')?.offsetHeight || 0;
+                        
+                        // Update placeholder - shows where it will drop
+                        updatePlaceholder(targetColumn, finalY, sessionLength, hasOverlap);
+                        
+                        // Move dragged element to correct column if needed
+                        const currentColumn = draggedElement.parentElement;
+                        if (currentColumn !== targetColumn) {
+                            targetColumn.appendChild(draggedElement);
+                        }
+                        
+                        // Position dragged element exactly at the same Y position as placeholder
+                        draggedElement.style.top = `${finalY + targetLabelHeight}px`;
+                        
+                        if (hasOverlap) {
+                            draggedElement.classList.add('overlapping');
+                        } else {
+                            draggedElement.classList.remove('overlapping');
+                        }
+                    },
+                    
+                    end(event) {
+                        if (draggedIndex === null || !generatedSessions[draggedIndex] || !draggedElement) {
+                            removePlaceholder();
+                            return;
+                        }
+                        
+                        // Get final position from dragged element's current position
+                        const session = generatedSessions[draggedIndex];
+                        const sessionLength = session.length;
+                        
+                        const timelineRect = timelineContainer.getBoundingClientRect();
+                        const scrollTop = timelineContainer.scrollTop;
+                        const elementRect = draggedElement.getBoundingClientRect();
+                        const elementTopViewport = elementRect.top - timelineRect.top;
+                        const elementTopAbsolute = elementTopViewport + scrollTop;
+                        
+                        // Account for column label height
+                        const currentColumn = draggedElement.parentElement;
+                        const labelHeight = currentColumn.querySelector('.timeline-column-label')?.offsetHeight || 0;
+                        const elementTopInTimeline = elementTopAbsolute - labelHeight;
+                        
+                        // Snap to 5-minute intervals
+                        const mouseMinutes = Math.round(elementTopInTimeline);
+                        const snappedMinutes = Math.round(mouseMinutes / 5) * 5;
+                        const finalMinutes = Math.min(snappedMinutes, 1435);
+                        const maxStart = Math.min(1440 - sessionLength, finalMinutes);
+                        const finalStartMinutes = Math.max(0, maxStart);
+                        const finalEndMinutes = finalStartMinutes + sessionLength;
+                        
+                        // Check for overlaps
+                        // IMPORTANT: Only check collisions with sessions in the left column (non-overlapping)
+                        // Sessions in the right column (overlapping) should be ignored
+                        let hasOverlap = false;
+                        for (let i = 0; i < generatedSessions.length; i++) {
+                            if (i === draggedIndex) continue;
+                            
+                            const otherSession = generatedSessions[i];
+                            
+                            // Only check collisions with sessions that are NOT overlapping (left column)
+                            // Ignore sessions that are already in the overlapping column
+                            if (otherSession.overlapping === true) {
+                                continue; // Skip sessions in the right column
+                            }
+                            
+                            const otherStart = timeToMinutes(otherSession.start);
+                            const otherEnd = timeToMinutes(otherSession.end);
+                            
+                            if ((finalStartMinutes < otherEnd && finalEndMinutes > otherStart)) {
+                                hasOverlap = true;
+                                break;
+                            }
+                        }
+                        
+                        // Update session data
+                        const newStartTime = minutesToTime(finalStartMinutes);
+                        const newEndTime = minutesToTime(finalEndMinutes);
+                        
+                        generatedSessions[draggedIndex].start = newStartTime;
+                        generatedSessions[draggedIndex].end = newEndTime;
+                        generatedSessions[draggedIndex].overlapping = hasOverlap;
+                        
+                        // Clean up
+                        draggedElement.classList.remove('dragging');
+                        draggedElement.style.opacity = '1';
+                        draggedElement.style.zIndex = '10';
+                        removePlaceholder();
+                        
+                        // Re-render to ensure consistency
+                        renderSessionsList();
+                        
+                        draggedElement = null;
+                        draggedIndex = null;
+                        grabOffsetY = 0;
+                        timeDisplayElement = null;
+                    }
                 }
             });
         }
@@ -2222,4 +2505,9 @@
         }
     });
 </script>
+
+{% block extra_js %}
+{{ block.super }}
+<script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
+{% endblock %}
 {% endblock %}
