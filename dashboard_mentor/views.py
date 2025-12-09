@@ -7,7 +7,6 @@ from django.views.decorators.http import require_POST
 from django.utils.crypto import get_random_string
 from django.utils import timezone
 from accounts.models import CustomUser, UserProfile, MentorClientRelationship
-from dashboard_mentor.models import Qualification
 from dashboard_mentor.constants import (
     PREDEFINED_MENTOR_TYPES, PREDEFINED_TAGS, 
     PREDEFINED_LANGUAGES, PREDEFINED_CATEGORIES,
@@ -112,9 +111,7 @@ def account(request):
     consider(profile.profile_picture, 'profile_picture', 'Profile Picture')
     
     # Field 8: Qualifications (at least one required)
-    # Check through the through model since we use a custom through model
-    from dashboard_mentor.models import MentorProfileQualification
-    has_qualifications = MentorProfileQualification.objects.filter(mentor_profile=profile).exists()
+    has_qualifications = len(profile.qualifications) > 0 if profile.qualifications else False
     consider(has_qualifications, 'qualifications', 'Qualifications')
     
     # Field 9-11: Tags, Languages, Categories (at least one of each required)
@@ -328,47 +325,29 @@ def profile(request):
             profile.linkedin_name = linkedin_name.strip() if linkedin_name else None
             profile.personal_website = personal_website.strip() if personal_website else None
             
-            profile.save()
-            
             # Handle qualifications (from JSON array)
             qualifications_data = request.POST.get("qualifications_data", "")
             if qualifications_data:
                 try:
                     qualifications_list = json.loads(qualifications_data)
-                    # Import the through model
-                    from dashboard_mentor.models import MentorProfileQualification
-                    # Clear existing qualifications
-                    MentorProfileQualification.objects.filter(mentor_profile=profile).delete()
-                    # Add qualifications in order using through model
-                    for order, qual_data in enumerate(qualifications_list):
+                    # Clean and validate qualifications data
+                    cleaned_qualifications = []
+                    for qual_data in qualifications_list:
                         title = qual_data.get('title', '').strip()
-                        subtitle = qual_data.get('subtitle', '').strip()
-                        description = qual_data.get('description', '').strip()
-                        qual_type = qual_data.get('type', 'certificate').strip()
-                        if title:
-                            qual, created = Qualification.objects.get_or_create(
-                                title=title,
-                                defaults={'subtitle': subtitle, 'description': description, 'type': qual_type}
-                            )
-                            if not created:
-                                if subtitle:
-                                    qual.subtitle = subtitle
-                                if description:
-                                    qual.description = description
-                                if qual_type:
-                                    qual.type = qual_type
-                                qual.save()
-                            # Create through model instance with order
-                            MentorProfileQualification.objects.create(
-                                mentor_profile=profile,
-                                qualification=qual,
-                                order=order
-                            )
+                        if title:  # Only add if title exists
+                            cleaned_qualifications.append({
+                                'title': title,
+                                'subtitle': qual_data.get('subtitle', '').strip(),
+                                'description': qual_data.get('description', '').strip(),
+                                'type': qual_data.get('type', 'certificate').strip()
+                            })
+                    profile.qualifications = cleaned_qualifications
                 except json.JSONDecodeError:
-                    pass
+                    profile.qualifications = []
             else:
-                from dashboard_mentor.models import MentorProfileQualification
-                MentorProfileQualification.objects.filter(mentor_profile=profile).delete()
+                profile.qualifications = []
+            
+            profile.save()
             
             from django.contrib import messages
             messages.success(request, 'Profile updated successfully!')
@@ -413,9 +392,7 @@ def profile(request):
     consider(profile.profile_picture, 'profile_picture', 'Profile Picture')
     
     # Field 8: Qualifications (at least one required)
-    # Check through the through model since we use a custom through model
-    from dashboard_mentor.models import MentorProfileQualification
-    has_qualifications = MentorProfileQualification.objects.filter(mentor_profile=profile).exists()
+    has_qualifications = len(profile.qualifications) > 0 if profile.qualifications else False
     consider(has_qualifications, 'qualifications', 'Qualifications')
     
     # Field 9-11: Tags, Languages, Categories (at least one of each required)

@@ -711,15 +711,24 @@
             {% endif %}
 
             <!-- Qualifications Section -->
-            {% if mentor_profile.get_qualifications_ordered %}
+            {% if mentor_profile.qualifications %}
             <div class="mp-section">
                 <h2 class="mp-section-title">Qualifications</h2>
                 <div class="mp-card">
-                    {% for mpq in mentor_profile.get_qualifications_ordered %}
-                        {% with qual=mpq.qualification %}
+                    {% for qual in mentor_profile.qualifications %}
                         <div class="mp-qual-item">
                             <div class="mp-qual-icon">
-                                <i class="fas {{ qual.get_icon }}"></i>
+                                {% if qual.type %}
+                                    {% for qtype in qualification_types %}
+                                        {% if qtype.id == qual.type %}
+                                            <i class="fas {{ qtype.icon }}"></i>
+                                        {% endif %}
+                                    {% empty %}
+                                        <i class="fas fa-certificate"></i>
+                                    {% endfor %}
+                                {% else %}
+                                    <i class="fas fa-certificate"></i>
+                                {% endif %}
                             </div>
                             <div>
                                 <h3 style="margin: 0 0 4px; font-size: 1.1rem; font-weight: 600;">{{ qual.title }}</h3>
@@ -731,7 +740,6 @@
                                 {% endif %}
                             </div>
                         </div>
-                        {% endwith %}
                     {% endfor %}
                 </div>
             </div>

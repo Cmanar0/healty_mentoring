@@ -4,7 +4,7 @@ from django.db.models import Q, Min, Max
 from django.db.models.functions import Coalesce
 from django.db import models
 from accounts.models import CustomUser, MentorProfile
-from dashboard_mentor.constants import PREDEFINED_CATEGORIES, PREDEFINED_LANGUAGES
+from dashboard_mentor.constants import PREDEFINED_CATEGORIES, PREDEFINED_LANGUAGES, QUALIFICATION_TYPES
 import json
 
 def landing(request):
@@ -384,4 +384,5 @@ def mentor_profile_detail(request, user_id):
         "mentor_user": mentor_user,
         "mentor_profile": mentor_profile,
         "predefined_languages": PREDEFINED_LANGUAGES,
+        "qualification_types": QUALIFICATION_TYPES,
     })

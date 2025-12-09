@@ -279,13 +279,16 @@
                             </div>
                         </div>
                         <div id="qualificationsList" style="display: flex; flex-direction: column; gap: 8px; margin-top: 12px;">
-                            {% for mpq in user.profile.get_qualifications_ordered %}
-                                {% with qual=mpq.qualification %}
+                            {% for qual in user.profile.qualifications %}
                                 <div class="qualification-item" data-title="{{ qual.title }}" data-subtitle="{{ qual.subtitle|default:'' }}" data-description="{{ qual.description|default:'' }}" data-type="{{ qual.type|default:'certificate' }}" draggable="true">
                                     <div class="qualification-item-content" style="display: flex; flex-direction: column; padding: 12px; background: var(--dash-bg); border: 1px solid var(--dash-border); border-radius: 8px; cursor: move;">
                                         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
                                             <div style="display: flex; align-items: center; gap: 8px; flex: 1;">
-                                                <i class="fas {{ qual.get_icon }}" style="color: var(--dash-primary); font-size: 1.1rem;"></i>
+                                                {% for qtype in qualification_types %}
+                                                    {% if qtype.id == qual.type %}
+                                                        <i class="fas {{ qtype.icon }}" style="color: var(--dash-primary); font-size: 1.1rem;"></i>
+                                                    {% endif %}
+                                                {% endfor %}
                                                 <div style="font-weight: 600; color: var(--dash-text-main); flex: 1;">{{ qual.title }}</div>
                                             </div>
                                             <div style="display: flex; align-items: center; gap: 8px;">
@@ -312,7 +315,6 @@
                                         </div>
                                     </div>
                                 </div>
-                                {% endwith %}
                             {% endfor %}
                         </div>
                         <input type="hidden" name="qualifications_data" id="qualificationsData" value="">
