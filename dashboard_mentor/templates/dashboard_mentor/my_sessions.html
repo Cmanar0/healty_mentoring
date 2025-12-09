@@ -1838,21 +1838,78 @@
                 return;
             }
 
-            generatedSessions = [];
+            // Get existing sessions in the left column (non-overlapping)
+            // These are the sessions we need to avoid when generating new ones
+            const existingLeftColumnSessions = generatedSessions
+                .filter(session => session.overlapping === false)
+                .map(session => ({
+                    start: timeToMinutes(session.start),
+                    end: timeToMinutes(session.end)
+                }))
+                .sort((a, b) => a.start - b.start); // Sort by start time
+
+            // Function to check if a time slot is free and respects break duration
+            function isTimeSlotFree(slotStart, slotEnd) {
+                // Check if the slot overlaps with any existing left column session
+                for (const existingSession of existingLeftColumnSessions) {
+                    // Check if time ranges overlap
+                    if (slotStart < existingSession.end && slotEnd > existingSession.start) {
+                        return false; // Overlaps with existing session
+                    }
+                }
+                
+                // Check if there's a session before this slot and if break is respected
+                for (const existingSession of existingLeftColumnSessions) {
+                    // If there's a session that ends before our slot starts
+                    if (existingSession.end <= slotStart) {
+                        // Check if there's enough break time between them
+                        const timeBetween = slotStart - existingSession.end;
+                        if (timeBetween < breakDuration) {
+                            return false; // Break duration not respected
+                        }
+                    }
+                }
+                
+                return true; // Free slot with proper breaks
+            }
+
+            // Generate new sessions only in free spaces
             // Snap start time to nearest 5-minute interval
             let currentStart = Math.round(startMinutes / 5) * 5;
+            let newSessionsCount = 0;
 
             while (currentStart + sessionLength <= endMinutes) {
                 const sessionEnd = currentStart + sessionLength;
-                generatedSessions.push({
-                    start: minutesToTime(currentStart),
-                    end: minutesToTime(sessionEnd),
-                    length: sessionLength,
-                    recurrence: 'one_time',
-                    overlapping: false // Initialize as non-overlapping
-                });
-                // Next session starts after break, also snapped to 5-minute interval
-                currentStart = Math.round((sessionEnd + breakDuration) / 5) * 5;
+                
+                // Check if this time slot is free and respects breaks
+                if (isTimeSlotFree(currentStart, sessionEnd)) {
+                    // Add new session
+                    generatedSessions.push({
+                        start: minutesToTime(currentStart),
+                        end: minutesToTime(sessionEnd),
+                        length: sessionLength,
+                        recurrence: 'one_time',
+                        overlapping: false // Initialize as non-overlapping
+                    });
+                    newSessionsCount++;
+                    
+                    // Next session starts after break, also snapped to 5-minute interval
+                    currentStart = Math.round((sessionEnd + breakDuration) / 5) * 5;
+                } else {
+                    // Slot is occupied or break not respected, try next 5-minute interval
+                    currentStart += 5;
+                }
+            }
+
+            // Show notification if sessions were added
+            if (newSessionsCount > 0) {
+                if (typeof showNotification !== 'undefined') {
+                    showNotification(`Added ${newSessionsCount} new session(s) in available time slots`, 'success');
+                }
+            } else {
+                if (typeof showNotification !== 'undefined') {
+                    showNotification('No available time slots found in the specified range', 'note');
+                }
             }
 
             renderSessionsList();
