@@ -70,36 +70,4 @@ class Tag(models.Model):
     def __str__(self):
         return self.name
 
-class MentorAvailability(models.Model):
-    """Model to store time periods when a mentor is available for booking"""
-    mentor = models.ForeignKey(
-        "accounts.CustomUser",
-        on_delete=models.CASCADE,
-        related_name="availabilities"
-    )
-    start_datetime = models.DateTimeField()
-    end_datetime = models.DateTimeField()
-    is_recurring = models.BooleanField(default=False)
-    recurrence_rule = models.CharField(max_length=50, blank=True)
-    is_active = models.BooleanField(default=True)
-
-    class Meta:
-        verbose_name = "Mentor Availability"
-        verbose_name_plural = "Mentor Availabilities"
-        ordering = ['start_datetime']
-
-    def clean(self):
-        """Validate that end_datetime is strictly greater than start_datetime"""
-        if self.start_datetime and self.end_datetime:
-            if self.end_datetime <= self.start_datetime:
-                raise ValidationError({
-                    'end_datetime': 'End datetime must be strictly greater than start datetime.'
-                })
-
-    def save(self, *args, **kwargs):
-        """Override save to call clean validation"""
-        self.full_clean()
-        super().save(*args, **kwargs)
-
-    def __str__(self):
-        return f"Availability for {self.mentor}: {self.start_datetime} → {self.end_datetime}"
+# MentorAvailability model has been removed - availability is now stored in MentorProfile.availability_slots and MentorProfile.recurring_availability_slots JSON fields

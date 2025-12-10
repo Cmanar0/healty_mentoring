@@ -195,6 +195,30 @@ class MentorProfile(models.Model):
     #     "date": "YYYY-MM-DD"
     #   }
     # ]
+    
+    # Availability slots (JSON fields)
+    availability_slots = models.JSONField(default=list, blank=True, help_text="List of one-time availability windows")
+    # Structure: [
+    #   {
+    #     "id": "<uuid>",
+    #     "start": "2025-05-20T09:00:00Z",
+    #     "end": "2025-05-20T10:00:00Z",
+    #     "length": 60,
+    #     "created_at": "2025-05-18T12:00:00Z"
+    #   }
+    # ]
+    
+    recurring_availability_slots = models.JSONField(default=list, blank=True, help_text="List of recurring weekly/daily rules")
+    # Structure: [
+    #   {
+    #     "id": "<uuid>",
+    #     "type": "weekly",
+    #     "weekdays": ["monday", "wednesday"],
+    #     "start_time": "09:00",
+    #     "end_time": "12:00",
+    #     "created_at": "2025-05-18T12:00:00Z"
+    #   }
+    # ]
 
     class Meta:
         verbose_name = "Mentor Profile"

@@ -489,27 +489,38 @@ def my_sessions(request):
     if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
         return redirect('general:index')
     
-    # Get existing availability for the mentor
-    from .models import MentorAvailability
-    availabilities = MentorAvailability.objects.filter(
-        mentor=request.user,
-        is_active=True
-    ).order_by('start_datetime')
-    
-    # Format availability data for frontend
-    availability_data = {}
-    for avail in availabilities:
-        date_str = avail.start_datetime.date().isoformat()
-        if date_str not in availability_data:
-            availability_data[date_str] = []
-        availability_data[date_str].append({
-            'start': avail.start_datetime.time().strftime('%H:%M'),
-            'end': avail.end_datetime.time().strftime('%H:%M'),
-            'id': avail.id
-        })
-    
-    # Get mentor profile for session_length
+    # Get existing availability for the mentor from JSON fields
     mentor_profile = request.user.mentor_profile if hasattr(request.user, 'mentor_profile') else None
+    if not mentor_profile:
+        return redirect('general:index')
+    
+    # Format availability data for frontend from availability_slots JSON field
+    availability_data = {}
+    availability_slots = mentor_profile.availability_slots or []
+    
+    for slot in availability_slots:
+        try:
+            from datetime import datetime
+            start_dt = datetime.fromisoformat(slot['start'].replace('Z', '+00:00'))
+            end_dt = datetime.fromisoformat(slot['end'].replace('Z', '+00:00'))
+            
+            date_str = start_dt.date().isoformat()
+            if date_str not in availability_data:
+                availability_data[date_str] = []
+            
+            length_minutes = int((end_dt - start_dt).total_seconds() / 60)
+            
+            availability_data[date_str].append({
+                'start': start_dt.time().strftime('%H:%M'),
+                'end': end_dt.time().strftime('%H:%M'),
+                'length': length_minutes,
+                'id': slot.get('id'),
+                'created_at': slot.get('created_at', '')
+            })
+        except (KeyError, ValueError) as e:
+            continue
+    
+    # Get session_length from mentor profile
     session_length = mentor_profile.session_length if mentor_profile and mentor_profile.session_length else 60
     
     return render(request, 'dashboard_mentor/my_sessions.html', {
@@ -527,18 +538,38 @@ def save_availability(request):
         return JsonResponse({'success': False, 'error': 'Only mentors can save availability'}, status=403)
     
     try:
-        from .models import MentorAvailability
         from datetime import datetime
+        from django.utils import timezone
+        import uuid
         
+        mentor_profile = request.user.mentor_profile
         data = json.loads(request.body)
         availability_list = data.get('availability', [])
+        selected_date_str = data.get('selected_date')
         
-        # Delete existing availability for this mentor (or you could update instead)
-        # For now, we'll replace all with new ones
-        MentorAvailability.objects.filter(mentor=request.user).delete()
+        if not availability_list:
+            return JsonResponse({'success': False, 'error': 'No availability data provided'}, status=400)
         
-        # Create new availability entries
-        created_count = 0
+        # Get the date being edited - prefer selected_date from request, fallback to first item's date
+        edited_date_str = selected_date_str or availability_list[0].get('date')
+        if not edited_date_str:
+            return JsonResponse({'success': False, 'error': 'No date specified'}, status=400)
+        
+        # Get existing slots
+        existing_availability_slots = list(mentor_profile.availability_slots or [])
+        existing_recurring_slots = list(mentor_profile.recurring_availability_slots or [])
+        
+        # Remove all existing slots for the edited date (we'll replace them)
+        edited_date_obj = datetime.strptime(edited_date_str, '%Y-%m-%d').date()
+        existing_availability_slots = [
+            slot for slot in existing_availability_slots
+            if datetime.fromisoformat(slot['start'].replace('Z', '+00:00')).date() != edited_date_obj
+        ]
+        
+        # Process new slots - each session becomes a separate slot
+        new_availability_slots = []
+        new_recurring_slots = []
+        
         for avail_item in availability_list:
             date_str = avail_item.get('date')
             start_time = avail_item.get('start')
@@ -546,37 +577,84 @@ def save_availability(request):
             is_recurring = avail_item.get('is_recurring', False)
             recurrence_rule = avail_item.get('recurrence_rule', '')
             
-            if not all([date_str, start_time, end_time]):
-                continue
-            
-            # Combine date and time into datetime
-            start_datetime_str = f"{date_str} {start_time}"
-            end_datetime_str = f"{date_str} {end_time}"
-            
-            try:
-                start_datetime = datetime.strptime(start_datetime_str, '%Y-%m-%d %H:%M')
-                end_datetime = datetime.strptime(end_datetime_str, '%Y-%m-%d %H:%M')
+            if is_recurring and recurrence_rule:
+                # Handle recurring slots
+                slot_type = recurrence_rule
+                weekdays = avail_item.get('weekdays', [])
                 
-                # Validate end > start
-                if end_datetime <= start_datetime:
+                recurring_slot = {
+                    'id': str(uuid.uuid4()),
+                    'type': slot_type,
+                    'weekdays': weekdays,
+                    'start_time': start_time,
+                    'end_time': end_time,
+                    'created_at': timezone.now().isoformat()
+                }
+                new_recurring_slots.append(recurring_slot)
+            else:
+                # Handle one-time slots
+                if not all([date_str, start_time, end_time]):
                     continue
                 
-                MentorAvailability.objects.create(
-                    mentor=request.user,
-                    start_datetime=start_datetime,
-                    end_datetime=end_datetime,
-                    is_recurring=is_recurring,
-                    recurrence_rule=recurrence_rule,
-                    is_active=True
-                )
-                created_count += 1
-            except ValueError as e:
-                continue
+                # Combine date and time into datetime
+                start_datetime_str = f"{date_str} {start_time}"
+                end_datetime_str = f"{date_str} {end_time}"
+                
+                try:
+                    # Parse datetime (naive, local time)
+                    start_dt = datetime.strptime(start_datetime_str, '%Y-%m-%d %H:%M')
+                    end_dt = datetime.strptime(end_datetime_str, '%Y-%m-%d %H:%M')
+                    
+                    # Make timezone-aware
+                    start_dt = timezone.make_aware(start_dt)
+                    end_dt = timezone.make_aware(end_dt)
+                    
+                    # Validate end > start
+                    if end_dt <= start_dt:
+                        continue
+                    
+                    # Calculate length in minutes (use provided length if available, otherwise calculate)
+                    length_minutes = avail_item.get('length')
+                    if not length_minutes or length_minutes <= 0:
+                        length_minutes = int((end_dt - start_dt).total_seconds() / 60)
+                    
+                    # Preserve existing ID if provided (for existing sessions being updated)
+                    slot_id = avail_item.get('id')
+                    if not slot_id:
+                        slot_id = str(uuid.uuid4())
+                    
+                    # Preserve created_at if provided, otherwise use current time
+                    created_at = avail_item.get('created_at')
+                    if not created_at:
+                        created_at = timezone.now().isoformat()
+                    
+                    # Each session becomes a separate slot entry
+                    availability_slot = {
+                        'id': slot_id,
+                        'start': start_dt.isoformat(),
+                        'end': end_dt.isoformat(),
+                        'length': length_minutes,
+                        'created_at': created_at
+                    }
+                    new_availability_slots.append(availability_slot)
+                except ValueError as e:
+                    continue
+        
+        # Merge: keep existing slots from other dates + add new slots for edited date
+        final_availability_slots = existing_availability_slots + new_availability_slots
+        final_recurring_slots = existing_recurring_slots + new_recurring_slots
+        
+        # Save to MentorProfile
+        mentor_profile.availability_slots = final_availability_slots
+        mentor_profile.recurring_availability_slots = final_recurring_slots
+        mentor_profile.save()
         
         return JsonResponse({
             'success': True,
-            'message': f'Successfully saved {created_count} availability slot(s)',
-            'count': created_count
+            'message': f'Successfully saved {len(new_availability_slots)} availability slot(s) for {edited_date_str}',
+            'availability_count': len(new_availability_slots),
+            'recurring_count': len(new_recurring_slots),
+            'date': edited_date_str
         })
         
     except json.JSONDecodeError:

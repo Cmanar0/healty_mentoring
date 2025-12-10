@@ -548,46 +548,7 @@
         display: flex;
     }
 
-    .availability-mode-indicator.active ~ .calendar-header-right .btn-add-availability {
-        display: none;
-    }
-
-    .btn-availability-primary {
-        max-width: 190px;
-        padding: 12px 24px;
-        background: #3b82f6;
-        color: white;
-        border: none;
-        border-radius: 8px;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all 0.2s;
-        white-space: nowrap;
-    }
-
-    .btn-availability-primary:hover {
-        background: #2563eb;
-    }
-
-    .btn-availability-cancel {
-        max-width: 150px;
-        padding: 12px 24px;
-        background: white;
-        color: var(--dash-text-main);
-        border: 2px solid var(--dash-border);
-        border-radius: 8px;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all 0.2s;
-        white-space: nowrap;
-    }
-
-    .btn-availability-cancel:hover {
-        background: var(--dash-bg);
-        border-color: var(--dash-text-muted);
-    }
-
-    .btn-add-availability {
+    .btn-manage-sessions {
         max-width: 200px;
         padding: 12px 24px;
         background: #3b82f6;
@@ -604,8 +565,17 @@
         white-space: nowrap;
     }
 
-    .btn-add-availability:hover {
+    .btn-manage-sessions:hover {
         background: #2563eb;
+    }
+
+    /* Active state (availability mode) - green */
+    .btn-manage-sessions.availability-mode {
+        background: #22c55e;
+    }
+
+    .btn-manage-sessions.availability-mode:hover {
+        background: #16a34a;
     }
 
     /* Time Picker Modal */
@@ -1261,17 +1231,9 @@
                     <i class="fas fa-edit"></i> Availability Mode - Click on days to set your availability
                 </div>
                 <div class="calendar-header-right">
-                    <button class="btn-add-availability" id="addAvailabilityBtn">
-                        <i class="fas fa-plus"></i> <span id="availabilityBtnText">Add Availability</span>
+                    <button class="btn-manage-sessions" id="manageSessionsBtn">
+                        <i class="fas fa-cog"></i> <span id="manageSessionsBtnText">Add Availability</span>
                     </button>
-                    <div class="availability-actions" id="availabilityActions">
-                        <button class="btn-availability-primary" id="saveAvailabilityBtn">
-                            <i class="fas fa-check"></i> Save
-                        </button>
-                        <button class="btn-availability-cancel" id="cancelAvailabilityBtn">
-                            <i class="fas fa-times"></i> Cancel
-                        </button>
-                    </div>
                 </div>
             </div>
 
@@ -1703,14 +1665,34 @@
             renderCalendar();
         });
 
+        // Function to update button text and color based on current mode
+        function updateManageSessionsButton() {
+            const buttonText = document.getElementById('manageSessionsBtnText');
+            const button = document.getElementById('manageSessionsBtn');
+            
+            if (viewMode === 'availability') {
+                // Availability mode: Green button with "Manage Sessions"
+                buttonText.textContent = 'Manage Sessions';
+                button.classList.add('availability-mode');
+            } else {
+                // Session scheduling mode: Blue button with "Add/Update Availability"
+                const hasAvailability = Object.keys(availabilityData).length > 0;
+                if (hasAvailability) {
+                    buttonText.textContent = 'Update Availability';
+                } else {
+                    buttonText.textContent = 'Add Availability';
+                }
+                button.classList.remove('availability-mode');
+            }
+        }
+
         // Availability Mode Functions
         function enterAvailabilityMode() {
             viewMode = 'availability';
             document.getElementById('calendarContainer').classList.add('availability-mode');
             document.getElementById('sessionsModeIndicator').classList.add('hidden');
             document.getElementById('availabilityModeIndicator').classList.add('active');
-            document.getElementById('addAvailabilityBtn').style.display = 'none';
-            document.getElementById('availabilityActions').classList.add('active');
+            updateManageSessionsButton();
             renderCalendar();
         }
 
@@ -1719,10 +1701,19 @@
             document.getElementById('calendarContainer').classList.remove('availability-mode');
             document.getElementById('sessionsModeIndicator').classList.remove('hidden');
             document.getElementById('availabilityModeIndicator').classList.remove('active');
-            document.getElementById('addAvailabilityBtn').style.display = 'flex';
-            document.getElementById('availabilityActions').classList.remove('active');
+            updateManageSessionsButton();
             pendingAvailability = {}; // Clear pending changes
             renderCalendar();
+        }
+
+        function toggleManageSessions() {
+            if (viewMode === 'sessions') {
+                // Enter availability mode
+                enterAvailabilityMode();
+            } else {
+                // In availability mode - just exit (saving happens in the popup)
+                exitAvailabilityMode();
+            }
         }
 
         function openTimePicker(dateStr, day) {
@@ -2447,8 +2438,8 @@
                     // Merge pending availability into availabilityData
                     Object.assign(availabilityData, pendingAvailability);
                     
-                    // Update button text
-                    document.getElementById('availabilityBtnText').textContent = 'Update Availability';
+                    // Update button (will be called by exitAvailabilityMode, but update here too)
+                    updateManageSessionsButton();
                     
                     // Show success message
                     if (typeof showNotification !== 'undefined') {
@@ -2457,6 +2448,7 @@
                         alert(data.message || 'Availability saved successfully!');
                     }
                     
+                    // Exit availability mode (toggleManageSessions will handle this)
                     exitAvailabilityMode();
                 } else {
                     if (typeof showNotification !== 'undefined') {
@@ -2476,17 +2468,9 @@
             });
         }
 
-        // Event Listeners
-        document.getElementById('addAvailabilityBtn').addEventListener('click', function() {
-            enterAvailabilityMode();
-        });
-
-        document.getElementById('cancelAvailabilityBtn').addEventListener('click', function() {
-            exitAvailabilityMode();
-        });
-
-        document.getElementById('saveAvailabilityBtn').addEventListener('click', function() {
-            saveAvailability();
+        // Toggle button for managing sessions
+        document.getElementById('manageSessionsBtn').addEventListener('click', function() {
+            toggleManageSessions();
         });
 
         document.getElementById('generateSessionsBtn').addEventListener('click', function() {
@@ -2523,10 +2507,8 @@
             }
         });
 
-        // Check if user has availability and update button text
-        if (Object.keys(availabilityData).length > 0) {
-            document.getElementById('availabilityBtnText').textContent = 'Update Availability';
-        }
+        // Update button text and color based on current mode
+        updateManageSessionsButton();
 
         // Initial render
         renderCalendar();

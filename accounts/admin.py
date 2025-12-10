@@ -152,6 +152,14 @@ class MentorProfileAdmin(admin.ModelAdmin):
             'classes': ('collapse',),
             'description': 'Navigation tutorial manuals. See documentation for data structure.'
         }),
+        ('Availability - One-Time Slots', {
+            'fields': ('availability_slots',),
+            'description': 'List of one-time availability windows. Format: [{"id": "<uuid>", "start": "YYYY-MM-DDTHH:MM:SSZ", "end": "YYYY-MM-DDTHH:MM:SSZ", "length": <minutes>, "created_at": "YYYY-MM-DDTHH:MM:SSZ"}]'
+        }),
+        ('Availability - Recurring Slots', {
+            'fields': ('recurring_availability_slots',),
+            'description': 'List of recurring weekly/daily rules. Format: [{"id": "<uuid>", "type": "weekly"|"daily", "weekdays": ["monday", "tuesday"], "start_time": "HH:MM", "end_time": "HH:MM", "created_at": "YYYY-MM-DDTHH:MM:SSZ"}]'
+        }),
     )
     filter_horizontal = ('sessions', 'clients')
     
