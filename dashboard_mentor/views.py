@@ -594,13 +594,19 @@ def save_availability(request):
         availability_list = data.get('availability', [])
         selected_date_str = data.get('selected_date')
         
-        if not availability_list:
-            return JsonResponse({'success': False, 'error': 'No availability data provided'}, status=400)
-        
         # Get the date being edited - prefer selected_date from request, fallback to first item's date
-        edited_date_str = selected_date_str or availability_list[0].get('date')
+        edited_date_str = selected_date_str
+        if not edited_date_str and availability_list and len(availability_list) > 0:
+            edited_date_str = availability_list[0].get('date')
         if not edited_date_str:
             return JsonResponse({'success': False, 'error': 'No date specified'}, status=400)
+        
+        # Allow empty array - it means clear all slots for this day
+        # Empty array is valid when:
+        # 1. User wants to clear all one-time slots for a day
+        # 2. User is updating skip_dates for recurring slots (skip_dates updates are sent in availability_list)
+        # 3. User is deleting recurring slots (delete_all flags are sent in availability_list)
+        # Empty availability_list is allowed - it just means remove all one-time slots for this date
         
         # Get existing slots - use new field names with fallback to old for backward compatibility
         try:
@@ -687,7 +693,14 @@ def save_availability(request):
                 continue  # Skip to next item
             
             if is_recurring and recurrence_rule:
-                # Handle recurring slots
+                # Check if this is a delete_all request
+                delete_all = avail_item.get('delete_all', False)
+                if delete_all and recurring_slot_id:
+                    # Mark for complete deletion
+                    edited_recurring_slot_ids.add(recurring_slot_id)
+                    continue  # Skip adding this slot, it will be removed
+                
+                # Handle recurring slots (including skip_dates-only updates)
                 slot_type = recurrence_rule
                 
                 # Determine weekdays and day_of_month based on recurrence type
@@ -715,12 +728,32 @@ def save_availability(request):
                 if recurring_slot_id:
                     edited_recurring_slot_ids.add(recurring_slot_id)
                     slot_id = recurring_slot_id
-                    # Find and preserve created_at from existing slot
+                    # Find and preserve created_at and skip_dates from existing slot
                     existing_slot = next((s for s in existing_recurring_slots if s.get('id') == recurring_slot_id), None)
                     created_at = existing_slot.get('created_at', timezone.now().isoformat()) if existing_slot else timezone.now().isoformat()
+                    
+                    # Check if type, start_time, or end_time changed - if so, reset skip_dates
+                    existing_type = existing_slot.get('type') if existing_slot else None
+                    existing_start_time = existing_slot.get('start_time') if existing_slot else None
+                    existing_end_time = existing_slot.get('end_time') if existing_slot else None
+                    
+                    type_changed = existing_type != slot_type
+                    start_time_changed = existing_start_time != start_time
+                    end_time_changed = existing_end_time != end_time
+                    
+                    if type_changed or start_time_changed or end_time_changed:
+                        # Configuration changed - reset skip_dates (they were specific to old config)
+                        skip_dates = avail_item.get('skip_dates', [])  # Only use new skip_dates from request
+                    else:
+                        # Configuration unchanged - merge skip_dates: keep existing ones and add new ones from request
+                        existing_skip_dates = existing_slot.get('skip_dates', []) if existing_slot else []
+                        new_skip_dates = avail_item.get('skip_dates', [])
+                        # Combine and deduplicate skip_dates
+                        skip_dates = list(set(existing_skip_dates + new_skip_dates))
                 else:
                     slot_id = str(uuid.uuid4())
                     created_at = timezone.now().isoformat()
+                    skip_dates = avail_item.get('skip_dates', [])
                 
                 # Build recurring slot with proper structure
                 recurring_slot = {
@@ -730,6 +763,10 @@ def save_availability(request):
                     'end_time': end_time,
                     'created_at': created_at
                 }
+                
+                # Add skip_dates if any
+                if skip_dates:
+                    recurring_slot['skip_dates'] = skip_dates
                 
                 # Add weekdays for daily/weekly, day_of_month for monthly
                 if slot_type == 'monthly':

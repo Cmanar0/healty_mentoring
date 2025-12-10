@@ -1159,6 +1159,93 @@
         border-color: #334156;
     }
 
+    /* Delete Confirmation Popup */
+    .delete-confirmation-modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.6);
+        z-index: 2000;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .delete-confirmation-modal.active {
+        display: flex;
+    }
+
+    .delete-confirmation-content {
+        background: white;
+        border-radius: 12px;
+        padding: 24px;
+        max-width: 400px;
+        width: 90%;
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
+    }
+
+    .delete-confirmation-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: var(--dash-text-main);
+        margin-bottom: 12px;
+    }
+
+    .delete-confirmation-message {
+        color: var(--dash-text-muted);
+        margin-bottom: 24px;
+        line-height: 1.5;
+    }
+
+    .delete-confirmation-actions {
+        display: flex;
+        gap: 12px;
+        justify-content: flex-end;
+    }
+
+    .delete-confirmation-btn {
+        padding: 10px 20px;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        border: 2px solid;
+    }
+
+    .delete-confirmation-btn-cancel {
+        background: white;
+        color: #334156;
+        border-color: #334156;
+    }
+
+    .delete-confirmation-btn-cancel:hover {
+        background: #f1f5f9;
+    }
+
+    .delete-confirmation-btn-one-day {
+        background: #3b82f6;
+        color: white;
+        border-color: #3b82f6;
+    }
+
+    .delete-confirmation-btn-one-day:hover {
+        background: #2563eb;
+        border-color: #2563eb;
+    }
+
+    .delete-confirmation-btn-all {
+        background: #ef4444;
+        color: white;
+        border-color: #ef4444;
+    }
+
+    .delete-confirmation-btn-all:hover {
+        background: #dc2626;
+        border-color: #dc2626;
+    }
+
     .calendar-day.availability-selected {
         background: #3b82f6;
         color: white;
@@ -1499,6 +1586,36 @@
     </div>
 </div>
 
+<!-- Delete Confirmation Modal -->
+<div class="delete-confirmation-modal" id="deleteConfirmationModal">
+    <div class="delete-confirmation-content">
+        <div class="delete-confirmation-title">Delete Recurring Slot</div>
+        <div class="delete-confirmation-message">
+            This is a recurring slot. How would you like to delete it?
+        </div>
+        <div class="delete-confirmation-actions">
+            <button class="delete-confirmation-btn delete-confirmation-btn-cancel" id="deleteCancelBtn">Cancel</button>
+            <button class="delete-confirmation-btn delete-confirmation-btn-one-day" id="deleteOneDayBtn">Delete This Day Only</button>
+            <button class="delete-confirmation-btn delete-confirmation-btn-all" id="deleteAllBtn">Delete All Occurrences</button>
+        </div>
+    </div>
+</div>
+
+<!-- Time Change Confirmation Modal -->
+<div class="delete-confirmation-modal" id="timeChangeConfirmationModal">
+    <div class="delete-confirmation-content">
+        <div class="delete-confirmation-title">Change Recurring Slot Time</div>
+        <div class="delete-confirmation-message">
+            This is a recurring slot. How would you like to change the time?
+        </div>
+        <div class="delete-confirmation-actions">
+            <button class="delete-confirmation-btn delete-confirmation-btn-cancel" id="timeChangeCancelBtn">Cancel</button>
+            <button class="delete-confirmation-btn delete-confirmation-btn-one-day" id="timeChangeOneDayBtn">Change Only Today</button>
+            <button class="delete-confirmation-btn delete-confirmation-btn-all" id="timeChangeAllBtn">Update All Occurrences</button>
+        </div>
+    </div>
+</div>
+
 <!-- Availability Data (JSON) -->
 {% if availability_data %}
 {{ availability_data|json_script:"availabilityDataJson" }}
@@ -1614,6 +1731,12 @@
                 } catch (e) {
                     // If parsing fails, skip this slot to be safe
                     continue;
+                }
+                
+                // Check if this date is in skip_dates (excluded dates for this recurring slot)
+                const skipDates = slot.skip_dates || [];
+                if (skipDates.includes(dateStr)) {
+                    continue; // Skip this date - it's been excluded
                 }
                 
                 const slotType = slot.type || 'weekly';
@@ -1861,6 +1984,8 @@
             selectedDateForTimePicker = dateStr;
             generatedSessions = []; // Reset sessions when opening modal
             editingRecurringSlotId = null; // Reset recurring slot ID
+            deletedRecurringSlotIds.clear(); // Reset deleted slots tracking
+            skipDatesUpdates.clear(); // Reset skip_dates updates tracking
             
             const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
                 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -1889,7 +2014,8 @@
                     end: endTime,
                     length: recurringSlot.length || 60,
                     recurrence: recurringSlot.recurrence_type || recurringSlot.type || 'weekly',
-                    recurring_slot_id: editingRecurringSlotId
+                    recurring_slot_id: editingRecurringSlotId,
+                    skip_dates: recurringSlot.skip_dates || []  // Load existing skip_dates
                 });
             } else {
                 // Check for one-time slots
@@ -2017,6 +2143,8 @@
             document.getElementById('timePickerModal').classList.remove('active');
             selectedDateForTimePicker = null;
             generatedSessions = [];
+            deletedRecurringSlotIds.clear(); // Reset deleted slots tracking
+            skipDatesUpdates.clear(); // Reset skip_dates updates tracking
         }
 
         function timeToMinutes(timeStr) {
@@ -2498,9 +2626,48 @@
                         const newStartTime = minutesToTime(finalStartMinutes);
                         const newEndTime = minutesToTime(finalEndMinutes);
                         
-                        generatedSessions[draggedIndex].start = newStartTime;
-                        generatedSessions[draggedIndex].end = newEndTime;
-                        generatedSessions[draggedIndex].overlapping = hasOverlap;
+                        // If this is a recurring slot and time changed, show confirmation popup
+                        if (session.recurring_slot_id && session.recurrence !== 'one_time') {
+                            const oldStartTime = session.start;
+                            const oldEndTime = session.end;
+                            if (oldStartTime !== newStartTime || oldEndTime !== newEndTime) {
+                                // Time changed via drag - show confirmation popup
+                                pendingTimeChangeIndex = draggedIndex;
+                                pendingTimeChangeData = {
+                                    oldStartTime: oldStartTime,
+                                    oldEndTime: oldEndTime,
+                                    newStartTime: newStartTime,
+                                    newEndTime: newEndTime,
+                                    session: session
+                                };
+                                
+                                // Temporarily revert to old time until user confirms
+                                // Don't update session times yet - wait for confirmation
+                                
+                                // Show confirmation modal
+                                document.getElementById('timeChangeConfirmationModal').classList.add('active');
+                                
+                                // Clean up drag state but don't update times yet
+                                draggedElement.classList.remove('dragging');
+                                draggedElement.style.opacity = '1';
+                                draggedElement.style.zIndex = '10';
+                                removePlaceholder();
+                                
+                                // Re-render to show original position
+                                renderSessionsList();
+                                
+                                draggedElement = null;
+                                draggedIndex = null;
+                                grabOffsetY = 0;
+                                timeDisplayElement = null;
+                                return; // Exit early, wait for user confirmation
+                            }
+                        }
+                        
+                        // For non-recurring or unchanged recurring slots, update immediately
+                        session.start = newStartTime;
+                        session.end = newEndTime;
+                        session.overlapping = hasOverlap;
                         
                         // Clean up
                         draggedElement.classList.remove('dragging');
@@ -2601,12 +2768,23 @@
         window.setRecurrence = function(index, recurrence) {
             if (generatedSessions[index]) {
                 const session = generatedSessions[index];
+                const oldRecurrence = session.recurrence;
                 session.recurrence = recurrence;
+                
+                // If recurrence type changed, reset skip_dates (they were specific to the old type)
+                if (oldRecurrence && oldRecurrence !== recurrence && session.recurring_slot_id) {
+                    delete session.skip_dates;
+                    // Also clear from skipDatesUpdates if it exists
+                    if (skipDatesUpdates.has(session.recurring_slot_id)) {
+                        skipDatesUpdates.delete(session.recurring_slot_id);
+                    }
+                }
                 
                 // If changing from recurring to one-time, clear recurring_slot_id
                 // If changing to recurring and we have editingRecurringSlotId, preserve it
                 if (recurrence === 'one_time') {
                     delete session.recurring_slot_id;
+                    delete session.skip_dates;
                 } else if (editingRecurringSlotId && !session.recurring_slot_id) {
                     session.recurring_slot_id = editingRecurringSlotId;
                 }
@@ -2620,9 +2798,35 @@
             });
         };
 
+        // Track which session is being deleted for confirmation popup
+        let pendingDeleteIndex = null;
+        let pendingDeleteDate = null;
+        let deletedRecurringSlotIds = new Set(); // Track recurring slots deleted (all occurrences)
+        let skipDatesUpdates = new Map(); // Track skip_dates updates: slotId -> [dates to skip]
+        
+        // Track pending time change for recurring slots
+        let pendingTimeChangeIndex = null;
+        let pendingTimeChangeData = null; // { oldStartTime, oldEndTime, newStartTime, newEndTime, session }
+
         // Make deleteSession globally accessible for onclick handlers
         window.deleteSession = function(index) {
-            if (index >= 0 && index < generatedSessions.length) {
+            if (index < 0 || index >= generatedSessions.length) {
+                return;
+            }
+            
+            const session = generatedSessions[index];
+            
+            // Check if this is a recurring slot
+            const isRecurring = session.recurrence && session.recurrence !== 'one_time';
+            const hasRecurringSlotId = session.recurring_slot_id || editingRecurringSlotId;
+            
+            if (isRecurring && hasRecurringSlotId) {
+                // Show confirmation popup for recurring slots
+                pendingDeleteIndex = index;
+                pendingDeleteDate = selectedDateForTimePicker;
+                document.getElementById('deleteConfirmationModal').classList.add('active');
+            } else {
+                // Direct delete for one-time slots
                 generatedSessions.splice(index, 1);
                 renderSessionsList();
                 
@@ -2631,6 +2835,167 @@
                 }
             }
         };
+
+        // Handle delete confirmation popup buttons
+        document.getElementById('deleteCancelBtn').addEventListener('click', function() {
+            document.getElementById('deleteConfirmationModal').classList.remove('active');
+            pendingDeleteIndex = null;
+            pendingDeleteDate = null;
+        });
+
+        document.getElementById('deleteOneDayBtn').addEventListener('click', function() {
+            if (pendingDeleteIndex !== null && pendingDeleteDate) {
+                const session = generatedSessions[pendingDeleteIndex];
+                const recurringSlotId = session.recurring_slot_id || editingRecurringSlotId;
+                
+                if (recurringSlotId) {
+                    // Track skip_dates update separately (even if we remove the session)
+                    if (!skipDatesUpdates.has(recurringSlotId)) {
+                        // Get existing skip_dates from the slot
+                        const existingSlot = recurringSlots.find(s => s.id === recurringSlotId);
+                        const existingSkipDates = existingSlot ? (existingSlot.skip_dates || []) : [];
+                        skipDatesUpdates.set(recurringSlotId, [...existingSkipDates]);
+                    }
+                    
+                    const skipDates = skipDatesUpdates.get(recurringSlotId);
+                    if (!skipDates.includes(pendingDeleteDate)) {
+                        skipDates.push(pendingDeleteDate);
+                        skipDatesUpdates.set(recurringSlotId, skipDates);
+                    }
+                }
+                
+                // Remove from generatedSessions (hide for this day)
+                generatedSessions.splice(pendingDeleteIndex, 1);
+                renderSessionsList();
+                
+                document.getElementById('deleteConfirmationModal').classList.remove('active');
+                pendingDeleteIndex = null;
+                pendingDeleteDate = null;
+                
+                if (typeof showNotification !== 'undefined') {
+                    showNotification('This day will be skipped for the recurring slot', 'note');
+                }
+            }
+        });
+
+        document.getElementById('deleteAllBtn').addEventListener('click', function() {
+            if (pendingDeleteIndex !== null) {
+                const session = generatedSessions[pendingDeleteIndex];
+                const recurringSlotId = session.recurring_slot_id || editingRecurringSlotId;
+                
+                // Mark this recurring slot for complete deletion
+                if (recurringSlotId) {
+                    deletedRecurringSlotIds.add(recurringSlotId);
+                }
+                
+                // Delete the session entirely
+                generatedSessions.splice(pendingDeleteIndex, 1);
+                renderSessionsList();
+                
+                document.getElementById('deleteConfirmationModal').classList.remove('active');
+                pendingDeleteIndex = null;
+                pendingDeleteDate = null;
+                
+                if (typeof showNotification !== 'undefined') {
+                    showNotification('Recurring slot will be deleted completely', 'note');
+                }
+            }
+        });
+
+        // Close delete modal on overlay click
+        document.getElementById('deleteConfirmationModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                document.getElementById('deleteConfirmationModal').classList.remove('active');
+                pendingDeleteIndex = null;
+                pendingDeleteDate = null;
+            }
+        });
+        
+        // Handle time change confirmation popup buttons
+        document.getElementById('timeChangeCancelBtn').addEventListener('click', function() {
+            document.getElementById('timeChangeConfirmationModal').classList.remove('active');
+            pendingTimeChangeIndex = null;
+            pendingTimeChangeData = null;
+        });
+        
+        document.getElementById('timeChangeOneDayBtn').addEventListener('click', function() {
+            if (pendingTimeChangeIndex !== null && pendingTimeChangeData) {
+                const { session, newStartTime, newEndTime } = pendingTimeChangeData;
+                const recurringSlotId = session.recurring_slot_id;
+                
+                // Convert to one-time slot: remove recurring_slot_id and set recurrence to one_time
+                session.recurrence = 'one_time';
+                session.start = newStartTime;
+                session.end = newEndTime;
+                
+                // Preserve the recurring slot's created_at if available
+                const existingSlot = recurringSlots.find(s => s.id === recurringSlotId);
+                if (existingSlot && existingSlot.created_at) {
+                    session.created_at = existingSlot.created_at;
+                }
+                
+                // Remove recurring_slot_id - this will trigger conversion to one-time in backend
+                // We'll pass recurring_slot_id in saveAvailability to indicate conversion
+                session.recurring_slot_id = recurringSlotId; // Keep it temporarily for backend conversion
+                session.is_converting_to_one_time = true; // Flag to indicate conversion
+                
+                // Add this date to skip_dates for the original recurring slot
+                if (recurringSlotId && selectedDateForTimePicker) {
+                    if (!skipDatesUpdates.has(recurringSlotId)) {
+                        const existingSkipDates = existingSlot ? (existingSlot.skip_dates || []) : [];
+                        skipDatesUpdates.set(recurringSlotId, [...existingSkipDates]);
+                    }
+                    const skipDates = skipDatesUpdates.get(recurringSlotId);
+                    if (!skipDates.includes(selectedDateForTimePicker)) {
+                        skipDates.push(selectedDateForTimePicker);
+                        skipDatesUpdates.set(recurringSlotId, skipDates);
+                    }
+                }
+                
+                renderSessionsList();
+                document.getElementById('timeChangeConfirmationModal').classList.remove('active');
+                pendingTimeChangeIndex = null;
+                pendingTimeChangeData = null;
+                
+                if (typeof showNotification !== 'undefined') {
+                    showNotification('This occurrence will be converted to a one-time slot', 'note');
+                }
+            }
+        });
+        
+        document.getElementById('timeChangeAllBtn').addEventListener('click', function() {
+            if (pendingTimeChangeIndex !== null && pendingTimeChangeData) {
+                const { session, newStartTime, newEndTime } = pendingTimeChangeData;
+                
+                // Update all occurrences: update the recurring slot's times
+                session.start = newStartTime;
+                session.end = newEndTime;
+                
+                // Reset skip_dates since we're changing the configuration
+                delete session.skip_dates;
+                if (session.recurring_slot_id && skipDatesUpdates.has(session.recurring_slot_id)) {
+                    skipDatesUpdates.delete(session.recurring_slot_id);
+                }
+                
+                renderSessionsList();
+                document.getElementById('timeChangeConfirmationModal').classList.remove('active');
+                pendingTimeChangeIndex = null;
+                pendingTimeChangeData = null;
+                
+                if (typeof showNotification !== 'undefined') {
+                    showNotification('All occurrences will be updated with the new time', 'note');
+                }
+            }
+        });
+        
+        // Close time change modal on overlay click
+        document.getElementById('timeChangeConfirmationModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                document.getElementById('timeChangeConfirmationModal').classList.remove('active');
+                pendingTimeChangeIndex = null;
+                pendingTimeChangeData = null;
+            }
+        });
 
         function saveTimeSlot() {
             if (!selectedDateForTimePicker) return;
@@ -2702,33 +3067,38 @@
             const dateStr = selectedDateForTimePicker;
             
             // Get sessions from generatedSessions (current state in popup)
-            if (generatedSessions.length === 0) {
-                if (typeof showNotification !== 'undefined') {
-                    showNotification('Please add at least one session slot', 'error');
-                } else {
-                    alert('Please add at least one session slot');
-                }
-                return;
-            }
+            // Allow empty array - means no slots for this day
             
-            // Send all sessions for this date
+            // Send all sessions for this date (can be empty array)
             generatedSessions.forEach(session => {
                 const isRecurring = session.recurrence !== 'one_time';
+                const recurringSlotId = session.recurring_slot_id || editingRecurringSlotId;
+                const isConvertingToOneTime = session.is_converting_to_one_time || (!isRecurring && recurringSlotId);
+                
                 const availabilityItem = {
                     date: dateStr,
                     start: session.start,
                     end: session.end,
-                    is_recurring: isRecurring,
-                    recurrence_rule: isRecurring ? session.recurrence : '',
+                    is_recurring: isRecurring && !isConvertingToOneTime, // False if converting to one-time
+                    recurrence_rule: (isRecurring && !isConvertingToOneTime) ? session.recurrence : '',
                     length: session.length || 60
                 };
                 
                 // Include recurring_slot_id if:
                 // 1. Editing an existing recurring slot (isRecurring = true)
                 // 2. Converting recurring to one-time (isRecurring = false but has recurring_slot_id)
-                const recurringSlotId = session.recurring_slot_id || editingRecurringSlotId;
                 if (recurringSlotId) {
                     availabilityItem.recurring_slot_id = recurringSlotId;
+                }
+                
+                // Include created_at if converting from recurring (preserve original creation time)
+                if (isConvertingToOneTime && session.created_at) {
+                    availabilityItem.created_at = session.created_at;
+                }
+                
+                // Include skip_dates if this recurring slot has dates to skip
+                if (isRecurring && !isConvertingToOneTime && session.skip_dates && session.skip_dates.length > 0) {
+                    availabilityItem.skip_dates = session.skip_dates;
                 }
                 
                 // Include id for one-time slots if editing existing (and not converted from recurring)
@@ -2737,6 +3107,39 @@
                 }
                 
                 availabilityArray.push(availabilityItem);
+            });
+            
+            // Send skip_dates updates for recurring slots (even if no sessions in generatedSessions)
+            skipDatesUpdates.forEach((skipDates, slotId) => {
+                const existingSlot = recurringSlots.find(s => s.id === slotId);
+                if (existingSlot) {
+                    availabilityArray.push({
+                        date: dateStr,
+                        start: existingSlot.start_time || '00:00',
+                        end: existingSlot.end_time || '00:00',
+                        is_recurring: true,
+                        recurrence_rule: existingSlot.type || 'weekly',
+                        recurring_slot_id: slotId,
+                        skip_dates: skipDates  // Update skip_dates for this recurring slot
+                    });
+                }
+            });
+            
+            // Send deletion requests for recurring slots marked for complete deletion
+            deletedRecurringSlotIds.forEach(slotId => {
+                // Find the slot details from existing recurring slots
+                const existingSlot = recurringSlots.find(s => s.id === slotId);
+                if (existingSlot) {
+                    availabilityArray.push({
+                        date: dateStr,
+                        start: existingSlot.start_time || '00:00',
+                        end: existingSlot.end_time || '00:00',
+                        is_recurring: true,
+                        recurrence_rule: existingSlot.type || 'weekly',
+                        recurring_slot_id: slotId,
+                        delete_all: true  // Flag to delete all occurrences
+                    });
+                }
             });
             
             // Send to server
@@ -2754,12 +3157,6 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    // Merge pending availability into availabilityData
-                    Object.assign(availabilityData, pendingAvailability);
-                    
-                    // Update button (will be called by exitAvailabilityMode, but update here too)
-                    updateManageSessionsButton();
-                    
                     // Show success message
                     if (typeof showNotification !== 'undefined') {
                         showNotification(data.message || 'Availability saved successfully!', 'success');
@@ -2767,9 +3164,14 @@
                         alert(data.message || 'Availability saved successfully!');
                     }
                     
-                    // Close the popup and refresh calendar
+                    // Close the popup
                     closeTimePicker();
-                    renderCalendar();
+                    
+                    // Refresh the page to load updated data from database
+                    // Use a small delay to ensure the notification is visible
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 500);
                 } else {
                     if (typeof showNotification !== 'undefined') {
                         showNotification('Error saving availability: ' + (data.error || 'Unknown error'), 'error');
@@ -2800,6 +3202,21 @@
         // Update timeline when time inputs change
         document.getElementById('startTime').addEventListener('change', function() {
             if (selectedDateForTimePicker) {
+                const newStartTime = this.value;
+                // If we have recurring slots, reset skip_dates when time changes
+                generatedSessions.forEach(session => {
+                    if (session.recurring_slot_id && session.recurrence !== 'one_time') {
+                        const oldStartTime = session.start;
+                        if (oldStartTime && oldStartTime !== newStartTime) {
+                            // Time changed, reset skip_dates
+                            delete session.skip_dates;
+                            if (skipDatesUpdates.has(session.recurring_slot_id)) {
+                                skipDatesUpdates.delete(session.recurring_slot_id);
+                            }
+                        }
+                        session.start = newStartTime;
+                    }
+                });
                 initializeTimeline();
                 renderSessionsList();
             }
@@ -2807,6 +3224,21 @@
 
         document.getElementById('endTime').addEventListener('change', function() {
             if (selectedDateForTimePicker) {
+                const newEndTime = this.value;
+                // If we have recurring slots, reset skip_dates when time changes
+                generatedSessions.forEach(session => {
+                    if (session.recurring_slot_id && session.recurrence !== 'one_time') {
+                        const oldEndTime = session.end;
+                        if (oldEndTime && oldEndTime !== newEndTime) {
+                            // Time changed, reset skip_dates
+                            delete session.skip_dates;
+                            if (skipDatesUpdates.has(session.recurring_slot_id)) {
+                                skipDatesUpdates.delete(session.recurring_slot_id);
+                            }
+                        }
+                        session.end = newEndTime;
+                    }
+                });
                 initializeTimeline();
                 renderSessionsList();
             }

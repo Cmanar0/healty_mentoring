@@ -217,6 +217,7 @@ class MentorProfile(models.Model):
     #     "day_of_month": <1–31|null>,     // for monthly recurrences
     #     "start_time": "HH:MM",
     #     "end_time": "HH:MM",
+    #     "skip_dates": ["YYYY-MM-DD", ...], // dates to skip (excluded from recurrence)
     #     "created_at": "YYYY-MM-DDTHH:MM:SS+00:00"
     #   }
     # ]
