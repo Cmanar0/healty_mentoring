@@ -971,17 +971,21 @@
 
     .session-recurrence-menu {
         display: none;
-        position: absolute;
-        top: 100%;
-        right: 0;
-        margin-top: 4px;
+        position: fixed;
         background: white;
         border: 2px solid var(--dash-border);
         border-radius: 8px;
         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        z-index: 1000;
+        z-index: 99999 !important;
         min-width: 180px;
         overflow: hidden;
+        top: 0;
+        left: 0;
+        pointer-events: auto;
+    }
+    
+    .session-recurrence-dropdown {
+        position: relative;
     }
 
     .session-recurrence-menu.show {
@@ -1477,8 +1481,15 @@
 {% if availability_data %}
 {{ availability_data|json_script:"availabilityDataJson" }}
 {% endif %}
+<!-- Recurring Slots Data (JSON) -->
+{% if recurring_slots %}
+{{ recurring_slots|json_script:"recurringSlotsJson" }}
+{% endif %}
 
 <script>
+    // Store original parent for each menu so we can restore it (global scope)
+    const menuOriginalParents = new WeakMap();
+    
     // View Toggle Functionality
     document.addEventListener('DOMContentLoaded', function() {
         const toggleButtons = document.querySelectorAll('.view-toggle-btn');
@@ -1505,7 +1516,8 @@
         let viewMode = 'sessions'; // 'sessions' or 'availability'
         let pendingAvailability = {}; // Temporary storage for new availability
         let selectedDateForTimePicker = null;
-        let generatedSessions = []; // Array of session objects: {start: 'HH:MM', end: 'HH:MM', length: minutes, recurrence: 'one_time'|'daily'|'weekly'|'monthly'}
+        let generatedSessions = []; // Array of session objects: {start: 'HH:MM', end: 'HH:MM', length: minutes, recurrence: 'one_time'|'daily'|'weekly'|'monthly', recurring_slot_id: 'uuid'}
+        let editingRecurringSlotId = null; // Track which recurring slot is being edited
 
         // Mock sessions data (dates with sessions)
         const sessionsData = {
@@ -1520,15 +1532,55 @@
         const availabilityDataEl = document.getElementById('availabilityDataJson');
         if (availabilityDataEl) {
             const availabilityDataFromServer = JSON.parse(availabilityDataEl.textContent);
-            // Convert array format to object format
+            // Convert array format to object format, preserving all slots with their metadata
             for (const [dateStr, availList] of Object.entries(availabilityDataFromServer)) {
                 if (availList && availList.length > 0) {
-                    availabilityData[dateStr] = {
-                        start: availList[0].start,
-                        end: availList[0].end
-                    };
+                    availabilityData[dateStr] = availList; // Store full array of slots
                 }
             }
+        }
+        
+        // Load recurring slots from backend
+        let recurringSlots = [];
+        const recurringSlotsEl = document.getElementById('recurringSlotsJson');
+        if (recurringSlotsEl) {
+            recurringSlots = JSON.parse(recurringSlotsEl.textContent);
+        }
+        
+        // Helper function to check if a date matches a recurring slot
+        function getRecurringSlotsForDate(dateStr) {
+            const date = new Date(dateStr + 'T00:00:00');
+            const weekdayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+            const weekdayName = weekdayNames[date.getDay()];
+            const matchingSlots = [];
+            
+            for (const slot of recurringSlots) {
+                const slotType = slot.type || 'weekly';
+                let matches = false;
+                
+                if (slotType === 'daily') {
+                    matches = true;
+                } else if (slotType === 'weekly') {
+                    const weekdays = slot.weekdays || [];
+                    matches = weekdays.includes(weekdayName);
+                } else if (slotType === 'monthly') {
+                    // For monthly, check if it's the same day of month (simplified - could be enhanced)
+                    const weekdays = slot.weekdays || [];
+                    matches = weekdays.includes(weekdayName);
+                }
+                
+                if (matches) {
+                    matchingSlots.push({
+                        ...slot,
+                        is_recurring: true, // Mark as recurring for display purposes
+                        recurring_slot_id: slot.id,
+                        // Preserve original type (weekly, daily, monthly)
+                        recurrence_type: slot.type || 'weekly'
+                    });
+                }
+            }
+            
+            return matchingSlots;
         }
 
         function renderCalendar() {
@@ -1587,9 +1639,15 @@
             dayElement.appendChild(dayNumber);
 
             const hasSessions = sessionsData[dateStr];
-            const hasAvailability = availabilityData[dateStr] || pendingAvailability[dateStr];
-            const combinedData = { ...availabilityData, ...pendingAvailability };
-            const hasAvail = combinedData[dateStr];
+            
+            // Get all availability slots for this date (one-time + recurring)
+            const oneTimeSlots = availabilityData[dateStr] || [];
+            const pendingSlots = pendingAvailability[dateStr] || [];
+            const recurringSlotsForDate = getRecurringSlotsForDate(dateStr);
+            
+            // Combine all slots
+            const allSlots = [...oneTimeSlots, ...pendingSlots, ...recurringSlotsForDate];
+            const hasAvailability = allSlots.length > 0;
 
             // Show sessions (prominent in sessions mode, hidden in availability mode)
             if (hasSessions && viewMode === 'sessions') {
@@ -1614,15 +1672,19 @@
             }
 
             // Show availability (subtle in sessions mode, prominent in availability mode)
-            if (hasAvail) {
+            if (hasAvailability) {
                 dayElement.classList.add('has-availability');
                 if (viewMode === 'availability') {
                     dayElement.classList.add('availability-mode-active');
                     const availInfo = document.createElement('div');
                     availInfo.className = 'calendar-day-availability';
                     availInfo.style.cssText = 'font-size: 0.7rem; color: #3b82f6; margin-top: 4px; font-weight: 600;';
-                    const avail = combinedData[dateStr];
-                    availInfo.textContent = `${avail.start} - ${avail.end}`;
+                    // Show first slot's time range
+                    const firstSlot = allSlots[0];
+                    const startTime = firstSlot.start_time || firstSlot.start;
+                    const endTime = firstSlot.end_time || firstSlot.end;
+                    const slotType = firstSlot.is_recurring ? ` (recurring)` : '';
+                    availInfo.textContent = `${startTime} - ${endTime}${slotType}`;
                     dayElement.appendChild(availInfo);
                 } else {
                     // Subtle indicator in sessions mode
@@ -1719,6 +1781,8 @@
         function openTimePicker(dateStr, day) {
             selectedDateForTimePicker = dateStr;
             generatedSessions = []; // Reset sessions when opening modal
+            editingRecurringSlotId = null; // Reset recurring slot ID
+            
             const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
                 'July', 'August', 'September', 'October', 'November', 'December'];
             // Parse dateStr (format: YYYY-MM-DD)
@@ -1727,15 +1791,54 @@
             
             document.getElementById('timePickerDate').textContent = dateStrFormatted;
             
-            // Pre-fill if already has availability
-            const combinedData = { ...availabilityData, ...pendingAvailability };
-            if (combinedData[dateStr]) {
-                document.getElementById('startTime').value = combinedData[dateStr].start;
-                document.getElementById('endTime').value = combinedData[dateStr].end;
+            // Check for recurring slots first (they take precedence)
+            const recurringSlotsForDate = getRecurringSlotsForDate(dateStr);
+            let startTime = '09:00';
+            let endTime = '17:00';
+            
+            if (recurringSlotsForDate.length > 0) {
+                // Load the first recurring slot (if multiple, use first one)
+                const recurringSlot = recurringSlotsForDate[0];
+                editingRecurringSlotId = recurringSlot.recurring_slot_id;
+                startTime = recurringSlot.start_time || '09:00';
+                endTime = recurringSlot.end_time || '17:00';
+                
+                // Pre-populate sessions from recurring slot
+                // For now, create one session representing the recurring slot
+                generatedSessions.push({
+                    start: startTime,
+                    end: endTime,
+                    length: recurringSlot.length || 60,
+                    recurrence: recurringSlot.recurrence_type || recurringSlot.type || 'weekly',
+                    recurring_slot_id: editingRecurringSlotId
+                });
             } else {
-                document.getElementById('startTime').value = '09:00';
-                document.getElementById('endTime').value = '17:00';
+                // Check for one-time slots
+                const oneTimeSlots = availabilityData[dateStr] || [];
+                const pendingSlots = pendingAvailability[dateStr] || [];
+                const allOneTimeSlots = [...oneTimeSlots, ...pendingSlots];
+                
+                if (allOneTimeSlots.length > 0) {
+                    // Load one-time slots into generatedSessions
+                    for (const slot of allOneTimeSlots) {
+                        if (!slot.is_recurring && slot.type !== 'recurring') {
+                            generatedSessions.push({
+                                start: slot.start,
+                                end: slot.end,
+                                length: slot.length || 60,
+                                recurrence: 'one_time',
+                                id: slot.id
+                            });
+                        }
+                    }
+                    // Use first slot's times for the time range inputs
+                    startTime = allOneTimeSlots[0].start || '09:00';
+                    endTime = allOneTimeSlots[0].end || '17:00';
+                }
             }
+            
+            document.getElementById('startTime').value = startTime;
+            document.getElementById('endTime').value = endTime;
             
             // Initialize timeline
             initializeTimeline();
@@ -1909,6 +2012,17 @@
         function renderSessionsList() {
             const timelineSessions = document.getElementById('timelineSessions');
             const emptyMessage = document.getElementById('emptySessionsMessage');
+            
+            // Close and clean up any open dropdowns before re-rendering
+            // Note: Menus will be recreated in the new DOM, so we don't need to restore them
+            document.querySelectorAll('.session-recurrence-menu').forEach(menu => {
+                menu.classList.remove('show');
+                menu.style.display = 'none';
+                // If menu was moved to body, remove it (it will be recreated in render)
+                if (menu.parentElement === document.body) {
+                    menu.remove();
+                }
+            });
             
             if (generatedSessions.length === 0) {
                 timelineSessions.innerHTML = '';
@@ -2289,7 +2403,8 @@
             }, { offset: Number.NEGATIVE_INFINITY }).element;
         }
 
-        function getRecurrenceLabel(recurrence) {
+        // Make functions globally accessible for onclick handlers
+        window.getRecurrenceLabel = function(recurrence) {
             const labels = {
                 'one_time': 'One Time',
                 'daily': 'Daily',
@@ -2297,11 +2412,12 @@
                 'monthly': 'Monthly'
             };
             return labels[recurrence] || 'One Time';
-        }
+        };
 
-        function toggleRecurrenceDropdown(button, event) {
+        window.toggleRecurrenceDropdown = function(button, event) {
             if (event) {
                 event.stopPropagation();
+                event.preventDefault();
             }
             const menu = button.nextElementSibling;
             const isOpen = menu.classList.contains('show');
@@ -2309,17 +2425,60 @@
             // Close all dropdowns
             document.querySelectorAll('.session-recurrence-menu').forEach(m => {
                 m.classList.remove('show');
+                m.style.display = 'none';
+                // Restore menu to original parent if it was moved to body
+                if (m.parentElement === document.body && menuOriginalParents.has(m)) {
+                    const originalParent = menuOriginalParents.get(m);
+                    originalParent.appendChild(m);
+                    menuOriginalParents.delete(m);
+                }
             });
             
             // Toggle current dropdown
             if (!isOpen) {
+                // Store original parent before moving
+                if (menu.parentElement !== document.body) {
+                    menuOriginalParents.set(menu, menu.parentElement);
+                    document.body.appendChild(menu);
+                }
+                
+                // Position the menu relative to the button using fixed positioning
+                const buttonRect = button.getBoundingClientRect();
+                const menuWidth = 180; // min-width from CSS
+                menu.style.display = 'block';
+                menu.style.top = `${buttonRect.bottom + 4}px`;
+                menu.style.left = `${buttonRect.right - menuWidth}px`; // Align right edge with button
+                menu.style.right = 'auto'; // Reset right positioning
+                menu.style.zIndex = '99999';
                 menu.classList.add('show');
+            } else {
+                // Reset positioning when closing
+                menu.style.display = 'none';
+                menu.style.top = '';
+                menu.style.left = '';
+                menu.style.right = '';
+                // Restore menu to original parent
+                if (menu.parentElement === document.body && menuOriginalParents.has(menu)) {
+                    const originalParent = menuOriginalParents.get(menu);
+                    originalParent.appendChild(menu);
+                    menuOriginalParents.delete(menu);
+                }
             }
-        }
+        };
 
-        function setRecurrence(index, recurrence) {
+        window.setRecurrence = function(index, recurrence) {
             if (generatedSessions[index]) {
-                generatedSessions[index].recurrence = recurrence;
+                const session = generatedSessions[index];
+                session.recurrence = recurrence;
+                
+                // If changing from recurring to one-time, clear recurring_slot_id
+                // If changing to recurring and we have editingRecurringSlotId, preserve it
+                if (recurrence === 'one_time') {
+                    delete session.recurring_slot_id;
+                } else if (editingRecurringSlotId && !session.recurring_slot_id) {
+                    session.recurring_slot_id = editingRecurringSlotId;
+                }
+                
                 renderSessionsList();
             }
             
@@ -2327,9 +2486,10 @@
             document.querySelectorAll('.session-recurrence-menu').forEach(m => {
                 m.classList.remove('show');
             });
-        }
+        };
 
-        function deleteSession(index) {
+        // Make deleteSession globally accessible for onclick handlers
+        window.deleteSession = function(index) {
             if (index >= 0 && index < generatedSessions.length) {
                 generatedSessions.splice(index, 1);
                 renderSessionsList();
@@ -2338,7 +2498,7 @@
                     showNotification('Session removed', 'note');
                 }
             }
-        }
+        };
 
         function saveTimeSlot() {
             if (!selectedDateForTimePicker) return;
@@ -2395,33 +2555,54 @@
         }
 
         function saveAvailability() {
-            // Prepare availability data for server
-            const availabilityArray = [];
-            const combinedData = { ...availabilityData, ...pendingAvailability };
-            
-            for (const [dateStr, avail] of Object.entries(combinedData)) {
-                // If it's a new entry with sessions, send all sessions
-                if (avail.sessions && avail.sessions.length > 0) {
-                    avail.sessions.forEach(session => {
-                        availabilityArray.push({
-                            date: dateStr,
-                            start: session.start,
-                            end: session.end,
-                            is_recurring: session.recurrence !== 'one_time',
-                            recurrence_rule: session.recurrence === 'one_time' ? '' : session.recurrence
-                        });
-                    });
+            // Only save the date that was being edited (from the popup)
+            if (!selectedDateForTimePicker) {
+                if (typeof showNotification !== 'undefined') {
+                    showNotification('No date selected for saving', 'error');
                 } else {
-                    // Legacy format - single time range
-                    availabilityArray.push({
-                        date: dateStr,
-                        start: avail.start,
-                        end: avail.end,
-                        is_recurring: false,
-                        recurrence_rule: ''
-                    });
+                    alert('No date selected for saving');
                 }
+                return;
             }
+            
+            // Prepare availability data for server - only for the edited date
+            const availabilityArray = [];
+            const dateStr = selectedDateForTimePicker;
+            
+            // Get sessions from generatedSessions (current state in popup)
+            if (generatedSessions.length === 0) {
+                if (typeof showNotification !== 'undefined') {
+                    showNotification('Please add at least one session slot', 'error');
+                } else {
+                    alert('Please add at least one session slot');
+                }
+                return;
+            }
+            
+            // Send all sessions for this date
+            generatedSessions.forEach(session => {
+                const isRecurring = session.recurrence !== 'one_time';
+                const availabilityItem = {
+                    date: dateStr,
+                    start: session.start,
+                    end: session.end,
+                    is_recurring: isRecurring,
+                    recurrence_rule: isRecurring ? session.recurrence : '',
+                    length: session.length || 60
+                };
+                
+                // Include recurring_slot_id if editing an existing recurring slot
+                if (isRecurring && (session.recurring_slot_id || editingRecurringSlotId)) {
+                    availabilityItem.recurring_slot_id = session.recurring_slot_id || editingRecurringSlotId;
+                }
+                
+                // Include id for one-time slots if editing existing
+                if (!isRecurring && session.id) {
+                    availabilityItem.id = session.id;
+                }
+                
+                availabilityArray.push(availabilityItem);
+            });
             
             // Send to server
             fetch('{% url "general:dashboard_mentor:save_availability" %}', {
@@ -2430,7 +2611,10 @@
                     'Content-Type': 'application/json',
                     'X-CSRFToken': getCookie('csrftoken')
                 },
-                body: JSON.stringify({ availability: availabilityArray })
+                body: JSON.stringify({ 
+                    availability: availabilityArray,
+                    selected_date: dateStr
+                })
             })
             .then(response => response.json())
             .then(data => {
@@ -2448,8 +2632,9 @@
                         alert(data.message || 'Availability saved successfully!');
                     }
                     
-                    // Exit availability mode (toggleManageSessions will handle this)
-                    exitAvailabilityMode();
+                    // Close the popup and refresh calendar
+                    closeTimePicker();
+                    renderCalendar();
                 } else {
                     if (typeof showNotification !== 'undefined') {
                         showNotification('Error saving availability: ' + (data.error || 'Unknown error'), 'error');
@@ -2493,7 +2678,7 @@
         });
 
         document.getElementById('timePickerSave').addEventListener('click', function() {
-            saveTimeSlot();
+            saveAvailability();
         });
 
         document.getElementById('timePickerCancel').addEventListener('click', function() {
@@ -2532,14 +2717,28 @@
 
     // Close dropdowns when clicking outside
     document.addEventListener('click', function(event) {
+        // Close general dropdowns
         if (!event.target.closest('.dropdown')) {
             document.querySelectorAll('.dropdown-menu').forEach(menu => {
                 menu.classList.remove('show');
             });
         }
-        if (!event.target.closest('.session-recurrence-dropdown')) {
+        
+        // Close session recurrence dropdowns
+        // Check if click is outside both the dropdown button AND the menu itself
+        const clickedDropdown = event.target.closest('.session-recurrence-dropdown');
+        const clickedMenu = event.target.closest('.session-recurrence-menu');
+        
+        if (!clickedDropdown && !clickedMenu) {
             document.querySelectorAll('.session-recurrence-menu').forEach(menu => {
                 menu.classList.remove('show');
+                menu.style.display = 'none';
+                // Restore menu to original parent if it was moved to body
+                if (menu.parentElement === document.body && menuOriginalParents.has(menu)) {
+                    const originalParent = menuOriginalParents.get(menu);
+                    originalParent.appendChild(menu);
+                    menuOriginalParents.delete(menu);
+                }
             });
         }
     });

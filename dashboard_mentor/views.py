@@ -498,6 +498,7 @@ def my_sessions(request):
     availability_data = {}
     availability_slots = mentor_profile.availability_slots or []
     
+    # Load one-time slots
     for slot in availability_slots:
         try:
             from datetime import datetime
@@ -515,7 +516,41 @@ def my_sessions(request):
                 'end': end_dt.time().strftime('%H:%M'),
                 'length': length_minutes,
                 'id': slot.get('id'),
+                'type': 'one_time',
                 'created_at': slot.get('created_at', '')
+            })
+        except (KeyError, ValueError) as e:
+            continue
+    
+    # Load recurring slots and expand them for calendar display
+    recurring_slots = mentor_profile.recurring_availability_slots or []
+    recurring_slots_data = []
+    
+    for recurring_slot in recurring_slots:
+        try:
+            slot_id = recurring_slot.get('id')
+            slot_type = recurring_slot.get('type', 'weekly')  # 'daily', 'weekly', 'monthly'
+            weekdays = recurring_slot.get('weekdays', [])
+            start_time = recurring_slot.get('start_time', '09:00')
+            end_time = recurring_slot.get('end_time', '17:00')
+            created_at = recurring_slot.get('created_at', '')
+            
+            # Calculate length from start/end times
+            from datetime import datetime, timedelta
+            start_dt = datetime.strptime(start_time, '%H:%M')
+            end_dt = datetime.strptime(end_time, '%H:%M')
+            if end_dt < start_dt:
+                end_dt += timedelta(days=1)
+            length_minutes = int((end_dt - start_dt).total_seconds() / 60)
+            
+            recurring_slots_data.append({
+                'id': slot_id,
+                'type': slot_type,
+                'weekdays': weekdays,
+                'start_time': start_time,
+                'end_time': end_time,
+                'length': length_minutes,
+                'created_at': created_at
             })
         except (KeyError, ValueError) as e:
             continue
@@ -527,6 +562,7 @@ def my_sessions(request):
         'common_timezones': COMMON_TIMEZONES,
         'debug': settings.DEBUG,
         'availability_data': availability_data,
+        'recurring_slots': recurring_slots_data,
         'session_length': session_length,
     })
 
@@ -559,12 +595,15 @@ def save_availability(request):
         existing_availability_slots = list(mentor_profile.availability_slots or [])
         existing_recurring_slots = list(mentor_profile.recurring_availability_slots or [])
         
-        # Remove all existing slots for the edited date (we'll replace them)
+        # Remove all existing one-time slots for the edited date (we'll replace them)
         edited_date_obj = datetime.strptime(edited_date_str, '%Y-%m-%d').date()
         existing_availability_slots = [
             slot for slot in existing_availability_slots
             if datetime.fromisoformat(slot['start'].replace('Z', '+00:00')).date() != edited_date_obj
         ]
+        
+        # Track which recurring slot IDs are being edited (to remove old ones)
+        edited_recurring_slot_ids = set()
         
         # Process new slots - each session becomes a separate slot
         new_availability_slots = []
@@ -576,19 +615,53 @@ def save_availability(request):
             end_time = avail_item.get('end')
             is_recurring = avail_item.get('is_recurring', False)
             recurrence_rule = avail_item.get('recurrence_rule', '')
+            recurring_slot_id = avail_item.get('recurring_slot_id')  # ID of recurring slot being edited
             
             if is_recurring and recurrence_rule:
                 # Handle recurring slots
                 slot_type = recurrence_rule
-                weekdays = avail_item.get('weekdays', [])
+                
+                # Determine weekdays based on recurrence type and the date being edited
+                weekdays = []
+                if slot_type == 'daily':
+                    # Daily: all weekdays
+                    weekdays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+                elif slot_type == 'weekly':
+                    # Weekly: use the weekday of the date being edited
+                    weekday_names = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+                    weekday_index = edited_date_obj.weekday()  # 0=Monday, 6=Sunday
+                    weekdays = [weekday_names[weekday_index]]
+                elif slot_type == 'monthly':
+                    # Monthly: use the weekday of the date being edited
+                    weekday_names = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+                    weekday_index = edited_date_obj.weekday()
+                    weekdays = [weekday_names[weekday_index]]
+                else:
+                    # Fallback: use provided weekdays or default to the weekday of edited date
+                    weekdays = avail_item.get('weekdays', [])
+                    if not weekdays:
+                        weekday_names = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+                        weekday_index = edited_date_obj.weekday()
+                        weekdays = [weekday_names[weekday_index]]
+                
+                # If editing an existing recurring slot, preserve its ID and remove the old one
+                if recurring_slot_id:
+                    edited_recurring_slot_ids.add(recurring_slot_id)
+                    slot_id = recurring_slot_id
+                    # Find and preserve created_at from existing slot
+                    existing_slot = next((s for s in existing_recurring_slots if s.get('id') == recurring_slot_id), None)
+                    created_at = existing_slot.get('created_at', timezone.now().isoformat()) if existing_slot else timezone.now().isoformat()
+                else:
+                    slot_id = str(uuid.uuid4())
+                    created_at = timezone.now().isoformat()
                 
                 recurring_slot = {
-                    'id': str(uuid.uuid4()),
+                    'id': slot_id,
                     'type': slot_type,
                     'weekdays': weekdays,
                     'start_time': start_time,
                     'end_time': end_time,
-                    'created_at': timezone.now().isoformat()
+                    'created_at': created_at
                 }
                 new_recurring_slots.append(recurring_slot)
             else:
@@ -640,9 +713,16 @@ def save_availability(request):
                 except ValueError as e:
                     continue
         
-        # Merge: keep existing slots from other dates + add new slots for edited date
+        # Remove recurring slots that are being edited (we'll replace them)
+        final_recurring_slots = [
+            slot for slot in existing_recurring_slots
+            if slot.get('id') not in edited_recurring_slot_ids
+        ]
+        
+        # Merge: keep existing one-time slots from other dates + add new slots for edited date
+        # Merge: keep existing recurring slots (except edited ones) + add new/updated recurring slots
         final_availability_slots = existing_availability_slots + new_availability_slots
-        final_recurring_slots = existing_recurring_slots + new_recurring_slots
+        final_recurring_slots = final_recurring_slots + new_recurring_slots
         
         # Save to MentorProfile
         mentor_profile.availability_slots = final_availability_slots
