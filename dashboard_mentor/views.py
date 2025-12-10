@@ -494,12 +494,16 @@ def my_sessions(request):
     if not mentor_profile:
         return redirect('general:index')
     
-    # Format availability data for frontend from availability_slots JSON field
+    # Format availability data for frontend from one_time_slots JSON field
+    # Use new field name, fallback to old for backward compatibility
+    try:
+        one_time_slots = mentor_profile.one_time_slots or []
+    except AttributeError:
+        one_time_slots = mentor_profile.availability_slots or []
     availability_data = {}
-    availability_slots = mentor_profile.availability_slots or []
     
     # Load one-time slots
-    for slot in availability_slots:
+    for slot in one_time_slots:
         try:
             from datetime import datetime
             start_dt = datetime.fromisoformat(slot['start'].replace('Z', '+00:00'))
@@ -522,38 +526,12 @@ def my_sessions(request):
         except (KeyError, ValueError) as e:
             continue
     
-    # Load recurring slots and expand them for calendar display
-    recurring_slots = mentor_profile.recurring_availability_slots or []
-    recurring_slots_data = []
-    
-    for recurring_slot in recurring_slots:
-        try:
-            slot_id = recurring_slot.get('id')
-            slot_type = recurring_slot.get('type', 'weekly')  # 'daily', 'weekly', 'monthly'
-            weekdays = recurring_slot.get('weekdays', [])
-            start_time = recurring_slot.get('start_time', '09:00')
-            end_time = recurring_slot.get('end_time', '17:00')
-            created_at = recurring_slot.get('created_at', '')
-            
-            # Calculate length from start/end times
-            from datetime import datetime, timedelta
-            start_dt = datetime.strptime(start_time, '%H:%M')
-            end_dt = datetime.strptime(end_time, '%H:%M')
-            if end_dt < start_dt:
-                end_dt += timedelta(days=1)
-            length_minutes = int((end_dt - start_dt).total_seconds() / 60)
-            
-            recurring_slots_data.append({
-                'id': slot_id,
-                'type': slot_type,
-                'weekdays': weekdays,
-                'start_time': start_time,
-                'end_time': end_time,
-                'length': length_minutes,
-                'created_at': created_at
-            })
-        except (KeyError, ValueError) as e:
-            continue
+    # Load recurring slots - pass raw JSON without expansion
+    # Use new field name, fallback to old for backward compatibility
+    try:
+        recurring_slots_data = mentor_profile.recurring_slots or []
+    except AttributeError:
+        recurring_slots_data = mentor_profile.recurring_availability_slots or []
     
     # Get session_length from mentor profile
     session_length = mentor_profile.session_length if mentor_profile and mentor_profile.session_length else 60
@@ -591,22 +569,29 @@ def save_availability(request):
         if not edited_date_str:
             return JsonResponse({'success': False, 'error': 'No date specified'}, status=400)
         
-        # Get existing slots
-        existing_availability_slots = list(mentor_profile.availability_slots or [])
-        existing_recurring_slots = list(mentor_profile.recurring_availability_slots or [])
+        # Get existing slots - use new field names with fallback to old for backward compatibility
+        try:
+            existing_one_time_slots = list(mentor_profile.one_time_slots or [])
+        except AttributeError:
+            existing_one_time_slots = list(mentor_profile.availability_slots or [])
+        
+        try:
+            existing_recurring_slots = list(mentor_profile.recurring_slots or [])
+        except AttributeError:
+            existing_recurring_slots = list(mentor_profile.recurring_availability_slots or [])
         
         # Remove all existing one-time slots for the edited date (we'll replace them)
         edited_date_obj = datetime.strptime(edited_date_str, '%Y-%m-%d').date()
-        existing_availability_slots = [
-            slot for slot in existing_availability_slots
+        final_one_time_slots = [
+            slot for slot in existing_one_time_slots
             if datetime.fromisoformat(slot['start'].replace('Z', '+00:00')).date() != edited_date_obj
         ]
         
-        # Track which recurring slot IDs are being edited (to remove old ones)
+        # Track which recurring slot IDs are being edited/converted (to remove old ones)
         edited_recurring_slot_ids = set()
         
         # Process new slots - each session becomes a separate slot
-        new_availability_slots = []
+        new_one_time_slots = []
         new_recurring_slots = []
         
         for avail_item in availability_list:
@@ -617,32 +602,81 @@ def save_availability(request):
             recurrence_rule = avail_item.get('recurrence_rule', '')
             recurring_slot_id = avail_item.get('recurring_slot_id')  # ID of recurring slot being edited
             
+            # Handle recurring → one-time conversion
+            if recurring_slot_id and not (is_recurring and recurrence_rule):
+                # This is a conversion: recurring slot → one-time slot
+                edited_recurring_slot_ids.add(recurring_slot_id)
+                
+                # Find the recurring slot to convert
+                existing_recurring_slot = next(
+                    (s for s in existing_recurring_slots if s.get('id') == recurring_slot_id),
+                    None
+                )
+                
+                if existing_recurring_slot and all([date_str, start_time, end_time]):
+                    # Use the recurring slot's id and created_at
+                    slot_id = existing_recurring_slot.get('id')
+                    created_at = existing_recurring_slot.get('created_at', timezone.now().isoformat())
+                    
+                    # Build datetime strings with timezone
+                    start_datetime_str = f"{date_str}T{start_time}:00+00:00"
+                    end_datetime_str = f"{date_str}T{end_time}:00+00:00"
+                    
+                    try:
+                        # Parse datetime
+                        start_dt = datetime.fromisoformat(start_datetime_str.replace('+00:00', ''))
+                        end_dt = datetime.fromisoformat(end_datetime_str.replace('+00:00', ''))
+                        
+                        # Make timezone-aware
+                        start_dt = timezone.make_aware(start_dt)
+                        end_dt = timezone.make_aware(end_dt)
+                        
+                        # Validate end > start
+                        if end_dt <= start_dt:
+                            continue
+                        
+                        # Calculate length
+                        length_minutes = avail_item.get('length')
+                        if not length_minutes or length_minutes <= 0:
+                            length_minutes = int((end_dt - start_dt).total_seconds() / 60)
+                        
+                        # Create one-time slot with preserved id and created_at
+                        one_time_slot = {
+                            'id': slot_id,
+                            'start': start_dt.isoformat(),
+                            'end': end_dt.isoformat(),
+                            'length': length_minutes,
+                            'created_at': created_at
+                        }
+                        new_one_time_slots.append(one_time_slot)
+                    except ValueError as e:
+                        continue
+                continue  # Skip to next item
+            
             if is_recurring and recurrence_rule:
                 # Handle recurring slots
                 slot_type = recurrence_rule
                 
-                # Determine weekdays based on recurrence type and the date being edited
+                # Determine weekdays and day_of_month based on recurrence type
                 weekdays = []
+                day_of_month = None
+                
                 if slot_type == 'daily':
-                    # Daily: all weekdays
+                    # Daily: all 7 weekdays, no day_of_month
                     weekdays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
                 elif slot_type == 'weekly':
-                    # Weekly: use the weekday of the date being edited
+                    # Weekly: single weekday of selected date, no day_of_month
                     weekday_names = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
                     weekday_index = edited_date_obj.weekday()  # 0=Monday, 6=Sunday
                     weekdays = [weekday_names[weekday_index]]
                 elif slot_type == 'monthly':
-                    # Monthly: use the weekday of the date being edited
-                    weekday_names = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
-                    weekday_index = edited_date_obj.weekday()
-                    weekdays = [weekday_names[weekday_index]]
+                    # Monthly: day_of_month = selected date's day, weekdays ignored
+                    day_of_month = edited_date_obj.day  # 1-31
+                    weekdays = []  # Ignored for monthly
                 else:
-                    # Fallback: use provided weekdays or default to the weekday of edited date
+                    # Fallback
                     weekdays = avail_item.get('weekdays', [])
-                    if not weekdays:
-                        weekday_names = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
-                        weekday_index = edited_date_obj.weekday()
-                        weekdays = [weekday_names[weekday_index]]
+                    day_of_month = avail_item.get('day_of_month')
                 
                 # If editing an existing recurring slot, preserve its ID and remove the old one
                 if recurring_slot_id:
@@ -655,28 +689,35 @@ def save_availability(request):
                     slot_id = str(uuid.uuid4())
                     created_at = timezone.now().isoformat()
                 
+                # Build recurring slot with proper structure
                 recurring_slot = {
                     'id': slot_id,
                     'type': slot_type,
-                    'weekdays': weekdays,
                     'start_time': start_time,
                     'end_time': end_time,
                     'created_at': created_at
                 }
+                
+                # Add weekdays for daily/weekly, day_of_month for monthly
+                if slot_type == 'monthly':
+                    recurring_slot['day_of_month'] = day_of_month
+                else:
+                    recurring_slot['weekdays'] = weekdays
+                
                 new_recurring_slots.append(recurring_slot)
             else:
-                # Handle one-time slots
+                # Handle regular one-time slots (not converted)
                 if not all([date_str, start_time, end_time]):
                     continue
                 
-                # Combine date and time into datetime
-                start_datetime_str = f"{date_str} {start_time}"
-                end_datetime_str = f"{date_str} {end_time}"
+                # Build datetime strings with timezone
+                start_datetime_str = f"{date_str}T{start_time}:00+00:00"
+                end_datetime_str = f"{date_str}T{end_time}:00+00:00"
                 
                 try:
-                    # Parse datetime (naive, local time)
-                    start_dt = datetime.strptime(start_datetime_str, '%Y-%m-%d %H:%M')
-                    end_dt = datetime.strptime(end_datetime_str, '%Y-%m-%d %H:%M')
+                    # Parse datetime
+                    start_dt = datetime.fromisoformat(start_datetime_str.replace('+00:00', ''))
+                    end_dt = datetime.fromisoformat(end_datetime_str.replace('+00:00', ''))
                     
                     # Make timezone-aware
                     start_dt = timezone.make_aware(start_dt)
@@ -686,12 +727,12 @@ def save_availability(request):
                     if end_dt <= start_dt:
                         continue
                     
-                    # Calculate length in minutes (use provided length if available, otherwise calculate)
+                    # Calculate length
                     length_minutes = avail_item.get('length')
                     if not length_minutes or length_minutes <= 0:
                         length_minutes = int((end_dt - start_dt).total_seconds() / 60)
                     
-                    # Preserve existing ID if provided (for existing sessions being updated)
+                    # Preserve existing ID if provided (for existing one-time sessions being updated)
                     slot_id = avail_item.get('id')
                     if not slot_id:
                         slot_id = str(uuid.uuid4())
@@ -701,19 +742,19 @@ def save_availability(request):
                     if not created_at:
                         created_at = timezone.now().isoformat()
                     
-                    # Each session becomes a separate slot entry
-                    availability_slot = {
+                    # Create one-time slot
+                    one_time_slot = {
                         'id': slot_id,
                         'start': start_dt.isoformat(),
                         'end': end_dt.isoformat(),
                         'length': length_minutes,
                         'created_at': created_at
                     }
-                    new_availability_slots.append(availability_slot)
+                    new_one_time_slots.append(one_time_slot)
                 except ValueError as e:
                     continue
         
-        # Remove recurring slots that are being edited (we'll replace them)
+        # Remove recurring slots that are being edited/converted (we'll replace or remove them)
         final_recurring_slots = [
             slot for slot in existing_recurring_slots
             if slot.get('id') not in edited_recurring_slot_ids
@@ -721,18 +762,18 @@ def save_availability(request):
         
         # Merge: keep existing one-time slots from other dates + add new slots for edited date
         # Merge: keep existing recurring slots (except edited ones) + add new/updated recurring slots
-        final_availability_slots = existing_availability_slots + new_availability_slots
+        final_one_time_slots = final_one_time_slots + new_one_time_slots
         final_recurring_slots = final_recurring_slots + new_recurring_slots
         
-        # Save to MentorProfile
-        mentor_profile.availability_slots = final_availability_slots
-        mentor_profile.recurring_availability_slots = final_recurring_slots
+        # Save to MentorProfile - use new field names (migration has been applied)
+        mentor_profile.one_time_slots = final_one_time_slots
+        mentor_profile.recurring_slots = final_recurring_slots
         mentor_profile.save()
         
         return JsonResponse({
             'success': True,
-            'message': f'Successfully saved {len(new_availability_slots)} availability slot(s) for {edited_date_str}',
-            'availability_count': len(new_availability_slots),
+            'message': f'Successfully saved {len(new_one_time_slots)} one-time slot(s) and {len(new_recurring_slots)} recurring slot(s) for {edited_date_str}',
+            'one_time_count': len(new_one_time_slots),
             'recurring_count': len(new_recurring_slots),
             'date': edited_date_str
         })

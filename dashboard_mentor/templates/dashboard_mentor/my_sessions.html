@@ -1552,6 +1552,7 @@
             const date = new Date(dateStr + 'T00:00:00');
             const weekdayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
             const weekdayName = weekdayNames[date.getDay()];
+            const dayOfMonth = date.getDate(); // 1-31
             const matchingSlots = [];
             
             for (const slot of recurringSlots) {
@@ -1559,14 +1560,32 @@
                 let matches = false;
                 
                 if (slotType === 'daily') {
+                    // Daily: matches all days
                     matches = true;
                 } else if (slotType === 'weekly') {
+                    // Weekly: check if weekday matches
                     const weekdays = slot.weekdays || [];
                     matches = weekdays.includes(weekdayName);
                 } else if (slotType === 'monthly') {
-                    // For monthly, check if it's the same day of month (simplified - could be enhanced)
-                    const weekdays = slot.weekdays || [];
-                    matches = weekdays.includes(weekdayName);
+                    // Monthly: check if day_of_month matches
+                    const slotDayOfMonth = slot.day_of_month;
+                    if (slotDayOfMonth !== null && slotDayOfMonth !== undefined) {
+                        // Check if the date's day matches the slot's day_of_month
+                        matches = dayOfMonth === slotDayOfMonth;
+                        
+                        // Handle edge case: if slot is for day 31 but current month doesn't have 31 days
+                        // Skip silently (as per requirements: "If month does not have that day, skip that month silently")
+                        if (slotDayOfMonth > 28) {
+                            // Check if current month has enough days
+                            const lastDayOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+                            if (slotDayOfMonth > lastDayOfMonth) {
+                                matches = false; // Skip this month
+                            }
+                        }
+                    } else {
+                        // Fallback: if day_of_month is not set, don't match
+                        matches = false;
+                    }
                 }
                 
                 if (matches) {
@@ -2591,13 +2610,16 @@
                     length: session.length || 60
                 };
                 
-                // Include recurring_slot_id if editing an existing recurring slot
-                if (isRecurring && (session.recurring_slot_id || editingRecurringSlotId)) {
-                    availabilityItem.recurring_slot_id = session.recurring_slot_id || editingRecurringSlotId;
+                // Include recurring_slot_id if:
+                // 1. Editing an existing recurring slot (isRecurring = true)
+                // 2. Converting recurring to one-time (isRecurring = false but has recurring_slot_id)
+                const recurringSlotId = session.recurring_slot_id || editingRecurringSlotId;
+                if (recurringSlotId) {
+                    availabilityItem.recurring_slot_id = recurringSlotId;
                 }
                 
-                // Include id for one-time slots if editing existing
-                if (!isRecurring && session.id) {
+                // Include id for one-time slots if editing existing (and not converted from recurring)
+                if (!isRecurring && session.id && !recurringSlotId) {
                     availabilityItem.id = session.id;
                 }
                 

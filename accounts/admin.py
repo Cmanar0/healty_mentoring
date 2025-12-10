@@ -153,12 +153,12 @@ class MentorProfileAdmin(admin.ModelAdmin):
             'description': 'Navigation tutorial manuals. See documentation for data structure.'
         }),
         ('Availability - One-Time Slots', {
-            'fields': ('availability_slots',),
-            'description': 'List of one-time availability windows. Format: [{"id": "<uuid>", "start": "YYYY-MM-DDTHH:MM:SSZ", "end": "YYYY-MM-DDTHH:MM:SSZ", "length": <minutes>, "created_at": "YYYY-MM-DDTHH:MM:SSZ"}]'
+            'fields': ('one_time_slots',),
+            'description': 'List of one-time availability windows. Format: [{"id": "<uuid>", "start": "YYYY-MM-DDTHH:MM:SS+00:00", "end": "YYYY-MM-DDTHH:MM:SS+00:00", "length": <minutes>, "created_at": "YYYY-MM-DDTHH:MM:SS+00:00"}]'
         }),
         ('Availability - Recurring Slots', {
-            'fields': ('recurring_availability_slots',),
-            'description': 'List of recurring weekly/daily rules. Format: [{"id": "<uuid>", "type": "weekly"|"daily", "weekdays": ["monday", "tuesday"], "start_time": "HH:MM", "end_time": "HH:MM", "created_at": "YYYY-MM-DDTHH:MM:SSZ"}]'
+            'fields': ('recurring_slots',),
+            'description': 'List of recurring availability rules. Format: [{"id": "<uuid>", "type": "daily"|"weekly"|"monthly", "weekdays": [...], "day_of_month": <1-31|null>, "start_time": "HH:MM", "end_time": "HH:MM", "created_at": "YYYY-MM-DDTHH:MM:SS+00:00"}]'
         }),
     )
     filter_horizontal = ('sessions', 'clients')

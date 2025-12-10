@@ -197,28 +197,33 @@ class MentorProfile(models.Model):
     # ]
     
     # Availability slots (JSON fields)
-    availability_slots = models.JSONField(default=list, blank=True, help_text="List of one-time availability windows")
+    one_time_slots = models.JSONField(default=list, blank=True, help_text="List of one-time availability windows")
     # Structure: [
     #   {
     #     "id": "<uuid>",
-    #     "start": "2025-05-20T09:00:00Z",
-    #     "end": "2025-05-20T10:00:00Z",
-    #     "length": 60,
-    #     "created_at": "2025-05-18T12:00:00Z"
+    #     "start": "YYYY-MM-DDTHH:MM:SS+00:00",
+    #     "end": "YYYY-MM-DDTHH:MM:SS+00:00",
+    #     "length": <minutes>,
+    #     "created_at": "YYYY-MM-DDTHH:MM:SS+00:00"
     #   }
     # ]
     
-    recurring_availability_slots = models.JSONField(default=list, blank=True, help_text="List of recurring weekly/daily rules")
+    recurring_slots = models.JSONField(default=list, blank=True, help_text="List of recurring availability rules")
     # Structure: [
     #   {
     #     "id": "<uuid>",
-    #     "type": "weekly",
-    #     "weekdays": ["monday", "wednesday"],
-    #     "start_time": "09:00",
-    #     "end_time": "12:00",
-    #     "created_at": "2025-05-18T12:00:00Z"
+    #     "type": "daily" | "weekly" | "monthly",
+    #     "weekdays": [...],               // for daily/weekly (weekly = 1 weekday)
+    #     "day_of_month": <1–31|null>,     // for monthly recurrences
+    #     "start_time": "HH:MM",
+    #     "end_time": "HH:MM",
+    #     "created_at": "YYYY-MM-DDTHH:MM:SS+00:00"
     #   }
     # ]
+    
+    # Legacy fields (kept for backward compatibility during migration)
+    availability_slots = models.JSONField(default=list, blank=True, help_text="DEPRECATED: Use one_time_slots")
+    recurring_availability_slots = models.JSONField(default=list, blank=True, help_text="DEPRECATED: Use recurring_slots")
 
     class Meta:
         verbose_name = "Mentor Profile"
