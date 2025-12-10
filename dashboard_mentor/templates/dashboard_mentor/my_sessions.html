@@ -816,6 +816,28 @@
         background: #f1f5f9;
     }
 
+    .timeline-current-time {
+        position: absolute;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background: #ef4444;
+        z-index: 20;
+        pointer-events: none;
+        box-shadow: 0 0 4px rgba(239, 68, 68, 0.5);
+    }
+
+    .timeline-current-time::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: -4px;
+        width: 8px;
+        height: 10px;
+        background: #ef4444;
+        border-radius: 0 4px 4px 0;
+    }
+
     .timeline-sessions {
         position: absolute;
         top: 0;
@@ -1485,6 +1507,10 @@
 {% if recurring_slots %}
 {{ recurring_slots|json_script:"recurringSlotsJson" }}
 {% endif %}
+<!-- Mentor Timezone -->
+{% if mentor_timezone %}
+{{ mentor_timezone|json_script:"mentorTimezoneJson" }}
+{% endif %}
 
 <script>
     // Store original parent for each menu so we can restore it (global scope)
@@ -1547,6 +1573,13 @@
             recurringSlots = JSON.parse(recurringSlotsEl.textContent);
         }
         
+        // Load mentor timezone
+        let mentorTimezone = 'UTC';
+        const mentorTimezoneEl = document.getElementById('mentorTimezoneJson');
+        if (mentorTimezoneEl) {
+            mentorTimezone = JSON.parse(mentorTimezoneEl.textContent);
+        }
+        
         // Helper function to check if a date matches a recurring slot
         function getRecurringSlotsForDate(dateStr) {
             const date = new Date(dateStr + 'T00:00:00');
@@ -1556,11 +1589,38 @@
             const matchingSlots = [];
             
             for (const slot of recurringSlots) {
+                // STRICT: Check if date is on or after the creation date (only show forward from creation)
+                // Under no circumstance should we display availability earlier than the creation date
+                const createdAt = slot.created_at;
+                
+                // If no creation date, skip this slot (safety measure)
+                if (!createdAt) {
+                    continue;
+                }
+                
+                try {
+                    // Parse created_at and extract date string (YYYY-MM-DD) for reliable comparison
+                    const createdDate = new Date(createdAt.replace('Z', '+00:00'));
+                    // Get UTC date string to avoid timezone issues
+                    const createdDateStr = createdDate.getUTCFullYear() + '-' + 
+                                         String(createdDate.getUTCMonth() + 1).padStart(2, '0') + '-' + 
+                                         String(createdDate.getUTCDate()).padStart(2, '0');
+                    
+                    // dateStr is already in YYYY-MM-DD format, compare directly
+                    // STRICT: Skip if check date is before creation date (use < not <=)
+                    if (dateStr < createdDateStr) {
+                        continue; // Skip this slot for past dates - NEVER show before creation
+                    }
+                } catch (e) {
+                    // If parsing fails, skip this slot to be safe
+                    continue;
+                }
+                
                 const slotType = slot.type || 'weekly';
                 let matches = false;
                 
                 if (slotType === 'daily') {
-                    // Daily: matches all days
+                    // Daily: matches all days (but only from creation date forward, checked above)
                     matches = true;
                 } else if (slotType === 'weekly') {
                     // Weekly: check if weekday matches
@@ -1898,6 +1958,59 @@
             
             // Update timeline sessions container height
             document.getElementById('timelineSessions').style.height = `${totalHeight}px`;
+            
+            // Add current time indicator (red line) if viewing today's date
+            if (selectedDateForTimePicker) {
+                const today = new Date();
+                const todayStr = today.getFullYear() + '-' + 
+                                String(today.getMonth() + 1).padStart(2, '0') + '-' + 
+                                String(today.getDate()).padStart(2, '0');
+                
+                if (selectedDateForTimePicker === todayStr) {
+                    updateCurrentTimeIndicator();
+                }
+            }
+        }
+        
+        function updateCurrentTimeIndicator() {
+            // Remove existing indicator if any
+            const existingIndicator = document.getElementById('timelineCurrentTime');
+            if (existingIndicator) {
+                existingIndicator.remove();
+            }
+            
+            try {
+                // Get current time in mentor's timezone
+                const now = new Date();
+                const formatter = new Intl.DateTimeFormat('en-US', {
+                    timeZone: mentorTimezone,
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: false
+                });
+                
+                const timeParts = formatter.formatToParts(now);
+                const hours = parseInt(timeParts.find(p => p.type === 'hour').value);
+                const minutes = parseInt(timeParts.find(p => p.type === 'minute').value);
+                
+                // Calculate position in minutes from midnight
+                const minutesFromMidnight = hours * 60 + minutes;
+                
+                // Create current time indicator
+                const indicator = document.createElement('div');
+                indicator.id = 'timelineCurrentTime';
+                indicator.className = 'timeline-current-time';
+                indicator.style.top = `${minutesFromMidnight}px`;
+                
+                // Add to timeline container
+                const timelineContainer = document.getElementById('timelineContainer');
+                if (timelineContainer) {
+                    timelineContainer.appendChild(indicator);
+                }
+            } catch (e) {
+                // If timezone conversion fails, silently skip
+                console.warn('Failed to display current time indicator:', e);
+            }
         }
 
         function closeTimePicker() {

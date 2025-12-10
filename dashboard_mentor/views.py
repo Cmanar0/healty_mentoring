@@ -502,22 +502,51 @@ def my_sessions(request):
         one_time_slots = mentor_profile.availability_slots or []
     availability_data = {}
     
-    # Load one-time slots
+    # Load one-time slots and convert times to mentor's timezone
+    try:
+        import pytz
+        # Get mentor's timezone object
+        try:
+            mentor_tz = pytz.timezone(mentor_timezone) if mentor_timezone else pytz.UTC
+        except:
+            mentor_tz = pytz.UTC
+    except ImportError:
+        # Fallback if pytz is not available - use UTC
+        mentor_tz = None
+    
     for slot in one_time_slots:
         try:
             from datetime import datetime
-            start_dt = datetime.fromisoformat(slot['start'].replace('Z', '+00:00'))
-            end_dt = datetime.fromisoformat(slot['end'].replace('Z', '+00:00'))
+            # Parse UTC datetime
+            start_dt_utc = datetime.fromisoformat(slot['start'].replace('Z', '+00:00'))
+            end_dt_utc = datetime.fromisoformat(slot['end'].replace('Z', '+00:00'))
             
-            date_str = start_dt.date().isoformat()
+            # Convert to mentor's timezone if pytz is available
+            if mentor_tz:
+                # Make timezone-aware (UTC)
+                if start_dt_utc.tzinfo is None:
+                    start_dt_utc = pytz.UTC.localize(start_dt_utc)
+                if end_dt_utc.tzinfo is None:
+                    end_dt_utc = pytz.UTC.localize(end_dt_utc)
+                
+                # Convert to mentor's timezone
+                start_dt_local = start_dt_utc.astimezone(mentor_tz)
+                end_dt_local = end_dt_utc.astimezone(mentor_tz)
+            else:
+                # Fallback: use UTC times directly
+                start_dt_local = start_dt_utc
+                end_dt_local = end_dt_utc
+            
+            # Use local date for grouping (date might change after timezone conversion)
+            date_str = start_dt_local.date().isoformat()
             if date_str not in availability_data:
                 availability_data[date_str] = []
             
-            length_minutes = int((end_dt - start_dt).total_seconds() / 60)
+            length_minutes = int((end_dt_utc - start_dt_utc).total_seconds() / 60)
             
             availability_data[date_str].append({
-                'start': start_dt.time().strftime('%H:%M'),
-                'end': end_dt.time().strftime('%H:%M'),
+                'start': start_dt_local.time().strftime('%H:%M'),
+                'end': end_dt_local.time().strftime('%H:%M'),
                 'length': length_minutes,
                 'id': slot.get('id'),
                 'type': 'one_time',
@@ -536,12 +565,16 @@ def my_sessions(request):
     # Get session_length from mentor profile
     session_length = mentor_profile.session_length if mentor_profile and mentor_profile.session_length else 60
     
+    # Get mentor's timezone (use selected_timezone, fallback to time_zone)
+    mentor_timezone = mentor_profile.selected_timezone or mentor_profile.time_zone or 'UTC'
+    
     return render(request, 'dashboard_mentor/my_sessions.html', {
         'common_timezones': COMMON_TIMEZONES,
         'debug': settings.DEBUG,
         'availability_data': availability_data,
         'recurring_slots': recurring_slots_data,
         'session_length': session_length,
+        'mentor_timezone': mentor_timezone,
     })
 
 @login_required
