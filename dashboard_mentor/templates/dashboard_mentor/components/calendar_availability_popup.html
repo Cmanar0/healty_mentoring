@@ -8,7 +8,7 @@
     <header class="availability-calendar-header">
       <div class="availability-calendar-title-group">
         <h2>Manage Sessions & Availability</h2>
-        <p class="availability-calendar-subtitle">Weekly view in your timezone (UTC)</p>
+        <p class="availability-calendar-subtitle">Weekly view in your timezone</p>
       </div>
 
       <div class="availability-calendar-nav">
@@ -60,9 +60,313 @@
   display: none;
   align-items: center;
   justify-content: center;
-  background: rgba(0,0,0,0.45);
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   z-index: 2000;
+  opacity: 0;
+  transition: opacity 0.3s ease;
 }
+.availability-calendar-overlay.is-visible { 
+  display: flex !important; 
+  opacity: 1;
+}
+
+/* Modal */
+.availability-calendar-modal {
+  background: #ffffff;
+  width: 95%;
+  max-width: 1400px;
+  height: 90vh;
+  border-radius: 24px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 
+    0 25px 50px -12px rgba(0, 0, 0, 0.25),
+    0 0 0 1px rgba(0, 0, 0, 0.05); /* Subtle border ring */
+  transform: scale(0.95);
+  opacity: 0;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
+}
+
+.availability-calendar-overlay.is-visible .availability-calendar-modal {
+  transform: scale(1);
+  opacity: 1;
+}
+
+/* Header */
+.availability-calendar-header {
+  padding: 20px 32px;
+  background: #ffffff;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+}
+
+.availability-calendar-title-group {
+  flex: 1;
+  min-width: 0;
+}
+
+.availability-calendar-title-group h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #0f172a;
+  letter-spacing: -0.025em;
+  line-height: 1.2;
+}
+
+.availability-calendar-title-group .availability-calendar-subtitle {
+  margin: 4px 0 0 0;
+  font-size: 0.875rem;
+  color: #64748b;
+  font-weight: 400;
+}
+
+/* Navigation Group */
+.availability-calendar-nav {
+  display: flex;
+  min-width: 280px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: #f8fafc;
+  padding: 4px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+}
+
+.calendar-nav-btn {
+  border: none;
+  background: transparent;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  cursor: pointer;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.calendar-nav-btn:hover {
+  background: #ffffff;
+  color: #0f172a;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.calendar-date-display {
+  padding: 0 16px;
+  font-size: 0.925rem;
+  font-weight: 600;
+  color: #334155;
+  white-space: nowrap;
+  min-width: 140px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Header Actions */
+.availability-calendar-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+/* Today Button */
+.calendar-nav-btn[data-calendar-nav="today"] {
+  width: auto;
+  padding: 0 16px;
+  background: #f1f5f9;
+  color: #475569;
+  font-weight: 600;
+  font-size: 0.875rem;
+  height: 36px;
+  border-radius: 10px;
+}
+
+.calendar-nav-btn[data-calendar-nav="today"]:hover {
+  background: #e2e8f0;
+  color: #1e293b;
+}
+
+/* View Toggle (Segmented Control) */
+.availability-calendar-view-toggle {
+  display: inline-flex;
+  align-items: center;
+  background: #f1f5f9;
+  border-radius: 10px;
+  padding: 4px;
+  gap: 0;
+  border: 1px solid #e2e8f0;
+}
+
+.view-toggle-btn {
+  padding: 6px 16px;
+  border: none;
+  cursor: pointer;
+  border-radius: 8px;
+  background: transparent;
+  color: #64748b;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.view-toggle-btn:hover:not(.is-active) {
+  color: #334155;
+}
+
+.view-toggle-btn.is-active {
+  background: #ffffff;
+  color: #0f172a;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  font-weight: 600;
+}
+
+/* Close Button */
+.availability-calendar-close-btn {
+  border: none;
+  background: transparent;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  cursor: pointer;
+  color: #94a3b8;
+  font-size: 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  margin-left: 8px;
+}
+
+.availability-calendar-close-btn:hover {
+  background: #fee2e2;
+  color: #ef4444;
+  transform: rotate(90deg);
+}
+
+/* Body */
+.availability-calendar-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  padding: 0; /* Remove padding for flush look */
+  background: #f8fafc; /* Slight contrast for calendar area */
+  position: relative;
+}
+
+.availability-calendar-root {
+  flex: 1;
+  min-height: 420px;
+  border: none;
+  background: #ffffff;
+}
+
+/* --- FullCalendar Overrides --- */
+
+/* General Text */
+.availability-calendar-root {
+  font-family: inherit;
+  --fc-border-color: #cbd5e1; /* Stronger, balanced border color */
+  --fc-page-bg-color: #ffffff;
+  --fc-neutral-bg-color: #f8fafc;
+  --fc-today-bg-color: #f0fdf4;
+  --fc-now-indicator-color: #ef4444;
+}
+
+/* Headers */
+.fc-theme-standard th {
+  border: 1px solid var(--fc-border-color); /* Restore native borders */
+  background: #f8fafc;
+}
+
+.fc-col-header-cell-cushion {
+  color: #64748b;
+  font-weight: 600;
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 8px 0;
+}
+
+/* Time Labels */
+.fc-timegrid-axis-cushion,
+.fc-timegrid-slot-label-cushion {
+  color: #64748b; /* Slightly darker for readability */
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+/* Slots */
+.availability-calendar-root .fc-timegrid-slot {
+  height: 20px; 
+}
+
+/* Ensure Month View borders are visible and match */
+.fc-theme-standard td, 
+.fc-theme-standard .fc-scrollgrid {
+  border-color: var(--fc-border-color);
+}
+
+/* Hour slots styling (targeted by JS adding .fc-hour-slot) */
+.availability-calendar-root .fc-hour-slot {
+  border-top-color: var(--fc-border-color) !important;
+}
+
+/* Events */
+.fc-event {
+  border: none;
+  border-radius: 4px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+  font-size: 0.8rem;
+  font-weight: 500;
+  padding: 2px;
+}
+
+.fc-v-event {
+  background-color: #d1fae5;
+  border-left: 3px solid #10b981;
+  color: #065f46;
+}
+
+.fc-event-main {
+  color: inherit;
+  padding: 2px 4px;
+}
+
+/* Now Indicator */
+.fc-timegrid-now-indicator-line {
+  border-color: #ef4444;
+  border-width: 2px;
+}
+.fc-timegrid-now-indicator-arrow {
+  border-color: #ef4444;
+  border-width: 6px;
+}
+
+/* Scrollbar */
+.fc-scroller::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.fc-scroller::-webkit-scrollbar-track {
+  background: transparent;
+}
+.fc-scroller::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+.fc-scroller::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
 .availability-calendar-overlay.is-visible { display: flex; }
 
 /* Modal */
@@ -80,7 +384,6 @@
 /* Header */
 .availability-calendar-header {
   padding: 12px 18px;
-  border-bottom: 1px solid #e5e7eb;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -256,24 +559,20 @@
   line-height: 3px !important;
 }
 
-/* Hide ALL slot borders first - be very aggressive */
-.availability-calendar-root .fc-timegrid-slot,
-.availability-calendar-root .fc-timegrid-slot-lane,
-.availability-calendar-root table.fc-timegrid-slots tr,
-.availability-calendar-root table.fc-timegrid-slots tr td,
-.availability-calendar-root table.fc-timegrid-slots tbody tr,
-.availability-calendar-root table.fc-timegrid-slots tbody tr td {
+/* Hide horizontal borders for 5-min slots, but PRESERVE vertical borders */
+.availability-calendar-root .fc-timegrid-slot {
   border-top: none !important;
   border-bottom: none !important;
 }
 
 /* Only show borders on hour slots (slot 0 and every 12th slot) */
-.availability-calendar-root .fc-hour-slot,
-.availability-calendar-root .fc-hour-slot td,
-.availability-calendar-root table.fc-timegrid-slots tbody tr.fc-hour-slot,
-.availability-calendar-root table.fc-timegrid-slots tbody tr.fc-hour-slot td {
-  border-top: 1px solid #94a3b8 !important;
-  border-top-width: 1px !important;
+.availability-calendar-root .fc-hour-slot {
+  border-top: 1px solid var(--fc-border-color) !important;
+}
+
+/* Ensure Month View borders are strong */
+.availability-calendar-root .fc-daygrid-day-frame {
+  border: 1px solid var(--fc-border-color);
 }
 
 /* Style hour labels */
@@ -333,37 +632,259 @@
       displayText = startStr + ' - ' + endStr;
     } else if (view.type === 'dayGridMonth') {
       // Month view: show month name and year (e.g., "January 2024")
+      // Calculate the month from the middle of the view range to avoid boundary issues
+      // This handles cases where activeStart might be at the end of previous month
+      const midDate = new Date((start.getTime() + end.getTime()) / 2);
+      // Get the first day of the month that midDate falls into
+      const monthStart = new Date(midDate.getFullYear(), midDate.getMonth(), 1);
       const monthFormatter = new Intl.DateTimeFormat('en-US', {
         year: 'numeric',
         month: 'long'
       });
-      displayText = monthFormatter.format(start);
+      displayText = monthFormatter.format(monthStart);
     }
     
     dateDisplayEl.textContent = displayText;
   }
 
-  // Resolve mentor timezone from global userProfileData JSON (provided by dashboard_mentor/base.html)
-  function resolveMentorTimezone() {
-    let tz = 'UTC';
+  // Get current UTC offset for a timezone (handles DST automatically)
+  // Uses JavaScript's native timezone support - IANA timezones already handle DST
+  function getCurrentTimezoneOffset(ianaId) {
     try {
-      const dataEl = document.getElementById('userProfileData');
-      if (dataEl && dataEl.textContent) {
-        const data = JSON.parse(dataEl.textContent);
-        if (data.selected_timezone && data.selected_timezone.trim() !== '') {
-          tz = data.selected_timezone.trim();
-        } else if (data.detected_timezone && data.detected_timezone.trim() !== '') {
-          tz = data.detected_timezone.trim();
+      const now = new Date();
+      
+      // Use Intl.DateTimeFormat to get the timezone offset
+      // This automatically handles DST based on the current date
+      const formatter = new Intl.DateTimeFormat('en', {
+        timeZone: ianaId,
+        timeZoneName: 'longOffset'
+      });
+      
+      const parts = formatter.formatToParts(now);
+      const offsetPart = parts.find(p => p.type === 'timeZoneName');
+      
+      if (offsetPart && offsetPart.value) {
+        // offsetPart.value will be like "GMT+1", "GMT+02:00", "GMT+1:00", etc.
+        // Extract the offset part
+        const offsetMatch = offsetPart.value.match(/GMT([+-])(\d{1,2})(:?(\d{2}))?/);
+        if (offsetMatch) {
+          const sign = offsetMatch[1];
+          const hours = parseInt(offsetMatch[2]) || 0;
+          const minutes = offsetMatch[4] ? parseInt(offsetMatch[4]) : 0;
+          
+          if (minutes === 0) {
+            return 'UTC' + sign + String(hours).padStart(2, '0');
+          } else {
+            return 'UTC' + sign + String(hours).padStart(2, '0') + ':' + String(minutes).padStart(2, '0');
+          }
+        }
+      }
+      
+      // Fallback: Calculate offset by comparing what time it is in UTC vs the timezone
+      // Format the same moment in both timezones and compare
+      const utcTimeStr = now.toLocaleString('sv-SE', { timeZone: 'UTC' }); // ISO-like format
+      const tzTimeStr = now.toLocaleString('sv-SE', { timeZone: ianaId });
+      
+      // Parse both (format: "YYYY-MM-DD HH:mm:ss")
+      const utcDate = new Date(utcTimeStr.replace(' ', 'T') + 'Z');
+      const tzDate = new Date(tzTimeStr.replace(' ', 'T') + 'Z');
+      
+      // The difference tells us the offset
+      const diffMs = tzDate.getTime() - utcDate.getTime();
+      const diffHours = diffMs / (1000 * 60 * 60);
+      
+      const sign = diffHours >= 0 ? '+' : '-';
+      const absHours = Math.abs(diffHours);
+      const hours = Math.floor(absHours);
+      const minutes = Math.round((absHours - hours) * 60);
+      
+      if (minutes === 0) {
+        return 'UTC' + sign + String(hours).padStart(2, '0');
+      } else {
+        return 'UTC' + sign + String(hours).padStart(2, '0') + ':' + String(minutes).padStart(2, '0');
+      }
+    } catch (e) {
+      console.warn('Could not get timezone offset for', ianaId, ':', e);
+      return 'UTC+0';
+    }
+  }
+
+  // Get timezone display name from IANA ID using COMMON_TIMEZONES, with dynamic offset
+  function getTimezoneDisplayName(ianaId) {
+    try {
+      const timezonesDataEl = document.getElementById('timezonesData');
+      if (timezonesDataEl && timezonesDataEl.textContent) {
+        const timezones = JSON.parse(timezonesDataEl.textContent);
+        const tz = timezones.find(t => t.id === ianaId);
+        if (tz) {
+          // Get current offset dynamically (handles DST)
+          const currentOffset = getCurrentTimezoneOffset(ianaId);
+          // Return format: "Prague (UTC+1)" or "Prague (UTC+2)" depending on season
+          return tz.name + ' (' + currentOffset + ')';
         }
       }
     } catch (e) {
-      console.warn('Could not resolve mentor timezone, using UTC:', e);
+      console.warn('Could not get timezone display name:', e);
     }
+    // Fallback: return IANA ID with dynamic offset
+    const currentOffset = getCurrentTimezoneOffset(ianaId);
+    return ianaId + ' (' + currentOffset + ')';
+  }
+
+  // Helper: Find IANA ID from display name or IANA ID in COMMON_TIMEZONES
+  function findIanaIdFromTimezone(timezoneValue) {
+    if (!timezoneValue || !timezoneValue.trim()) return null;
+    
+    const trimmed = timezoneValue.trim();
+    
+    try {
+      const timezonesDataEl = document.getElementById('timezonesData');
+      if (timezonesDataEl && timezonesDataEl.textContent) {
+        const timezones = JSON.parse(timezonesDataEl.textContent);
+        
+        // First, try exact IANA ID match
+        const exactMatch = timezones.find(t => t.id === trimmed);
+        if (exactMatch) {
+          return exactMatch.id;
+        }
+        
+        // Then, try matching by display name (e.g., "Prague (UTC+1)")
+        const nameMatch = timezones.find(t => {
+          // Match exact name
+          if (t.name === trimmed) return true;
+          // Match name with offset (e.g., "Prague (UTC+1)")
+          const nameWithOffset = t.name + ' (' + t.offset + ')';
+          if (nameWithOffset === trimmed) return true;
+          // Match partial name (e.g., "Prague" matches "Prague (UTC+1)")
+          if (trimmed.startsWith(t.name + ' (')) return true;
+          return false;
+        });
+        
+        if (nameMatch) {
+          return nameMatch.id;
+        }
+      }
+    } catch (e) {
+      console.warn('Error looking up timezone in COMMON_TIMEZONES:', e);
+    }
+    
+    // If it looks like an IANA ID (contains '/'), return as-is
+    if (trimmed.includes('/')) {
+      return trimmed;
+    }
+    
+    return null;
+  }
+
+  // Resolve mentor timezone from global userProfileData JSON (provided by dashboard_mentor/base.html)
+  function resolveMentorTimezone() {
+    let tz = null;
+    try {
+      const dataEl = document.getElementById('userProfileData');
+      if (dataEl && dataEl.textContent) {
+        const rawText = dataEl.textContent.trim();
+        console.log('[Calendar] userProfileData raw text:', rawText);
+        
+        if (rawText) {
+          const data = JSON.parse(rawText);
+          console.log('[Calendar] userProfileData parsed:', data);
+          
+          let rawTimezone = null;
+          
+          // Priority 1: selected_timezone
+          if (data.selected_timezone && data.selected_timezone.trim() !== '') {
+            rawTimezone = data.selected_timezone.trim();
+            console.log('[Calendar] Using selected_timezone:', rawTimezone);
+          } 
+          // Priority 2: detected_timezone
+          else if (data.detected_timezone && data.detected_timezone.trim() !== '') {
+            rawTimezone = data.detected_timezone.trim();
+            console.log('[Calendar] Using detected_timezone:', rawTimezone);
+          } else {
+            console.warn('[Calendar] Both selected_timezone and detected_timezone are empty');
+            console.warn('[Calendar] selected_timezone:', data.selected_timezone);
+            console.warn('[Calendar] detected_timezone:', data.detected_timezone);
+            // Fallback: try browser-detected timezone
+            try {
+              const browserTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+              if (browserTz) {
+                rawTimezone = browserTz;
+                console.log('[Calendar] Fallback: Using browser-detected timezone:', browserTz);
+              }
+            } catch (e) {
+              console.warn('[Calendar] Could not detect browser timezone:', e);
+            }
+          }
+          
+          // Convert to IANA ID if we have a timezone value
+          if (rawTimezone) {
+            const ianaId = findIanaIdFromTimezone(rawTimezone);
+            if (ianaId) {
+              tz = ianaId;
+              console.log('[Calendar] Resolved timezone:', rawTimezone, '->', ianaId);
+            } else {
+              // If lookup failed but it looks like an IANA ID, use it
+              if (rawTimezone.includes('/')) {
+                tz = rawTimezone;
+                console.log('[Calendar] Using raw timezone as IANA ID:', tz);
+              } else {
+                console.warn('[Calendar] Could not resolve timezone:', rawTimezone);
+              }
+            }
+          }
+        } else {
+          console.warn('[Calendar] userProfileData element has empty textContent');
+        }
+      } else {
+        console.error('[Calendar] userProfileData element not found!');
+      }
+    } catch (e) {
+      console.error('[Calendar] Could not resolve mentor timezone:', e);
+    }
+    
+    // Final fallback: browser timezone or UTC
+    if (!tz) {
+      try {
+        tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        console.log('[Calendar] Final fallback: Using browser timezone:', tz);
+      } catch (e) {
+        tz = 'UTC';
+        console.warn('[Calendar] Final fallback: Using UTC');
+      }
+    }
+    
+    console.log('[Calendar] Final resolved timezone:', tz);
     return tz || 'UTC';
   }
 
   let calendar = null;
-  const mentorTimezone = resolveMentorTimezone();
+  let mentorTimezone = resolveMentorTimezone();
+  let mentorTimezoneDisplay = getTimezoneDisplayName(mentorTimezone);
+  
+  // Function to update timezone (call this when popup opens to get latest values)
+  function updateTimezoneFromProfile() {
+    mentorTimezone = resolveMentorTimezone();
+    mentorTimezoneDisplay = getTimezoneDisplayName(mentorTimezone);
+    
+    // Update subtitle
+    if (subtitleEl) {
+      const viewType = calendar && calendar.view ? 
+        (calendar.view.type === 'dayGridMonth' ? 'Monthly' :
+         calendar.view.type === 'timeGridDay' ? 'Day' : 'Weekly') : 'Weekly';
+      subtitleEl.textContent = viewType + ' view in your timezone (' + mentorTimezoneDisplay + ')';
+    }
+    
+    // Update calendar timezone if it exists
+    if (calendar) {
+      calendar.setOption('timeZone', mentorTimezone);
+      calendar.render();
+    }
+  }
+  
+  // Update subtitle immediately with resolved timezone display name (before calendar init)
+  if (subtitleEl) {
+    subtitleEl.textContent = 'Weekly view in your timezone (' + mentorTimezoneDisplay + ')';
+  }
 
   const exampleEvents = [
     {
@@ -418,21 +939,34 @@
   }
 
   function initCalendar() {
+    // Debug: log the timezone being used
+    console.log('Calendar timezone:', mentorTimezone);
+    console.log('Current UTC time:', new Date().toISOString());
+    
+    // For nowIndicator to work correctly with timeZone, we need to provide
+    // a function that returns the current time, and FullCalendar will interpret it
+    // in the context of the specified timeZone
+    // Using a function ensures it updates dynamically
     calendar = new FullCalendar.Calendar(calendarRoot, {
       timeZone: mentorTimezone,
       initialView: "timeGridWeek",
       height: "100%",
       nowIndicator: true,
+      // Don't set 'now' explicitly - let FullCalendar use current time
+      // It should automatically respect the timeZone setting
       slotMinTime: "00:00:00", // Start at midnight
       slotMaxTime: "24:00:00", // End at midnight (24 hours)
       slotDuration: "00:05:00", // 5-minute intervals for thin rows
       slotLabelInterval: "01:00:00", // Show labels every hour
-      slotLabelFormat: {
-        hour: 'numeric',
-        minute: undefined,
-        omitZeroMinute: true,
-        meridiem: false,
-        hour12: false // 24-hour format
+      slotLabelContent: function(arg) {
+        // Return hour number (0-23) - this matches the timezone correctly
+        const hour = arg.date.getHours();
+        const minutes = arg.date.getMinutes();
+        // Only show if exactly on the hour
+        if (minutes === 0 && hour >= 0 && hour <= 23) {
+          return hour.toString();
+        }
+        return '';
       },
       headerToolbar: false,
       selectable: true,
@@ -447,12 +981,15 @@
           slotMaxTime: "24:00:00",
           slotDuration: "00:05:00",
           slotLabelInterval: "01:00:00",
-          slotLabelFormat: {
-            hour: 'numeric',
-            minute: undefined,
-            omitZeroMinute: true,
-            meridiem: false,
-            hour12: false // 24-hour format
+          slotLabelContent: function(arg) {
+            // Return hour number (0-23) - this matches the timezone correctly
+            const hour = arg.date.getHours();
+            const minutes = arg.date.getMinutes();
+            // Only show if exactly on the hour
+            if (minutes === 0 && hour >= 0 && hour <= 23) {
+              return hour.toString();
+            }
+            return '';
           },
           slotLaneClassNames: function(arg) {
             const minutes = arg.date.getMinutes();
@@ -468,12 +1005,15 @@
           slotMaxTime: "24:00:00",
           slotDuration: "00:05:00",
           slotLabelInterval: "01:00:00",
-          slotLabelFormat: {
-            hour: 'numeric',
-            minute: undefined,
-            omitZeroMinute: true,
-            meridiem: false,
-            hour12: false // 24-hour format
+          slotLabelContent: function(arg) {
+            // Return hour number (0-23) - this matches the timezone correctly
+            const hour = arg.date.getHours();
+            const minutes = arg.date.getMinutes();
+            // Only show if exactly on the hour
+            if (minutes === 0 && hour >= 0 && hour <= 23) {
+              return hour.toString();
+            }
+            return '';
           },
           slotLaneClassNames: function(arg) {
             const minutes = arg.date.getMinutes();
@@ -489,9 +1029,10 @@
 
     calendar.render();
 
-    // Update subtitle with resolved timezone
+    // Update subtitle with resolved timezone display name
     if (subtitleEl) {
-      subtitleEl.textContent = 'Weekly view in your timezone (' + mentorTimezone + ')';
+      const timezoneDisplay = getTimezoneDisplayName(mentorTimezone);
+      subtitleEl.textContent = 'Weekly view in your timezone (' + timezoneDisplay + ')';
     }
 
     // Mark hour slots for CSS targeting - call multiple times to ensure they persist
@@ -552,47 +1093,23 @@
     if (!calendarRoot) return;
     
     // Mark slot 0 (midnight) and then every 12th slot (each hour)
-    // Since we have 5-minute intervals, 12 slots = 60 minutes = 1 hour
     const slots = calendarRoot.querySelectorAll('table.fc-timegrid-slots tbody tr');
     if (slots.length === 0) return;
     
     slots.forEach((slot, index) => {
       // Slot 0 (index 0) and every 12th slot after that (index 12, 24, 36, etc.)
-      if (index === 0 || index % 12 === 0) {
-        // Use inline styles directly to ensure borders persist
+      const isHourSlot = (index === 0 || index % 12 === 0);
+      
+      if (isHourSlot) {
         slot.classList.add('fc-hour-slot');
-        slot.style.setProperty('border-top', '1px solid #94a3b8', 'important');
-        slot.style.setProperty('border-bottom', 'none', 'important');
-        
-        // Also mark the td elements within
-        slot.querySelectorAll('td').forEach(td => {
-          td.classList.add('fc-hour-slot');
-          td.style.setProperty('border-top', '1px solid #94a3b8', 'important');
-          td.style.setProperty('border-bottom', 'none', 'important');
-        });
-        
-        // Also mark slot-lane elements if they exist
-        slot.querySelectorAll('.fc-timegrid-slot-lane').forEach(lane => {
-          lane.classList.add('fc-hour-slot');
-          lane.style.setProperty('border-top', '1px solid #94a3b8', 'important');
-          lane.style.setProperty('border-bottom', 'none', 'important');
+        // Also mark children
+        slot.querySelectorAll('td, .fc-timegrid-slot-lane').forEach(el => {
+          el.classList.add('fc-hour-slot');
         });
       } else {
-        // Explicitly remove borders from non-hour slots using inline styles
         slot.classList.remove('fc-hour-slot');
-        slot.style.setProperty('border-top', 'none', 'important');
-        slot.style.setProperty('border-bottom', 'none', 'important');
-        
-        slot.querySelectorAll('td').forEach(td => {
-          td.classList.remove('fc-hour-slot');
-          td.style.setProperty('border-top', 'none', 'important');
-          td.style.setProperty('border-bottom', 'none', 'important');
-        });
-        
-        slot.querySelectorAll('.fc-timegrid-slot-lane').forEach(lane => {
-          lane.classList.remove('fc-hour-slot');
-          lane.style.setProperty('border-top', 'none', 'important');
-          lane.style.setProperty('border-bottom', 'none', 'important');
+        slot.querySelectorAll('td, .fc-timegrid-slot-lane').forEach(el => {
+          el.classList.remove('fc-hour-slot');
         });
       }
     });
@@ -600,10 +1117,15 @@
 
   function openOverlay() {
     overlay.classList.add("is-visible");
+    
+    // Re-read timezone from profile when opening (in case it was updated)
+    updateTimezoneFromProfile();
 
     if (!calendar) {
       initCalendar();
     } else {
+      // Update calendar timezone in case it changed
+      calendar.setOption('timeZone', mentorTimezone);
       calendar.render();
       setTimeout(() => {
         calendar.updateSize();
@@ -674,10 +1196,11 @@
 
       if (calendar) {
         calendar.changeView(targetView);
+        const timezoneDisplay = getTimezoneDisplayName(mentorTimezone);
         subtitleEl.textContent =
           (targetView === "dayGridMonth" ? "Monthly" :
            targetView === "timeGridDay" ? "Day" : "Weekly") +
-          " view in your timezone (" + mentorTimezone + ")";
+          " view in your timezone (" + timezoneDisplay + ")";
 
         setTimeout(() => {
           calendar.updateSize();
@@ -696,3 +1219,4 @@
 
 })();
 </script>
+

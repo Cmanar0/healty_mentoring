@@ -18,6 +18,65 @@
 (function() {
     'use strict';
 
+    // Get current UTC offset for a timezone (handles DST automatically)
+    // Uses JavaScript's native timezone support - IANA timezones already handle DST
+    function getCurrentTimezoneOffset(ianaId) {
+        try {
+            const now = new Date();
+            
+            // Use Intl.DateTimeFormat to get the timezone offset
+            // This automatically handles DST based on the current date
+            const formatter = new Intl.DateTimeFormat('en', {
+                timeZone: ianaId,
+                timeZoneName: 'longOffset'
+            });
+            
+            const parts = formatter.formatToParts(now);
+            const offsetPart = parts.find(p => p.type === 'timeZoneName');
+            
+            if (offsetPart && offsetPart.value) {
+                // offsetPart.value will be like "GMT+1", "GMT+02:00", "GMT+1:00", etc.
+                // Extract the offset part
+                const offsetMatch = offsetPart.value.match(/GMT([+-])(\d{1,2})(:?(\d{2}))?/);
+                if (offsetMatch) {
+                    const sign = offsetMatch[1];
+                    const hours = parseInt(offsetMatch[2]) || 0;
+                    const minutes = offsetMatch[4] ? parseInt(offsetMatch[4]) : 0;
+                    
+                    if (minutes === 0) {
+                        return 'UTC' + sign + String(hours).padStart(2, '0');
+                    } else {
+                        return 'UTC' + sign + String(hours).padStart(2, '0') + ':' + String(minutes).padStart(2, '0');
+                    }
+                }
+            }
+            
+            // Fallback: Calculate offset by comparing what time it is in UTC vs the timezone
+            const utcTimeStr = now.toLocaleString('sv-SE', { timeZone: 'UTC' });
+            const tzTimeStr = now.toLocaleString('sv-SE', { timeZone: ianaId });
+            
+            const utcDate = new Date(utcTimeStr.replace(' ', 'T') + 'Z');
+            const tzDate = new Date(tzTimeStr.replace(' ', 'T') + 'Z');
+            
+            const diffMs = tzDate.getTime() - utcDate.getTime();
+            const diffHours = diffMs / (1000 * 60 * 60);
+            
+            const sign = diffHours >= 0 ? '+' : '-';
+            const absHours = Math.abs(diffHours);
+            const hours = Math.floor(absHours);
+            const minutes = Math.round((absHours - hours) * 60);
+            
+            if (minutes === 0) {
+                return 'UTC' + sign + String(hours).padStart(2, '0');
+            } else {
+                return 'UTC' + sign + String(hours).padStart(2, '0') + ':' + String(minutes).padStart(2, '0');
+            }
+        } catch (e) {
+            console.warn('Could not get timezone offset for', ianaId, ':', e);
+            return 'UTC+0';
+        }
+    }
+
     // Wait for DOM to be ready
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', initTimezoneChecker);
@@ -74,9 +133,10 @@
         }
 
         // Step 1: Update detected_timezone if browser detected timezone is different
+        // This auto-updates - user only decides if there's a mismatch with selected_timezone
         if (browserDetectedTimezone !== savedDetectedTimezone) {
             updateDetectedTimezone(browserDetectedTimezone, function(updatedData) {
-                // After updating detected timezone, check for mismatch
+                // After updating detected timezone, check for mismatch with selected
                 checkTimezoneMismatch(updatedData.detected_timezone, updatedData.selected_timezone, updatedData.confirmed_mismatch);
             });
         } else {
@@ -141,6 +201,8 @@
     }
 
     function checkTimezoneMismatch(detectedTimezone, selectedTimezone, confirmedMismatch) {
+        // Note: detected_timezone is already updated in DB at this point (auto-updated)
+        
         // If no selected timezone, set it to detected and we're done
         if (!selectedTimezone || selectedTimezone.trim() === '') {
             updateSelectedTimezone(detectedTimezone, false, function() {
@@ -151,7 +213,7 @@
 
         // Check if selected and detected match
         if (selectedTimezone === detectedTimezone) {
-            // If confirmed_mismatch is True, set it to False
+            // If confirmed_mismatch is True, set it to False (they match now)
             if (confirmedMismatch) {
                 updateSelectedTimezone(selectedTimezone, false, function() {
                     // Confirmed mismatch cleared
@@ -160,13 +222,13 @@
             return; // No mismatch, exit
         }
 
-        // There's a mismatch
+        // There's a mismatch between detected and selected
         // Check if user has already confirmed the mismatch
         if (confirmedMismatch) {
             return; // User already confirmed, don't show popup
         }
 
-        // Show popup asking user to confirm
+        // Show popup asking user to confirm which timezone to use
         showTimezoneMismatchModal(detectedTimezone, selectedTimezone);
     }
 
@@ -188,7 +250,9 @@
         const detectedTzObj = commonTimezones.find(tz => tz.id === detectedTz);
         
         if (detectedTzObj) {
-            detectedTzName = detectedTzObj.name + ' (' + detectedTzObj.offset + ')';
+            // Use dynamic offset calculation (handles DST)
+            const currentOffset = getCurrentTimezoneOffset(detectedTz);
+            detectedTzName = detectedTzObj.name + ' (' + currentOffset + ')';
         }
         
         // Format current time in detected timezone
@@ -345,10 +409,14 @@
         const selectedTzObj = commonTimezones.find(tz => tz.id === selectedTz);
         
         if (detectedTzObj) {
-            detectedTzName = detectedTzObj.name + ' (' + detectedTzObj.offset + ')';
+            // Use dynamic offset calculation (handles DST)
+            const currentOffset = getCurrentTimezoneOffset(detectedTz);
+            detectedTzName = detectedTzObj.name + ' (' + currentOffset + ')';
         }
         if (selectedTzObj) {
-            selectedTzName = selectedTzObj.name + ' (' + selectedTzObj.offset + ')';
+            // Use dynamic offset calculation (handles DST)
+            const currentOffset = getCurrentTimezoneOffset(selectedTz);
+            selectedTzName = selectedTzObj.name + ' (' + currentOffset + ')';
         }
         
         // Format current time in both timezones
@@ -362,7 +430,9 @@
         let timezoneOptionsHTML = '';
         commonTimezones.forEach(tz => {
             const selected = tz.id === selectedTz ? 'selected' : '';
-            timezoneOptionsHTML += `<option value="${tz.id}" ${selected}>${tz.name} (${tz.offset})</option>`;
+            // Use dynamic offset calculation (handles DST)
+            const currentOffset = getCurrentTimezoneOffset(tz.id);
+            timezoneOptionsHTML += `<option value="${tz.id}" ${selected}>${tz.name} (${currentOffset})</option>`;
         });
         
         modalContent.innerHTML = `
@@ -435,11 +505,12 @@
         initializeTimezoneAutocomplete(timezoneInput, timezoneValue, timezoneSuggestions, commonTimezones, function(selectedTzObj) {
             currentSelectedTz = selectedTzObj.id;
             
-            // Update button text
+            // Update button text - use dynamic offset (handles DST)
             if (selectedTzObj.id === originalSelectedTz) {
                 useSelectedBtn.textContent = "Don't change my timezone";
             } else {
-                useSelectedBtn.textContent = `Change my timezone to ${selectedTzObj.name} (${selectedTzObj.offset})`;
+                const currentOffset = getCurrentTimezoneOffset(selectedTzObj.id);
+                useSelectedBtn.textContent = `Change my timezone to ${selectedTzObj.name} (${currentOffset})`;
             }
             
             // Update displayed time

@@ -230,11 +230,25 @@
 
 <!-- User Profile Data (for timezone checking) -->
 <script id="userProfileData" type="application/json">
+{% if user.mentor_profile %}
 {
-    "detected_timezone": "{{ user.profile.detected_timezone|default:'' }}",
-    "selected_timezone": "{{ user.profile.selected_timezone|default:'' }}",
+    "detected_timezone": "{{ user.mentor_profile.detected_timezone|default_if_none:'' }}",
+    "selected_timezone": "{{ user.mentor_profile.selected_timezone|default_if_none:'' }}",
+    "confirmed_timezone_mismatch": {{ user.mentor_profile.confirmed_timezone_mismatch|yesno:"true,false" }}
+}
+{% elif user.profile %}
+{
+    "detected_timezone": "{{ user.profile.detected_timezone|default_if_none:'' }}",
+    "selected_timezone": "{{ user.profile.selected_timezone|default_if_none:'' }}",
     "confirmed_timezone_mismatch": {{ user.profile.confirmed_timezone_mismatch|yesno:"true,false" }}
 }
+{% else %}
+{
+    "detected_timezone": "",
+    "selected_timezone": "",
+    "confirmed_timezone_mismatch": false
+}
+{% endif %}
 </script>
 
 <!-- Timezones Data (for timezone checker) -->
