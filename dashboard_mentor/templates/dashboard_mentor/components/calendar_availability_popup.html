@@ -1,0 +1,624 @@
+{% load static %}
+
+<!-- ===================== AVAILABILITY CALENDAR MODAL ===================== -->
+<div id="availabilityCalendarOverlay" class="availability-calendar-overlay" aria-hidden="true">
+  <div class="availability-calendar-backdrop" data-close-availability-calendar></div>
+
+  <div class="availability-calendar-modal">
+    <header class="availability-calendar-header">
+      <div class="availability-calendar-title-group">
+        <h2>Manage Sessions & Availability</h2>
+        <p class="availability-calendar-subtitle">Weekly view in your timezone (UTC)</p>
+      </div>
+
+      <div class="availability-calendar-nav">
+        <button class="calendar-nav-btn" data-calendar-nav="prev" aria-label="Previous">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M10 12L6 8L10 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+        <button class="calendar-nav-btn" data-calendar-nav="today" aria-label="Today">Today</button>
+        <button class="calendar-nav-btn" data-calendar-nav="next" aria-label="Next">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M6 4L10 8L6 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="availability-calendar-header-actions">
+        <div class="availability-calendar-view-toggle">
+          <button class="view-toggle-btn" data-calendar-view="timeGridDay">Day</button>
+          <button class="view-toggle-btn is-active" data-calendar-view="timeGridWeek">Week</button>
+          <button class="view-toggle-btn" data-calendar-view="dayGridMonth">Month</button>
+        </div>
+
+        <button class="availability-calendar-close-btn" data-close-availability-calendar>✕</button>
+      </div>
+    </header>
+
+    <section class="availability-calendar-body">
+      <div id="mentorAvailabilityCalendar" class="availability-calendar-root"></div>
+    </section>
+  </div>
+</div>
+
+
+<!-- ===================== FullCalendar v6 CSS ===================== -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.css">
+
+<!-- ===================== FullCalendar v6 JS (core + plugins) ===================== -->
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/locales-all.global.min.js"></script>
+
+<!-- ===================== CSS ===================== -->
+<style>
+/* Overlay */
+.availability-calendar-overlay {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.45);
+  z-index: 2000;
+}
+.availability-calendar-overlay.is-visible { display: flex; }
+
+/* Modal */
+.availability-calendar-modal {
+  background: #fff;
+  width: 100%;
+  max-width: 1300px;
+  height: 92vh;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Header */
+.availability-calendar-header {
+  padding: 12px 18px;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
+.availability-calendar-title-group {
+  flex: 1;
+  min-width: 0;
+}
+
+.availability-calendar-title-group h2 {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #1e293b;
+  line-height: 1.3;
+}
+
+.availability-calendar-title-group .availability-calendar-subtitle {
+  margin: 2px 0 0 0;
+  font-size: 0.75rem;
+  color: #64748b;
+  line-height: 1.2;
+}
+
+.availability-calendar-nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.calendar-nav-btn {
+  border: none;
+  background: #f1f5f9;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  color: #64748b;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 32px;
+}
+
+.calendar-nav-btn:hover {
+  background: #e2e8f0;
+  color: #1e293b;
+}
+
+.calendar-nav-btn svg {
+  display: block;
+}
+
+.availability-calendar-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.availability-calendar-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  padding: 10px;
+}
+
+.availability-calendar-root {
+  flex: 1;
+  min-height: 420px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #e5e7eb;
+}
+
+/* View Toggle Buttons - grouped in a row */
+.availability-calendar-view-toggle {
+  display: inline-flex;
+  align-items: center;
+  background: #f1f5f9;
+  border-radius: 8px;
+  padding: 2px;
+  gap: 0;
+  border: 1px solid #e2e8f0;
+}
+
+.view-toggle-btn {
+  padding: 6px 12px;
+  border: none;
+  cursor: pointer;
+  border-radius: 6px;
+  background: transparent;
+  color: #64748b;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 0.15s ease;
+}
+
+.view-toggle-btn:hover:not(.is-active) {
+  background: #e2e8f0;
+  color: #1e293b;
+}
+
+.view-toggle-btn.is-active {
+  background: #10b981;
+  color: #fff;
+}
+
+/* Close Button - separate */
+.availability-calendar-close-btn {
+  border: none;
+  background: #f1f5f9;
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  color: #64748b;
+  font-size: 1.125rem;
+  line-height: 1;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+}
+
+.availability-calendar-close-btn:hover {
+  background: #e2e8f0;
+  color: #ef4444;
+}
+
+/* Make time slot rows thinner - target all possible elements */
+.availability-calendar-root .fc-timegrid-slot,
+.availability-calendar-root .fc-timegrid-slot table,
+.availability-calendar-root .fc-timegrid-slot tr,
+.availability-calendar-root .fc-timegrid-slot td,
+.availability-calendar-root .fc-timegrid-slot-lane,
+.availability-calendar-root .fc-timegrid-slot-lane table,
+.availability-calendar-root .fc-timegrid-slot-lane tr,
+.availability-calendar-root .fc-timegrid-slot-lane td {
+  height: 3px !important;
+  min-height: 3px !important;
+  max-height: 3px !important;
+  line-height: 3px !important;
+}
+
+/* Target the table rows directly */
+.availability-calendar-root table.fc-timegrid-slots tr {
+  height: 3px !important;
+  min-height: 3px !important;
+  max-height: 3px !important;
+}
+
+.availability-calendar-root table.fc-timegrid-slots tr td {
+  height: 3px !important;
+  min-height: 3px !important;
+  max-height: 3px !important;
+  padding: 0 !important;
+  line-height: 3px !important;
+}
+
+/* Hide ALL slot borders first - be very aggressive */
+.availability-calendar-root .fc-timegrid-slot,
+.availability-calendar-root .fc-timegrid-slot-lane,
+.availability-calendar-root table.fc-timegrid-slots tr,
+.availability-calendar-root table.fc-timegrid-slots tr td,
+.availability-calendar-root table.fc-timegrid-slots tbody tr,
+.availability-calendar-root table.fc-timegrid-slots tbody tr td {
+  border-top: none !important;
+  border-bottom: none !important;
+}
+
+/* Only show borders on hour slots (slot 0 and every 12th slot) */
+.availability-calendar-root .fc-hour-slot,
+.availability-calendar-root .fc-hour-slot td,
+.availability-calendar-root table.fc-timegrid-slots tbody tr.fc-hour-slot,
+.availability-calendar-root table.fc-timegrid-slots tbody tr.fc-hour-slot td {
+  border-top: 1px solid #94a3b8 !important;
+  border-top-width: 1px !important;
+}
+
+/* Style hour labels */
+.availability-calendar-root .fc-timegrid-slot-label {
+  font-size: 0.75rem;
+  padding: 2px 8px;
+}
+
+/* Make slot labels show hour ranges */
+.availability-calendar-root .fc-timegrid-slot-label-cushion {
+  font-weight: 500;
+}
+</style>
+
+<!-- ===================== JS ===================== -->
+<script>
+(function() {
+  const overlay = document.getElementById("availabilityCalendarOverlay");
+  const calendarRoot = document.getElementById("mentorAvailabilityCalendar");
+  const openTriggers = document.querySelectorAll("[data-open-availability-calendar]");
+  const closeTriggers = document.querySelectorAll("[data-close-availability-calendar]");
+  const viewBtnEls = document.querySelectorAll("[data-calendar-view]");
+  const subtitleEl = document.querySelector(".availability-calendar-subtitle");
+
+  // Resolve mentor timezone from global userProfileData JSON (provided by dashboard_mentor/base.html)
+  function resolveMentorTimezone() {
+    let tz = 'UTC';
+    try {
+      const dataEl = document.getElementById('userProfileData');
+      if (dataEl && dataEl.textContent) {
+        const data = JSON.parse(dataEl.textContent);
+        if (data.selected_timezone && data.selected_timezone.trim() !== '') {
+          tz = data.selected_timezone.trim();
+        } else if (data.detected_timezone && data.detected_timezone.trim() !== '') {
+          tz = data.detected_timezone.trim();
+        }
+      }
+    } catch (e) {
+      console.warn('Could not resolve mentor timezone, using UTC:', e);
+    }
+    return tz || 'UTC';
+  }
+
+  let calendar = null;
+  const mentorTimezone = resolveMentorTimezone();
+
+  const exampleEvents = [
+    {
+      title: "Shooting Stars",
+      start: "2025-01-12T09:00:00",
+      end: "2025-01-12T11:00:00",
+      backgroundColor: "#10b981",
+    }
+  ];
+
+  function scrollToAppropriateTime() {
+    if (!calendar) return;
+    
+    const currentView = calendar.view;
+    // Apply scrolling to both day and week views
+    if (currentView.type !== 'timeGridDay' && currentView.type !== 'timeGridWeek') return;
+    
+    // Always scroll to 9am
+    calendar.scrollToTime({ hours: 9, minutes: 0 });
+    
+    // Then adjust to center it in the viewport
+    setTimeout(() => {
+      const scrollContainer = calendarRoot.querySelector('.fc-scroller');
+      if (!scrollContainer) return;
+      
+      // Find the time slot element for 9am
+      const timeSlots = scrollContainer.querySelectorAll('.fc-timegrid-slot');
+      if (timeSlots.length === 0) return;
+      
+      // 9am = 9 * 12 = slot 108 (each slot is 5 minutes, so 12 slots per hour)
+      const slotIndex = 9 * 12;
+      const targetSlot = timeSlots[slotIndex];
+      
+      if (targetSlot) {
+        const containerRect = scrollContainer.getBoundingClientRect();
+        const slotRect = targetSlot.getBoundingClientRect();
+        const scrollTop = scrollContainer.scrollTop;
+        
+        // Calculate position relative to scroll container
+        const slotTop = slotRect.top - containerRect.top + scrollTop;
+        const viewportHeight = containerRect.height;
+        
+        // Center the slot in the viewport
+        const targetScrollTop = slotTop - (viewportHeight / 2);
+        
+        scrollContainer.scrollTo({
+          top: Math.max(0, targetScrollTop),
+          behavior: 'smooth'
+        });
+      }
+    }, 100);
+  }
+
+  function initCalendar() {
+    calendar = new FullCalendar.Calendar(calendarRoot, {
+      timeZone: mentorTimezone,
+      initialView: "timeGridWeek",
+      height: "100%",
+      nowIndicator: true,
+      slotMinTime: "00:00:00", // Start at midnight
+      slotMaxTime: "24:00:00", // End at midnight (24 hours)
+      slotDuration: "00:05:00", // 5-minute intervals for thin rows
+      slotLabelInterval: "01:00:00", // Show labels every hour
+      slotLabelContent: function(arg) {
+        // Format as single hour: "9", "10", etc.
+        const hour = arg.date.getHours();
+        return hour.toString();
+      },
+      headerToolbar: false,
+      selectable: true,
+      firstDay: 1, // Start week with Monday
+      allDaySlot: false, // Remove all-day row from week and day views
+      events: exampleEvents,
+      // Remove all-day slot from specific views
+      views: {
+        timeGridWeek: {
+          allDaySlot: false,
+          slotMinTime: "00:00:00",
+          slotMaxTime: "24:00:00",
+          slotDuration: "00:05:00",
+          slotLabelInterval: "01:00:00",
+          slotLabelContent: function(arg) {
+            const hour = arg.date.getHours();
+            return hour.toString();
+          },
+          slotLaneClassNames: function(arg) {
+            const minutes = arg.date.getMinutes();
+            if (minutes === 0) {
+              return ['fc-hour-slot'];
+            }
+            return [];
+          }
+        },
+        timeGridDay: {
+          allDaySlot: false,
+          slotMinTime: "00:00:00",
+          slotMaxTime: "24:00:00",
+          slotDuration: "00:05:00",
+          slotLabelInterval: "01:00:00",
+          slotLabelContent: function(arg) {
+            const hour = arg.date.getHours();
+            return hour.toString();
+          },
+          slotLaneClassNames: function(arg) {
+            const minutes = arg.date.getMinutes();
+            if (minutes === 0) {
+              return ['fc-hour-slot'];
+            }
+            return [];
+          },
+          scrollTime: "09:00:00" // Default scroll position
+        }
+      }
+    });
+
+    calendar.render();
+
+    // Update subtitle with resolved timezone
+    if (subtitleEl) {
+      subtitleEl.textContent = 'Weekly view in your timezone (' + mentorTimezone + ')';
+    }
+
+    // Mark hour slots for CSS targeting - call multiple times to ensure they persist
+    setTimeout(() => {
+      markHourSlots();
+      // Call again after a delay to ensure classes persist after any re-renders
+      setTimeout(() => markHourSlots(), 200);
+      setTimeout(() => markHourSlots(), 500);
+    }, 100);
+
+    // Listen to calendar's render events to re-mark slots after re-renders
+    if (calendar && calendar.on) {
+      calendar.on('viewDidMount', function() {
+        setTimeout(() => markHourSlots(), 100);
+      });
+      
+      // Also listen to datesSet event which fires when calendar navigates
+      calendar.on('datesSet', function() {
+        setTimeout(() => markHourSlots(), 100);
+      });
+    }
+    
+    // Use MutationObserver to watch for DOM changes and re-apply borders
+    const observer = new MutationObserver(function(mutations) {
+      // Re-mark hour slots if the slots table changes
+      const slotsTable = calendarRoot.querySelector('table.fc-timegrid-slots');
+      if (slotsTable) {
+        setTimeout(() => markHourSlots(), 50);
+      }
+    });
+    
+    // Observe the calendar root for changes
+    if (calendarRoot) {
+      observer.observe(calendarRoot, {
+        childList: true,
+        subtree: true
+      });
+    }
+
+    setTimeout(() => {
+      calendar.updateSize();
+      // If initial view is day or week view, scroll appropriately
+      if (calendar.view.type === 'timeGridDay' || calendar.view.type === 'timeGridWeek') {
+        setTimeout(() => {
+          scrollToAppropriateTime();
+          markHourSlots(); // Re-mark after scrolling
+        }, 100);
+      }
+    }, 50);
+  }
+
+  function markHourSlots() {
+    if (!calendarRoot) return;
+    
+    // Mark slot 0 (midnight) and then every 12th slot (each hour)
+    // Since we have 5-minute intervals, 12 slots = 60 minutes = 1 hour
+    const slots = calendarRoot.querySelectorAll('table.fc-timegrid-slots tbody tr');
+    if (slots.length === 0) return;
+    
+    slots.forEach((slot, index) => {
+      // Slot 0 (index 0) and every 12th slot after that (index 12, 24, 36, etc.)
+      if (index === 0 || index % 12 === 0) {
+        // Use inline styles directly to ensure borders persist
+        slot.classList.add('fc-hour-slot');
+        slot.style.setProperty('border-top', '1px solid #94a3b8', 'important');
+        slot.style.setProperty('border-bottom', 'none', 'important');
+        
+        // Also mark the td elements within
+        slot.querySelectorAll('td').forEach(td => {
+          td.classList.add('fc-hour-slot');
+          td.style.setProperty('border-top', '1px solid #94a3b8', 'important');
+          td.style.setProperty('border-bottom', 'none', 'important');
+        });
+        
+        // Also mark slot-lane elements if they exist
+        slot.querySelectorAll('.fc-timegrid-slot-lane').forEach(lane => {
+          lane.classList.add('fc-hour-slot');
+          lane.style.setProperty('border-top', '1px solid #94a3b8', 'important');
+          lane.style.setProperty('border-bottom', 'none', 'important');
+        });
+      } else {
+        // Explicitly remove borders from non-hour slots using inline styles
+        slot.classList.remove('fc-hour-slot');
+        slot.style.setProperty('border-top', 'none', 'important');
+        slot.style.setProperty('border-bottom', 'none', 'important');
+        
+        slot.querySelectorAll('td').forEach(td => {
+          td.classList.remove('fc-hour-slot');
+          td.style.setProperty('border-top', 'none', 'important');
+          td.style.setProperty('border-bottom', 'none', 'important');
+        });
+        
+        slot.querySelectorAll('.fc-timegrid-slot-lane').forEach(lane => {
+          lane.classList.remove('fc-hour-slot');
+          lane.style.setProperty('border-top', 'none', 'important');
+          lane.style.setProperty('border-bottom', 'none', 'important');
+        });
+      }
+    });
+  }
+
+  function openOverlay() {
+    overlay.classList.add("is-visible");
+
+    if (!calendar) {
+      initCalendar();
+    } else {
+      calendar.render();
+      setTimeout(() => {
+        calendar.updateSize();
+        markHourSlots();
+        // If current view is day or week view, scroll appropriately
+        if (calendar.view.type === 'timeGridDay' || calendar.view.type === 'timeGridWeek') {
+          setTimeout(() => scrollToAppropriateTime(), 150);
+        }
+      }, 50);
+    }
+  }
+
+  function closeOverlay() {
+    overlay.classList.remove("is-visible");
+  }
+
+  openTriggers.forEach(btn => btn.addEventListener("click", openOverlay));
+  closeTriggers.forEach(btn => btn.addEventListener("click", closeOverlay));
+
+  // Calendar navigation (prev/next/today)
+  const navBtns = overlay.querySelectorAll("[data-calendar-nav]");
+  navBtns.forEach(btn => {
+    btn.addEventListener("click", function() {
+      if (!calendar) return;
+      
+      const action = this.dataset.calendarNav;
+      if (action === "prev") {
+        calendar.prev();
+      } else if (action === "next") {
+        calendar.next();
+      } else if (action === "today") {
+        calendar.today();
+      }
+      
+      setTimeout(() => calendar.updateSize(), 50);
+    });
+  });
+
+  // Close when clicking outside the modal (on backdrop/overlay)
+  overlay.addEventListener("click", function(e) {
+    // Only close if clicking directly on the overlay or backdrop, not on the modal content
+    if (e.target === overlay || e.target.classList.contains("availability-calendar-backdrop")) {
+      closeOverlay();
+    }
+  });
+
+  // Prevent clicks inside the modal from closing it
+  const modal = overlay.querySelector(".availability-calendar-modal");
+  if (modal) {
+    modal.addEventListener("click", function(e) {
+      e.stopPropagation();
+    });
+  }
+
+  document.addEventListener("keydown", e => {
+    if (e.key === "Escape") closeOverlay();
+  });
+
+  viewBtnEls.forEach(btn => {
+    btn.addEventListener("click", function() {
+      const targetView = this.dataset.calendarView;
+
+      viewBtnEls.forEach(b => b.classList.toggle("is-active", b === this));
+
+      if (calendar) {
+        calendar.changeView(targetView);
+        subtitleEl.textContent =
+          (targetView === "dayGridMonth" ? "Monthly" :
+           targetView === "timeGridDay" ? "Day" : "Weekly") +
+          " view in your timezone (" + mentorTimezone + ")";
+
+        setTimeout(() => {
+          calendar.updateSize();
+          calendar.render();
+          markHourSlots();
+          
+          // If switching to day or week view, scroll to appropriate time
+          if (targetView === "timeGridDay" || targetView === "timeGridWeek") {
+            setTimeout(() => scrollToAppropriateTime(), 150);
+          }
+        }, 50);
+      }
+    });
+  });
+
+})();
+</script>

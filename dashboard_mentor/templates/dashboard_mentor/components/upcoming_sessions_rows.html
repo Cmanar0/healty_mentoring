@@ -1,0 +1,149 @@
+<div class="session-timeline-container scrollable-content upcoming-sessions-timeline" data-mentor-timezone="UTC">
+  <!-- Session Item 1 -->
+  <div class="session-item confirmed status-completed">
+    <div class="session-left">
+      <div class="session-date">
+        <span class="date-day">28</span>
+        <span class="date-month">Nov</span>
+      </div>
+      <div class="session-info">
+        <h4 class="session-title">Strategy Review with Anna</h4>
+        <div class="session-meta-row">
+          <span class="session-time">
+            <i class="far fa-clock"></i> 10:00 AM - 11:00 AM
+          </span>
+          <span class="conf-tag confirmed">Confirmed</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="session-right">
+      <div class="session-tasks">
+        <div class="task-badge completed">
+          <span class="task-label">Completed</span>
+          <span class="task-count">2</span>
+        </div>
+      </div>
+      <div class="dropdown">
+        <button class="session-action-btn" onclick="toggleDropdown(this)">
+          <i class="fas fa-ellipsis-h"></i>
+        </button>
+        <div class="dropdown-menu">
+          <button class="dropdown-item">View Details</button>
+          <button class="dropdown-item">Edit Session</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Session Item 2 -->
+  <div class="session-item confirmed status-pending">
+    <div class="session-left">
+      <div class="session-date">
+        <span class="date-day">05</span>
+        <span class="date-month">Dec</span>
+      </div>
+      <div class="session-info">
+        <h4 class="session-title">Leadership Workshop with Michael</h4>
+        <div class="session-meta-row">
+          <span class="session-time">
+            <i class="far fa-clock"></i> 2:00 PM - 3:30 PM
+          </span>
+          <span class="conf-tag confirmed">Confirmed</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="session-right">
+      <div class="session-tasks">
+        <div class="task-badge pending">
+          <span class="task-label">Pending</span>
+          <span class="task-count">1</span>
+        </div>
+      </div>
+      <div class="dropdown">
+        <button class="session-action-btn" onclick="toggleDropdown(this)">
+          <i class="fas fa-ellipsis-h"></i>
+        </button>
+        <div class="dropdown-menu">
+          <button class="dropdown-item">View Details</button>
+          <button class="dropdown-item">Edit Session</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Session Item 3 -->
+  <div class="session-item tbc status-missed">
+    <div class="session-left">
+      <div class="session-date">
+        <span class="date-day">12</span>
+        <span class="date-month">Dec</span>
+      </div>
+      <div class="session-info">
+        <h4 class="session-title">Quarterly Planning with Team</h4>
+        <div class="session-meta-row">
+          <span class="session-time">
+            <i class="far fa-clock"></i> 11:00 AM - 12:30 PM
+          </span>
+          <span class="conf-tag tbc">To Be Confirmed</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="session-right">
+      <div class="session-tasks">
+        <div class="task-badge completed">
+          <span class="task-label">Completed</span>
+          <span class="task-count">1</span>
+        </div>
+        <div class="task-badge missed">
+          <span class="task-label">Missed</span>
+          <span class="task-count">2</span>
+        </div>
+      </div>
+      <div class="dropdown">
+        <button class="session-action-btn" onclick="toggleDropdown(this)">
+          <i class="fas fa-ellipsis-h"></i>
+        </button>
+        <div class="dropdown-menu">
+          <button class="dropdown-item">View Details</button>
+          <button class="dropdown-item">Edit Session</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  // Attach mentor timezone for these rows using the same global userProfileData JSON
+  function resolveMentorTimezone() {
+    let tz = 'UTC';
+    try {
+      const dataEl = document.getElementById('userProfileData');
+      if (dataEl && dataEl.textContent) {
+        const data = JSON.parse(dataEl.textContent);
+        if (data.selected_timezone && data.selected_timezone.trim() !== '') {
+          tz = data.selected_timezone.trim();
+        } else if (data.detected_timezone && data.detected_timezone.trim() !== '') {
+          tz = data.detected_timezone.trim();
+        }
+      }
+    } catch (e) {
+      tz = 'UTC';
+    }
+    return tz || 'UTC';
+  }
+
+  const containers = document.querySelectorAll('.upcoming-sessions-timeline');
+  if (!containers.length) return;
+
+  const mentorTimezone = resolveMentorTimezone();
+  containers.forEach(function(container) {
+    container.setAttribute('data-mentor-timezone', mentorTimezone);
+  });
+})();
+</script>
+
+
