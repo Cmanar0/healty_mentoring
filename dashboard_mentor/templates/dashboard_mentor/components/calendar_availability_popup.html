@@ -8,7 +8,22 @@
     <header class="availability-calendar-header">
       <div class="availability-calendar-title-group">
         <h2>Manage Sessions & Availability</h2>
-        <p class="availability-calendar-subtitle">Weekly view in your timezone</p>
+        <p class="availability-calendar-subtitle">
+          <span class="timezone-label">Your Timezone</span>
+          <span class="timezone-value" id="timezoneDisplayValue">UTC+01</span>
+          <span class="timezone-time" id="timezoneTimeDisplay">--:--:--</span>
+          <a href="{% url 'general:dashboard_mentor:profile' %}#timezone-section" class="timezone-change-link">Change</a>
+        </p>
+      </div>
+
+      <div class="availability-calendar-toggle-group">
+        <button class="availability-calendar-toggle-btn" id="availabilityCalendarToggle" aria-label="Toggle view">
+          <span class="toggle-label">Sessions</span>
+          <span class="toggle-switch">
+            <span class="toggle-slider"></span>
+          </span>
+          <span class="toggle-label">Availability</span>
+        </button>
       </div>
 
       <div class="availability-calendar-nav">
@@ -32,7 +47,7 @@
           <button class="view-toggle-btn is-active" data-calendar-view="timeGridWeek">Week</button>
           <button class="view-toggle-btn" data-calendar-view="dayGridMonth">Month</button>
         </div>
-
+        <button class="availability-calendar-save-btn" id="availabilityCalendarSaveBtn" disabled>Save</button>
         <button class="availability-calendar-close-btn" data-close-availability-calendar>✕</button>
       </div>
     </header>
@@ -124,6 +139,126 @@
   font-size: 0.875rem;
   color: #64748b;
   font-weight: 400;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.availability-calendar-subtitle .timezone-label {
+  font-weight: 500;
+}
+
+.availability-calendar-subtitle .timezone-value {
+  font-weight: 500;
+}
+
+.availability-calendar-subtitle .timezone-time {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: #334155;
+  font-family: 'Courier New', monospace;
+}
+
+.availability-calendar-subtitle .timezone-change-link {
+  color: var(--dash-primary, #3b82f6);
+  text-decoration: none;
+  font-weight: 500;
+  margin-left: 4px;
+  transition: color 0.2s ease;
+}
+
+.availability-calendar-subtitle .timezone-change-link:hover {
+  color: #2563eb;
+  text-decoration: underline;
+}
+
+/* Toggle Group */
+.availability-calendar-toggle-group {
+  display: flex;
+  align-items: center;
+}
+
+.availability-calendar-toggle-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  background: #f0fdf4;
+  border: 1px solid #10b981;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #64748b;
+}
+
+.availability-calendar-toggle-btn:hover {
+  background: #dcfce7;
+  border-color: #059669;
+}
+
+.availability-calendar-toggle-btn .toggle-label {
+  transition: color 0.2s ease;
+  white-space: nowrap;
+  font-weight: 600; /* Always bold */
+}
+
+.availability-calendar-toggle-btn .toggle-switch {
+  position: relative;
+  width: 44px;
+  height: 24px;
+  background: #10b981;
+  border-radius: 12px;
+  transition: background 0.2s ease;
+}
+
+.availability-calendar-toggle-btn.active .toggle-switch {
+  background:  #3b82f6;
+}
+
+.availability-calendar-toggle-btn.active {
+  background: #eff6ff; /* Light blue background */
+  border-color: #3b82f6;
+}
+
+.availability-calendar-toggle-btn .toggle-slider {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  background: white;
+  border-radius: 50%;
+  transition: transform 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.availability-calendar-toggle-btn.active .toggle-slider {
+  transform: translateX(20px);
+}
+
+/* Sessions mode (not active) - Green */
+.availability-calendar-toggle-btn:not(.active) .toggle-label:first-child {
+  color: #10b981;
+  font-weight: 600; /* Always bold */
+}
+
+.availability-calendar-toggle-btn:not(.active) .toggle-label:last-child {
+  color: #64748b;
+  font-weight: 600; /* Always bold */
+}
+
+/* Availability mode (active) - Blue */
+.availability-calendar-toggle-btn.active .toggle-label:first-child {
+  color: #64748b; /* Gray for Sessions label */
+  font-weight: 600; /* Always bold */
+}
+
+.availability-calendar-toggle-btn.active .toggle-label:last-child {
+  color: #3b82f6; /* Blue text for Availability label */
+  font-weight: 600; /* Always bold */
 }
 
 /* Navigation Group */
@@ -180,7 +315,7 @@
 /* Today Button */
 .calendar-nav-btn[data-calendar-nav="today"] {
   width: auto;
-  padding: 0 16px;
+  padding: 8px 20px;
   background: #f1f5f9;
   color: #475569;
   font-weight: 600;
@@ -196,8 +331,10 @@
 
 /* View Toggle (Segmented Control) */
 .availability-calendar-view-toggle {
-  display: inline-flex;
+  min-width: 240px;
+  display: flex;
   align-items: center;
+  justify-content: space-between;
   background: #f1f5f9;
   border-radius: 10px;
   padding: 4px;
@@ -223,10 +360,52 @@
 }
 
 .view-toggle-btn.is-active {
-  background: #ffffff;
-  color: #0f172a;
+  background: #3b82f6;
+  color: #ffffff;
   box-shadow: 0 1px 3px rgba(0,0,0,0.1);
   font-weight: 600;
+}
+
+/* Save Button */
+.availability-calendar-save-btn {
+  border: none;
+  background: #cbd5e1;
+  color: #64748b;
+  padding: 8px 20px;
+  border-radius: 10px;
+  cursor: not-allowed;
+  font-size: 0.875rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  margin-left: 8px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Disabled state - just grey, no hover effects */
+.availability-calendar-save-btn:disabled {
+  background: #cbd5e1 !important;
+  color: #64748b !important;
+  cursor: not-allowed !important;
+}
+
+.availability-calendar-save-btn:disabled:hover {
+  background: #cbd5e1 !important; /* Stay grey on hover when disabled */
+  color: #64748b !important;
+}
+
+/* Enabled state - green with darker green hover and white text */
+.availability-calendar-save-btn:not(:disabled) {
+  background: #10b981 !important; /* Green background when enabled */
+  color: #ffffff !important;
+  cursor: pointer !important;
+}
+
+.availability-calendar-save-btn:not(:disabled):hover {
+  background: #059669 !important; /* Darker green on hover */
+  color: #ffffff !important;
 }
 
 /* Close Button */
@@ -373,7 +552,7 @@
 .availability-calendar-modal {
   background: #fff;
   width: 100%;
-  max-width: 1300px;
+  max-width: 1400px;
   height: 92vh;
   border-radius: 12px;
   display: flex;
@@ -502,8 +681,50 @@
 }
 
 .view-toggle-btn.is-active {
-  background: #10b981;
+  background: #3b82f6;
   color: #fff;
+}
+
+/* Save Button - mobile */
+.availability-calendar-save-btn {
+  border: none;
+  background: #cbd5e1;
+  color: #64748b;
+  padding: 8px 20px;
+  border-radius: 10px;
+  cursor: not-allowed;
+  font-size: 0.875rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  margin-left: 8px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Disabled state - just grey, no hover effects */
+.availability-calendar-save-btn:disabled {
+  background: #cbd5e1 !important;
+  color: #64748b !important;
+  cursor: not-allowed !important;
+}
+
+.availability-calendar-save-btn:disabled:hover {
+  background: #cbd5e1 !important; /* Stay grey on hover when disabled */
+  color: #64748b !important;
+}
+
+/* Enabled state - green with darker green hover and white text */
+.availability-calendar-save-btn:not(:disabled) {
+  background: #10b981 !important; /* Green background when enabled */
+  color: #ffffff !important;
+  cursor: pointer !important;
+}
+
+.availability-calendar-save-btn:not(:disabled):hover {
+  background: #059669 !important; /* Darker green on hover */
+  color: #ffffff !important;
 }
 
 /* Close Button - separate */
@@ -596,6 +817,8 @@
   const closeTriggers = document.querySelectorAll("[data-close-availability-calendar]");
   const viewBtnEls = document.querySelectorAll("[data-calendar-view]");
   const subtitleEl = document.querySelector(".availability-calendar-subtitle");
+  const timezoneValueEl = document.getElementById("timezoneDisplayValue");
+  const timezoneTimeEl = document.getElementById("timezoneTimeDisplay");
   const dateDisplayEl = document.getElementById("calendarDateDisplay");
 
   // Format date display based on current view type
@@ -866,13 +1089,8 @@
     mentorTimezone = resolveMentorTimezone();
     mentorTimezoneDisplay = getTimezoneDisplayName(mentorTimezone);
     
-    // Update subtitle
-    if (subtitleEl) {
-      const viewType = calendar && calendar.view ? 
-        (calendar.view.type === 'dayGridMonth' ? 'Monthly' :
-         calendar.view.type === 'timeGridDay' ? 'Day' : 'Weekly') : 'Weekly';
-      subtitleEl.textContent = viewType + ' view in your timezone (' + mentorTimezoneDisplay + ')';
-    }
+    // Update timezone display
+    updateTimezoneDisplay();
     
     // Update calendar timezone if it exists
     if (calendar) {
@@ -881,10 +1099,56 @@
     }
   }
   
-  // Update subtitle immediately with resolved timezone display name (before calendar init)
-  if (subtitleEl) {
-    subtitleEl.textContent = 'Weekly view in your timezone (' + mentorTimezoneDisplay + ')';
+  // Extract UTC offset from timezone display name (e.g., "Prague (UTC+1)" -> "UTC+1")
+  function extractUTCOffset(displayName) {
+    // Extract offset from format like "Prague (UTC+1)" or "UTC+1"
+    const match = displayName.match(/UTC[+-]\d{1,2}(:\d{2})?/);
+    if (match) {
+      return match[0];
+    }
+    // Fallback: get current offset dynamically
+    return getCurrentTimezoneOffset(mentorTimezone);
   }
+  
+  // Update timezone display and start real-time clock
+  function updateTimezoneDisplay() {
+    if (timezoneValueEl) {
+      // Extract just the UTC offset (e.g., "UTC+01")
+      const offset = extractUTCOffset(mentorTimezoneDisplay);
+      timezoneValueEl.textContent = offset;
+    }
+  }
+  
+  // Update real-time clock in timezone
+  function updateTimezoneClock() {
+    if (timezoneTimeEl && mentorTimezone) {
+      try {
+        const now = new Date();
+        const formatter = new Intl.DateTimeFormat('en-US', {
+          timeZone: mentorTimezone,
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: false
+        });
+        timezoneTimeEl.textContent = formatter.format(now);
+      } catch (e) {
+        console.warn('Could not update timezone clock:', e);
+      }
+    }
+  }
+  
+  // Start clock update interval
+  let clockInterval = null;
+  function startTimezoneClock() {
+    updateTimezoneClock();
+    if (clockInterval) clearInterval(clockInterval);
+    clockInterval = setInterval(updateTimezoneClock, 1000);
+  }
+  
+  // Update timezone display immediately
+  updateTimezoneDisplay();
+  startTimezoneClock();
 
   const exampleEvents = [
     {
@@ -1029,11 +1293,8 @@
 
     calendar.render();
 
-    // Update subtitle with resolved timezone display name
-    if (subtitleEl) {
-      const timezoneDisplay = getTimezoneDisplayName(mentorTimezone);
-      subtitleEl.textContent = 'Weekly view in your timezone (' + timezoneDisplay + ')';
-    }
+    // Update timezone display
+    updateTimezoneDisplay();
 
     // Mark hour slots for CSS targeting - call multiple times to ensure they persist
     setTimeout(() => {
@@ -1120,6 +1381,7 @@
     
     // Re-read timezone from profile when opening (in case it was updated)
     updateTimezoneFromProfile();
+    startTimezoneClock();
 
     if (!calendar) {
       initCalendar();
@@ -1141,10 +1403,55 @@
 
   function closeOverlay() {
     overlay.classList.remove("is-visible");
+    // Stop clock when overlay closes
+    if (clockInterval) {
+      clearInterval(clockInterval);
+      clockInterval = null;
+    }
   }
 
   openTriggers.forEach(btn => btn.addEventListener("click", openOverlay));
   closeTriggers.forEach(btn => btn.addEventListener("click", closeOverlay));
+  
+  // Handle "Change" link click - scroll to Time Zone section on profile page
+  const changeLink = document.querySelector('.timezone-change-link');
+  if (changeLink) {
+    changeLink.addEventListener('click', function(e) {
+      // Close the calendar overlay first
+      closeOverlay();
+    });
+  }
+  
+  // Handle hash navigation when page loads (if coming from calendar with #timezone-section)
+  if (window.location.hash === '#timezone-section') {
+    setTimeout(() => {
+      const timezoneSection = document.getElementById('timezone-section');
+      if (timezoneSection) {
+        timezoneSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 300);
+  }
+
+  // Toggle button functionality (Sessions / Availability)
+  const toggleBtn = document.getElementById("availabilityCalendarToggle");
+  if (toggleBtn) {
+    // Default to "Sessions" mode (not active = sessions, active = availability)
+    toggleBtn.addEventListener("click", function() {
+      toggleBtn.classList.toggle("active");
+      const isAvailabilityMode = toggleBtn.classList.contains("active");
+      
+      // TODO: Implement toggle functionality
+      // When false (Sessions): Show scheduled sessions
+      // When true (Availability): Show availability slots
+      console.log("Toggle mode:", isAvailabilityMode ? "Availability" : "Sessions");
+      
+      // Update calendar events based on mode
+      if (calendar) {
+        // This is where you would filter/update calendar events
+        // For now, just log the state
+      }
+    });
+  }
 
   // Calendar navigation (prev/next/today)
   const navBtns = overlay.querySelectorAll("[data-calendar-nav]");
@@ -1197,10 +1504,8 @@
       if (calendar) {
         calendar.changeView(targetView);
         const timezoneDisplay = getTimezoneDisplayName(mentorTimezone);
-        subtitleEl.textContent =
-          (targetView === "dayGridMonth" ? "Monthly" :
-           targetView === "timeGridDay" ? "Day" : "Weekly") +
-          " view in your timezone (" + timezoneDisplay + ")";
+        // Don't update subtitle - keep it fixed as "Your Timezone UTC+01 [time] Change"
+        // The subtitle is already set in HTML and updated by updateTimezoneDisplay()
 
         setTimeout(() => {
           calendar.updateSize();
