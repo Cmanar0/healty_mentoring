@@ -1,0 +1,3277 @@
+{% extends "dashboard_mentor/base.html" %}
+{% load static %}
+
+{% block page_title %}My Sessions{% endblock %}
+
+{% block extra_css %}
+{{ block.super }}
+<style>
+    .sessions-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+        flex-wrap: wrap;
+        gap: 16px;
+    }
+
+    .view-toggle-buttons {
+        display: flex;
+        gap: 8px;
+        background: var(--dash-bg);
+        padding: 4px;
+        border-radius: 8px;
+        border: 1px solid var(--dash-border);
+    }
+
+    .view-toggle-btn {
+        padding: 8px 16px;
+        border: none;
+        background: transparent;
+        color: var(--dash-text-muted);
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 500;
+        font-size: 0.9rem;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .view-toggle-btn:hover {
+        background: #f1f5f9;
+        color: var(--dash-text-main);
+    }
+
+    .view-toggle-btn.active {
+        background: var(--dash-primary);
+        color: white;
+    }
+
+    .view-container {
+        display: none;
+    }
+
+    .view-container.active {
+        display: block;
+    }
+
+    /* Calendar View Styles */
+    .calendar-container {
+        background: var(--dash-card-bg);
+        border-radius: 12px;
+        padding: 24px;
+        border: 2px solid var(--dash-border);
+    }
+
+    .calendar-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+        gap: 16px;
+    }
+
+    .calendar-header-right {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 200px;
+        justify-content: flex-end;
+    }
+
+    .calendar-nav {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+    }
+
+    .calendar-nav-btn {
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+        border: 1px solid var(--dash-border);
+        background: var(--dash-bg);
+        color: var(--dash-text-main);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+    }
+
+    .calendar-nav-btn:hover {
+        background: #f1f5f9;
+        border-color: var(--dash-primary);
+    }
+
+    .calendar-month-year {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: var(--dash-text-main);
+        min-width: 180px;
+        text-align: center;
+    }
+
+    .calendar-weekdays {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 8px;
+        margin-bottom: 8px;
+    }
+
+    .calendar-weekday {
+        text-align: center;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--dash-text-muted);
+        padding: 8px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .calendar-days {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 8px;
+    }
+
+    .calendar-day {
+        aspect-ratio: 1;
+        border-radius: 8px;
+        border: 1px solid var(--dash-border);
+        background: var(--dash-bg);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-start;
+        padding: 8px 4px;
+        cursor: pointer;
+        transition: all 0.2s;
+        position: relative;
+    }
+
+    .calendar-day:hover {
+        background: #f1f5f9;
+        border-color: var(--dash-primary);
+    }
+
+    .calendar-day.other-month {
+        opacity: 0.3;
+        cursor: default;
+    }
+
+    .calendar-day.other-month:hover {
+        background: var(--dash-bg);
+        border-color: var(--dash-border);
+    }
+
+    .calendar-day.today {
+        background: #d1fae5;
+        border-color: var(--dash-primary);
+        font-weight: 600;
+    }
+
+    .calendar-day.has-sessions {
+        border-color: var(--dash-primary);
+    }
+
+    .calendar-day-number {
+        font-size: 0.9rem;
+        color: var(--dash-text-main);
+        margin-bottom: 4px;
+    }
+
+    .calendar-day-sessions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 2px;
+        justify-content: center;
+        width: 100%;
+    }
+
+    .calendar-session-dot {
+        width: 4px;
+        height: 4px;
+        border-radius: 50%;
+        background: var(--dash-primary);
+    }
+
+    .calendar-session-count {
+        font-size: 0.7rem;
+        color: var(--dash-primary);
+        font-weight: 600;
+    }
+
+    /* Timeline View Styles */
+    .timeline-container {
+        background: var(--dash-card-bg);
+        border-radius: 12px;
+        border: 1px solid var(--dash-border);
+        overflow: hidden;
+    }
+
+    .session-timeline-container {
+        padding: 24px;
+        max-height: calc(100vh - 300px);
+        overflow-y: auto;
+    }
+
+    .session-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        padding: 20px;
+        border-bottom: 1px solid var(--dash-border);
+        transition: all 0.2s;
+        position: relative;
+    }
+
+    .session-item:hover {
+        background: #f8fafc;
+    }
+
+    .session-item:last-child {
+        border-bottom: none;
+    }
+
+    .session-left {
+        display: flex;
+        gap: 16px;
+        flex: 1;
+    }
+
+    .session-date {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-width: 60px;
+        padding: 8px 12px;
+        background: var(--dash-bg);
+        border-radius: 8px;
+        border: 1px solid var(--dash-border);
+    }
+
+    .date-day {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--dash-text-main);
+        line-height: 1;
+    }
+
+    .date-month {
+        font-size: 0.75rem;
+        color: var(--dash-text-muted);
+        text-transform: uppercase;
+        font-weight: 600;
+        margin-top: 4px;
+    }
+
+    .session-info {
+        flex: 1;
+    }
+
+    .session-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: var(--dash-text-main);
+        margin: 0 0 8px;
+    }
+
+    .session-meta-row {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        flex-wrap: wrap;
+    }
+
+    .session-time {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        color: var(--dash-text-muted);
+        font-size: 0.9rem;
+    }
+
+    .conf-tag {
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .conf-tag.confirmed {
+        background: #d1fae5;
+        color: #059669;
+    }
+
+    .conf-tag.tbc {
+        background: #fef3c7;
+        color: #d97706;
+    }
+
+    .session-right {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+    }
+
+    .session-tasks {
+        display: flex;
+        gap: 8px;
+    }
+
+    .task-badge {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 6px 10px;
+        border-radius: 8px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        min-width: 60px;
+    }
+
+    .task-badge.completed {
+        background: #d1fae5;
+        color: #059669;
+    }
+
+    .task-badge.pending {
+        background: #dbeafe;
+        color: #2563eb;
+    }
+
+    .task-badge.missed {
+        background: #fee2e2;
+        color: #dc2626;
+    }
+
+    .task-label {
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .task-count {
+        font-size: 1rem;
+        font-weight: 700;
+        margin-top: 2px;
+    }
+
+    .session-action-btn {
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+        border: 1px solid var(--dash-border);
+        background: var(--dash-bg);
+        color: var(--dash-text-muted);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+    }
+
+    .session-action-btn:hover {
+        background: #f1f5f9;
+        border-color: var(--dash-primary);
+        color: var(--dash-primary);
+    }
+
+    .dropdown {
+        position: relative;
+    }
+
+    .dropdown-menu {
+        display: none;
+        position: absolute;
+        top: 100%;
+        right: 0;
+        margin-top: 8px;
+        background: white;
+        border: 1px solid var(--dash-border);
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        z-index: 100;
+        min-width: 160px;
+        overflow: hidden;
+    }
+
+    .dropdown-menu.show {
+        display: block;
+    }
+
+    .dropdown-item {
+        width: 100%;
+        padding: 10px 16px;
+        border: none;
+        background: transparent;
+        text-align: left;
+        cursor: pointer;
+        color: var(--dash-text-main);
+        font-size: 0.9rem;
+        transition: all 0.2s;
+    }
+
+    .dropdown-item:hover {
+        background: #f8fafc;
+    }
+
+    .dropdown-item:first-child {
+        border-top-left-radius: 8px;
+        border-top-right-radius: 8px;
+    }
+
+    .dropdown-item:last-child {
+        border-bottom-left-radius: 8px;
+        border-bottom-right-radius: 8px;
+    }
+
+    /* Status indicators */
+    .session-item.status-completed .session-left::after {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 4px;
+        height: 60%;
+        background: #10b981;
+        border-radius: 0 4px 4px 0;
+    }
+
+    .session-item.status-pending .session-left::after {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 4px;
+        height: 60%;
+        background: #3b82f6;
+        border-radius: 0 4px 4px 0;
+    }
+
+    .session-item.status-missed .session-left::after {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 4px;
+        height: 60%;
+        background: #ef4444;
+        border-radius: 0 4px 4px 0;
+    }
+
+    /* Mode Indicators */
+    .availability-mode-indicator,
+    .sessions-mode-indicator {
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-size: 0.9rem;
+        font-weight: 600;
+        text-align: center;
+        flex: 1;
+        margin: 0 16px;
+    }
+
+    .availability-mode-indicator {
+        display: none;
+        background: #dbeafe;
+        color: #1e40af;
+    }
+
+    .availability-mode-indicator.active {
+        display: block;
+    }
+
+    .sessions-mode-indicator {
+        display: block;
+        background: #d1fae5;
+        color: #059669;
+    }
+
+    .sessions-mode-indicator.hidden {
+        display: none;
+    }
+
+    .availability-mode-indicator i {
+        margin-right: 6px;
+    }
+
+    .calendar-container.availability-mode {
+        border: 2px solid #3b82f6;
+        background: #eff6ff;
+    }
+
+    .calendar-container.availability-mode .calendar-day {
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .calendar-container.availability-mode .calendar-day:hover {
+        background: #dbeafe;
+        transform: scale(1.05);
+    }
+
+    .calendar-day.has-availability {
+        border-left: 3px solid #3b82f6;
+    }
+
+    .calendar-day.has-availability.availability-mode-active {
+        background: #dbeafe;
+        border-color: #3b82f6;
+        border-width: 2px;
+    }
+
+    .calendar-day.has-sessions {
+        border-right: 3px solid var(--dash-primary);
+    }
+
+    .calendar-day.has-both {
+        border-left: 3px solid #3b82f6;
+        border-right: 3px solid var(--dash-primary);
+    }
+
+    .availability-actions {
+        display: none;
+        gap: 12px;
+    }
+
+    .availability-actions.active {
+        display: flex;
+    }
+
+    .btn-manage-sessions {
+        max-width: 200px;
+        padding: 12px 24px;
+        background: #3b82f6;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        white-space: nowrap;
+    }
+
+    .btn-manage-sessions:hover {
+        background: #2563eb;
+    }
+
+    /* Active state (availability mode) - green */
+    .btn-manage-sessions.availability-mode {
+        background: #22c55e;
+    }
+
+    .btn-manage-sessions.availability-mode:hover {
+        background: #16a34a;
+    }
+
+    /* Time Picker Modal */
+    .time-picker-modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .time-picker-modal.active {
+        display: flex;
+    }
+
+    .time-picker-content {
+        background: white;
+        border-radius: 16px;
+        padding: 32px;
+        max-width: 1200px;
+        width: 90%;
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        display: flex;
+        flex-direction: column;
+        max-height: 90vh;
+        overflow: hidden;
+    }
+
+    .time-picker-body {
+        display: grid;
+        grid-template-columns: 1fr 2fr;
+        gap: 32px;
+        overflow: hidden;
+        flex: 1;
+        min-height: 0;
+    }
+
+    .time-picker-left,
+    .time-picker-right {
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    .time-picker-left {
+        border-right: 2px solid var(--dash-border);
+        padding-right: 32px;
+    }
+
+    .time-picker-right {
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .time-picker-section-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: var(--dash-text-main);
+        margin-bottom: 16px;
+    }
+
+    .time-picker-field-full {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-bottom: 20px;
+    }
+
+    .time-picker-field-full label {
+        font-weight: 600;
+        color: var(--dash-text-main);
+        font-size: 0.9rem;
+    }
+
+    .time-picker-field-full input {
+        padding: 12px;
+        border: 2px solid var(--dash-border);
+        border-radius: 8px;
+        font-size: 1rem;
+        transition: all 0.2s;
+    }
+
+    .time-picker-field-full input:focus {
+        outline: none;
+        border-color: #3b82f6;
+    }
+
+    .session-length-display {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px;
+        background: #f8fafc;
+        border: 2px solid #e2e8f0;
+        border-radius: 8px;
+        margin-bottom: 20px;
+    }
+
+    .session-length-text {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .session-length-label {
+        font-size: 0.85rem;
+        color: var(--dash-text-muted);
+        font-weight: 500;
+    }
+
+    .session-length-value {
+        font-size: 1rem;
+        color: var(--dash-text-main);
+        font-weight: 600;
+    }
+
+    .session-length-note {
+        font-size: 0.75rem;
+        color: var(--dash-text-muted);
+        font-style: italic;
+    }
+
+    .btn-change-session-length {
+        padding: 8px 16px;
+        background: white;
+        color: #334156;
+        border: 2px solid #334156;
+        border-radius: 999px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        white-space: nowrap;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .btn-change-session-length:hover {
+        background: #334156;
+        color: white;
+        border: 2px solid #334156;
+    }
+
+    .btn-generate-sessions {
+        width: 100%;
+        padding: 12px 24px;
+        background: #334156;
+        color: white;
+        border: 2px solid #334156;
+        border-radius: 999px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        margin-top: 8px;
+        font-size: 0.95rem;
+    }
+
+    .btn-generate-sessions:hover {
+        background: white;
+        color: #334156;
+        border: 2px solid #334156;
+    }
+
+    /* Timeline Styles */
+    .timeline-container {
+        flex: 1;
+        position: relative;
+        overflow-y: auto;
+        overflow-x: hidden;
+        border: 2px solid var(--dash-border);
+        border-radius: 8px;
+        background: white;
+    }
+
+    .timeline-container::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .timeline-container::-webkit-scrollbar-track {
+        background: #f1f5f9;
+        border-radius: 3px;
+    }
+
+    .timeline-container::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 3px;
+    }
+
+    .timeline-container::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
+    }
+
+    .timeline-hours {
+        position: relative;
+        height: 1440px; /* Fixed height: 24 hours * 60 minutes = 1440px */
+        min-height: 1440px;
+    }
+
+    .timeline-hour {
+        position: relative;
+        height: 60px;
+        border-bottom: 1px solid #e2e8f0;
+        display: flex;
+        align-items: flex-start;
+        padding-left: 12px;
+        padding-top: 4px;
+    }
+
+    .timeline-hour-label {
+        font-size: 0.75rem;
+        color: var(--dash-text-muted);
+        font-weight: 600;
+        min-width: 50px;
+    }
+
+    .timeline-hour-line {
+        position: absolute;
+        left: 60px;
+        right: 0;
+        top: 0;
+        height: 1px;
+        background: #e2e8f0;
+    }
+
+    .timeline-hour-marker {
+        position: absolute;
+        left: 60px;
+        right: 0;
+        top: 30px;
+        height: 1px;
+        background: #f1f5f9;
+    }
+
+    .timeline-current-time {
+        position: absolute;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background: #ef4444;
+        z-index: 20;
+        pointer-events: none;
+        box-shadow: 0 0 4px rgba(239, 68, 68, 0.5);
+    }
+
+    .timeline-current-time::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: -4px;
+        width: 8px;
+        height: 10px;
+        background: #ef4444;
+        border-radius: 0 4px 4px 0;
+    }
+
+    .timeline-sessions {
+        position: absolute;
+        top: 0;
+        left: 60px;
+        right: 0;
+        bottom: 0;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        padding: 0 8px;
+        height: 1440px; /* Fixed height: 24 hours * 60 minutes = 1440px */
+        min-height: 1440px;
+    }
+
+    .timeline-column {
+        position: relative;
+        height: 100%;
+    }
+
+    .timeline-column-right {
+        /* Right column for overlapping sessions */
+        border-left: 2px dashed var(--dash-border);
+        padding-left: 8px;
+    }
+
+    .timeline-column-label {
+        position: sticky;
+        top: 0;
+        background: white;
+        padding: 8px 12px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--dash-text-muted);
+        border-bottom: 2px solid var(--dash-border);
+        z-index: 5;
+    }
+
+    .session-suggestion-item {
+        position: absolute;
+        left: 0;
+        right: 0;
+        max-width: 100%;
+        background: #3b82f6;
+        color: white;
+        border-radius: 6px;
+        padding: 8px 12px;
+        cursor: move;
+        cursor: grab;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        transition: box-shadow 0.2s, transform 0.1s;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        z-index: 10;
+        min-height: 40px;
+        user-select: none;
+    }
+
+    .session-suggestion-item.dragging {
+        transition: none;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+
+    .session-drop-placeholder {
+        position: absolute;
+        left: 0;
+        right: 0;
+        background: rgba(59, 130, 246, 0.2);
+        border: 2px dashed #3b82f6;
+        border-radius: 6px;
+        pointer-events: none;
+        z-index: 5;
+        opacity: 0.6;
+    }
+
+    .session-drop-placeholder.overlapping {
+        background: rgba(239, 68, 68, 0.2);
+        border-color: #ef4444;
+    }
+
+    .session-suggestion-item.overlapping {
+        background: #ef4444;
+    }
+
+    .session-suggestion-item:active {
+        cursor: grabbing;
+    }
+
+    .session-suggestion-item:hover {
+        box-shadow: 0 4px 8px rgba(59, 130, 246, 0.2);
+        transform: scale(1.02);
+    }
+
+    .session-suggestion-item.dragging {
+        opacity: 0.7;
+        z-index: 100;
+        cursor: grabbing;
+    }
+
+    .session-suggestion-info {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .session-suggestion-time {
+        font-weight: 600;
+        font-size: 0.9rem;
+        color: white;
+    }
+
+    .session-suggestion-duration {
+        font-size: 0.75rem;
+        color: rgba(255, 255, 255, 0.8);
+    }
+
+    .session-suggestion-actions {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .session-recurrence-dropdown {
+        position: relative;
+    }
+
+    .session-recurrence-btn {
+        padding: 4px 8px;
+        background: rgba(255, 255, 255, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        border-radius: 4px;
+        font-size: 0.75rem;
+        cursor: pointer;
+        white-space: nowrap;
+        min-width: 90px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 4px;
+        color: white;
+        transition: all 0.2s;
+    }
+
+    .session-recurrence-btn:hover {
+        background: rgba(255, 255, 255, 0.3);
+        border-color: rgba(255, 255, 255, 0.5);
+    }
+
+    .session-recurrence-btn .recurrence-label,
+    .session-recurrence-btn i {
+        color: white;
+    }
+
+    .session-recurrence-menu {
+        display: none;
+        position: fixed;
+        background: white;
+        border: 2px solid var(--dash-border);
+        border-radius: 8px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        z-index: 99999 !important;
+        min-width: 180px;
+        overflow: hidden;
+        top: 0;
+        left: 0;
+        pointer-events: auto;
+    }
+    
+    .session-recurrence-dropdown {
+        position: relative;
+    }
+
+    .session-recurrence-menu.show {
+        display: block;
+    }
+
+    .session-recurrence-item {
+        padding: 10px 16px;
+        border: none;
+        background: transparent;
+        text-align: left;
+        cursor: pointer;
+        color: var(--dash-text-main);
+        font-size: 0.9rem;
+        transition: all 0.2s;
+        width: 100%;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .session-recurrence-item i {
+        width: 16px;
+        color: var(--dash-text-muted);
+    }
+
+    .session-recurrence-item:hover {
+        background: #f8fafc;
+    }
+
+    .session-recurrence-item:hover i {
+        color: #3b82f6;
+    }
+
+    .btn-delete-session {
+        padding: 4px 8px;
+        background: rgba(239, 68, 68, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        color: white;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.8rem;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 28px;
+        height: 28px;
+    }
+
+    .btn-delete-session:hover {
+        background: rgba(239, 68, 68, 0.4);
+        border-color: rgba(255, 255, 255, 0.5);
+    }
+
+    .empty-sessions-message {
+        text-align: center;
+        padding: 40px 20px;
+        color: var(--dash-text-muted);
+        font-size: 0.9rem;
+    }
+
+    .time-picker-header {
+        margin-bottom: 0;
+    }
+
+    .time-picker-header h3 {
+        margin: 0 0 8px;
+        font-size: 1.5rem;
+        color: var(--dash-text-main);
+    }
+
+    .time-picker-header p {
+        margin: 0 0 24px;
+        color: var(--dash-text-muted);
+        font-size: 0.9rem;
+    }
+
+    .time-picker-fields {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+
+    .time-picker-field {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .time-picker-field label {
+        font-weight: 600;
+        color: var(--dash-text-main);
+        font-size: 0.9rem;
+    }
+
+    .time-picker-field input {
+        padding: 12px;
+        border: 2px solid var(--dash-border);
+        border-radius: 8px;
+        font-size: 1rem;
+        transition: all 0.2s;
+    }
+
+    .time-picker-field input:focus {
+        outline: none;
+        border-color: #3b82f6;
+    }
+
+    .time-picker-actions {
+        display: flex;
+        gap: 12px;
+        margin-top: 16px;
+        padding-top: 16px;
+    }
+
+    .time-picker-actions button {
+        flex: 1;
+        padding: 12px 24px;
+        border: 2px solid;
+        border-radius: 999px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        font-size: 0.95rem;
+    }
+
+    .time-picker-save {
+        background: var(--dash-primary, #10b981);
+        color: white;
+        border-color: var(--dash-primary, #10b981);
+    }
+
+    .time-picker-save:hover {
+        background: var(--dash-primary-hover, #059669);
+        border-color: var(--dash-primary-hover, #059669);
+    }
+
+    .time-picker-cancel {
+        background: white;
+        color: #334156;
+        border-color: white;
+    }
+
+    .time-picker-cancel:hover {
+        background: #334156;
+        color: white;
+        border-color: #334156;
+    }
+
+    /* Delete Confirmation Popup */
+    .delete-confirmation-modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.6);
+        z-index: 2000;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .delete-confirmation-modal.active {
+        display: flex;
+    }
+
+    .delete-confirmation-content {
+        background: white;
+        border-radius: 12px;
+        padding: 24px;
+        max-width: 400px;
+        width: 90%;
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
+    }
+
+    .delete-confirmation-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: var(--dash-text-main);
+        margin-bottom: 12px;
+    }
+
+    .delete-confirmation-message {
+        color: var(--dash-text-muted);
+        margin-bottom: 24px;
+        line-height: 1.5;
+    }
+
+    .delete-confirmation-actions {
+        display: flex;
+        gap: 12px;
+        justify-content: flex-end;
+    }
+
+    .delete-confirmation-btn {
+        padding: 10px 20px;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        border: 2px solid;
+    }
+
+    .delete-confirmation-btn-cancel {
+        background: white;
+        color: #334156;
+        border-color: #334156;
+    }
+
+    .delete-confirmation-btn-cancel:hover {
+        background: #f1f5f9;
+    }
+
+    .delete-confirmation-btn-one-day {
+        background: #3b82f6;
+        color: white;
+        border-color: #3b82f6;
+    }
+
+    .delete-confirmation-btn-one-day:hover {
+        background: #2563eb;
+        border-color: #2563eb;
+    }
+
+    .delete-confirmation-btn-all {
+        background: #ef4444;
+        color: white;
+        border-color: #ef4444;
+    }
+
+    .delete-confirmation-btn-all:hover {
+        background: #dc2626;
+        border-color: #dc2626;
+    }
+
+    .calendar-day.availability-selected {
+        background: #3b82f6;
+        color: white;
+        border-color: #2563eb;
+    }
+
+    .calendar-day.availability-selected .calendar-day-number {
+        color: white;
+    }
+
+    @media (max-width: 768px) {
+        .sessions-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .calendar-container {
+            padding: 16px;
+        }
+
+        .calendar-weekday,
+        .calendar-day {
+            font-size: 0.8rem;
+        }
+
+        .session-item {
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .session-right {
+            width: 100%;
+            justify-content: space-between;
+        }
+
+        .time-picker-content {
+            padding: 24px;
+        }
+
+        .time-picker-body {
+            grid-template-columns: 1fr;
+        }
+
+        .time-picker-left {
+            border-right: none;
+            border-bottom: 2px solid var(--dash-border);
+            padding-right: 0;
+            padding-bottom: 24px;
+            margin-bottom: 24px;
+        }
+
+        .time-picker-right {
+            padding: 0;
+        }
+
+        .time-picker-actions {
+            margin-top: 16px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block dashboard_content %}
+<div class="dashboard-content-container">
+    <div class="sessions-header">
+        <h1 class="dashboard-page-title">My Sessions</h1>
+        <div class="view-toggle-buttons">
+            <button class="view-toggle-btn active" data-view="calendar">
+                <i class="fas fa-calendar-alt"></i>
+                Calendar
+            </button>
+            <button class="view-toggle-btn" data-view="timeline">
+                <i class="fas fa-list"></i>
+                Timeline
+            </button>
+        </div>
+    </div>
+
+    <!-- Calendar View -->
+    <div id="calendarView" class="view-container active">
+        <div class="calendar-container" id="calendarContainer">
+            <div class="calendar-header">
+                <div class="calendar-nav">
+                    <button class="calendar-nav-btn" id="prevMonth">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    <div class="calendar-month-year" id="currentMonthYear">December 2024</div>
+                    <button class="calendar-nav-btn" id="nextMonth">
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
+                <div class="sessions-mode-indicator" id="sessionsModeIndicator">
+                    <i class="fas fa-calendar-check"></i> Session Scheduling Mode
+                </div>
+                <div class="availability-mode-indicator" id="availabilityModeIndicator">
+                    <i class="fas fa-edit"></i> Availability Mode - Click on days to set your availability
+                </div>
+                <div class="calendar-header-right">
+                    <button class="btn-manage-sessions" id="manageSessionsBtn">
+                        <i class="fas fa-cog"></i> <span id="manageSessionsBtnText">Add Availability</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="calendar-weekdays">
+                <div class="calendar-weekday">Sun</div>
+                <div class="calendar-weekday">Mon</div>
+                <div class="calendar-weekday">Tue</div>
+                <div class="calendar-weekday">Wed</div>
+                <div class="calendar-weekday">Thu</div>
+                <div class="calendar-weekday">Fri</div>
+                <div class="calendar-weekday">Sat</div>
+            </div>
+
+            <div class="calendar-days" id="calendarDays">
+                <!-- Calendar days will be generated by JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Timeline View -->
+    <div id="timelineView" class="view-container">
+        <div class="timeline-container">
+            <div class="session-timeline-container">
+                <!-- Session Item 1 -->
+                <div class="session-item confirmed status-completed">
+                    <div class="session-left">
+                        <div class="session-date">
+                            <span class="date-day">28</span>
+                            <span class="date-month">Nov</span>
+                        </div>
+                        <div class="session-info">
+                            <h4 class="session-title">Strategy Review with Anna</h4>
+                            <div class="session-meta-row">
+                                <span class="session-time">
+                                    <i class="far fa-clock"></i> 10:00 AM - 11:00 AM
+                                </span>
+                                <span class="conf-tag confirmed">Confirmed</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="session-right">
+                        <div class="session-tasks">
+                            <div class="task-badge completed">
+                                <span class="task-label">Completed</span>
+                                <span class="task-count">2</span>
+                            </div>
+                        </div>
+                        <div class="dropdown">
+                            <button class="session-action-btn" onclick="toggleDropdown(this)">
+                                <i class="fas fa-ellipsis-h"></i>
+                            </button>
+                            <div class="dropdown-menu">
+                                <button class="dropdown-item">View Details</button>
+                                <button class="dropdown-item">Edit Session</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Session Item 2 -->
+                <div class="session-item confirmed status-pending">
+                    <div class="session-left">
+                        <div class="session-date">
+                            <span class="date-day">05</span>
+                            <span class="date-month">Dec</span>
+                        </div>
+                        <div class="session-info">
+                            <h4 class="session-title">Leadership Workshop with Michael</h4>
+                            <div class="session-meta-row">
+                                <span class="session-time">
+                                    <i class="far fa-clock"></i> 2:00 PM - 3:30 PM
+                                </span>
+                                <span class="conf-tag confirmed">Confirmed</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="session-right">
+                        <div class="session-tasks">
+                            <div class="task-badge pending">
+                                <span class="task-label">Pending</span>
+                                <span class="task-count">1</span>
+                            </div>
+                        </div>
+                        <div class="dropdown">
+                            <button class="session-action-btn" onclick="toggleDropdown(this)">
+                                <i class="fas fa-ellipsis-h"></i>
+                            </button>
+                            <div class="dropdown-menu">
+                                <button class="dropdown-item">View Details</button>
+                                <button class="dropdown-item">Edit Session</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Session Item 3 -->
+                <div class="session-item tbc status-missed">
+                    <div class="session-left">
+                        <div class="session-date">
+                            <span class="date-day">12</span>
+                            <span class="date-month">Dec</span>
+                        </div>
+                        <div class="session-info">
+                            <h4 class="session-title">Quarterly Planning with Team</h4>
+                            <div class="session-meta-row">
+                                <span class="session-time">
+                                    <i class="far fa-clock"></i> 11:00 AM - 12:30 PM
+                                </span>
+                                <span class="conf-tag tbc">To Be Confirmed</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="session-right">
+                        <div class="session-tasks">
+                            <div class="task-badge completed">
+                                <span class="task-label">Completed</span>
+                                <span class="task-count">1</span>
+                            </div>
+                            <div class="task-badge missed">
+                                <span class="task-label">Missed</span>
+                                <span class="task-count">2</span>
+                            </div>
+                        </div>
+                        <div class="dropdown">
+                            <button class="session-action-btn" onclick="toggleDropdown(this)">
+                                <i class="fas fa-ellipsis-h"></i>
+                            </button>
+                            <div class="dropdown-menu">
+                                <button class="dropdown-item">View Details</button>
+                                <button class="dropdown-item">Edit Session</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Session Item 4 -->
+                <div class="session-item confirmed status-pending">
+                    <div class="session-left">
+                        <div class="session-date">
+                            <span class="date-day">15</span>
+                            <span class="date-month">Dec</span>
+                        </div>
+                        <div class="session-info">
+                            <h4 class="session-title">Career Development Session with Sarah</h4>
+                            <div class="session-meta-row">
+                                <span class="session-time">
+                                    <i class="far fa-clock"></i> 9:00 AM - 10:00 AM
+                                </span>
+                                <span class="conf-tag confirmed">Confirmed</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="session-right">
+                        <div class="session-tasks">
+                            <div class="task-badge pending">
+                                <span class="task-label">Pending</span>
+                                <span class="task-count">3</span>
+                            </div>
+                        </div>
+                        <div class="dropdown">
+                            <button class="session-action-btn" onclick="toggleDropdown(this)">
+                                <i class="fas fa-ellipsis-h"></i>
+                            </button>
+                            <div class="dropdown-menu">
+                                <button class="dropdown-item">View Details</button>
+                                <button class="dropdown-item">Edit Session</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Time Picker Modal -->
+<div class="time-picker-modal" id="timePickerModal">
+    <div class="time-picker-content">
+        <div class="time-picker-body">
+            <!-- Left Column -->
+            <div class="time-picker-left">
+                <div class="time-picker-header">
+                    <h3 id="timePickerDate">Select Time</h3>
+                    <p>Configure availability for this day</p>
+                </div>
+                <h4 class="time-picker-section-title">Time Range</h4>
+                <div class="time-picker-fields">
+                    <div class="time-picker-field">
+                        <label for="startTime">Start Time</label>
+                        <input type="time" id="startTime" value="09:00">
+                    </div>
+                    <div class="time-picker-field">
+                        <label for="endTime">End Time</label>
+                        <input type="time" id="endTime" value="17:00">
+                    </div>
+                </div>
+                <div class="session-length-display">
+                    <div class="session-length-text">
+                        <div class="session-length-label">Session Length</div>
+                        <div class="session-length-value">{{ session_length|default:60 }} minutes</div>
+                        <div class="session-length-note">Cannot be changed here</div>
+                    </div>
+                    <a href="{% url 'general:dashboard_mentor:profile' %}#session-configuration" class="btn-change-session-length">
+                        <i class="fas fa-edit"></i> Change
+                    </a>
+                </div>
+                <input type="hidden" id="sessionLength" value="{{ session_length|default:60 }}">
+                <div class="time-picker-field-full">
+                    <label for="breakDuration">Breaks Between Sessions (minutes)</label>
+                    <input type="number" id="breakDuration" min="0" step="5" value="10">
+                </div>
+                <button class="btn-generate-sessions" id="generateSessionsBtn">
+                    <i class="fas fa-magic"></i> Generate Session Suggestions
+                </button>
+            </div>
+            <!-- Right Column -->
+            <div class="time-picker-right">
+                <h4 class="time-picker-section-title">Available Sessions Timeline</h4>
+                <div class="timeline-container" id="timelineContainer">
+                    <div class="timeline-hours" id="timelineHours"></div>
+                    <div class="timeline-sessions" id="timelineSessions"></div>
+                    <div class="empty-sessions-message" id="emptySessionsMessage" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; color: var(--dash-text-muted); font-size: 0.9rem; pointer-events: none;">
+                        <i class="fas fa-info-circle" style="font-size: 2rem; margin-bottom: 12px; opacity: 0.3;"></i>
+                        <p>Click "Generate Session Suggestions" to create available time slots</p>
+                    </div>
+                </div>
+                <div class="time-picker-actions">
+                    <button class="time-picker-save" id="timePickerSave">Save Availability</button>
+                    <button class="time-picker-cancel" id="timePickerCancel">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="delete-confirmation-modal" id="deleteConfirmationModal">
+    <div class="delete-confirmation-content">
+        <div class="delete-confirmation-title">Delete Recurring Slot</div>
+        <div class="delete-confirmation-message">
+            This is a recurring slot. How would you like to delete it?
+        </div>
+        <div class="delete-confirmation-actions">
+            <button class="delete-confirmation-btn delete-confirmation-btn-cancel" id="deleteCancelBtn">Cancel</button>
+            <button class="delete-confirmation-btn delete-confirmation-btn-one-day" id="deleteOneDayBtn">Delete This Day Only</button>
+            <button class="delete-confirmation-btn delete-confirmation-btn-all" id="deleteAllBtn">Delete All Occurrences</button>
+        </div>
+    </div>
+</div>
+
+<!-- Time Change Confirmation Modal -->
+<div class="delete-confirmation-modal" id="timeChangeConfirmationModal">
+    <div class="delete-confirmation-content">
+        <div class="delete-confirmation-title">Change Recurring Slot Time</div>
+        <div class="delete-confirmation-message">
+            This is a recurring slot. How would you like to change the time?
+        </div>
+        <div class="delete-confirmation-actions">
+            <button class="delete-confirmation-btn delete-confirmation-btn-cancel" id="timeChangeCancelBtn">Cancel</button>
+            <button class="delete-confirmation-btn delete-confirmation-btn-one-day" id="timeChangeOneDayBtn">Change Only Today</button>
+            <button class="delete-confirmation-btn delete-confirmation-btn-all" id="timeChangeAllBtn">Update All Occurrences</button>
+        </div>
+    </div>
+</div>
+
+<!-- Availability Data (JSON) -->
+{% if availability_data %}
+{{ availability_data|json_script:"availabilityDataJson" }}
+{% endif %}
+<!-- Recurring Slots Data (JSON) -->
+{% if recurring_slots %}
+{{ recurring_slots|json_script:"recurringSlotsJson" }}
+{% endif %}
+<!-- Mentor Timezone -->
+{% if mentor_timezone %}
+{{ mentor_timezone|json_script:"mentorTimezoneJson" }}
+{% endif %}
+
+<script>
+    // Store original parent for each menu so we can restore it (global scope)
+    const menuOriginalParents = new WeakMap();
+    
+    // View Toggle Functionality
+    document.addEventListener('DOMContentLoaded', function() {
+        const toggleButtons = document.querySelectorAll('.view-toggle-btn');
+        const views = document.querySelectorAll('.view-container');
+
+        toggleButtons.forEach(btn => {
+            btn.addEventListener('click', function() {
+                const viewName = this.getAttribute('data-view');
+                
+                // Update buttons
+                toggleButtons.forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                
+                // Update views
+                views.forEach(v => v.classList.remove('active'));
+                document.getElementById(viewName + 'View').classList.add('active');
+            });
+        });
+
+        // Calendar functionality
+        let currentDate = new Date();
+        let currentMonth = currentDate.getMonth();
+        let currentYear = currentDate.getFullYear();
+        let viewMode = 'sessions'; // 'sessions' or 'availability'
+        let pendingAvailability = {}; // Temporary storage for new availability
+        let selectedDateForTimePicker = null;
+        let generatedSessions = []; // Array of session objects: {start: 'HH:MM', end: 'HH:MM', length: minutes, recurrence: 'one_time'|'daily'|'weekly'|'monthly', recurring_slot_id: 'uuid'}
+        let editingRecurringSlotId = null; // Track which recurring slot is being edited
+
+        // Mock sessions data (dates with sessions)
+        const sessionsData = {
+            '2024-11-28': { count: 1, sessions: ['Strategy Review with Anna'] },
+            '2024-12-05': { count: 1, sessions: ['Leadership Workshop with Michael'] },
+            '2024-12-12': { count: 1, sessions: ['Quarterly Planning with Team'] },
+            '2024-12-15': { count: 1, sessions: ['Career Development Session with Sarah'] },
+        };
+
+        // Load availability data from backend
+        let availabilityData = {};
+        const availabilityDataEl = document.getElementById('availabilityDataJson');
+        if (availabilityDataEl) {
+            const availabilityDataFromServer = JSON.parse(availabilityDataEl.textContent);
+            // Convert array format to object format, preserving all slots with their metadata
+            for (const [dateStr, availList] of Object.entries(availabilityDataFromServer)) {
+                if (availList && availList.length > 0) {
+                    availabilityData[dateStr] = availList; // Store full array of slots
+                }
+            }
+        }
+        
+        // Load recurring slots from backend
+        let recurringSlots = [];
+        const recurringSlotsEl = document.getElementById('recurringSlotsJson');
+        if (recurringSlotsEl) {
+            recurringSlots = JSON.parse(recurringSlotsEl.textContent);
+        }
+        
+        // Load mentor timezone
+        let mentorTimezone = 'UTC';
+        const mentorTimezoneEl = document.getElementById('mentorTimezoneJson');
+        if (mentorTimezoneEl) {
+            mentorTimezone = JSON.parse(mentorTimezoneEl.textContent);
+        }
+        
+        // Helper function to check if a date matches a recurring slot
+        function getRecurringSlotsForDate(dateStr) {
+            const date = new Date(dateStr + 'T00:00:00');
+            const weekdayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+            const weekdayName = weekdayNames[date.getDay()];
+            const dayOfMonth = date.getDate(); // 1-31
+            const matchingSlots = [];
+            
+            for (const slot of recurringSlots) {
+                // STRICT: Check if date is on or after the creation date (only show forward from creation)
+                // Under no circumstance should we display availability earlier than the creation date
+                const createdAt = slot.created_at;
+                
+                // If no creation date, skip this slot (safety measure)
+                if (!createdAt) {
+                    continue;
+                }
+                
+                try {
+                    // Parse created_at and extract date string (YYYY-MM-DD) for reliable comparison
+                    const createdDate = new Date(createdAt.replace('Z', '+00:00'));
+                    // Get UTC date string to avoid timezone issues
+                    const createdDateStr = createdDate.getUTCFullYear() + '-' + 
+                                         String(createdDate.getUTCMonth() + 1).padStart(2, '0') + '-' + 
+                                         String(createdDate.getUTCDate()).padStart(2, '0');
+                    
+                    // dateStr is already in YYYY-MM-DD format, compare directly
+                    // STRICT: Skip if check date is before creation date (use < not <=)
+                    if (dateStr < createdDateStr) {
+                        continue; // Skip this slot for past dates - NEVER show before creation
+                    }
+                } catch (e) {
+                    // If parsing fails, skip this slot to be safe
+                    continue;
+                }
+                
+                // Check if this date is in skip_dates (excluded dates for this recurring slot)
+                const skipDates = slot.skip_dates || [];
+                if (skipDates.includes(dateStr)) {
+                    continue; // Skip this date - it's been excluded
+                }
+                
+                const slotType = slot.type || 'weekly';
+                let matches = false;
+                
+                if (slotType === 'daily') {
+                    // Daily: matches all days (but only from creation date forward, checked above)
+                    matches = true;
+                } else if (slotType === 'weekly') {
+                    // Weekly: check if weekday matches
+                    const weekdays = slot.weekdays || [];
+                    matches = weekdays.includes(weekdayName);
+                } else if (slotType === 'monthly') {
+                    // Monthly: check if day_of_month matches
+                    const slotDayOfMonth = slot.day_of_month;
+                    if (slotDayOfMonth !== null && slotDayOfMonth !== undefined) {
+                        // Check if the date's day matches the slot's day_of_month
+                        matches = dayOfMonth === slotDayOfMonth;
+                        
+                        // Handle edge case: if slot is for day 31 but current month doesn't have 31 days
+                        // Skip silently (as per requirements: "If month does not have that day, skip that month silently")
+                        if (slotDayOfMonth > 28) {
+                            // Check if current month has enough days
+                            const lastDayOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+                            if (slotDayOfMonth > lastDayOfMonth) {
+                                matches = false; // Skip this month
+                            }
+                        }
+                    } else {
+                        // Fallback: if day_of_month is not set, don't match
+                        matches = false;
+                    }
+                }
+                
+                if (matches) {
+                    matchingSlots.push({
+                        ...slot,
+                        is_recurring: true, // Mark as recurring for display purposes
+                        recurring_slot_id: slot.id,
+                        // Preserve original type (weekly, daily, monthly)
+                        recurrence_type: slot.type || 'weekly'
+                    });
+                }
+            }
+            
+            return matchingSlots;
+        }
+
+        function renderCalendar() {
+            const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                'July', 'August', 'September', 'October', 'November', 'December'];
+            
+            document.getElementById('currentMonthYear').textContent = 
+                `${monthNames[currentMonth]} ${currentYear}`;
+
+            const firstDay = new Date(currentYear, currentMonth, 1).getDay();
+            const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+            const daysInPrevMonth = new Date(currentYear, currentMonth, 0).getDate();
+            
+            const calendarDays = document.getElementById('calendarDays');
+            calendarDays.innerHTML = '';
+
+            // Previous month days
+            for (let i = firstDay - 1; i >= 0; i--) {
+                const day = daysInPrevMonth - i;
+                const dateStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                const dayElement = createDayElement(day, true, dateStr);
+                calendarDays.appendChild(dayElement);
+            }
+
+            // Current month days
+            const today = new Date();
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                const isToday = currentYear === today.getFullYear() && 
+                               currentMonth === today.getMonth() && 
+                               day === today.getDate();
+                const dayElement = createDayElement(day, false, dateStr, isToday);
+                calendarDays.appendChild(dayElement);
+            }
+
+            // Next month days to fill the grid
+            const totalCells = calendarDays.children.length;
+            const remainingCells = 42 - totalCells; // 6 rows * 7 days
+            for (let day = 1; day <= remainingCells; day++) {
+                const dateStr = `${currentYear}-${String(currentMonth + 2).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                const dayElement = createDayElement(day, true, dateStr);
+                calendarDays.appendChild(dayElement);
+            }
+        }
+
+        function createDayElement(day, isOtherMonth, dateStr, isToday = false) {
+            const dayElement = document.createElement('div');
+            dayElement.className = 'calendar-day';
+            if (isOtherMonth) dayElement.classList.add('other-month');
+            if (isToday) dayElement.classList.add('today');
+            dayElement.setAttribute('data-date', dateStr);
+
+            const dayNumber = document.createElement('div');
+            dayNumber.className = 'calendar-day-number';
+            dayNumber.textContent = day;
+            dayElement.appendChild(dayNumber);
+
+            const hasSessions = sessionsData[dateStr];
+            
+            // Get all availability slots for this date (one-time + recurring)
+            const oneTimeSlots = availabilityData[dateStr] || [];
+            const pendingSlots = pendingAvailability[dateStr] || [];
+            const recurringSlotsForDate = getRecurringSlotsForDate(dateStr);
+            
+            // Combine all slots
+            const allSlots = [...oneTimeSlots, ...pendingSlots, ...recurringSlotsForDate];
+            const hasAvailability = allSlots.length > 0;
+
+            // Show sessions (prominent in sessions mode, hidden in availability mode)
+            if (hasSessions && viewMode === 'sessions') {
+                dayElement.classList.add('has-sessions');
+                const sessionsContainer = document.createElement('div');
+                sessionsContainer.className = 'calendar-day-sessions';
+                
+                if (sessionsData[dateStr].count <= 3) {
+                    for (let i = 0; i < sessionsData[dateStr].count; i++) {
+                        const dot = document.createElement('div');
+                        dot.className = 'calendar-session-dot';
+                        sessionsContainer.appendChild(dot);
+                    }
+                } else {
+                    const count = document.createElement('div');
+                    count.className = 'calendar-session-count';
+                    count.textContent = sessionsData[dateStr].count;
+                    sessionsContainer.appendChild(count);
+                }
+                
+                dayElement.appendChild(sessionsContainer);
+            }
+
+            // Show availability (subtle in sessions mode, prominent in availability mode)
+            if (hasAvailability) {
+                dayElement.classList.add('has-availability');
+                if (viewMode === 'availability') {
+                    dayElement.classList.add('availability-mode-active');
+                    const availInfo = document.createElement('div');
+                    availInfo.className = 'calendar-day-availability';
+                    availInfo.style.cssText = 'font-size: 0.7rem; color: #3b82f6; margin-top: 4px; font-weight: 600;';
+                    // Show first slot's time range
+                    const firstSlot = allSlots[0];
+                    const startTime = firstSlot.start_time || firstSlot.start;
+                    const endTime = firstSlot.end_time || firstSlot.end;
+                    const slotType = firstSlot.is_recurring ? ` (recurring)` : '';
+                    availInfo.textContent = `${startTime} - ${endTime}${slotType}`;
+                    dayElement.appendChild(availInfo);
+                } else {
+                    // Subtle indicator in sessions mode
+                    dayElement.style.borderLeft = '3px solid #3b82f6';
+                }
+            }
+
+            // Add click handler for availability mode
+            if (viewMode === 'availability' && !isOtherMonth) {
+                dayElement.style.cursor = 'pointer';
+                dayElement.addEventListener('click', function() {
+                    openTimePicker(dateStr, day);
+                });
+            }
+
+            // Add both classes if has both
+            if (hasSessions && hasAvail && viewMode === 'sessions') {
+                dayElement.classList.add('has-both');
+            }
+
+            return dayElement;
+        }
+
+        // Navigation
+        document.getElementById('prevMonth').addEventListener('click', function() {
+            currentMonth--;
+            if (currentMonth < 0) {
+                currentMonth = 11;
+                currentYear--;
+            }
+            renderCalendar();
+        });
+
+        document.getElementById('nextMonth').addEventListener('click', function() {
+            currentMonth++;
+            if (currentMonth > 11) {
+                currentMonth = 0;
+                currentYear++;
+            }
+            renderCalendar();
+        });
+
+        // Function to update button text and color based on current mode
+        function updateManageSessionsButton() {
+            const buttonText = document.getElementById('manageSessionsBtnText');
+            const button = document.getElementById('manageSessionsBtn');
+            
+            if (viewMode === 'availability') {
+                // Availability mode: Green button with "Manage Sessions"
+                buttonText.textContent = 'Manage Sessions';
+                button.classList.add('availability-mode');
+            } else {
+                // Session scheduling mode: Blue button with "Add/Update Availability"
+                const hasAvailability = Object.keys(availabilityData).length > 0;
+                if (hasAvailability) {
+                    buttonText.textContent = 'Update Availability';
+                } else {
+                    buttonText.textContent = 'Add Availability';
+                }
+                button.classList.remove('availability-mode');
+            }
+        }
+
+        // Availability Mode Functions
+        function enterAvailabilityMode() {
+            viewMode = 'availability';
+            document.getElementById('calendarContainer').classList.add('availability-mode');
+            document.getElementById('sessionsModeIndicator').classList.add('hidden');
+            document.getElementById('availabilityModeIndicator').classList.add('active');
+            updateManageSessionsButton();
+            renderCalendar();
+        }
+
+        function exitAvailabilityMode() {
+            viewMode = 'sessions';
+            document.getElementById('calendarContainer').classList.remove('availability-mode');
+            document.getElementById('sessionsModeIndicator').classList.remove('hidden');
+            document.getElementById('availabilityModeIndicator').classList.remove('active');
+            updateManageSessionsButton();
+            pendingAvailability = {}; // Clear pending changes
+            renderCalendar();
+        }
+
+        function toggleManageSessions() {
+            if (viewMode === 'sessions') {
+                // Enter availability mode
+                enterAvailabilityMode();
+            } else {
+                // In availability mode - just exit (saving happens in the popup)
+                exitAvailabilityMode();
+            }
+        }
+
+        function openTimePicker(dateStr, day) {
+            selectedDateForTimePicker = dateStr;
+            generatedSessions = []; // Reset sessions when opening modal
+            editingRecurringSlotId = null; // Reset recurring slot ID
+            deletedRecurringSlotIds.clear(); // Reset deleted slots tracking
+            skipDatesUpdates.clear(); // Reset skip_dates updates tracking
+            
+            const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                'July', 'August', 'September', 'October', 'November', 'December'];
+            // Parse dateStr (format: YYYY-MM-DD)
+            const [year, month, dateDay] = dateStr.split('-');
+            const dateStrFormatted = `${monthNames[parseInt(month) - 1]} ${day}, ${year}`;
+            
+            document.getElementById('timePickerDate').textContent = dateStrFormatted;
+            
+            // Check for recurring slots first (they take precedence)
+            const recurringSlotsForDate = getRecurringSlotsForDate(dateStr);
+            let startTime = '09:00';
+            let endTime = '17:00';
+            
+            if (recurringSlotsForDate.length > 0) {
+                // Load the first recurring slot (if multiple, use first one)
+                const recurringSlot = recurringSlotsForDate[0];
+                editingRecurringSlotId = recurringSlot.recurring_slot_id;
+                startTime = recurringSlot.start_time || '09:00';
+                endTime = recurringSlot.end_time || '17:00';
+                
+                // Pre-populate sessions from recurring slot
+                // For now, create one session representing the recurring slot
+                generatedSessions.push({
+                    start: startTime,
+                    end: endTime,
+                    length: recurringSlot.length || 60,
+                    recurrence: recurringSlot.recurrence_type || recurringSlot.type || 'weekly',
+                    recurring_slot_id: editingRecurringSlotId,
+                    skip_dates: recurringSlot.skip_dates || []  // Load existing skip_dates
+                });
+            } else {
+                // Check for one-time slots
+                const oneTimeSlots = availabilityData[dateStr] || [];
+                const pendingSlots = pendingAvailability[dateStr] || [];
+                const allOneTimeSlots = [...oneTimeSlots, ...pendingSlots];
+                
+                if (allOneTimeSlots.length > 0) {
+                    // Load one-time slots into generatedSessions
+                    for (const slot of allOneTimeSlots) {
+                        if (!slot.is_recurring && slot.type !== 'recurring') {
+                            generatedSessions.push({
+                                start: slot.start,
+                                end: slot.end,
+                                length: slot.length || 60,
+                                recurrence: 'one_time',
+                                id: slot.id
+                            });
+                        }
+                    }
+                    // Use first slot's times for the time range inputs
+                    startTime = allOneTimeSlots[0].start || '09:00';
+                    endTime = allOneTimeSlots[0].end || '17:00';
+                }
+            }
+            
+            document.getElementById('startTime').value = startTime;
+            document.getElementById('endTime').value = endTime;
+            
+            // Initialize timeline
+            initializeTimeline();
+            renderSessionsList();
+            
+            document.getElementById('timePickerModal').classList.add('active');
+        }
+
+        function initializeTimeline() {
+            const timelineHours = document.getElementById('timelineHours');
+            timelineHours.innerHTML = '';
+            
+            // Create hour markers for full 24-hour day (0-23)
+            for (let hour = 0; hour < 24; hour++) {
+                const hourDiv = document.createElement('div');
+                hourDiv.className = 'timeline-hour';
+                hourDiv.style.height = '60px';
+                
+                const label = document.createElement('div');
+                label.className = 'timeline-hour-label';
+                label.textContent = `${String(hour).padStart(2, '0')}:00`;
+                hourDiv.appendChild(label);
+                
+                const line = document.createElement('div');
+                line.className = 'timeline-hour-line';
+                hourDiv.appendChild(line);
+                
+                const marker = document.createElement('div');
+                marker.className = 'timeline-hour-marker';
+                hourDiv.appendChild(marker);
+                
+                timelineHours.appendChild(hourDiv);
+            }
+            
+            // Set timeline height for 24 hours (24 * 60 = 1440 pixels)
+            const totalHeight = 24 * 60;
+            timelineHours.style.height = `${totalHeight}px`;
+            
+            // Update timeline sessions container height
+            document.getElementById('timelineSessions').style.height = `${totalHeight}px`;
+            
+            // Add current time indicator (red line) if viewing today's date
+            if (selectedDateForTimePicker) {
+                const today = new Date();
+                const todayStr = today.getFullYear() + '-' + 
+                                String(today.getMonth() + 1).padStart(2, '0') + '-' + 
+                                String(today.getDate()).padStart(2, '0');
+                
+                if (selectedDateForTimePicker === todayStr) {
+                    updateCurrentTimeIndicator();
+                }
+            }
+        }
+        
+        function updateCurrentTimeIndicator() {
+            // Remove existing indicator if any
+            const existingIndicator = document.getElementById('timelineCurrentTime');
+            if (existingIndicator) {
+                existingIndicator.remove();
+            }
+            
+            try {
+                // Get current time in mentor's timezone
+                const now = new Date();
+                const formatter = new Intl.DateTimeFormat('en-US', {
+                    timeZone: mentorTimezone,
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: false
+                });
+                
+                const timeParts = formatter.formatToParts(now);
+                const hours = parseInt(timeParts.find(p => p.type === 'hour').value);
+                const minutes = parseInt(timeParts.find(p => p.type === 'minute').value);
+                
+                // Calculate position in minutes from midnight
+                const minutesFromMidnight = hours * 60 + minutes;
+                
+                // Create current time indicator
+                const indicator = document.createElement('div');
+                indicator.id = 'timelineCurrentTime';
+                indicator.className = 'timeline-current-time';
+                indicator.style.top = `${minutesFromMidnight}px`;
+                
+                // Add to timeline container
+                const timelineContainer = document.getElementById('timelineContainer');
+                if (timelineContainer) {
+                    timelineContainer.appendChild(indicator);
+                }
+            } catch (e) {
+                // If timezone conversion fails, silently skip
+                console.warn('Failed to display current time indicator:', e);
+            }
+        }
+
+        function closeTimePicker() {
+            document.getElementById('timePickerModal').classList.remove('active');
+            selectedDateForTimePicker = null;
+            generatedSessions = [];
+            deletedRecurringSlotIds.clear(); // Reset deleted slots tracking
+            skipDatesUpdates.clear(); // Reset skip_dates updates tracking
+        }
+
+        function timeToMinutes(timeStr) {
+            const [hours, minutes] = timeStr.split(':').map(Number);
+            return hours * 60 + minutes;
+        }
+
+        function minutesToTime(minutes) {
+            const hours = Math.floor(minutes / 60);
+            const mins = minutes % 60;
+            return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+        }
+
+        function generateSessions() {
+            const startTime = document.getElementById('startTime').value;
+            const endTime = document.getElementById('endTime').value;
+            const sessionLength = parseInt(document.getElementById('sessionLength').value) || 60;
+            const breakDuration = parseInt(document.getElementById('breakDuration').value) || 10;
+
+            if (!startTime || !endTime) {
+                if (typeof showNotification !== 'undefined') {
+                    showNotification('Please select start and end times', 'error');
+                }
+                return;
+            }
+
+            if (startTime >= endTime) {
+                if (typeof showNotification !== 'undefined') {
+                    showNotification('End time must be after start time', 'error');
+                }
+                return;
+            }
+
+            // Reinitialize timeline with new times
+            initializeTimeline();
+
+            const startMinutes = timeToMinutes(startTime);
+            const endMinutes = timeToMinutes(endTime);
+            const totalDuration = endMinutes - startMinutes;
+
+            if (totalDuration < sessionLength) {
+                if (typeof showNotification !== 'undefined') {
+                    showNotification('Time range is too short for the session length', 'error');
+                }
+                return;
+            }
+
+            // Get existing sessions in the left column (non-overlapping)
+            // These are the sessions we need to avoid when generating new ones
+            const existingLeftColumnSessions = generatedSessions
+                .filter(session => session.overlapping === false)
+                .map(session => ({
+                    start: timeToMinutes(session.start),
+                    end: timeToMinutes(session.end)
+                }))
+                .sort((a, b) => a.start - b.start); // Sort by start time
+
+            // Function to check if a time slot is free and respects break duration
+            function isTimeSlotFree(slotStart, slotEnd) {
+                // Check if the slot overlaps with any existing left column session
+                for (const existingSession of existingLeftColumnSessions) {
+                    // Check if time ranges overlap
+                    if (slotStart < existingSession.end && slotEnd > existingSession.start) {
+                        return false; // Overlaps with existing session
+                    }
+                }
+                
+                // Check if there's a session before this slot and if break is respected
+                for (const existingSession of existingLeftColumnSessions) {
+                    // If there's a session that ends before our slot starts
+                    if (existingSession.end <= slotStart) {
+                        // Check if there's enough break time between them
+                        const timeBetween = slotStart - existingSession.end;
+                        if (timeBetween < breakDuration) {
+                            return false; // Break duration not respected
+                        }
+                    }
+                }
+                
+                return true; // Free slot with proper breaks
+            }
+
+            // Generate new sessions only in free spaces
+            // Snap start time to nearest 5-minute interval
+            let currentStart = Math.round(startMinutes / 5) * 5;
+            let newSessionsCount = 0;
+
+            while (currentStart + sessionLength <= endMinutes) {
+                const sessionEnd = currentStart + sessionLength;
+                
+                // Check if this time slot is free and respects breaks
+                if (isTimeSlotFree(currentStart, sessionEnd)) {
+                    // Add new session
+                    generatedSessions.push({
+                        start: minutesToTime(currentStart),
+                        end: minutesToTime(sessionEnd),
+                        length: sessionLength,
+                        recurrence: 'one_time',
+                        overlapping: false // Initialize as non-overlapping
+                    });
+                    newSessionsCount++;
+                    
+                    // Next session starts after break, also snapped to 5-minute interval
+                    currentStart = Math.round((sessionEnd + breakDuration) / 5) * 5;
+                } else {
+                    // Slot is occupied or break not respected, try next 5-minute interval
+                    currentStart += 5;
+                }
+            }
+
+            // Show notification if sessions were added
+            if (newSessionsCount > 0) {
+                if (typeof showNotification !== 'undefined') {
+                    showNotification(`Added ${newSessionsCount} new session(s) in available time slots`, 'success');
+                }
+            } else {
+                if (typeof showNotification !== 'undefined') {
+                    showNotification('No available time slots found in the specified range', 'note');
+                }
+            }
+
+            renderSessionsList();
+        }
+
+        function renderSessionsList() {
+            const timelineSessions = document.getElementById('timelineSessions');
+            const emptyMessage = document.getElementById('emptySessionsMessage');
+            
+            // Close and clean up any open dropdowns before re-rendering
+            // Note: Menus will be recreated in the new DOM, so we don't need to restore them
+            document.querySelectorAll('.session-recurrence-menu').forEach(menu => {
+                menu.classList.remove('show');
+                menu.style.display = 'none';
+                // If menu was moved to body, remove it (it will be recreated in render)
+                if (menu.parentElement === document.body) {
+                    menu.remove();
+                }
+            });
+            
+            if (generatedSessions.length === 0) {
+                timelineSessions.innerHTML = '';
+                if (emptyMessage) {
+                    emptyMessage.style.display = 'block';
+                    emptyMessage.style.gridColumn = '1 / -1';
+                }
+                return;
+            }
+
+            if (emptyMessage) emptyMessage.style.display = 'none';
+            
+            // Timeline starts at 0:00 (midnight), so positions are directly in minutes from midnight
+            
+            // Check for overlaps and calculate positions
+            // IMPORTANT: We only read from generatedSessions, never modify times here
+            // IMPORTANT: We use the stored 'overlapping' property for each session
+            // Only the dragged session's 'overlapping' property is updated during drag
+            const sessionPositions = generatedSessions.map((session, index) => {
+                // Parse times exactly as stored - no rounding or modification
+                const sessionStartMinutes = timeToMinutes(session.start);
+                const sessionEndMinutes = timeToMinutes(session.end);
+                
+                // Use the stored 'overlapping' property - this is only set for the dragged session
+                // Other sessions keep their original overlapping status
+                const hasOverlap = session.overlapping || false;
+                
+                return {
+                    index,
+                    session: {
+                        ...session, // Preserve all session data exactly
+                        start: session.start, // Keep original time strings
+                        end: session.end
+                    },
+                    topPosition: sessionStartMinutes, // Direct minutes from midnight
+                    height: sessionEndMinutes - sessionStartMinutes,
+                    hasOverlap, // Use stored property, don't recalculate
+                    overlapCount: 0 // Not used anymore
+                };
+            });
+            
+            // Create two columns with labels
+            timelineSessions.innerHTML = `
+                <div class="timeline-column timeline-column-left" id="timelineColumnLeft">
+                    <div class="timeline-column-label">Available Sessions</div>
+                </div>
+                <div class="timeline-column timeline-column-right" id="timelineColumnRight">
+                    <div class="timeline-column-label">Overlapping Sessions</div>
+                </div>
+            `;
+            
+            const leftColumn = document.getElementById('timelineColumnLeft');
+            const rightColumn = document.getElementById('timelineColumnRight');
+            
+            // Render sessions into appropriate columns
+            const leftLabelHeight = leftColumn.querySelector('.timeline-column-label')?.offsetHeight || 0;
+            const rightLabelHeight = rightColumn.querySelector('.timeline-column-label')?.offsetHeight || 0;
+            
+            sessionPositions.forEach(({index, session, topPosition, height, hasOverlap, overlapCount}) => {
+                const overlapClass = hasOverlap ? 'overlapping' : '';
+                const targetColumn = hasOverlap ? rightColumn : leftColumn;
+                
+                const sessionDiv = document.createElement('div');
+                sessionDiv.className = `session-suggestion-item ${overlapClass}`;
+                sessionDiv.setAttribute('data-index', index);
+                sessionDiv.setAttribute('draggable', 'true');
+                const labelHeight = hasOverlap ? rightLabelHeight : leftLabelHeight;
+                sessionDiv.style.top = `${topPosition + labelHeight}px`;
+                sessionDiv.style.height = `${height}px`;
+                
+                sessionDiv.innerHTML = `
+                    <div class="session-suggestion-info">
+                        <div class="session-suggestion-time">${session.start} - ${session.end}</div>
+                        <div class="session-suggestion-duration">${session.length} min</div>
+                    </div>
+                    <div class="session-suggestion-actions">
+                        <div class="session-recurrence-dropdown">
+                            <button class="session-recurrence-btn" onclick="toggleRecurrenceDropdown(this, event)">
+                                <span class="recurrence-label">${getRecurrenceLabel(session.recurrence)}</span>
+                                <i class="fas fa-chevron-down"></i>
+                            </button>
+                            <div class="session-recurrence-menu">
+                                <button class="session-recurrence-item" onclick="event.stopPropagation(); setRecurrence(${index}, 'one_time')">
+                                    <i class="fas fa-calendar-day"></i> One Time
+                                </button>
+                                <button class="session-recurrence-item" onclick="event.stopPropagation(); setRecurrence(${index}, 'daily')">
+                                    <i class="fas fa-redo"></i> Recurring Daily
+                                </button>
+                                <button class="session-recurrence-item" onclick="event.stopPropagation(); setRecurrence(${index}, 'weekly')">
+                                    <i class="fas fa-calendar-week"></i> Recurring Weekly
+                                </button>
+                                <button class="session-recurrence-item" onclick="event.stopPropagation(); setRecurrence(${index}, 'monthly')">
+                                    <i class="fas fa-calendar-alt"></i> Recurring Monthly
+                                </button>
+                            </div>
+                        </div>
+                        <button class="btn-delete-session" onclick="event.stopPropagation(); deleteSession(${index})" title="Delete session">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                `;
+                
+                targetColumn.appendChild(sessionDiv);
+            });
+            
+            // Attach drag and drop handlers
+            attachDragAndDrop();
+        }
+
+        function attachDragAndDrop() {
+
+            // Ensure interact.js is present
+            if (typeof interact === 'undefined') {
+                console.error('interact.js not loaded');
+                setTimeout(attachDragAndDrop, 100);
+                return;
+            }
+
+            const timelineContainer = document.getElementById('timelineContainer');
+            const leftColumn = document.getElementById('timelineColumnLeft');
+            const rightColumn = document.getElementById('timelineColumnRight');
+
+            let draggedElement = null;
+            let draggedIndex = null;
+            let placeholder = null;
+            let timeDisplayElement = null;
+
+            // Create placeholder element (single instance)
+            function createPlaceholder() {
+                const ph = document.createElement('div');
+                ph.className = 'session-drop-placeholder';
+                ph.style.display = 'none';
+                return ph;
+            }
+
+            // Compute sticky label offset
+            function getLabelOffset(column) {
+                const label = column.querySelector('.timeline-column-label');
+                if (!label) return 0;
+                const labelRect = label.getBoundingClientRect();
+                const containerRect = timelineContainer.getBoundingClientRect();
+                return labelRect.top - containerRect.top;
+            }
+
+            // Check overlap based purely on minutes
+            function checkOverlap(startMinutes, endMinutes, ignoreIndex) {
+                for (let i = 0; i < generatedSessions.length; i++) {
+                    if (i === ignoreIndex) continue;
+                    const other = generatedSessions[i];
+                    // Only treat left-column sessions as blockers
+                    if (other.overlapping === true) continue;
+                    const otherStart = timeToMinutes(other.start);
+                    const otherEnd = timeToMinutes(other.end);
+                    if (startMinutes < otherEnd && endMinutes > otherStart) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            // Placeholder = single source of truth for drop position
+            function updatePlaceholder(column, startMinutes, durationMinutes, isOverlapping) {
+                if (!placeholder) {
+                    placeholder = createPlaceholder();
+                }
+                const labelOffset = getLabelOffset(column);
+                placeholder.style.top = `${startMinutes + labelOffset}px`;
+                placeholder.style.height = `${durationMinutes}px`;
+                placeholder.style.display = 'block';
+
+                if (isOverlapping) {
+                    placeholder.classList.add('overlapping');
+                } else {
+                    placeholder.classList.remove('overlapping');
+                }
+
+                if (placeholder.parentElement !== column) {
+                    column.appendChild(placeholder);
+                }
+
+                // Persist logical position for drop
+                placeholder.dataset.startMinutes = String(startMinutes);
+                placeholder.dataset.columnId = column.id;
+            }
+
+            function removePlaceholder() {
+                if (placeholder) {
+                    placeholder.style.display = 'none';
+                }
+            }
+
+            function updateTimeDisplay(startTime, endTime) {
+                if (timeDisplayElement) {
+                    timeDisplayElement.textContent = `${startTime} - ${endTime}`;
+                }
+            }
+
+            // Draggable via interact.js
+            interact('.session-suggestion-item').draggable({
+                ignoreFrom: 'button, .session-recurrence-menu, .session-recurrence-dropdown, .session-recurrence-btn, .btn-delete-session',
+                listeners: {
+                    start(event) {
+                        draggedElement = event.target.closest('.session-suggestion-item');
+                        if (!draggedElement) return;
+
+                        draggedIndex = parseInt(draggedElement.getAttribute('data-index'));
+                        if (Number.isNaN(draggedIndex) || !generatedSessions[draggedIndex]) {
+                            event.preventDefault();
+                            return;
+                        }
+
+                        timeDisplayElement = draggedElement.querySelector('.session-suggestion-time');
+
+                        draggedElement.classList.add('dragging');
+                        draggedElement.style.opacity = '0.7';
+                        draggedElement.style.zIndex = '1000';
+                    },
+
+                    move(event) {
+                        if (draggedIndex === null || !generatedSessions[draggedIndex] || !draggedElement) return;
+
+                        const session = generatedSessions[draggedIndex];
+                        const duration = session.length || 0;
+
+                        // cursorY -> minutes (single coordinate system, 1px = 1min)
+                        const rect = timelineContainer.getBoundingClientRect();
+                        let timelineY = event.client.y - rect.top + timelineContainer.scrollTop;
+                        // clamp to valid range
+                        timelineY = Math.max(0, Math.min(1440 - duration, timelineY));
+
+                        // snap to 5-minute increments
+                        let snappedMinutes = Math.round(timelineY / 5) * 5;
+                        snappedMinutes = Math.max(0, Math.min(1440 - duration, snappedMinutes));
+
+                        const startMinutes = snappedMinutes;
+                        const endMinutes = startMinutes + duration;
+
+                        // Overlap detection decides left/right column
+                        const isOverlap = checkOverlap(startMinutes, endMinutes, draggedIndex);
+                        const targetColumn = isOverlap ? rightColumn : leftColumn;
+
+                        // Update placeholder: single source of truth
+                        updatePlaceholder(targetColumn, startMinutes, duration, isOverlap);
+
+                        // Move dragged element into same column and align to placeholder
+                        if (draggedElement.parentElement !== targetColumn) {
+                            targetColumn.appendChild(draggedElement);
+                        }
+                        const labelOffset = getLabelOffset(targetColumn);
+                        draggedElement.style.top = `${startMinutes + labelOffset}px`;
+                        draggedElement.style.height = `${duration}px`;
+
+                        // Update time text
+                        updateTimeDisplay(
+                            minutesToTime(startMinutes),
+                            minutesToTime(endMinutes)
+                        );
+
+                        // Visual overlapping state
+                        if (isOverlap) {
+                            draggedElement.classList.add('overlapping');
+                        } else {
+                            draggedElement.classList.remove('overlapping');
+                        }
+                    },
+
+                    end() {
+                        if (draggedIndex === null || !generatedSessions[draggedIndex] || !draggedElement) {
+                            removePlaceholder();
+                            return;
+                        }
+
+                        // No placeholder => nothing reliable to finalize
+                        if (!placeholder || placeholder.style.display === 'none') {
+                            draggedElement.classList.remove('dragging');
+                            draggedElement.style.opacity = '1';
+                            draggedElement.style.zIndex = '10';
+                            draggedElement = null;
+                            draggedIndex = null;
+                            timeDisplayElement = null;
+                            return;
+                        }
+
+                        const session = generatedSessions[draggedIndex];
+                        const duration = session.length || 0;
+
+                        // FINAL VALUES: from placeholder only
+                        let finalStartMinutes = parseInt(placeholder.dataset.startMinutes || '0', 10);
+                        finalStartMinutes = Math.max(0, Math.min(1440 - duration, finalStartMinutes));
+                        const finalEndMinutes = finalStartMinutes + duration;
+
+                        const finalColumnId = placeholder.dataset.columnId;
+                        const finalColumn = document.getElementById(finalColumnId) || leftColumn;
+
+                        const newStartTime = minutesToTime(finalStartMinutes);
+                        const newEndTime = minutesToTime(finalEndMinutes);
+
+                        // Recurring confirmation flow preserved
+                        if (session.recurring_slot_id && session.recurrence !== 'one_time') {
+                            const oldStartTime = session.start;
+                            const oldEndTime = session.end;
+                            if (oldStartTime !== newStartTime || oldEndTime !== newEndTime) {
+                                pendingTimeChangeIndex = draggedIndex;
+                                pendingTimeChangeData = {
+                                    oldStartTime,
+                                    oldEndTime,
+                                    newStartTime,
+                                    newEndTime,
+                                    session
+                                };
+
+                                draggedElement.classList.remove('dragging');
+                                draggedElement.style.opacity = '1';
+                                draggedElement.style.zIndex = '10';
+                                removePlaceholder();
+                                renderSessionsList();
+
+                                draggedElement = null;
+                                draggedIndex = null;
+                                timeDisplayElement = null;
+                                return;
+                            }
+                        }
+
+                        // Apply final values
+                        session.start = newStartTime;
+                        session.end = newEndTime;
+                        session.overlapping = (finalColumn === rightColumn);
+
+                        // Move element and align visually using same coordinate system
+                        if (draggedElement.parentElement !== finalColumn) {
+                            finalColumn.appendChild(draggedElement);
+                        }
+                        const finalLabelOffset = getLabelOffset(finalColumn);
+                        draggedElement.style.top = `${finalStartMinutes + finalLabelOffset}px`;
+                        draggedElement.style.height = `${duration}px`;
+
+                        if (session.overlapping) {
+                            draggedElement.classList.add('overlapping');
+                        } else {
+                            draggedElement.classList.remove('overlapping');
+                        }
+
+                        // Cleanup
+                        draggedElement.classList.remove('dragging');
+                        draggedElement.style.opacity = '1';
+                        draggedElement.style.zIndex = '10';
+                        removePlaceholder();
+
+                        // Keep DOM/data in sync
+                        renderSessionsList();
+
+                        draggedElement = null;
+                        draggedIndex = null;
+                        timeDisplayElement = null;
+                    }
+                }
+            });
+        }
+
+        function getDragAfterElement(container, y) {
+            const draggableElements = [...container.querySelectorAll('.session-suggestion-item:not(.dragging)')];
+            
+            return draggableElements.reduce((closest, child) => {
+                const box = child.getBoundingClientRect();
+                const offset = y - box.top - box.height / 2;
+                
+                if (offset < 0 && offset > closest.offset) {
+                    return { offset: offset, element: child };
+                } else {
+                    return closest;
+                }
+            }, { offset: Number.NEGATIVE_INFINITY }).element;
+        }
+
+        // Make functions globally accessible for onclick handlers
+        window.getRecurrenceLabel = function(recurrence) {
+            const labels = {
+                'one_time': 'One Time',
+                'daily': 'Daily',
+                'weekly': 'Weekly',
+                'monthly': 'Monthly'
+            };
+            return labels[recurrence] || 'One Time';
+        };
+
+        window.toggleRecurrenceDropdown = function(button, event) {
+            if (event) {
+                event.stopPropagation();
+                event.preventDefault();
+            }
+            const menu = button.nextElementSibling;
+            const isOpen = menu.classList.contains('show');
+            
+            // Close all dropdowns
+            document.querySelectorAll('.session-recurrence-menu').forEach(m => {
+                m.classList.remove('show');
+                m.style.display = 'none';
+                // Restore menu to original parent if it was moved to body
+                if (m.parentElement === document.body && menuOriginalParents.has(m)) {
+                    const originalParent = menuOriginalParents.get(m);
+                    originalParent.appendChild(m);
+                    menuOriginalParents.delete(m);
+                }
+            });
+            
+            // Toggle current dropdown
+            if (!isOpen) {
+                // Store original parent before moving
+                if (menu.parentElement !== document.body) {
+                    menuOriginalParents.set(menu, menu.parentElement);
+                    document.body.appendChild(menu);
+                }
+                
+                // Position the menu relative to the button using fixed positioning
+                const buttonRect = button.getBoundingClientRect();
+                const menuWidth = 180; // min-width from CSS
+                menu.style.display = 'block';
+                menu.style.top = `${buttonRect.bottom + 4}px`;
+                menu.style.left = `${buttonRect.right - menuWidth}px`; // Align right edge with button
+                menu.style.right = 'auto'; // Reset right positioning
+                menu.style.zIndex = '99999';
+                menu.classList.add('show');
+            } else {
+                // Reset positioning when closing
+                menu.style.display = 'none';
+                menu.style.top = '';
+                menu.style.left = '';
+                menu.style.right = '';
+                // Restore menu to original parent
+                if (menu.parentElement === document.body && menuOriginalParents.has(menu)) {
+                    const originalParent = menuOriginalParents.get(menu);
+                    originalParent.appendChild(menu);
+                    menuOriginalParents.delete(menu);
+                }
+            }
+        };
+
+        window.setRecurrence = function(index, recurrence) {
+            if (generatedSessions[index]) {
+                const session = generatedSessions[index];
+                const oldRecurrence = session.recurrence;
+                session.recurrence = recurrence;
+                
+                // If recurrence type changed, reset skip_dates (they were specific to the old type)
+                if (oldRecurrence && oldRecurrence !== recurrence && session.recurring_slot_id) {
+                    delete session.skip_dates;
+                    // Also clear from skipDatesUpdates if it exists
+                    if (skipDatesUpdates.has(session.recurring_slot_id)) {
+                        skipDatesUpdates.delete(session.recurring_slot_id);
+                    }
+                }
+                
+                // If changing from recurring to one-time, clear recurring_slot_id
+                // If changing to recurring and we have editingRecurringSlotId, preserve it
+                if (recurrence === 'one_time') {
+                    delete session.recurring_slot_id;
+                    delete session.skip_dates;
+                } else if (editingRecurringSlotId && !session.recurring_slot_id) {
+                    session.recurring_slot_id = editingRecurringSlotId;
+                }
+                
+                renderSessionsList();
+            }
+            
+            // Close dropdown
+            document.querySelectorAll('.session-recurrence-menu').forEach(m => {
+                m.classList.remove('show');
+            });
+        };
+
+        // Track which session is being deleted for confirmation popup
+        let pendingDeleteIndex = null;
+        let pendingDeleteDate = null;
+        let deletedRecurringSlotIds = new Set(); // Track recurring slots deleted (all occurrences)
+        let skipDatesUpdates = new Map(); // Track skip_dates updates: slotId -> [dates to skip]
+        
+        // Track pending time change for recurring slots
+        let pendingTimeChangeIndex = null;
+        let pendingTimeChangeData = null; // { oldStartTime, oldEndTime, newStartTime, newEndTime, session }
+
+        // Make deleteSession globally accessible for onclick handlers
+        window.deleteSession = function(index) {
+            if (index < 0 || index >= generatedSessions.length) {
+                return;
+            }
+            
+            const session = generatedSessions[index];
+            
+            // Check if this is a recurring slot
+            const isRecurring = session.recurrence && session.recurrence !== 'one_time';
+            const hasRecurringSlotId = session.recurring_slot_id || editingRecurringSlotId;
+            
+            if (isRecurring && hasRecurringSlotId) {
+                // Show confirmation popup for recurring slots
+                pendingDeleteIndex = index;
+                pendingDeleteDate = selectedDateForTimePicker;
+                document.getElementById('deleteConfirmationModal').classList.add('active');
+            } else {
+                // Direct delete for one-time slots
+                generatedSessions.splice(index, 1);
+                renderSessionsList();
+                
+                if (typeof showNotification !== 'undefined') {
+                    showNotification('Session removed', 'note');
+                }
+            }
+        };
+
+        // Handle delete confirmation popup buttons
+        document.getElementById('deleteCancelBtn').addEventListener('click', function() {
+            document.getElementById('deleteConfirmationModal').classList.remove('active');
+            pendingDeleteIndex = null;
+            pendingDeleteDate = null;
+        });
+
+        document.getElementById('deleteOneDayBtn').addEventListener('click', function() {
+            if (pendingDeleteIndex !== null && pendingDeleteDate) {
+                const session = generatedSessions[pendingDeleteIndex];
+                const recurringSlotId = session.recurring_slot_id || editingRecurringSlotId;
+                
+                if (recurringSlotId) {
+                    // Track skip_dates update separately (even if we remove the session)
+                    if (!skipDatesUpdates.has(recurringSlotId)) {
+                        // Get existing skip_dates from the slot
+                        const existingSlot = recurringSlots.find(s => s.id === recurringSlotId);
+                        const existingSkipDates = existingSlot ? (existingSlot.skip_dates || []) : [];
+                        skipDatesUpdates.set(recurringSlotId, [...existingSkipDates]);
+                    }
+                    
+                    const skipDates = skipDatesUpdates.get(recurringSlotId);
+                    if (!skipDates.includes(pendingDeleteDate)) {
+                        skipDates.push(pendingDeleteDate);
+                        skipDatesUpdates.set(recurringSlotId, skipDates);
+                    }
+                }
+                
+                // Remove from generatedSessions (hide for this day)
+                generatedSessions.splice(pendingDeleteIndex, 1);
+                renderSessionsList();
+                
+                document.getElementById('deleteConfirmationModal').classList.remove('active');
+                pendingDeleteIndex = null;
+                pendingDeleteDate = null;
+                
+                if (typeof showNotification !== 'undefined') {
+                    showNotification('This day will be skipped for the recurring slot', 'note');
+                }
+            }
+        });
+
+        document.getElementById('deleteAllBtn').addEventListener('click', function() {
+            if (pendingDeleteIndex !== null) {
+                const session = generatedSessions[pendingDeleteIndex];
+                const recurringSlotId = session.recurring_slot_id || editingRecurringSlotId;
+                
+                // Mark this recurring slot for complete deletion
+                if (recurringSlotId) {
+                    deletedRecurringSlotIds.add(recurringSlotId);
+                }
+                
+                // Delete the session entirely
+                generatedSessions.splice(pendingDeleteIndex, 1);
+                renderSessionsList();
+                
+                document.getElementById('deleteConfirmationModal').classList.remove('active');
+                pendingDeleteIndex = null;
+                pendingDeleteDate = null;
+                
+                if (typeof showNotification !== 'undefined') {
+                    showNotification('Recurring slot will be deleted completely', 'note');
+                }
+            }
+        });
+
+        // Close delete modal on overlay click
+        document.getElementById('deleteConfirmationModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                document.getElementById('deleteConfirmationModal').classList.remove('active');
+                pendingDeleteIndex = null;
+                pendingDeleteDate = null;
+            }
+        });
+        
+        // Handle time change confirmation popup buttons
+        document.getElementById('timeChangeCancelBtn').addEventListener('click', function() {
+            document.getElementById('timeChangeConfirmationModal').classList.remove('active');
+            pendingTimeChangeIndex = null;
+            pendingTimeChangeData = null;
+        });
+        
+        document.getElementById('timeChangeOneDayBtn').addEventListener('click', function() {
+            if (pendingTimeChangeIndex !== null && pendingTimeChangeData) {
+                const { session, newStartTime, newEndTime } = pendingTimeChangeData;
+                const recurringSlotId = session.recurring_slot_id;
+                
+                // Convert to one-time slot: remove recurring_slot_id and set recurrence to one_time
+                session.recurrence = 'one_time';
+                session.start = newStartTime;
+                session.end = newEndTime;
+                
+                // Preserve the recurring slot's created_at if available
+                const existingSlot = recurringSlots.find(s => s.id === recurringSlotId);
+                if (existingSlot && existingSlot.created_at) {
+                    session.created_at = existingSlot.created_at;
+                }
+                
+                // Remove recurring_slot_id - this will trigger conversion to one-time in backend
+                // We'll pass recurring_slot_id in saveAvailability to indicate conversion
+                session.recurring_slot_id = recurringSlotId; // Keep it temporarily for backend conversion
+                session.is_converting_to_one_time = true; // Flag to indicate conversion
+                
+                // Add this date to skip_dates for the original recurring slot
+                if (recurringSlotId && selectedDateForTimePicker) {
+                    if (!skipDatesUpdates.has(recurringSlotId)) {
+                        const existingSkipDates = existingSlot ? (existingSlot.skip_dates || []) : [];
+                        skipDatesUpdates.set(recurringSlotId, [...existingSkipDates]);
+                    }
+                    const skipDates = skipDatesUpdates.get(recurringSlotId);
+                    if (!skipDates.includes(selectedDateForTimePicker)) {
+                        skipDates.push(selectedDateForTimePicker);
+                        skipDatesUpdates.set(recurringSlotId, skipDates);
+                    }
+                }
+                
+                renderSessionsList();
+                document.getElementById('timeChangeConfirmationModal').classList.remove('active');
+                pendingTimeChangeIndex = null;
+                pendingTimeChangeData = null;
+                
+                if (typeof showNotification !== 'undefined') {
+                    showNotification('This occurrence will be converted to a one-time slot', 'note');
+                }
+            }
+        });
+        
+        document.getElementById('timeChangeAllBtn').addEventListener('click', function() {
+            if (pendingTimeChangeIndex !== null && pendingTimeChangeData) {
+                const { session, newStartTime, newEndTime } = pendingTimeChangeData;
+                
+                // Update all occurrences: update the recurring slot's times
+                session.start = newStartTime;
+                session.end = newEndTime;
+                
+                // Reset skip_dates since we're changing the configuration
+                delete session.skip_dates;
+                if (session.recurring_slot_id && skipDatesUpdates.has(session.recurring_slot_id)) {
+                    skipDatesUpdates.delete(session.recurring_slot_id);
+                }
+                
+                renderSessionsList();
+                document.getElementById('timeChangeConfirmationModal').classList.remove('active');
+                pendingTimeChangeIndex = null;
+                pendingTimeChangeData = null;
+                
+                if (typeof showNotification !== 'undefined') {
+                    showNotification('All occurrences will be updated with the new time', 'note');
+                }
+            }
+        });
+        
+        // Close time change modal on overlay click
+        document.getElementById('timeChangeConfirmationModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                document.getElementById('timeChangeConfirmationModal').classList.remove('active');
+                pendingTimeChangeIndex = null;
+                pendingTimeChangeData = null;
+            }
+        });
+
+        function saveTimeSlot() {
+            if (!selectedDateForTimePicker) return;
+            
+            if (generatedSessions.length === 0) {
+                if (typeof showNotification !== 'undefined') {
+                    showNotification('Please generate session suggestions first', 'error');
+                } else {
+                    alert('Please generate session suggestions first');
+                }
+                return;
+            }
+
+            const startTime = document.getElementById('startTime').value;
+            const endTime = document.getElementById('endTime').value;
+            
+            if (startTime >= endTime) {
+                if (typeof showNotification !== 'undefined') {
+                    showNotification('End time must be after start time', 'error');
+                } else {
+                    alert('End time must be after start time');
+                }
+                return;
+            }
+            
+            // Store sessions for this date
+            if (!pendingAvailability[selectedDateForTimePicker]) {
+                pendingAvailability[selectedDateForTimePicker] = {
+                    start: startTime,
+                    end: endTime,
+                    sessions: []
+                };
+            }
+            
+            pendingAvailability[selectedDateForTimePicker].sessions = generatedSessions;
+            
+            closeTimePicker();
+            renderCalendar();
+        }
+
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        function saveAvailability() {
+            // Only save the date that was being edited (from the popup)
+            if (!selectedDateForTimePicker) {
+                if (typeof showNotification !== 'undefined') {
+                    showNotification('No date selected for saving', 'error');
+                } else {
+                    alert('No date selected for saving');
+                }
+                return;
+            }
+            
+            // Prepare availability data for server - only for the edited date
+            const availabilityArray = [];
+            const dateStr = selectedDateForTimePicker;
+            
+            // Get sessions from generatedSessions (current state in popup)
+            // Allow empty array - means no slots for this day
+            
+            // Send all sessions for this date (can be empty array)
+            generatedSessions.forEach(session => {
+                const isRecurring = session.recurrence !== 'one_time';
+                const recurringSlotId = session.recurring_slot_id || editingRecurringSlotId;
+                const isConvertingToOneTime = session.is_converting_to_one_time || (!isRecurring && recurringSlotId);
+                
+                const availabilityItem = {
+                    date: dateStr,
+                    start: session.start,
+                    end: session.end,
+                    is_recurring: isRecurring && !isConvertingToOneTime, // False if converting to one-time
+                    recurrence_rule: (isRecurring && !isConvertingToOneTime) ? session.recurrence : '',
+                    length: session.length || 60
+                };
+                
+                // Include recurring_slot_id if:
+                // 1. Editing an existing recurring slot (isRecurring = true)
+                // 2. Converting recurring to one-time (isRecurring = false but has recurring_slot_id)
+                if (recurringSlotId) {
+                    availabilityItem.recurring_slot_id = recurringSlotId;
+                }
+                
+                // Include created_at if converting from recurring (preserve original creation time)
+                if (isConvertingToOneTime && session.created_at) {
+                    availabilityItem.created_at = session.created_at;
+                }
+                
+                // Include skip_dates if this recurring slot has dates to skip
+                if (isRecurring && !isConvertingToOneTime && session.skip_dates && session.skip_dates.length > 0) {
+                    availabilityItem.skip_dates = session.skip_dates;
+                }
+                
+                // Include id for one-time slots if editing existing (and not converted from recurring)
+                if (!isRecurring && session.id && !recurringSlotId) {
+                    availabilityItem.id = session.id;
+                }
+                
+                availabilityArray.push(availabilityItem);
+            });
+            
+            // Send skip_dates updates for recurring slots (even if no sessions in generatedSessions)
+            skipDatesUpdates.forEach((skipDates, slotId) => {
+                const existingSlot = recurringSlots.find(s => s.id === slotId);
+                if (existingSlot) {
+                    availabilityArray.push({
+                        date: dateStr,
+                        start: existingSlot.start_time || '00:00',
+                        end: existingSlot.end_time || '00:00',
+                        is_recurring: true,
+                        recurrence_rule: existingSlot.type || 'weekly',
+                        recurring_slot_id: slotId,
+                        skip_dates: skipDates  // Update skip_dates for this recurring slot
+                    });
+                }
+            });
+            
+            // Send deletion requests for recurring slots marked for complete deletion
+            deletedRecurringSlotIds.forEach(slotId => {
+                // Find the slot details from existing recurring slots
+                const existingSlot = recurringSlots.find(s => s.id === slotId);
+                if (existingSlot) {
+                    availabilityArray.push({
+                        date: dateStr,
+                        start: existingSlot.start_time || '00:00',
+                        end: existingSlot.end_time || '00:00',
+                        is_recurring: true,
+                        recurrence_rule: existingSlot.type || 'weekly',
+                        recurring_slot_id: slotId,
+                        delete_all: true  // Flag to delete all occurrences
+                    });
+                }
+            });
+            
+            // Send to server
+            fetch('{% url "general:dashboard_mentor:save_availability" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({ 
+                    availability: availabilityArray,
+                    selected_date: dateStr
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Show success message
+                    if (typeof showNotification !== 'undefined') {
+                        showNotification(data.message || 'Availability saved successfully!', 'success');
+                    } else {
+                        alert(data.message || 'Availability saved successfully!');
+                    }
+                    
+                    // Close the popup
+                    closeTimePicker();
+                    
+                    // Refresh the page to load updated data from database
+                    // Use a small delay to ensure the notification is visible
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 500);
+                } else {
+                    if (typeof showNotification !== 'undefined') {
+                        showNotification('Error saving availability: ' + (data.error || 'Unknown error'), 'error');
+                    } else {
+                        alert('Error saving availability: ' + (data.error || 'Unknown error'));
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                if (typeof showNotification !== 'undefined') {
+                    showNotification('Error saving availability. Please try again.', 'error');
+                } else {
+                    alert('Error saving availability. Please try again.');
+                }
+            });
+        }
+
+        // Toggle button for managing sessions
+        document.getElementById('manageSessionsBtn').addEventListener('click', function() {
+            toggleManageSessions();
+        });
+
+        document.getElementById('generateSessionsBtn').addEventListener('click', function() {
+            generateSessions();
+        });
+
+        // Update timeline when time inputs change
+        document.getElementById('startTime').addEventListener('change', function() {
+            if (selectedDateForTimePicker) {
+                const newStartTime = this.value;
+                // If we have recurring slots, reset skip_dates when time changes
+                generatedSessions.forEach(session => {
+                    if (session.recurring_slot_id && session.recurrence !== 'one_time') {
+                        const oldStartTime = session.start;
+                        if (oldStartTime && oldStartTime !== newStartTime) {
+                            // Time changed, reset skip_dates
+                            delete session.skip_dates;
+                            if (skipDatesUpdates.has(session.recurring_slot_id)) {
+                                skipDatesUpdates.delete(session.recurring_slot_id);
+                            }
+                        }
+                        session.start = newStartTime;
+                    }
+                });
+                initializeTimeline();
+                renderSessionsList();
+            }
+        });
+
+        document.getElementById('endTime').addEventListener('change', function() {
+            if (selectedDateForTimePicker) {
+                const newEndTime = this.value;
+                // If we have recurring slots, reset skip_dates when time changes
+                generatedSessions.forEach(session => {
+                    if (session.recurring_slot_id && session.recurrence !== 'one_time') {
+                        const oldEndTime = session.end;
+                        if (oldEndTime && oldEndTime !== newEndTime) {
+                            // Time changed, reset skip_dates
+                            delete session.skip_dates;
+                            if (skipDatesUpdates.has(session.recurring_slot_id)) {
+                                skipDatesUpdates.delete(session.recurring_slot_id);
+                            }
+                        }
+                        session.end = newEndTime;
+                    }
+                });
+                initializeTimeline();
+                renderSessionsList();
+            }
+        });
+
+        document.getElementById('timePickerSave').addEventListener('click', function() {
+            saveAvailability();
+        });
+
+        document.getElementById('timePickerCancel').addEventListener('click', function() {
+            closeTimePicker();
+        });
+
+        // Close modal on overlay click
+        document.getElementById('timePickerModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeTimePicker();
+            }
+        });
+
+        // Update button text and color based on current mode
+        updateManageSessionsButton();
+
+        // Initial render
+        renderCalendar();
+    });
+
+    // Dropdown functionality
+    function toggleDropdown(button) {
+        const dropdown = button.nextElementSibling;
+        const isOpen = dropdown.classList.contains('show');
+        
+        // Close all dropdowns
+        document.querySelectorAll('.dropdown-menu').forEach(menu => {
+            menu.classList.remove('show');
+        });
+        
+        // Toggle current dropdown
+        if (!isOpen) {
+            dropdown.classList.add('show');
+        }
+    }
+
+    // Close dropdowns when clicking outside
+    document.addEventListener('click', function(event) {
+        // Close general dropdowns
+        if (!event.target.closest('.dropdown')) {
+            document.querySelectorAll('.dropdown-menu').forEach(menu => {
+                menu.classList.remove('show');
+            });
+        }
+        
+        // Close session recurrence dropdowns
+        // Check if click is outside both the dropdown button AND the menu itself
+        const clickedDropdown = event.target.closest('.session-recurrence-dropdown');
+        const clickedMenu = event.target.closest('.session-recurrence-menu');
+        
+        if (!clickedDropdown && !clickedMenu) {
+            document.querySelectorAll('.session-recurrence-menu').forEach(menu => {
+                menu.classList.remove('show');
+                menu.style.display = 'none';
+                // Restore menu to original parent if it was moved to body
+                if (menu.parentElement === document.body && menuOriginalParents.has(menu)) {
+                    const originalParent = menuOriginalParents.get(menu);
+                    originalParent.appendChild(menu);
+                    menuOriginalParents.delete(menu);
+                }
+            });
+        }
+    });
+</script>
+
+{% block extra_js %}
+{{ block.super }}
+<script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
+{% endblock %}
+{% endblock %}
