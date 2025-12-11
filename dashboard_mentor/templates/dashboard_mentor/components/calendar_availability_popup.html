@@ -17,7 +17,7 @@
             <path d="M10 12L6 8L10 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
         </button>
-        <button class="calendar-nav-btn" data-calendar-nav="today" aria-label="Today">Today</button>
+        <div class="calendar-date-display" id="calendarDateDisplay">Loading...</div>
         <button class="calendar-nav-btn" data-calendar-nav="next" aria-label="Next">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M6 4L10 8L6 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -26,6 +26,7 @@
       </div>
 
       <div class="availability-calendar-header-actions">
+        <button class="calendar-nav-btn" data-calendar-nav="today" aria-label="Today">Today</button>
         <div class="availability-calendar-view-toggle">
           <button class="view-toggle-btn" data-calendar-view="timeGridDay">Day</button>
           <button class="view-toggle-btn is-active" data-calendar-view="timeGridWeek">Week</button>
@@ -136,6 +137,16 @@
 
 .calendar-nav-btn svg {
   display: block;
+}
+
+.calendar-date-display {
+  padding: 6px 16px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #1e293b;
+  white-space: nowrap;
+  min-width: 120px;
+  text-align: center;
 }
 
 .availability-calendar-header-actions {
@@ -286,6 +297,51 @@
   const closeTriggers = document.querySelectorAll("[data-close-availability-calendar]");
   const viewBtnEls = document.querySelectorAll("[data-calendar-view]");
   const subtitleEl = document.querySelector(".availability-calendar-subtitle");
+  const dateDisplayEl = document.getElementById("calendarDateDisplay");
+
+  // Format date display based on current view type
+  function updateDateDisplay() {
+    if (!calendar || !dateDisplayEl) return;
+    
+    const view = calendar.view;
+    const start = view.activeStart;
+    const end = view.activeEnd;
+    
+    let displayText = '';
+    
+    if (view.type === 'timeGridDay') {
+      // Day view: show specific date (e.g., "January 15, 2024")
+      const dateFormatter = new Intl.DateTimeFormat('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+      displayText = dateFormatter.format(start);
+    } else if (view.type === 'timeGridWeek') {
+      // Week view: show date range (e.g., "Jan 15 - Jan 21, 2024")
+      const startFormatter = new Intl.DateTimeFormat('en-US', {
+        month: 'short',
+        day: 'numeric'
+      });
+      const endFormatter = new Intl.DateTimeFormat('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+      });
+      const startStr = startFormatter.format(start);
+      const endStr = endFormatter.format(new Date(end.getTime() - 1)); // Subtract 1ms to get last day
+      displayText = startStr + ' - ' + endStr;
+    } else if (view.type === 'dayGridMonth') {
+      // Month view: show month name and year (e.g., "January 2024")
+      const monthFormatter = new Intl.DateTimeFormat('en-US', {
+        year: 'numeric',
+        month: 'long'
+      });
+      displayText = monthFormatter.format(start);
+    }
+    
+    dateDisplayEl.textContent = displayText;
+  }
 
   // Resolve mentor timezone from global userProfileData JSON (provided by dashboard_mentor/base.html)
   function resolveMentorTimezone() {
@@ -371,10 +427,12 @@
       slotMaxTime: "24:00:00", // End at midnight (24 hours)
       slotDuration: "00:05:00", // 5-minute intervals for thin rows
       slotLabelInterval: "01:00:00", // Show labels every hour
-      slotLabelContent: function(arg) {
-        // Format as single hour: "9", "10", etc.
-        const hour = arg.date.getHours();
-        return hour.toString();
+      slotLabelFormat: {
+        hour: 'numeric',
+        minute: undefined,
+        omitZeroMinute: true,
+        meridiem: false,
+        hour12: false // 24-hour format
       },
       headerToolbar: false,
       selectable: true,
@@ -389,9 +447,12 @@
           slotMaxTime: "24:00:00",
           slotDuration: "00:05:00",
           slotLabelInterval: "01:00:00",
-          slotLabelContent: function(arg) {
-            const hour = arg.date.getHours();
-            return hour.toString();
+          slotLabelFormat: {
+            hour: 'numeric',
+            minute: undefined,
+            omitZeroMinute: true,
+            meridiem: false,
+            hour12: false // 24-hour format
           },
           slotLaneClassNames: function(arg) {
             const minutes = arg.date.getMinutes();
@@ -407,9 +468,12 @@
           slotMaxTime: "24:00:00",
           slotDuration: "00:05:00",
           slotLabelInterval: "01:00:00",
-          slotLabelContent: function(arg) {
-            const hour = arg.date.getHours();
-            return hour.toString();
+          slotLabelFormat: {
+            hour: 'numeric',
+            minute: undefined,
+            omitZeroMinute: true,
+            meridiem: false,
+            hour12: false // 24-hour format
           },
           slotLaneClassNames: function(arg) {
             const minutes = arg.date.getMinutes();
@@ -442,13 +506,18 @@
     if (calendar && calendar.on) {
       calendar.on('viewDidMount', function() {
         setTimeout(() => markHourSlots(), 100);
+        updateDateDisplay(); // Update date display when view mounts
       });
       
       // Also listen to datesSet event which fires when calendar navigates
       calendar.on('datesSet', function() {
         setTimeout(() => markHourSlots(), 100);
+        updateDateDisplay(); // Update date display when dates change
       });
     }
+    
+    // Initial date display update
+    setTimeout(() => updateDateDisplay(), 100);
     
     // Use MutationObserver to watch for DOM changes and re-apply borders
     const observer = new MutationObserver(function(mutations) {
@@ -539,6 +608,7 @@
       setTimeout(() => {
         calendar.updateSize();
         markHourSlots();
+        updateDateDisplay(); // Update date display when opening overlay
         // If current view is day or week view, scroll appropriately
         if (calendar.view.type === 'timeGridDay' || calendar.view.type === 'timeGridWeek') {
           setTimeout(() => scrollToAppropriateTime(), 150);
@@ -569,7 +639,10 @@
         calendar.today();
       }
       
-      setTimeout(() => calendar.updateSize(), 50);
+      setTimeout(() => {
+        calendar.updateSize();
+        updateDateDisplay(); // Update date display after navigation
+      }, 50);
     });
   });
 
@@ -610,6 +683,7 @@
           calendar.updateSize();
           calendar.render();
           markHourSlots();
+          updateDateDisplay(); // Update date display when view changes
           
           // If switching to day or week view, scroll to appropriate time
           if (targetView === "timeGridDay" || targetView === "timeGridWeek") {
