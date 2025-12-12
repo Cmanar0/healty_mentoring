@@ -78,6 +78,65 @@
 <!-- Include Collision Resolution Popup -->
 {% include 'dashboard_mentor/components/collision_resolution_popup.html' %}
 
+<!-- Switch to Availability Mode Popup -->
+<div id="switchToAvailabilityModePopup" class="switch-mode-overlay" aria-hidden="true">
+  <div class="switch-mode-backdrop" data-close-switch-mode></div>
+  <div class="switch-mode-modal">
+    <div class="switch-mode-header">
+      <h3>Switch to Availability Mode</h3>
+      <button class="switch-mode-close" data-close-switch-mode aria-label="Close">✕</button>
+    </div>
+    <div class="switch-mode-body">
+      <div class="switch-mode-icon">📅</div>
+      <p class="switch-mode-message">
+        To modify availability slots, you need to switch to <strong>Availability</strong> mode.
+      </p>
+      <p class="switch-mode-submessage">
+        In <strong>Sessions</strong> mode, availability slots are view-only and cannot be moved or resized.
+      </p>
+    </div>
+    <div class="switch-mode-footer">
+      <button class="switch-mode-btn-cancel" data-close-switch-mode>Cancel</button>
+      <button class="switch-mode-btn-switch" id="switchToAvailabilityModeBtn">
+        <span>Switch to Availability Mode</span>
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M6 4L10 8L6 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Schedule Session Popup -->
+<div id="scheduleSessionPopup" class="schedule-session-overlay" aria-hidden="true">
+  <div class="schedule-session-backdrop" data-close-schedule-session></div>
+  <div class="schedule-session-modal">
+    <div class="schedule-session-header">
+      <h3>Schedule a Session</h3>
+      <button class="schedule-session-close" data-close-schedule-session aria-label="Close">✕</button>
+    </div>
+    <div class="schedule-session-body">
+      <div class="schedule-session-slot-info" id="scheduleSessionSlotInfo">
+        <!-- Slot time information will be displayed here -->
+      </div>
+      <div class="schedule-session-form">
+        <label for="scheduleSessionEmail" class="schedule-session-label">Client Email</label>
+        <input 
+          type="email" 
+          id="scheduleSessionEmail" 
+          class="schedule-session-input" 
+          placeholder="Enter client email address"
+          required
+        />
+      </div>
+    </div>
+    <div class="schedule-session-footer">
+      <button class="schedule-session-btn-cancel" data-close-schedule-session>Cancel</button>
+      <button class="schedule-session-btn-submit" id="scheduleSessionSubmitBtn">Schedule a session</button>
+    </div>
+  </div>
+</div>
+
 
 <!-- ===================== FullCalendar v6 CSS ===================== -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.css">
@@ -586,16 +645,367 @@
 /* Transparent availability slots in Sessions mode */
 .fc-event.availability-slot-readonly {
   opacity: 0.35;
-  cursor: default !important;
+  cursor: pointer !important; /* Show pointer cursor to indicate clickable */
+  user-select: none !important; /* Prevent text selection */
+  transition: opacity 0.2s ease; /* Smooth opacity transition */
+  /* Prevent dragging by disabling pointer events on drag handles */
+  touch-action: none !important; /* Prevent touch gestures */
 }
 
 .fc-event.availability-slot-readonly:hover {
-  opacity: 0.45; /* Slightly more visible on hover */
+  opacity: 0.7 !important; /* Less transparent on hover - but still transparent */
+  cursor: pointer !important; /* Show pointer cursor on hover */
+}
+
+/* Prevent dragging handles from appearing on readonly slots */
+.fc-event.availability-slot-readonly .fc-event-resizer {
+  display: none !important;
+  pointer-events: none !important;
+}
+
+.fc-event.availability-slot-readonly .fc-event-resizer-start,
+.fc-event.availability-slot-readonly .fc-event-resizer-end {
+  display: none !important;
+  pointer-events: none !important;
 }
 
 .fc-event.availability-slot-readonly .availability-slot-time,
 .fc-event.availability-slot-readonly .availability-slot-duration {
   color: #64748b !important;
+}
+
+/* Schedule Session Popup Styles */
+.schedule-session-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10000;
+  align-items: center;
+  justify-content: center;
+}
+
+.schedule-session-overlay[aria-hidden="false"] {
+  display: flex;
+}
+
+.schedule-session-backdrop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(2px);
+}
+
+.schedule-session-modal {
+  position: relative;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  width: 90%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  z-index: 10001;
+}
+
+.schedule-session-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.schedule-session-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.schedule-session-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.schedule-session-close:hover {
+  background: #f3f4f6;
+  color: #1f2937;
+}
+
+.schedule-session-body {
+  padding: 24px;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.schedule-session-slot-info {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.schedule-session-date {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 8px;
+}
+
+.schedule-session-time {
+  font-size: 0.95rem;
+  color: #4b5563;
+  margin-bottom: 4px;
+}
+
+.schedule-session-duration {
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
+.schedule-session-form {
+  margin-bottom: 0;
+}
+
+.schedule-session-label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 8px;
+}
+
+.schedule-session-input {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 1rem;
+  color: #1f2937;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.schedule-session-input:focus {
+  outline: none;
+  border-color: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+}
+
+.schedule-session-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 20px 24px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.schedule-session-btn-cancel,
+.schedule-session-btn-submit {
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+}
+
+.schedule-session-btn-cancel {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.schedule-session-btn-cancel:hover {
+  background: #e5e7eb;
+}
+
+.schedule-session-btn-submit {
+  background: #10b981;
+  color: white;
+}
+
+.schedule-session-btn-submit:hover {
+  background: #059669;
+}
+
+.schedule-session-btn-submit:active {
+  transform: scale(0.98);
+}
+
+/* Switch to Availability Mode Popup Styles */
+.switch-mode-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10002;
+  align-items: center;
+  justify-content: center;
+}
+
+.switch-mode-overlay[aria-hidden="false"] {
+  display: flex;
+}
+
+.switch-mode-backdrop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(2px);
+}
+
+.switch-mode-modal {
+  position: relative;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  width: 90%;
+  max-width: 450px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  z-index: 10003;
+}
+
+.switch-mode-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.switch-mode-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.switch-mode-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.switch-mode-close:hover {
+  background: #f3f4f6;
+  color: #1f2937;
+}
+
+.switch-mode-body {
+  padding: 32px 24px;
+  text-align: center;
+}
+
+.switch-mode-icon {
+  font-size: 3rem;
+  margin-bottom: 16px;
+}
+
+.switch-mode-message {
+  font-size: 1rem;
+  color: #374151;
+  margin-bottom: 12px;
+  line-height: 1.5;
+}
+
+.switch-mode-message strong {
+  color: #1f2937;
+  font-weight: 600;
+}
+
+.switch-mode-submessage {
+  font-size: 0.875rem;
+  color: #6b7280;
+  line-height: 1.5;
+}
+
+.switch-mode-submessage strong {
+  color: #4b5563;
+  font-weight: 500;
+}
+
+.switch-mode-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 20px 24px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.switch-mode-btn-cancel,
+.switch-mode-btn-switch {
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.switch-mode-btn-cancel {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.switch-mode-btn-cancel:hover {
+  background: #e5e7eb;
+}
+
+.switch-mode-btn-switch {
+  background: #10b981;
+  color: white;
+}
+
+.switch-mode-btn-switch:hover {
+  background: #059669;
+}
+
+.switch-mode-btn-switch:active {
+  transform: scale(0.98);
 }
 
 .fc-event {
@@ -1880,7 +2290,26 @@ margin: 0}
   
   // Handle event drop (when dragging availability slots)
   function handleEventDrop(dropInfo) {
-    if (!isAvailabilityMode) return;
+    // Show popup when dropping availability slots in Sessions mode
+    if (!isAvailabilityMode) {
+      const event = dropInfo.event;
+      const isAvailabilitySlot = event.extendedProps?.isAvailability || event.extendedProps?.type === 'availability_slot';
+      
+      if (isAvailabilitySlot) {
+        // Restore original position
+        if (event.extendedProps?.originalStart && event.extendedProps?.originalEnd) {
+          const originalStart = new Date(event.extendedProps.originalStart);
+          const originalEnd = new Date(event.extendedProps.originalEnd);
+          event.setStart(originalStart);
+          event.setEnd(originalEnd);
+        }
+        dropInfo.revert(); // Revert the drop
+        
+        // Show popup explaining they need to switch to Availability mode
+        openSwitchToAvailabilityModePopup();
+        return;
+      }
+    }
     
     const event = dropInfo.event;
     
@@ -1922,7 +2351,20 @@ margin: 0}
   
   // Handle event resize (when resizing availability slots)
   function handleEventResize(resizeInfo) {
-    if (!isAvailabilityMode) return;
+    // Show popup when trying to resize in Sessions mode
+    if (!isAvailabilityMode) {
+      // Restore original size
+      const event = resizeInfo.event;
+      if (event.extendedProps?.originalStart && event.extendedProps?.originalEnd) {
+        const originalStart = new Date(event.extendedProps.originalStart);
+        const originalEnd = new Date(event.extendedProps.originalEnd);
+        event.setStart(originalStart);
+        event.setEnd(originalEnd);
+      }
+      resizeInfo.revert(); // Revert the resize
+      openSwitchToAvailabilityModePopup(); // Show popup
+      return;
+    }
     
     const event = resizeInfo.event;
     
@@ -2169,32 +2611,57 @@ margin: 0}
       selectMirror: true,
       selectOverlap: false, // Prevent overlapping selections
       editable: function(info) {
-        // Only allow editing if in availability mode AND it's not an availability slot in sessions mode
+        // Availability slots are NEVER editable in Sessions mode - they must be fixed like a rock
+        const isAvailabilitySlot = info.event.extendedProps?.isAvailability || info.event.extendedProps?.type === 'availability_slot';
+        if (isAvailabilitySlot && !isAvailabilityMode) {
+          return false; // Completely prevent editing availability slots in Sessions mode
+        }
+        // Only allow editing if in availability mode
         if (!isAvailabilityMode) return false;
         // In availability mode, allow editing
         return true;
       },
       eventStartEditable: function(info) {
-        // Only allow dragging if in availability mode
+        // Allow dragging to start even in Sessions mode - we'll handle it on drop
+        // This allows the user to attempt dragging, then we show popup and revert on drop
+        const isAvailabilitySlot = info.event.extendedProps?.isAvailability || info.event.extendedProps?.type === 'availability_slot';
+        if (isAvailabilitySlot) {
+          return true; // Allow dragging to start - handle on drop
+        }
+        // Only allow dragging if in availability mode for non-availability slots
         if (!isAvailabilityMode) return false;
         return true;
       },
       eventDurationEditable: function(info) {
+        // Availability slots are NEVER resizable in Sessions mode - they must be fixed like a rock
+        const slotType = info.event.extendedProps?.type || 'availability_slot';
+        const isAvailabilitySlot = info.event.extendedProps?.isAvailability || slotType === 'availability_slot';
+        if (isAvailabilitySlot && !isAvailabilityMode) {
+          return false; // Completely prevent resizing availability slots in Sessions mode
+        }
         // Only allow resizing if it's not an availability_slot (fixed length) and in availability mode
         if (!isAvailabilityMode) return false;
-        const slotType = info.event.extendedProps?.type || 'availability_slot';
         return slotType !== 'availability_slot'; // Allow resize only for non-availability slots
       },
       eventResizableFromStart: function(info) {
+        // Availability slots are NEVER resizable from start in Sessions mode - they must be fixed like a rock
+        const slotType = info.event.extendedProps?.type || 'availability_slot';
+        const isAvailabilitySlot = info.event.extendedProps?.isAvailability || slotType === 'availability_slot';
+        if (isAvailabilitySlot && !isAvailabilityMode) {
+          return false; // Completely prevent resizing from start for availability slots in Sessions mode
+        }
         // Only allow resizing from start if it's not an availability_slot (fixed length) and in availability mode
         if (!isAvailabilityMode) return false;
-        const slotType = info.event.extendedProps?.type || 'availability_slot';
         return slotType !== 'availability_slot'; // Prevent resizing from start for availability slots
       },
       firstDay: 1, // Start week with Monday
       allDaySlot: false, // Remove all-day row from week and day views
       events: availabilityEvents,
       select: handleSlotClick, // Handle slot selection
+      eventDragStart: function(dragInfo) {
+        // Allow drag to start even in Sessions mode - we'll handle it on drop
+        // This allows the user to attempt dragging, then we show popup on drop
+      },
       eventDrop: handleEventDrop, // Handle event drag
       eventResize: handleEventResize, // Handle event resize
       eventRemove: handleEventRemove, // Handle event removal
@@ -2202,9 +2669,13 @@ margin: 0}
         // Handle double-click on events using a timer-based approach for better compatibility
         if (!clickInfo.event.extendedProps?.isAvailability) return;
         
-        // Don't allow editing availability slots in Sessions mode
-        if (!isAvailabilityMode) return;
+        // In Sessions mode, clicking availability slots opens scheduling popup
+        if (!isAvailabilityMode) {
+          openScheduleSessionPopup(clickInfo.event);
+          return;
+        }
         
+        // In Availability mode, handle double-click for slot settings
         // Check if this is a double-click
         const now = Date.now();
         const eventId = clickInfo.event.id;
@@ -2754,18 +3225,33 @@ margin: 0}
       calendar.setOption('timeZone', mentorTimezone);
       calendar.setOption('selectable', isAvailabilityMode);
       calendar.setOption('editable', function(info) {
+        // Availability slots are NEVER editable in Sessions mode - they must be fixed like a rock
+        const isAvailabilitySlot = info.event.extendedProps?.isAvailability || info.event.extendedProps?.type === 'availability_slot';
+        if (isAvailabilitySlot && !isAvailabilityMode) {
+          return false; // Completely prevent editing availability slots in Sessions mode
+        }
         // Only allow editing if in availability mode
         if (!isAvailabilityMode) return false;
         return true;
       });
       calendar.setOption('eventStartEditable', function(info) {
+        // Availability slots are NEVER draggable in Sessions mode - they must be fixed like a rock
+        const isAvailabilitySlot = info.event.extendedProps?.isAvailability || info.event.extendedProps?.type === 'availability_slot';
+        if (isAvailabilitySlot && !isAvailabilityMode) {
+          return false; // Completely prevent dragging availability slots in Sessions mode
+        }
         // Only allow dragging if in availability mode
         if (!isAvailabilityMode) return false;
         return true;
       });
       calendar.setOption('eventDurationEditable', function(info) {
-        if (!isAvailabilityMode) return false;
+        // Availability slots are NEVER resizable in Sessions mode - they must be fixed like a rock
         const slotType = info.event.extendedProps?.type || 'availability_slot';
+        const isAvailabilitySlot = info.event.extendedProps?.isAvailability || slotType === 'availability_slot';
+        if (isAvailabilitySlot && !isAvailabilityMode) {
+          return false; // Completely prevent resizing availability slots in Sessions mode
+        }
+        if (!isAvailabilityMode) return false;
         return slotType !== 'availability_slot';
       });
       
@@ -2858,13 +3344,28 @@ margin: 0}
           // Update calendar options for availability mode
           calendar.setOption('selectable', true);
           calendar.setOption('editable', function(info) {
+            // Availability slots are NEVER editable in Sessions mode - they must be fixed like a rock
+            const isAvailabilitySlot = info.event.extendedProps?.isAvailability || info.event.extendedProps?.type === 'availability_slot';
+            if (isAvailabilitySlot && !isAvailabilityMode) {
+              return false; // Completely prevent editing availability slots in Sessions mode
+            }
             return true; // Allow editing in availability mode
           });
           calendar.setOption('eventStartEditable', function(info) {
+            // Allow dragging to start even in Sessions mode - we'll handle it on drop
+            const isAvailabilitySlot = info.event.extendedProps?.isAvailability || info.event.extendedProps?.type === 'availability_slot';
+            if (isAvailabilitySlot) {
+              return true; // Allow dragging to start - handle on drop
+            }
             return true; // Allow dragging in availability mode
           });
           calendar.setOption('eventDurationEditable', function(info) {
+            // Availability slots are NEVER resizable in Sessions mode - they must be fixed like a rock
             const slotType = info.event.extendedProps?.type || 'availability_slot';
+            const isAvailabilitySlot = info.event.extendedProps?.isAvailability || slotType === 'availability_slot';
+            if (isAvailabilitySlot && !isAvailabilityMode) {
+              return false; // Completely prevent resizing availability slots in Sessions mode
+            }
             return slotType !== 'availability_slot';
           });
           // Update events
@@ -2930,39 +3431,83 @@ margin: 0}
   const toggleBtn = document.getElementById("availabilityCalendarToggle");
   if (toggleBtn) {
     // Default to "Sessions" mode (not active = sessions, active = availability)
-    toggleBtn.addEventListener("click", function() {
+    toggleBtn.addEventListener("click", async function() {
       toggleBtn.classList.toggle("active");
       isAvailabilityMode = toggleBtn.classList.contains("active");
       
       console.log("Toggle mode:", isAvailabilityMode ? "Availability" : "Sessions");
       
-      // Update calendar based on mode
+      // Refetch data when toggling modes to reset changes and disable save button
       if (calendar) {
-        // Enable/disable selection and editing based on mode
-        calendar.setOption('selectable', isAvailabilityMode);
-        calendar.setOption('editable', function(info) {
-          // Only allow editing if in availability mode
-          if (!isAvailabilityMode) return false;
-          return true;
-        });
-        calendar.setOption('eventStartEditable', function(info) {
-          // Only allow dragging if in availability mode
-          if (!isAvailabilityMode) return false;
-          return true;
-        });
-        // Set eventDurationEditable as a function to check slot type
-        calendar.setOption('eventDurationEditable', function(info) {
-          if (!isAvailabilityMode) return false;
-          const slotType = info.event.extendedProps?.type || 'availability_slot';
-          return slotType !== 'availability_slot'; // Allow resize only for non-availability slots
-        });
-        
-        // Update events based on mode (this will apply transparency styling)
-        updateCalendarEventsForMode();
-        
-        // Update colors if in availability mode
-        if (isAvailabilityMode) {
-          updateSlotColors();
+        try {
+          // Refetch saved availability slots - this will reset originalSavedSlots and originalDatesWithSlots
+          await loadSavedAvailabilitySlots();
+          
+          // Update calendar based on mode
+          // Enable/disable selection and editing based on mode
+          calendar.setOption('selectable', isAvailabilityMode);
+          calendar.setOption('editable', function(info) {
+            // Availability slots are NEVER editable in Sessions mode - they must be fixed like a rock
+            const isAvailabilitySlot = info.event.extendedProps?.isAvailability || info.event.extendedProps?.type === 'availability_slot';
+            if (isAvailabilitySlot && !isAvailabilityMode) {
+              return false; // Completely prevent editing availability slots in Sessions mode
+            }
+            // Only allow editing if in availability mode
+            if (!isAvailabilityMode) return false;
+            return true;
+          });
+          calendar.setOption('eventStartEditable', function(info) {
+            // Allow dragging to start even in Sessions mode - we'll handle it on drop
+            const isAvailabilitySlot = info.event.extendedProps?.isAvailability || info.event.extendedProps?.type === 'availability_slot';
+            if (isAvailabilitySlot) {
+              return true; // Allow dragging to start - handle on drop
+            }
+            // Only allow dragging if in availability mode for non-availability slots
+            if (!isAvailabilityMode) return false;
+            return true;
+          });
+          // Set eventDurationEditable as a function to check slot type
+          calendar.setOption('eventDurationEditable', function(info) {
+            // Availability slots are NEVER resizable in Sessions mode - they must be fixed like a rock
+            const slotType = info.event.extendedProps?.type || 'availability_slot';
+            const isAvailabilitySlot = info.event.extendedProps?.isAvailability || slotType === 'availability_slot';
+            if (isAvailabilitySlot && !isAvailabilityMode) {
+              return false; // Completely prevent resizing availability slots in Sessions mode
+            }
+            if (!isAvailabilityMode) return false;
+            return slotType !== 'availability_slot'; // Allow resize only for non-availability slots
+          });
+          
+          // Set eventResizableFromStart to prevent resizing from start edge
+          calendar.setOption('eventResizableFromStart', function(info) {
+            // Availability slots are NEVER resizable from start in Sessions mode - they must be fixed like a rock
+            const slotType = info.event.extendedProps?.type || 'availability_slot';
+            const isAvailabilitySlot = info.event.extendedProps?.isAvailability || slotType === 'availability_slot';
+            if (isAvailabilitySlot && !isAvailabilityMode) {
+              return false; // Completely prevent resizing from start for availability slots in Sessions mode
+            }
+            if (!isAvailabilityMode) return false;
+            return slotType !== 'availability_slot'; // Prevent resizing from start for availability slots
+          });
+          
+          // Set eventDragStart to prevent dragging from starting
+          calendar.setOption('eventDragStart', function(dragInfo) {
+            // Allow drag to start even in Sessions mode - we'll handle it on drop
+            // This allows the user to attempt dragging, then we show popup on drop
+          });
+          
+          // Update events based on mode (this will apply transparency styling)
+          updateCalendarEventsForMode();
+          
+          // Update colors if in availability mode
+          if (isAvailabilityMode) {
+            updateSlotColors();
+          }
+          
+          // Update save button state (should be disabled after refetch)
+          updateSaveButton();
+        } catch (error) {
+          console.error('Error refetching availability slots on mode toggle:', error);
         }
       }
     });
@@ -3067,13 +3612,28 @@ margin: 0}
       // Update calendar options for availability mode
       calendar.setOption('selectable', true);
       calendar.setOption('editable', function(info) {
+        // Availability slots are NEVER editable in Sessions mode - they must be fixed like a rock
+        const isAvailabilitySlot = info.event.extendedProps?.isAvailability || info.event.extendedProps?.type === 'availability_slot';
+        if (isAvailabilitySlot && !isAvailabilityMode) {
+          return false; // Completely prevent editing availability slots in Sessions mode
+        }
         return true; // Allow editing in availability mode
       });
       calendar.setOption('eventStartEditable', function(info) {
+        // Allow dragging to start even in Sessions mode - we'll handle it on drop
+        const isAvailabilitySlot = info.event.extendedProps?.isAvailability || info.event.extendedProps?.type === 'availability_slot';
+        if (isAvailabilitySlot) {
+          return true; // Allow dragging to start - handle on drop
+        }
         return true; // Allow dragging in availability mode
       });
       calendar.setOption('eventDurationEditable', function(info) {
+        // Availability slots are NEVER resizable in Sessions mode - they must be fixed like a rock
         const slotType = info.event.extendedProps?.type || 'availability_slot';
+        const isAvailabilitySlot = info.event.extendedProps?.isAvailability || slotType === 'availability_slot';
+        if (isAvailabilitySlot && !isAvailabilityMode) {
+          return false; // Completely prevent resizing availability slots in Sessions mode
+        }
         return slotType !== 'availability_slot';
       });
       
@@ -3213,6 +3773,234 @@ margin: 0}
       }, 5000);
     });
   };
+
+  // Schedule Session Popup Functions
+  function openScheduleSessionPopup(event) {
+    const popup = document.getElementById('scheduleSessionPopup');
+    const slotInfoEl = document.getElementById('scheduleSessionSlotInfo');
+    const emailInput = document.getElementById('scheduleSessionEmail');
+    
+    if (!popup || !slotInfoEl || !emailInput) return;
+    
+    // Format the slot time information
+    const startDate = new Date(event.start);
+    const endDate = new Date(event.end);
+    
+    // Format date and time
+    const dateFormatter = new Intl.DateTimeFormat('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+    
+    const timeFormatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: mentorTimezone,
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    });
+    
+    const dateStr = dateFormatter.format(startDate);
+    const startTime = timeFormatter.format(startDate);
+    const endTime = timeFormatter.format(endDate);
+    const duration = Math.round((endDate - startDate) / (1000 * 60));
+    
+    // Display slot information
+    slotInfoEl.innerHTML = `
+      <div class="schedule-session-date">${dateStr}</div>
+      <div class="schedule-session-time">${startTime} - ${endTime}</div>
+      <div class="schedule-session-duration">Duration: ${duration} minutes</div>
+    `;
+    
+    // Clear email input
+    emailInput.value = '';
+    
+    // Store event data for submission
+    emailInput.dataset.eventId = event.id;
+    emailInput.dataset.startTime = event.start.toISOString();
+    emailInput.dataset.endTime = event.end.toISOString();
+    
+    // Show popup
+    popup.setAttribute('aria-hidden', 'false');
+    popup.style.display = 'flex';
+    
+    // Focus email input
+    setTimeout(() => {
+      emailInput.focus();
+    }, 100);
+  }
+  
+  function closeScheduleSessionPopup() {
+    const popup = document.getElementById('scheduleSessionPopup');
+    if (popup) {
+      popup.setAttribute('aria-hidden', 'true');
+      popup.style.display = 'none';
+    }
+  }
+  
+  // Event listeners for schedule session popup
+  const scheduleSessionCloseTriggers = document.querySelectorAll('[data-close-schedule-session]');
+  scheduleSessionCloseTriggers.forEach(btn => {
+    btn.addEventListener('click', closeScheduleSessionPopup);
+  });
+  
+  // Handle form submission
+  const scheduleSessionSubmitBtn = document.getElementById('scheduleSessionSubmitBtn');
+  const scheduleSessionEmailInput = document.getElementById('scheduleSessionEmail');
+  
+  if (scheduleSessionSubmitBtn && scheduleSessionEmailInput) {
+    scheduleSessionSubmitBtn.addEventListener('click', function() {
+      const email = scheduleSessionEmailInput.value.trim();
+      
+      if (!email) {
+        alert('Please enter a client email address');
+        return;
+      }
+      
+      // Basic email validation
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        alert('Please enter a valid email address');
+        return;
+      }
+      
+      // Get event data
+      const eventId = scheduleSessionEmailInput.dataset.eventId;
+      const startTime = scheduleSessionEmailInput.dataset.startTime;
+      const endTime = scheduleSessionEmailInput.dataset.endTime;
+      
+      // TODO: Implement actual session scheduling logic here
+      // For now, just show a success message
+      console.log('Schedule session:', {
+        email: email,
+        startTime: startTime,
+        endTime: endTime,
+        eventId: eventId
+      });
+      
+      // Show success notification
+      if (typeof showNotification === 'function') {
+        showNotification('Session scheduled successfully!', 'success');
+      } else {
+        alert('Session scheduled successfully!');
+      }
+      
+      // Close popup
+      closeScheduleSessionPopup();
+    });
+    
+    // Allow Enter key to submit
+    scheduleSessionEmailInput.addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        scheduleSessionSubmitBtn.click();
+      }
+    });
+  }
+  
+  // Close popup when clicking backdrop
+  const scheduleSessionBackdrop = document.querySelector('.schedule-session-backdrop');
+  if (scheduleSessionBackdrop) {
+    scheduleSessionBackdrop.addEventListener('click', closeScheduleSessionPopup);
+  }
+
+  // Switch to Availability Mode Popup Functions
+  function openSwitchToAvailabilityModePopup() {
+    const popup = document.getElementById('switchToAvailabilityModePopup');
+    if (popup) {
+      popup.setAttribute('aria-hidden', 'false');
+      popup.style.display = 'flex';
+    }
+  }
+  
+  function closeSwitchToAvailabilityModePopup() {
+    const popup = document.getElementById('switchToAvailabilityModePopup');
+    if (popup) {
+      popup.setAttribute('aria-hidden', 'true');
+      popup.style.display = 'none';
+    }
+  }
+  
+  // Event listeners for switch mode popup
+  const switchModeCloseTriggers = document.querySelectorAll('[data-close-switch-mode]');
+  switchModeCloseTriggers.forEach(btn => {
+    btn.addEventListener('click', closeSwitchToAvailabilityModePopup);
+  });
+  
+  // Handle switch button click
+  const switchToAvailabilityModeBtn = document.getElementById('switchToAvailabilityModeBtn');
+  if (switchToAvailabilityModeBtn) {
+    switchToAvailabilityModeBtn.addEventListener('click', function() {
+      // Close the popup
+      closeSwitchToAvailabilityModePopup();
+      
+      // Switch to availability mode
+      if (toggleBtn) {
+        toggleBtn.classList.add('active');
+        isAvailabilityMode = true;
+        
+        // Update calendar options for availability mode
+        if (calendar) {
+          calendar.setOption('selectable', true);
+          calendar.setOption('editable', function(info) {
+            const isAvailabilitySlot = info.event.extendedProps?.isAvailability || info.event.extendedProps?.type === 'availability_slot';
+            if (isAvailabilitySlot && !isAvailabilityMode) {
+              return false;
+            }
+            if (!isAvailabilityMode) return false;
+            return true;
+          });
+          calendar.setOption('eventStartEditable', function(info) {
+            const isAvailabilitySlot = info.event.extendedProps?.isAvailability || info.event.extendedProps?.type === 'availability_slot';
+            if (isAvailabilitySlot && !isAvailabilityMode) {
+              return false;
+            }
+            if (!isAvailabilityMode) return false;
+            return true;
+          });
+          calendar.setOption('eventDurationEditable', function(info) {
+            const slotType = info.event.extendedProps?.type || 'availability_slot';
+            const isAvailabilitySlot = info.event.extendedProps?.isAvailability || slotType === 'availability_slot';
+            if (isAvailabilitySlot && !isAvailabilityMode) {
+              return false;
+            }
+            if (!isAvailabilityMode) return false;
+            return slotType !== 'availability_slot';
+          });
+          calendar.setOption('eventResizableFromStart', function(info) {
+            const slotType = info.event.extendedProps?.type || 'availability_slot';
+            const isAvailabilitySlot = info.event.extendedProps?.isAvailability || slotType === 'availability_slot';
+            if (isAvailabilitySlot && !isAvailabilityMode) {
+              return false;
+            }
+            if (!isAvailabilityMode) return false;
+            return slotType !== 'availability_slot';
+          });
+          calendar.setOption('eventDragStart', function(dragInfo) {
+            const isAvailabilitySlot = dragInfo.event.extendedProps?.isAvailability || dragInfo.event.extendedProps?.type === 'availability_slot';
+            if (isAvailabilitySlot && !isAvailabilityMode) {
+              dragInfo.jsEvent.preventDefault();
+              dragInfo.jsEvent.stopPropagation();
+              openSwitchToAvailabilityModePopup();
+              return false;
+            }
+          });
+          
+          // Update events to show availability slots properly
+          updateCalendarEventsForMode();
+          
+          // Update colors
+          updateSlotColors();
+        }
+      }
+    });
+  }
+  
+  // Close popup when clicking backdrop
+  const switchModeBackdrop = document.querySelector('.switch-mode-backdrop');
+  if (switchModeBackdrop) {
+    switchModeBackdrop.addEventListener('click', closeSwitchToAvailabilityModePopup);
+  }
 
 })();
 </script>
