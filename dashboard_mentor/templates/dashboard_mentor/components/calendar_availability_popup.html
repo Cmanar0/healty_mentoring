@@ -462,6 +462,30 @@
   padding: 8px 0;
 }
 
+/* Hover styles for clickable day headers in week view */
+#mentorAvailabilityCalendar.fc .fc-timeGridWeek-view .fc-col-header-cell,
+#mentorAvailabilityCalendar.fc .fc-timeGridWeek-view .fc-scrollgrid-sync-inner,
+#mentorAvailabilityCalendar.fc .fc-timeGridWeek-view .fc-col-header-cell-cushion {
+  cursor: pointer !important;
+  transition: background-color 0.2s ease;
+}
+
+#mentorAvailabilityCalendar.fc .fc-timeGridWeek-view .fc-col-header-cell:hover,
+#mentorAvailabilityCalendar.fc .fc-timeGridWeek-view .fc-col-header-cell:hover .fc-scrollgrid-sync-inner {
+  background-color: #e2e8f0 !important;
+  cursor: pointer !important;
+}
+
+#mentorAvailabilityCalendar.fc .fc-timeGridWeek-view .fc-col-header-cell:hover .fc-col-header-cell-cushion {
+  color: #334155;
+  cursor: pointer !important;
+}
+
+/* Ensure pointer cursor on all clickable header elements */
+#mentorAvailabilityCalendar.fc .fc-timeGridWeek-view .fc-col-header-cell * {
+  cursor: pointer !important;
+}
+
 /* Time Labels */
 .fc-timegrid-axis-cushion,
 .fc-timegrid-slot-label-cushion {
@@ -2252,16 +2276,70 @@ margin: 0}
         if (calendar.view.type === 'timeGridWeek') {
           arg.el.style.cursor = 'pointer';
           arg.el.setAttribute('title', 'Click to view this day');
-          // Always store the date as a data attribute for event delegation
-          // This ensures it's set even when headers are re-rendered
+          // Store the date as a data attribute for event delegation
           const dateStr = arg.date.toISOString();
           arg.el.setAttribute('data-header-date', dateStr);
-          arg.el.dataset.headerDate = dateStr;
-        } else {
-          // Clear the data attribute when not in week view
-          arg.el.removeAttribute('data-header-date');
-          delete arg.el.dataset.headerDate;
+          // Also set it on child elements that might be clicked
+          const syncInner = arg.el.querySelector('.fc-scrollgrid-sync-inner');
+          if (syncInner) {
+            syncInner.setAttribute('data-header-date', dateStr);
+            syncInner.style.cursor = 'pointer';
+          }
+          // Also set it on the cushion element (the text)
+          const cushion = arg.el.querySelector('.fc-col-header-cell-cushion');
+          if (cushion) {
+            cushion.setAttribute('data-header-date', dateStr);
+            cushion.style.cursor = 'pointer';
+          }
         }
+      },
+      dayHeaderClick: function(arg) {
+        console.log('dayHeaderClick called!', arg);
+        console.log('Current view type:', calendar.view.type);
+        console.log('Clicked date:', arg.date);
+        console.log('Full arg object:', JSON.stringify({
+          date: arg.date ? arg.date.toISOString() : null,
+          view: arg.view ? arg.view.type : null,
+          jsEvent: arg.jsEvent ? 'present' : null
+        }, null, 2));
+        
+        // Native FullCalendar callback for day header clicks
+        // Only handle clicks in week view
+        if (calendar.view.type !== 'timeGridWeek') {
+          console.log('Not in week view, returning');
+          return;
+        }
+        
+        // Don't handle clicks on interactive elements inside the header
+        if (arg.jsEvent && arg.jsEvent.target.closest('button, a, input, select')) {
+          console.log('Click was on interactive element, returning');
+          return;
+        }
+        
+        // Get the date from the clicked header
+        const clickedDate = arg.date;
+        console.log('Processing click for date:', clickedDate);
+        
+        // Switch to day view and navigate to that date
+        calendar.changeView('timeGridDay');
+        calendar.gotoDate(clickedDate);
+        
+        // Update the active view button
+        const viewToggleButtons = document.querySelectorAll('.view-toggle-btn');
+        viewToggleButtons.forEach(btn => {
+          if (btn.dataset.calendarView === 'timeGridDay') {
+            btn.classList.add('is-active');
+          } else {
+            btn.classList.remove('is-active');
+          }
+        });
+        
+        // Update date display and calendar size
+        setTimeout(() => {
+          calendar.updateSize();
+          updateDateDisplay();
+          markHourSlots();
+        }, 100);
       },
       // Remove all-day slot from specific views
       views: {
@@ -2320,52 +2398,75 @@ margin: 0}
     calendar.render();
 
     // Event delegation for day header clicks in week view
-    // This works even when headers are re-rendered - always calculate date from current DOM state
+    // Target fc-scrollgrid-sync-inner elements that users actually click
     if (calendarRoot) {
-      // Use a single event listener that always calculates the date from the current state
       calendarRoot.addEventListener('click', function(e) {
         // Only handle clicks in week view
         if (!calendar || calendar.view.type !== 'timeGridWeek') return;
         
-        // Check if clicked element is a day header cell or its child
-        const dayHeader = e.target.closest('.fc-col-header-cell');
-        if (!dayHeader) return;
+        // Check if clicked element is the cushion anchor (the <a> tag with the text)
+        // Check both the element itself and if it's inside a cushion
+        const cushionElement = e.target.classList.contains('fc-col-header-cell-cushion') 
+          ? e.target 
+          : e.target.closest('.fc-col-header-cell-cushion');
         
-        // Don't handle clicks on interactive elements inside the header (like buttons)
-        if (e.target.closest('button, a, input, select')) return;
+        // Check if clicked element is inside a header cell
+        const headerCell = e.target.closest('.fc-scrollgrid-sync-inner, .fc-col-header-cell');
+        
+        // Find the clicked header element (prioritize cushion if it exists)
+        const clickedElement = cushionElement || headerCell;
+        if (!clickedElement) return;
+        
+        // Don't handle clicks on other interactive elements (but allow cushion anchor)
+        if (e.target.closest('button, input, select') && !cushionElement) return;
+        
+        // Prevent default anchor navigation if clicking on cushion
+        if (cushionElement) {
+          e.preventDefault();
+        }
+        
+        console.log('Header clicked!', clickedElement, 'isCushion:', !!cushionElement, 'target:', e.target.tagName, e.target.className);
+        
+        // Try to get date from data attribute (set in dayHeaderDidMount)
+        let clickedDate = null;
+        const dateStr = clickedElement.getAttribute('data-header-date') || 
+                       clickedElement.closest('[data-header-date]')?.getAttribute('data-header-date');
+        
+        if (dateStr) {
+          clickedDate = new Date(dateStr);
+          console.log('Date from data attribute:', clickedDate);
+        } else {
+          // Fallback: find the parent header cell and get its date
+          const headerCell = clickedElement.closest('.fc-col-header-cell');
+          if (headerCell) {
+            // Get all header cells to find index
+            const allHeaderCells = Array.from(calendarRoot.querySelectorAll('.fc-col-header-cell'));
+            const clickedIndex = allHeaderCells.indexOf(headerCell);
+            
+            if (clickedIndex !== -1) {
+              const view = calendar.view;
+              const weekStart = new Date(view.activeStart);
+              const timeAxis = calendarRoot.querySelector('.fc-timegrid-axis');
+              const dateIndex = timeAxis ? clickedIndex - 1 : clickedIndex;
+              
+              if (dateIndex >= 0 && dateIndex <= 6) {
+                clickedDate = new Date(weekStart);
+                clickedDate.setDate(weekStart.getDate() + dateIndex);
+                console.log('Date calculated from index:', clickedDate, 'index:', dateIndex);
+              }
+            }
+          }
+        }
+        
+        if (!clickedDate) {
+          console.log('Could not determine clicked date');
+          return;
+        }
+        
+        console.log('Switching to day view for date:', clickedDate);
         
         e.preventDefault();
         e.stopPropagation();
-        
-        // Always calculate date from column index - this is most reliable
-        // Get all header cells in the current DOM state
-        const allHeaderCells = Array.from(calendarRoot.querySelectorAll('.fc-col-header-cell'));
-        const clickedIndex = allHeaderCells.indexOf(dayHeader);
-        
-        if (clickedIndex === -1) return;
-        
-        // Get the view and calculate the date
-        const view = calendar.view;
-        const weekStart = new Date(view.activeStart);
-        
-        // In week view with timeGrid, structure is: [time-axis] [Mon] [Tue] [Wed] [Thu] [Fri] [Sat] [Sun]
-        // The time axis column exists, so we need to subtract 1 from the index
-        // But let's verify by checking if there's a time axis column
-        const timeAxisCells = calendarRoot.querySelectorAll('.fc-timegrid-axis');
-        const hasTimeAxis = timeAxisCells.length > 0;
-        const dateIndex = hasTimeAxis ? clickedIndex - 1 : clickedIndex;
-        
-        // Validate the date index is within the week range (0-6 for 7 days)
-        if (dateIndex < 0 || dateIndex > 6) return;
-        
-        // Calculate the clicked date
-        const clickedDate = new Date(weekStart);
-        clickedDate.setDate(weekStart.getDate() + dateIndex);
-        
-        // Ensure we're within the valid week range
-        if (clickedDate < view.activeStart || clickedDate >= view.activeEnd) {
-          return;
-        }
         
         // Switch to day view and navigate to that date
         calendar.changeView('timeGridDay');
@@ -2387,7 +2488,7 @@ margin: 0}
           updateDateDisplay();
           markHourSlots();
         }, 100);
-      }, true); // Use capture phase to ensure we catch the event early
+      });
     }
 
     // Mark hour slots for CSS targeting - call multiple times to ensure they persist
