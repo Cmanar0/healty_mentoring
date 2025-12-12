@@ -1828,7 +1828,9 @@ margin: 0}
         isAvailability: true,
         length: lengthMinutes,
         slotId: slotId,
-        type: 'availability_slot' // Mark as availability slot (fixed length)
+        type: 'availability_slot', // Mark as availability slot (fixed length)
+        originalStart: startDate.toISOString(), // Store original start time to prevent movement
+        originalEnd: endDate.toISOString() // Store original end time to prevent resizing
       }
     };
   }
@@ -1932,16 +1934,37 @@ margin: 0}
     // Prevent resizing if this is an availability_slot (fixed length)
     const slotType = event.extendedProps.type || 'availability_slot';
     if (slotType === 'availability_slot') {
-      // Revert to original length
-      const originalLength = event.extendedProps.length || sessionLength;
-      const startDate = new Date(event.start);
-      const endDate = new Date(startDate.getTime() + originalLength * 60 * 1000);
+      // Get original start and end times from extendedProps (stored when event was created)
+      // If not stored, initialize them from current event times (shouldn't happen, but safety check)
+      if (!event.extendedProps.originalStart) {
+        event.extendedProps.originalStart = event.start instanceof Date 
+          ? event.start.toISOString() 
+          : event.start;
+      }
+      if (!event.extendedProps.originalEnd) {
+        event.extendedProps.originalEnd = event.end instanceof Date 
+          ? event.end.toISOString() 
+          : event.end;
+      }
       
-      // Prevent the resize by setting the end time back
-      event.setEnd(endDate);
+      const originalStart = event.extendedProps.originalStart;
+      const originalEnd = event.extendedProps.originalEnd;
+      
+      // If original times are stored as ISO strings, parse them
+      const originalStartDate = typeof originalStart === 'string' 
+        ? new Date(originalStart) 
+        : new Date(originalStart);
+      const originalEndDate = typeof originalEnd === 'string' 
+        ? new Date(originalEnd) 
+        : new Date(originalEnd);
+      
+      // Restore both start and end times to prevent any movement or resizing
+      // This prevents the slot from moving when resizing from the top edge
+      event.setStart(originalStartDate);
+      event.setEnd(originalEndDate);
       
       // Show a message to the user
-      console.log('Availability slots have fixed length and cannot be resized.');
+      console.log('Availability slots have fixed length and cannot be resized or moved.');
       return;
     }
     
@@ -2162,7 +2185,12 @@ margin: 0}
         const slotType = info.event.extendedProps?.type || 'availability_slot';
         return slotType !== 'availability_slot'; // Allow resize only for non-availability slots
       },
-      eventResizableFromStart: true, // Allow resizing from start (if allowed)
+      eventResizableFromStart: function(info) {
+        // Only allow resizing from start if it's not an availability_slot (fixed length) and in availability mode
+        if (!isAvailabilityMode) return false;
+        const slotType = info.event.extendedProps?.type || 'availability_slot';
+        return slotType !== 'availability_slot'; // Prevent resizing from start for availability slots
+      },
       firstDay: 1, // Start week with Monday
       allDaySlot: false, // Remove all-day row from week and day views
       events: availabilityEvents,
@@ -2629,7 +2657,9 @@ margin: 0}
                   length: lengthMinutes,
                   slotId: slotId,
                   type: slotType, // Include type from saved slot
-                  isSaved: true // Mark as saved slot
+                  isSaved: true, // Mark as saved slot
+                  originalStart: slot.start, // Store original start time to prevent movement
+                  originalEnd: slot.end // Store original end time to prevent resizing
                 }
               };
               
