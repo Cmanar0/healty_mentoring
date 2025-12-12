@@ -1271,6 +1271,75 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     });
   }
+  
+  // Check for collisions on page load and handle accordingly
+  (function() {
+    // Only check if user is a mentor
+    const userProfileDataEl = document.getElementById('userProfileData');
+    if (!userProfileDataEl) return;
+    
+    const currentPath = window.location.pathname;
+    const isOnMySessionsPage = currentPath.includes('/my-sessions/');
+    
+    try {
+      const userProfileData = JSON.parse(userProfileDataEl.textContent);
+      const sessionLength = userProfileData.session_length;
+      
+      // Only check if session_length exists
+      if (!sessionLength) return;
+      
+      // Check for collisions via API
+      fetch('{% url "general:dashboard_mentor:check_availability_collisions" %}')
+        .then(response => response.json())
+        .then(data => {
+          if (data.success && data.has_collisions) {
+            if (isOnMySessionsPage) {
+              // We're already on my_sessions page - open calendar and collision popups directly
+              // Wait for calendar popup to be available
+              setTimeout(() => {
+                // Check if calendar popup functions are available
+                if (typeof window.openOverlay === 'function') {
+                  // Mark as opened from session length change to prevent closing
+                  if (typeof window.setOpenedFromSessionLengthChange === 'function') {
+                    window.setOpenedFromSessionLengthChange(true);
+                  }
+                  
+                  // Switch to availability mode first
+                  const toggleBtn = document.getElementById('availabilityCalendarToggle');
+                  if (toggleBtn) {
+                    toggleBtn.classList.add('active');
+                  }
+                  
+                  // Open the calendar overlay
+                  window.openOverlay();
+                  
+                  // After calendar opens, check for collisions and open collision popup
+                  setTimeout(() => {
+                    if (typeof window.openCollisionResolutionPopup === 'function') {
+                      window.openCollisionResolutionPopup(true); // true = from session length change
+                    }
+                  }, 1500); // Give calendar time to load slots
+                } else {
+                  // Calendar not loaded yet, use URL parameter approach
+                  if (!window.location.search.includes('open_calendar=true')) {
+                    window.location.href = window.location.pathname + '?open_calendar=true';
+                  }
+                }
+              }, 500);
+            } else {
+              // Not on my_sessions page - redirect to my_sessions page
+              // The my_sessions page will handle opening calendar and collision popups
+              window.location.href = '{% url "general:dashboard_mentor:my_sessions" %}?open_calendar=true';
+            }
+          }
+        })
+        .catch(error => {
+          console.error('Error checking for collisions:', error);
+        });
+    } catch (e) {
+      console.error('Error parsing user profile data:', e);
+    }
+  })();
 });
 </script>
 {% endblock %}

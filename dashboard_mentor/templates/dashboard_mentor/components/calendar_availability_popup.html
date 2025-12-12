@@ -2820,6 +2820,17 @@ margin: 0}
   
   // Expose closeOverlay globally
   window.closeCalendarOverlay = closeOverlay;
+  
+  // Expose openOverlay globally
+  window.openOverlay = openOverlay;
+  
+  // Expose openedFromSessionLengthChange setter/getter globally
+  window.setOpenedFromSessionLengthChange = function(value) {
+    openedFromSessionLengthChange = value;
+  };
+  window.getOpenedFromSessionLengthChange = function() {
+    return openedFromSessionLengthChange;
+  };
 
   openTriggers.forEach(btn => btn.addEventListener("click", openOverlay));
   closeTriggers.forEach(btn => btn.addEventListener("click", closeOverlay));
@@ -2859,6 +2870,13 @@ margin: 0}
           // Update events
           updateCalendarEventsForMode();
           updateSlotColors(); // This will highlight collisions
+          
+          // Explicitly check for collisions and open popup if needed (for page reload scenario)
+          setTimeout(() => {
+            if (hasAnyCollisions() && typeof window.openCollisionResolutionPopup === 'function') {
+              window.openCollisionResolutionPopup(true); // true = from session length change
+            }
+          }, 1000); // Give slots time to fully load and colors to update
         }
       }, 500);
       // Remove the parameter from URL without reloading

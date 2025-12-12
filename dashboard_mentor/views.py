@@ -1436,6 +1436,41 @@ def get_availability(request):
 
 
 @login_required
+def check_availability_collisions(request):
+    """Check if mentor has any collisions in availability slots"""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        return JsonResponse({'success': False, 'has_collisions': False}, status=403)
+    
+    try:
+        mentor_profile = request.user.mentor_profile
+        
+        # Get one-time slots
+        try:
+            one_time_slots = list(mentor_profile.one_time_slots or [])
+        except AttributeError:
+            one_time_slots = list(mentor_profile.availability_slots or [])
+        
+        # Get recurring slots
+        try:
+            recurring_slots = list(mentor_profile.recurring_slots or [])
+        except AttributeError:
+            recurring_slots = list(mentor_profile.recurring_availability_slots or [])
+        
+        # Check for collisions if session_length exists
+        has_collisions = False
+        if mentor_profile.session_length:
+            has_collisions = check_slot_collisions(one_time_slots, recurring_slots, mentor_profile.session_length)
+        
+        return JsonResponse({
+            'success': True,
+            'has_collisions': has_collisions
+        })
+        
+    except Exception as e:
+        return JsonResponse({'success': False, 'has_collisions': False, 'error': str(e)}, status=500)
+
+
+@login_required
 @require_POST
 def delete_availability_slot(request):
     """Delete a specific availability slot by ID"""
