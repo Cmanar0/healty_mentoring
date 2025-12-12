@@ -3560,6 +3560,57 @@ margin: 0}
 
   document.addEventListener("keydown", e => {
     if (e.key === "Escape") {
+      // Check if any nested popups are open and close them first (in order of priority)
+      
+      // 1. Check collision resolution popup (highest priority)
+      const collisionResolutionPopup = document.getElementById('collisionResolutionPopup');
+      if (collisionResolutionPopup && collisionResolutionPopup.getAttribute('aria-hidden') === 'false') {
+        if (typeof window.closeCollisionResolutionPopup === 'function') {
+          window.closeCollisionResolutionPopup();
+        }
+        e.preventDefault();
+        e.stopPropagation();
+        return; // Don't close calendar popup
+      }
+      
+      // 2. Check slot settings popup
+      const slotSettingsPopup = document.getElementById('slotSettingsPopup');
+      if (slotSettingsPopup && slotSettingsPopup.getAttribute('aria-hidden') === 'false') {
+        if (typeof window.closeSlotSettings === 'function') {
+          window.closeSlotSettings();
+        }
+        e.preventDefault();
+        e.stopPropagation();
+        return; // Don't close calendar popup
+      }
+      
+      // 3. Check schedule session popup
+      const scheduleSessionPopup = document.getElementById('scheduleSessionPopup');
+      if (scheduleSessionPopup && scheduleSessionPopup.getAttribute('aria-hidden') === 'false') {
+        closeScheduleSessionPopup();
+        e.preventDefault();
+        e.stopPropagation();
+        return; // Don't close calendar popup
+      }
+      
+      // 4. Check switch mode popup
+      const switchModePopup = document.getElementById('switchToAvailabilityModePopup');
+      if (switchModePopup && switchModePopup.getAttribute('aria-hidden') === 'false') {
+        closeSwitchToAvailabilityModePopup();
+        e.preventDefault();
+        e.stopPropagation();
+        return; // Don't close calendar popup
+      }
+      
+      // 5. Check collision warning modal
+      const collisionWarningModal = document.getElementById('collisionWarningModal');
+      if (collisionWarningModal && collisionWarningModal.getAttribute('aria-hidden') === 'false') {
+        closeCollisionWarning();
+        e.preventDefault();
+        e.stopPropagation();
+        return; // Don't close calendar popup
+      }
+      
       // If opened from session length change and collisions exist, show collision popup instead
       if (openedFromSessionLengthChange && hasAnyCollisions()) {
         if (typeof window.openCollisionResolutionPopup === 'function') {
@@ -3567,6 +3618,8 @@ margin: 0}
         }
         return; // Prevent closing
       }
+      
+      // Only close calendar popup if no nested popups are open
       closeOverlay();
     }
   });
