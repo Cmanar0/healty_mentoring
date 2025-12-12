@@ -1744,6 +1744,10 @@ margin: 0}
   let lastClickTime = 0;
   let openedFromSessionLengthChange = false; // Track if opened due to session length change
   
+  // Variables to store original times when dragging/resizing availability slots
+  let draggedSlotStartingDateTime = null;
+  let draggedSlotEndingDateTime = null;
+  
   // Get session_length from userProfileData
   function getSessionLength() {
     try {
@@ -2324,14 +2328,16 @@ margin: 0}
       const isAvailabilitySlot = event.extendedProps?.isAvailability || event.extendedProps?.type === 'availability_slot';
       
       if (isAvailabilitySlot) {
-        // Restore original position
-        if (event.extendedProps?.originalStart && event.extendedProps?.originalEnd) {
-          const originalStart = new Date(event.extendedProps.originalStart);
-          const originalEnd = new Date(event.extendedProps.originalEnd);
-          event.setStart(originalStart);
-          event.setEnd(originalEnd);
+        // Restore original position using stored times
+        if (draggedSlotStartingDateTime && draggedSlotEndingDateTime) {
+          event.setStart(new Date(draggedSlotStartingDateTime));
+          event.setEnd(new Date(draggedSlotEndingDateTime));
         }
         dropInfo.revert(); // Revert the drop
+        
+        // Reset stored times
+        draggedSlotStartingDateTime = null;
+        draggedSlotEndingDateTime = null;
         
         // Show popup explaining they need to switch to Availability mode
         openSwitchToAvailabilityModePopup();
@@ -2343,10 +2349,53 @@ margin: 0}
     
     // Only handle availability slots
     if (!event.extendedProps || !event.extendedProps.isAvailability) {
+      draggedSlotStartingDateTime = null;
+      draggedSlotEndingDateTime = null;
       return;
     }
     
-    // Update the slot in our tracking array
+    const slotType = event.extendedProps.type || 'availability_slot';
+    
+    // For availability slots, check if only one time changed (resize) vs both changed (drag)
+    if (slotType === 'availability_slot' && draggedSlotStartingDateTime && draggedSlotEndingDateTime) {
+      const newStart = event.start instanceof Date ? event.start.toISOString() : event.start;
+      const newEnd = event.end instanceof Date ? event.end.toISOString() : event.end;
+      
+      // Compare new times with original times
+      const startChanged = newStart !== draggedSlotStartingDateTime;
+      const endChanged = newEnd !== draggedSlotEndingDateTime;
+      
+      // If ONLY one time changed, it's a resize (extend/shorten) - prevent it
+      // If BOTH times changed, it's a drag (move) - allow it
+      if (startChanged && !endChanged) {
+        // Only start changed - resize from top edge - prevent it
+        event.setStart(new Date(draggedSlotStartingDateTime));
+        event.setEnd(new Date(draggedSlotEndingDateTime));
+        dropInfo.revert();
+        console.log('Availability slots have fixed length and cannot be resized.');
+        
+        draggedSlotStartingDateTime = null;
+        draggedSlotEndingDateTime = null;
+        return;
+      } else if (!startChanged && endChanged) {
+        // Only end changed - resize from bottom edge - prevent it
+        event.setStart(new Date(draggedSlotStartingDateTime));
+        event.setEnd(new Date(draggedSlotEndingDateTime));
+        dropInfo.revert();
+        console.log('Availability slots have fixed length and cannot be resized.');
+        
+        draggedSlotStartingDateTime = null;
+        draggedSlotEndingDateTime = null;
+        return;
+      }
+      // If both changed, it's a drag - allow it (will be handled below)
+    }
+    
+    // Reset stored times
+    draggedSlotStartingDateTime = null;
+    draggedSlotEndingDateTime = null;
+    
+    // Update the slot in our tracking array (only if it's not an availability slot or times didn't change)
     const slotId = event.extendedProps.slotId;
     const slotIndex = createdAvailabilitySlots.findIndex(s => s.id === slotId);
     
@@ -2381,15 +2430,18 @@ margin: 0}
   function handleEventResize(resizeInfo) {
     // Show popup when trying to resize in Sessions mode
     if (!isAvailabilityMode) {
-      // Restore original size
+      // Restore original size using stored times
       const event = resizeInfo.event;
-      if (event.extendedProps?.originalStart && event.extendedProps?.originalEnd) {
-        const originalStart = new Date(event.extendedProps.originalStart);
-        const originalEnd = new Date(event.extendedProps.originalEnd);
-        event.setStart(originalStart);
-        event.setEnd(originalEnd);
+      if (draggedSlotStartingDateTime && draggedSlotEndingDateTime) {
+        event.setStart(new Date(draggedSlotStartingDateTime));
+        event.setEnd(new Date(draggedSlotEndingDateTime));
       }
       resizeInfo.revert(); // Revert the resize
+      
+      // Reset stored times
+      draggedSlotStartingDateTime = null;
+      draggedSlotEndingDateTime = null;
+      
       openSwitchToAvailabilityModePopup(); // Show popup
       return;
     }
@@ -2398,45 +2450,50 @@ margin: 0}
     
     // Only handle availability slots
     if (!event.extendedProps || !event.extendedProps.isAvailability) {
+      draggedSlotStartingDateTime = null;
+      draggedSlotEndingDateTime = null;
       return;
     }
     
     // Prevent resizing if this is an availability_slot (fixed length)
     const slotType = event.extendedProps.type || 'availability_slot';
-    if (slotType === 'availability_slot') {
-      // Get original start and end times from extendedProps (stored when event was created)
-      // If not stored, initialize them from current event times (shouldn't happen, but safety check)
-      if (!event.extendedProps.originalStart) {
-        event.extendedProps.originalStart = event.start instanceof Date 
-          ? event.start.toISOString() 
-          : event.start;
+    if (slotType === 'availability_slot' && draggedSlotStartingDateTime && draggedSlotEndingDateTime) {
+      const newStart = event.start instanceof Date ? event.start.toISOString() : event.start;
+      const newEnd = event.end instanceof Date ? event.end.toISOString() : event.end;
+      
+      // Compare new times with original times
+      const startChanged = newStart !== draggedSlotStartingDateTime;
+      const endChanged = newEnd !== draggedSlotEndingDateTime;
+      
+      // If ONLY one time changed, it's a resize (extend/shorten) - prevent it
+      // If BOTH times changed, it's a drag (move) - allow it
+      if (startChanged && !endChanged) {
+        // Only start changed - resize from top edge - prevent it
+        event.setStart(new Date(draggedSlotStartingDateTime));
+        event.setEnd(new Date(draggedSlotEndingDateTime));
+        resizeInfo.revert();
+        console.log('Availability slots have fixed length and cannot be resized.');
+        
+        draggedSlotStartingDateTime = null;
+        draggedSlotEndingDateTime = null;
+        return;
+      } else if (!startChanged && endChanged) {
+        // Only end changed - resize from bottom edge - prevent it
+        event.setStart(new Date(draggedSlotStartingDateTime));
+        event.setEnd(new Date(draggedSlotEndingDateTime));
+        resizeInfo.revert();
+        console.log('Availability slots have fixed length and cannot be resized.');
+        
+        draggedSlotStartingDateTime = null;
+        draggedSlotEndingDateTime = null;
+        return;
       }
-      if (!event.extendedProps.originalEnd) {
-        event.extendedProps.originalEnd = event.end instanceof Date 
-          ? event.end.toISOString() 
-          : event.end;
-      }
-      
-      const originalStart = event.extendedProps.originalStart;
-      const originalEnd = event.extendedProps.originalEnd;
-      
-      // If original times are stored as ISO strings, parse them
-      const originalStartDate = typeof originalStart === 'string' 
-        ? new Date(originalStart) 
-        : new Date(originalStart);
-      const originalEndDate = typeof originalEnd === 'string' 
-        ? new Date(originalEnd) 
-        : new Date(originalEnd);
-      
-      // Restore both start and end times to prevent any movement or resizing
-      // This prevents the slot from moving when resizing from the top edge
-      event.setStart(originalStartDate);
-      event.setEnd(originalEndDate);
-      
-      // Show a message to the user
-      console.log('Availability slots have fixed length and cannot be resized or moved.');
-      return;
+      // If both changed, it's a drag - allow it (will be handled below)
     }
+    
+    // Reset stored times
+    draggedSlotStartingDateTime = null;
+    draggedSlotEndingDateTime = null;
     
     // Allow resizing for session slots (type !== 'availability_slot')
     const slotId = event.extendedProps.slotId;
@@ -2660,27 +2717,35 @@ margin: 0}
         if (!isAvailabilityMode) return false;
         return true;
       },
-      eventDurationEditable: function(info) {
-        // Availability slots are NEVER resizable in Sessions mode - they must be fixed like a rock
-        const slotType = info.event.extendedProps?.type || 'availability_slot';
-        const isAvailabilitySlot = info.event.extendedProps?.isAvailability || slotType === 'availability_slot';
-        if (isAvailabilitySlot && !isAvailabilityMode) {
-          return false; // Completely prevent resizing availability slots in Sessions mode
+      eventDragStart: function(dragInfo) {
+        // Store original times when dragging starts (for availability slots)
+        const event = dragInfo.event;
+        const isAvailabilitySlot = event.extendedProps?.isAvailability || event.extendedProps?.type === 'availability_slot';
+        
+        if (isAvailabilitySlot) {
+          // Store the original start and end times
+          draggedSlotStartingDateTime = event.start instanceof Date ? event.start.toISOString() : event.start;
+          draggedSlotEndingDateTime = event.end instanceof Date ? event.end.toISOString() : event.end;
         }
-        // Only allow resizing if it's not an availability_slot (fixed length) and in availability mode
-        if (!isAvailabilityMode) return false;
-        return slotType !== 'availability_slot'; // Allow resize only for non-availability slots
+      },
+      eventResizeStart: function(resizeInfo) {
+        // Store original times when resizing starts (for availability slots)
+        const event = resizeInfo.event;
+        const isAvailabilitySlot = event.extendedProps?.isAvailability || event.extendedProps?.type === 'availability_slot';
+        
+        if (isAvailabilitySlot) {
+          // Store the original start and end times
+          draggedSlotStartingDateTime = event.start instanceof Date ? event.start.toISOString() : event.start;
+          draggedSlotEndingDateTime = event.end instanceof Date ? event.end.toISOString() : event.end;
+        }
+      },
+      eventDurationEditable: function(info) {
+        // Allow resizing to start - we'll handle prevention in handleEventResize
+        return true;
       },
       eventResizableFromStart: function(info) {
-        // Availability slots are NEVER resizable from start in Sessions mode - they must be fixed like a rock
-        const slotType = info.event.extendedProps?.type || 'availability_slot';
-        const isAvailabilitySlot = info.event.extendedProps?.isAvailability || slotType === 'availability_slot';
-        if (isAvailabilitySlot && !isAvailabilityMode) {
-          return false; // Completely prevent resizing from start for availability slots in Sessions mode
-        }
-        // Only allow resizing from start if it's not an availability_slot (fixed length) and in availability mode
-        if (!isAvailabilityMode) return false;
-        return slotType !== 'availability_slot'; // Prevent resizing from start for availability slots
+        // Allow resizing from start - we'll handle prevention in handleEventResize
+        return true;
       },
       firstDay: 1, // Start week with Monday
       allDaySlot: false, // Remove all-day row from week and day views
@@ -3273,14 +3338,32 @@ margin: 0}
         return true;
       });
       calendar.setOption('eventDurationEditable', function(info) {
-        // Availability slots are NEVER resizable in Sessions mode - they must be fixed like a rock
-        const slotType = info.event.extendedProps?.type || 'availability_slot';
-        const isAvailabilitySlot = info.event.extendedProps?.isAvailability || slotType === 'availability_slot';
-        if (isAvailabilitySlot && !isAvailabilityMode) {
-          return false; // Completely prevent resizing availability slots in Sessions mode
+        // Allow resizing to start - we'll handle prevention in handleEventResize
+        return true;
+      });
+      calendar.setOption('eventResizableFromStart', function(info) {
+        // Allow resizing from start - we'll handle prevention in handleEventResize
+        return true;
+      });
+      calendar.setOption('eventDragStart', function(dragInfo) {
+        // Store original times when dragging starts (for availability slots)
+        const event = dragInfo.event;
+        const isAvailabilitySlot = event.extendedProps?.isAvailability || event.extendedProps?.type === 'availability_slot';
+        
+        if (isAvailabilitySlot) {
+          draggedSlotStartingDateTime = event.start instanceof Date ? event.start.toISOString() : event.start;
+          draggedSlotEndingDateTime = event.end instanceof Date ? event.end.toISOString() : event.end;
         }
-        if (!isAvailabilityMode) return false;
-        return slotType !== 'availability_slot';
+      });
+      calendar.setOption('eventResizeStart', function(resizeInfo) {
+        // Store original times when resizing starts (for availability slots)
+        const event = resizeInfo.event;
+        const isAvailabilitySlot = event.extendedProps?.isAvailability || event.extendedProps?.type === 'availability_slot';
+        
+        if (isAvailabilitySlot) {
+          draggedSlotStartingDateTime = event.start instanceof Date ? event.start.toISOString() : event.start;
+          draggedSlotEndingDateTime = event.end instanceof Date ? event.end.toISOString() : event.end;
+        }
       });
       
       // Load saved slots (they'll be filtered by mode inside loadSavedAvailabilitySlots)
@@ -3530,20 +3613,30 @@ margin: 0}
           
           // Set eventResizableFromStart to prevent resizing from start edge
           calendar.setOption('eventResizableFromStart', function(info) {
-            // Availability slots are NEVER resizable from start in Sessions mode - they must be fixed like a rock
-            const slotType = info.event.extendedProps?.type || 'availability_slot';
-            const isAvailabilitySlot = info.event.extendedProps?.isAvailability || slotType === 'availability_slot';
-            if (isAvailabilitySlot && !isAvailabilityMode) {
-              return false; // Completely prevent resizing from start for availability slots in Sessions mode
+            // Allow resizing from start - we'll handle prevention in handleEventResize
+            return true;
+          });
+          calendar.setOption('eventResizeStart', function(resizeInfo) {
+            // Store original times when resizing starts (for availability slots)
+            const event = resizeInfo.event;
+            const isAvailabilitySlot = event.extendedProps?.isAvailability || event.extendedProps?.type === 'availability_slot';
+            
+            if (isAvailabilitySlot) {
+              draggedSlotStartingDateTime = event.start instanceof Date ? event.start.toISOString() : event.start;
+              draggedSlotEndingDateTime = event.end instanceof Date ? event.end.toISOString() : event.end;
             }
-            if (!isAvailabilityMode) return false;
-            return slotType !== 'availability_slot'; // Prevent resizing from start for availability slots
           });
           
           // Set eventDragStart to prevent dragging from starting
           calendar.setOption('eventDragStart', function(dragInfo) {
-            // Allow drag to start even in Sessions mode - we'll handle it on drop
-            // This allows the user to attempt dragging, then we show popup on drop
+            // Store original times when dragging starts (for availability slots)
+            const event = dragInfo.event;
+            const isAvailabilitySlot = event.extendedProps?.isAvailability || event.extendedProps?.type === 'availability_slot';
+            
+            if (isAvailabilitySlot) {
+              draggedSlotStartingDateTime = event.start instanceof Date ? event.start.toISOString() : event.start;
+              draggedSlotEndingDateTime = event.end instanceof Date ? event.end.toISOString() : event.end;
+            }
           });
           
           // Update events based on mode (this will apply transparency styling)
@@ -4071,21 +4164,27 @@ margin: 0}
             return slotType !== 'availability_slot';
           });
           calendar.setOption('eventResizableFromStart', function(info) {
-            const slotType = info.event.extendedProps?.type || 'availability_slot';
-            const isAvailabilitySlot = info.event.extendedProps?.isAvailability || slotType === 'availability_slot';
-            if (isAvailabilitySlot && !isAvailabilityMode) {
-              return false;
+            // Allow resizing from start - we'll handle prevention in handleEventResize
+            return true;
+          });
+          calendar.setOption('eventResizeStart', function(resizeInfo) {
+            // Store original times when resizing starts (for availability slots)
+            const event = resizeInfo.event;
+            const isAvailabilitySlot = event.extendedProps?.isAvailability || event.extendedProps?.type === 'availability_slot';
+            
+            if (isAvailabilitySlot) {
+              draggedSlotStartingDateTime = event.start instanceof Date ? event.start.toISOString() : event.start;
+              draggedSlotEndingDateTime = event.end instanceof Date ? event.end.toISOString() : event.end;
             }
-            if (!isAvailabilityMode) return false;
-            return slotType !== 'availability_slot';
           });
           calendar.setOption('eventDragStart', function(dragInfo) {
-            const isAvailabilitySlot = dragInfo.event.extendedProps?.isAvailability || dragInfo.event.extendedProps?.type === 'availability_slot';
-            if (isAvailabilitySlot && !isAvailabilityMode) {
-              dragInfo.jsEvent.preventDefault();
-              dragInfo.jsEvent.stopPropagation();
-              openSwitchToAvailabilityModePopup();
-              return false;
+            // Store original times when dragging starts (for availability slots)
+            const event = dragInfo.event;
+            const isAvailabilitySlot = event.extendedProps?.isAvailability || event.extendedProps?.type === 'availability_slot';
+            
+            if (isAvailabilitySlot) {
+              draggedSlotStartingDateTime = event.start instanceof Date ? event.start.toISOString() : event.start;
+              draggedSlotEndingDateTime = event.end instanceof Date ? event.end.toISOString() : event.end;
             }
           });
           
