@@ -2248,41 +2248,19 @@ margin: 0}
         return { html: arg.event.title || '' };
       },
       dayHeaderDidMount: function(arg) {
-        // Add click handler to date headers in week view to switch to day view
+        // Style day headers in week view to be clickable
         if (calendar.view.type === 'timeGridWeek') {
-          // Make the header clickable
           arg.el.style.cursor = 'pointer';
           arg.el.setAttribute('title', 'Click to view this day');
-          
-          // Add click handler
-          arg.el.addEventListener('click', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            
-            // Get the date from the header
-            const clickedDate = arg.date;
-            
-            // Switch to day view and navigate to that date
-            calendar.changeView('timeGridDay');
-            calendar.gotoDate(clickedDate);
-            
-            // Update the active view button
-            const viewToggleButtons = document.querySelectorAll('.view-toggle-btn');
-            viewToggleButtons.forEach(btn => {
-              if (btn.dataset.calendarView === 'timeGridDay') {
-                btn.classList.add('is-active');
-              } else {
-                btn.classList.remove('is-active');
-              }
-            });
-            
-            // Update date display and calendar size
-            setTimeout(() => {
-              calendar.updateSize();
-              updateDateDisplay();
-              markHourSlots();
-            }, 100);
-          });
+          // Always store the date as a data attribute for event delegation
+          // This ensures it's set even when headers are re-rendered
+          const dateStr = arg.date.toISOString();
+          arg.el.setAttribute('data-header-date', dateStr);
+          arg.el.dataset.headerDate = dateStr;
+        } else {
+          // Clear the data attribute when not in week view
+          arg.el.removeAttribute('data-header-date');
+          delete arg.el.dataset.headerDate;
         }
       },
       // Remove all-day slot from specific views
@@ -2340,6 +2318,77 @@ margin: 0}
     });
 
     calendar.render();
+
+    // Event delegation for day header clicks in week view
+    // This works even when headers are re-rendered - always calculate date from current DOM state
+    if (calendarRoot) {
+      // Use a single event listener that always calculates the date from the current state
+      calendarRoot.addEventListener('click', function(e) {
+        // Only handle clicks in week view
+        if (!calendar || calendar.view.type !== 'timeGridWeek') return;
+        
+        // Check if clicked element is a day header cell or its child
+        const dayHeader = e.target.closest('.fc-col-header-cell');
+        if (!dayHeader) return;
+        
+        // Don't handle clicks on interactive elements inside the header (like buttons)
+        if (e.target.closest('button, a, input, select')) return;
+        
+        e.preventDefault();
+        e.stopPropagation();
+        
+        // Always calculate date from column index - this is most reliable
+        // Get all header cells in the current DOM state
+        const allHeaderCells = Array.from(calendarRoot.querySelectorAll('.fc-col-header-cell'));
+        const clickedIndex = allHeaderCells.indexOf(dayHeader);
+        
+        if (clickedIndex === -1) return;
+        
+        // Get the view and calculate the date
+        const view = calendar.view;
+        const weekStart = new Date(view.activeStart);
+        
+        // In week view with timeGrid, structure is: [time-axis] [Mon] [Tue] [Wed] [Thu] [Fri] [Sat] [Sun]
+        // The time axis column exists, so we need to subtract 1 from the index
+        // But let's verify by checking if there's a time axis column
+        const timeAxisCells = calendarRoot.querySelectorAll('.fc-timegrid-axis');
+        const hasTimeAxis = timeAxisCells.length > 0;
+        const dateIndex = hasTimeAxis ? clickedIndex - 1 : clickedIndex;
+        
+        // Validate the date index is within the week range (0-6 for 7 days)
+        if (dateIndex < 0 || dateIndex > 6) return;
+        
+        // Calculate the clicked date
+        const clickedDate = new Date(weekStart);
+        clickedDate.setDate(weekStart.getDate() + dateIndex);
+        
+        // Ensure we're within the valid week range
+        if (clickedDate < view.activeStart || clickedDate >= view.activeEnd) {
+          return;
+        }
+        
+        // Switch to day view and navigate to that date
+        calendar.changeView('timeGridDay');
+        calendar.gotoDate(clickedDate);
+        
+        // Update the active view button
+        const viewToggleButtons = document.querySelectorAll('.view-toggle-btn');
+        viewToggleButtons.forEach(btn => {
+          if (btn.dataset.calendarView === 'timeGridDay') {
+            btn.classList.add('is-active');
+          } else {
+            btn.classList.remove('is-active');
+          }
+        });
+        
+        // Update date display and calendar size
+        setTimeout(() => {
+          calendar.updateSize();
+          updateDateDisplay();
+          markHourSlots();
+        }, 100);
+      }, true); // Use capture phase to ensure we catch the event early
+    }
 
     // Mark hour slots for CSS targeting - call multiple times to ensure they persist
     setTimeout(() => {
@@ -2539,6 +2588,7 @@ margin: 0}
   
   function openOverlay() {
     overlay.classList.add("is-visible");
+    overlay.setAttribute('aria-hidden', 'false'); // Fix accessibility issue
     
     // Re-read timezone and session_length from profile when opening (in case it was updated)
     updateTimezoneFromProfile();
@@ -2628,6 +2678,7 @@ margin: 0}
     }
     
     overlay.classList.remove("is-visible");
+    overlay.setAttribute('aria-hidden', 'true'); // Fix accessibility issue
     openedFromSessionLengthChange = false; // Reset flag
     // Stop clock when overlay closes
     if (clockInterval) {

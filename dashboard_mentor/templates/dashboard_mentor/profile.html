@@ -98,7 +98,11 @@
             {% if messages %}
             <div id="django-messages" style="display: none;">
                 {% for message in messages %}
-                <div data-message="{{ message|escape }}" data-tags="{{ message.tags|default:'info' }}"></div>
+                    {% if not has_collisions_now and 'collisions detected in availability slots' in message|lower %}
+                        {# Skip collision warning if collisions have been resolved #}
+                    {% else %}
+                        <div data-message="{{ message|escape }}" data-tags="{{ message.tags|default:'info' }}"></div>
+                    {% endif %}
                 {% endfor %}
             </div>
             {% endif %}
@@ -2872,8 +2876,16 @@ document.addEventListener('DOMContentLoaded', function() {
     var messagesContainer = document.getElementById('django-messages');
     if (messagesContainer) {
         var messageDivs = messagesContainer.querySelectorAll('div[data-message]');
+        var hasCollisionsNow = {{ has_collisions_now|yesno:"true,false" }};
+        
         messageDivs.forEach(function(div) {
             var messageText = div.getAttribute('data-message');
+            
+            // Skip collision warning messages if collisions have been resolved
+            if (!hasCollisionsNow && messageText && messageText.toLowerCase().includes('collisions detected in availability slots')) {
+                return; // Skip this message
+            }
+            
             var tags = div.getAttribute('data-tags') || 'info';
             var type = 'note';
             if (tags === 'success') {

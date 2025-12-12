@@ -759,6 +759,21 @@ def profile(request):
     if (reviews / reviewsTotal) < 1:
         content_missing.append(f'Client Reviews ({reviews}/{reviewsTotal})')
     
+    # Check if collisions still exist (to filter out stale collision warnings)
+    has_collisions_now = False
+    if profile.session_length:
+        try:
+            one_time_slots = list(profile.one_time_slots or [])
+        except AttributeError:
+            one_time_slots = list(profile.availability_slots or [])
+        
+        try:
+            recurring_slots = list(profile.recurring_slots or [])
+        except AttributeError:
+            recurring_slots = list(profile.recurring_availability_slots or [])
+        
+        has_collisions_now = check_slot_collisions(one_time_slots, recurring_slots, profile.session_length)
+    
     return render(request, 'dashboard_mentor/profile.html', {
         'user': user,
         'profile': profile,
@@ -772,6 +787,7 @@ def profile(request):
         'predefined_categories': PREDEFINED_CATEGORIES,
         'qualification_types': QUALIFICATION_TYPES,
         'common_timezones': COMMON_TIMEZONES,
+        'has_collisions_now': has_collisions_now,
         'debug': settings.DEBUG,
     })
 
