@@ -58,6 +58,26 @@
   </div>
 </div>
 
+<!-- Collision Warning Modal -->
+<div id="collisionWarningModal" class="collision-warning-overlay" aria-hidden="true">
+  <div class="collision-warning-backdrop" data-close-collision-warning></div>
+  <div class="collision-warning-modal">
+    <div class="collision-warning-header">
+      <h3>⚠️ Collision Detected</h3>
+      <button class="collision-warning-close" data-close-collision-warning>✕</button>
+    </div>
+    <div class="collision-warning-body">
+      <p>You have overlapping availability slots. Please resolve the conflicts before saving.</p>
+      <div id="collisionList" class="collision-list">
+        <!-- Collisions will be listed here -->
+      </div>
+    </div>
+    <div class="collision-warning-footer">
+      <button class="collision-warning-btn-ok" data-close-collision-warning>OK</button>
+    </div>
+  </div>
+</div>
+
 
 <!-- ===================== FullCalendar v6 CSS ===================== -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.css">
@@ -72,7 +92,7 @@
 .availability-calendar-overlay {
   position: fixed;
   inset: 0;
-  display: none;
+  display: flex;
   align-items: center;
   justify-content: center;
   background: rgba(15, 23, 42, 0.6);
@@ -80,11 +100,12 @@
   -webkit-backdrop-filter: blur(8px);
   z-index: 2000;
   opacity: 0;
-  transition: opacity 0.3s ease;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
 }
 .availability-calendar-overlay.is-visible { 
-  display: flex !important; 
   opacity: 1;
+  visibility: visible;
 }
 
 /* Modal */
@@ -100,13 +121,13 @@
   box-shadow: 
     0 25px 50px -12px rgba(0, 0, 0, 0.25),
     0 0 0 1px rgba(0, 0, 0, 0.05); /* Subtle border ring */
-  transform: scale(0.95);
+  transform: translateY(20px);
+  transition: transform 0.3s ease, opacity 0.3s ease;
   opacity: 0;
-  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
 }
 
 .availability-calendar-overlay.is-visible .availability-calendar-modal {
-  transform: scale(1);
+  transform: translateY(0);
   opacity: 1;
 }
 
@@ -233,6 +254,10 @@
   border-radius: 50%;
   transition: transform 0.2s ease;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.availability-calendar-toggle-btn .toggle-slider::before {
+  content: none;
 }
 
 .availability-calendar-toggle-btn.active .toggle-slider {
@@ -546,20 +571,6 @@
   background: #94a3b8;
 }
 
-.availability-calendar-overlay.is-visible { display: flex; }
-
-/* Modal */
-.availability-calendar-modal {
-  background: #fff;
-  width: 100%;
-  max-width: 1400px;
-  height: 92vh;
-  border-radius: 12px;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
 /* Header */
 .availability-calendar-header {
   padding: 12px 18px;
@@ -805,6 +816,169 @@
 /* Make slot labels show hour ranges */
 .availability-calendar-root .fc-timegrid-slot-label-cushion {
   font-weight: 500;
+}
+
+/* Collision Warning Modal */
+.collision-warning-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 3000;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s ease, visibility 0.2s ease;
+}
+
+.collision-warning-overlay.is-visible {
+  opacity: 1;
+  visibility: visible;
+}
+
+.collision-warning-backdrop {
+  position: absolute;
+  inset: 0;
+}
+
+.collision-warning-modal {
+  position: relative;
+  background: #ffffff;
+  width: 90%;
+  max-width: 500px;
+  border-radius: 16px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  transform: translateY(10px);
+  transition: transform 0.2s ease, opacity 0.2s ease;
+  opacity: 0;
+}
+
+.collision-warning-overlay.is-visible .collision-warning-modal {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+.collision-warning-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.collision-warning-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #dc2626;
+}
+
+.collision-warning-close {
+  border: none;
+  background: transparent;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  cursor: pointer;
+  color: #94a3b8;
+  font-size: 1.125rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.collision-warning-close:hover {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.collision-warning-body {
+  padding: 24px;
+}
+
+.collision-warning-body > p {
+  margin: 0 0 16px 0;
+  color: #64748b;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.collision-list {
+  max-height: 300px;
+  overflow-y: auto;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 12px;
+  background: #f8fafc;
+}
+
+.collision-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.collision-item:last-child {
+  border-bottom: none;
+}
+
+.collision-number {
+  font-weight: 600;
+  color: #64748b;
+  min-width: 24px;
+}
+
+.collision-slots {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.collision-slot {
+  padding: 4px 12px;
+  background: #fee2e2;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+  color: #991b1b;
+  font-weight: 500;
+  font-size: 0.875rem;
+  font-family: 'Courier New', monospace;
+}
+
+.collision-vs {
+  color: #64748b;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.collision-warning-footer {
+  padding: 16px 24px;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.collision-warning-btn-ok {
+  padding: 8px 20px;
+  background: #3b82f6;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.875rem;
+  transition: background 0.2s ease;
+}
+
+.collision-warning-btn-ok:hover {
+  background: #2563eb;
 }
 </style>
 
@@ -1083,11 +1257,31 @@
   let calendar = null;
   let mentorTimezone = resolveMentorTimezone();
   let mentorTimezoneDisplay = getTimezoneDisplayName(mentorTimezone);
+  let isAvailabilityMode = false; // Track toggle state
+  let sessionLength = 60; // Default session length in minutes
+  let createdAvailabilitySlots = []; // Track created availability slots
+  let originalSavedSlots = []; // Track original saved state for change detection
+  const saveBtn = document.getElementById("availabilityCalendarSaveBtn");
+  
+  // Get session_length from userProfileData
+  function getSessionLength() {
+    try {
+      const dataEl = document.getElementById('userProfileData');
+      if (dataEl && dataEl.textContent) {
+        const data = JSON.parse(dataEl.textContent);
+        return data.session_length || 60;
+      }
+    } catch (e) {
+      console.warn('Could not get session_length:', e);
+    }
+    return 60; // Default fallback
+  }
   
   // Function to update timezone (call this when popup opens to get latest values)
   function updateTimezoneFromProfile() {
     mentorTimezone = resolveMentorTimezone();
     mentorTimezoneDisplay = getTimezoneDisplayName(mentorTimezone);
+    sessionLength = getSessionLength();
     
     // Update timezone display
     updateTimezoneDisplay();
@@ -1096,6 +1290,42 @@
     if (calendar) {
       calendar.setOption('timeZone', mentorTimezone);
       calendar.render();
+    }
+  }
+  
+  // Compare current slots with original saved state to detect changes
+  function hasUnsavedChanges() {
+    if (createdAvailabilitySlots.length !== originalSavedSlots.length) {
+      return true;
+    }
+    
+    // Create a map of original slots by ID for quick lookup
+    const originalMap = new Map();
+    originalSavedSlots.forEach(slot => {
+      const key = `${slot.id}_${slot.start}_${slot.end}_${slot.length}_${slot.type || 'availability_slot'}`;
+      originalMap.set(key, true);
+    });
+    
+    // Check if all current slots exist in original state
+    for (const slot of createdAvailabilitySlots) {
+      const key = `${slot.id}_${slot.start}_${slot.end}_${slot.length}_${slot.type || 'availability_slot'}`;
+      if (!originalMap.has(key)) {
+        return true; // Found a slot that doesn't match original
+      }
+    }
+    
+    return false; // No changes detected
+  }
+  
+  // Enable/disable Save button based on changes
+  function updateSaveButton() {
+    if (saveBtn) {
+      const hasChanges = hasUnsavedChanges();
+      saveBtn.disabled = !hasChanges || createdAvailabilitySlots.length === 0;
+      // Reset button text if it was in "Saving..." state and we're not currently saving
+      if (saveBtn.textContent === 'Saving...' && !saveBtn.disabled) {
+        saveBtn.textContent = 'Save';
+      }
     }
   }
   
@@ -1146,18 +1376,546 @@
     clockInterval = setInterval(updateTimezoneClock, 1000);
   }
   
+  // Initialize session length
+  sessionLength = getSessionLength();
+  
   // Update timezone display immediately
   updateTimezoneDisplay();
   startTimezoneClock();
-
-  const exampleEvents = [
-    {
-      title: "Shooting Stars",
-      start: "2025-01-12T09:00:00",
-      end: "2025-01-12T11:00:00",
-      backgroundColor: "#10b981",
+  
+  // Collision warning modal handlers
+  const collisionModal = document.getElementById("collisionWarningModal");
+  const collisionCloseTriggers = document.querySelectorAll("[data-close-collision-warning]");
+  
+  function openCollisionWarning() {
+    if (!collisionModal) return;
+    
+    // Get all collisions
+    const collisions = getAllCollisions();
+    const collisionListEl = document.getElementById("collisionList");
+    
+    if (collisionListEl) {
+      if (collisions.length === 0) {
+        collisionListEl.innerHTML = '<p style="color: #64748b; margin: 0;">No collisions found.</p>';
+      } else {
+        collisionListEl.innerHTML = collisions.map((pair, index) => `
+          <div class="collision-item">
+            <span class="collision-number">${index + 1}.</span>
+            <div class="collision-slots">
+              <span class="collision-slot">${pair.slot1.time}</span>
+              <span class="collision-vs">vs</span>
+              <span class="collision-slot">${pair.slot2.time}</span>
+            </div>
+          </div>
+        `).join('');
+      }
     }
-  ];
+    
+    collisionModal.classList.add("is-visible");
+  }
+  
+  function closeCollisionWarning() {
+    if (collisionModal) {
+      collisionModal.classList.remove("is-visible");
+    }
+  }
+  
+  if (collisionCloseTriggers.length > 0) {
+    collisionCloseTriggers.forEach(btn => {
+      btn.addEventListener("click", closeCollisionWarning);
+    });
+  }
+  
+  // Close collision modal when clicking backdrop
+  if (collisionModal) {
+    collisionModal.addEventListener("click", function(e) {
+      if (e.target === collisionModal || e.target.classList.contains("collision-warning-backdrop")) {
+        closeCollisionWarning();
+      }
+    });
+  }
+  
+  // Save button click handler
+  if (saveBtn) {
+    saveBtn.addEventListener('click', function() {
+      if (saveBtn.disabled) return;
+      
+      if (createdAvailabilitySlots.length === 0) {
+        alert('No availability slots to save.');
+        return;
+      }
+      
+      // Check for collisions before saving
+      if (hasAnyCollisions()) {
+        openCollisionWarning();
+        return; // Prevent saving
+      }
+      
+      // Prepare data for backend
+      // Group slots by date and format them
+      const slotsByDate = {};
+      
+      createdAvailabilitySlots.forEach(slot => {
+        // Parse dates - they're already in ISO format from calendar
+        const startDate = new Date(slot.start);
+        const endDate = new Date(slot.end);
+        
+        // Format date in mentor's timezone (YYYY-MM-DD)
+        const dateFormatter = new Intl.DateTimeFormat('en-CA', {
+          timeZone: mentorTimezone,
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit'
+        });
+        const dateStr = dateFormatter.format(startDate);
+        
+        // Format times in mentor's timezone (HH:MM)
+        const timeFormatter = new Intl.DateTimeFormat('en-US', {
+          timeZone: mentorTimezone,
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false
+        });
+        const startTimeParts = timeFormatter.formatToParts(startDate);
+        const endTimeParts = timeFormatter.formatToParts(endDate);
+        
+        const startTime = startTimeParts.find(p => p.type === 'hour').value.padStart(2, '0') + ':' + 
+                         startTimeParts.find(p => p.type === 'minute').value.padStart(2, '0');
+        const endTime = endTimeParts.find(p => p.type === 'hour').value.padStart(2, '0') + ':' + 
+                       endTimeParts.find(p => p.type === 'minute').value.padStart(2, '0');
+        
+        if (!slotsByDate[dateStr]) {
+          slotsByDate[dateStr] = [];
+        }
+        
+        // Get type from the calendar event if available
+        const calendarEvent = calendar ? calendar.getEventById(slot.id) : null;
+        const slotType = calendarEvent?.extendedProps?.type || slot.type || 'availability_slot';
+        
+        slotsByDate[dateStr].push({
+          date: dateStr,
+          start: startTime,
+          end: endTime,
+          length: slot.length,
+          id: slot.id,
+          type: slotType
+        });
+      });
+      
+      // Collect all slots from all dates into a single array
+      const allAvailabilityData = [];
+      const dates = Object.keys(slotsByDate);
+      
+      if (dates.length === 0) {
+        alert('No valid date found.');
+        return;
+      }
+      
+      // Flatten all slots from all dates into a single array
+      dates.forEach(dateStr => {
+        allAvailabilityData.push(...slotsByDate[dateStr]);
+      });
+      
+      // Use the first date as the selected_date for backward compatibility
+      // (backend will process all slots but use this date for filtering)
+      const firstDate = dates[0];
+      
+      // Get CSRF token
+      const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value;
+      if (!csrfToken) {
+        alert('CSRF token not found. Please refresh the page.');
+        return;
+      }
+      
+      // Disable save button during request
+      saveBtn.disabled = true;
+      saveBtn.textContent = 'Saving...';
+      
+      // Send to backend - send all slots, backend will handle them by date
+      fetch('{% url "general:dashboard_mentor:save_availability" %}', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken
+        },
+        body: JSON.stringify({
+          availability: allAvailabilityData,
+          selected_date: firstDate
+        })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          // Reset button text
+          saveBtn.textContent = 'Save';
+          
+          // Reload saved slots from backend to reflect the saved state
+          loadSavedAvailabilitySlots().then(() => {
+            // Show success message after reloading
+            alert(data.message || 'Availability slots saved successfully!');
+          }).catch(error => {
+            console.error('Error reloading slots after save:', error);
+            alert(data.message || 'Availability slots saved successfully!');
+          });
+        } else {
+          alert(data.error || 'Failed to save availability slots.');
+          saveBtn.disabled = false;
+          saveBtn.textContent = 'Save';
+        }
+      })
+      .catch(error => {
+        console.error('Error saving availability:', error);
+        alert('An error occurred while saving. Please try again.');
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Save';
+      });
+    });
+  }
+
+  // Store availability slots as events
+  let availabilityEvents = [];
+  
+  // Check if two time ranges overlap
+  function slotsOverlap(start1, end1, start2, end2) {
+    // Convert to timestamps for comparison
+    const s1 = new Date(start1).getTime();
+    const e1 = new Date(end1).getTime();
+    const s2 = new Date(start2).getTime();
+    const e2 = new Date(end2).getTime();
+    
+    // Two ranges overlap if: start1 < end2 AND start2 < end1
+    return s1 < e2 && s2 < e1;
+  }
+  
+  // Check if a slot collides with any existing slots
+  function checkSlotCollisions(startDate, endDate, excludeSlotId = null) {
+    const collisions = [];
+    
+    // Check against all existing availability events
+    if (calendar) {
+      const allEvents = calendar.getEvents();
+      allEvents.forEach(event => {
+        // Skip if it's not an availability slot or if it's the slot we're checking
+        if (!event.extendedProps || !event.extendedProps.isAvailability) {
+          return;
+        }
+        
+        if (excludeSlotId && event.extendedProps.slotId === excludeSlotId) {
+          return;
+        }
+        
+        // Check for overlap
+        if (slotsOverlap(startDate, endDate, event.start, event.end)) {
+          collisions.push(event);
+        }
+      });
+    }
+    
+    return collisions;
+  }
+  
+  // Check if there are any collisions in all availability slots
+  function hasAnyCollisions() {
+    if (!calendar) return false;
+    
+    const allEvents = calendar.getEvents().filter(e => 
+      e.extendedProps && e.extendedProps.isAvailability
+    );
+    
+    // Check each slot for collisions
+    for (let i = 0; i < allEvents.length; i++) {
+      const event = allEvents[i];
+      const collisions = checkSlotCollisions(event.start, event.end, event.extendedProps.slotId);
+      if (collisions.length > 0) {
+        return true;
+      }
+    }
+    
+    return false;
+  }
+  
+  // Get all collision pairs for display
+  function getAllCollisions() {
+    if (!calendar) return [];
+    
+    const allEvents = calendar.getEvents().filter(e => 
+      e.extendedProps && e.extendedProps.isAvailability
+    );
+    
+    const collisionPairs = [];
+    const processedPairs = new Set();
+    
+    for (let i = 0; i < allEvents.length; i++) {
+      const event = allEvents[i];
+      const collisions = checkSlotCollisions(event.start, event.end, event.extendedProps.slotId);
+      
+      collisions.forEach(collidingEvent => {
+        // Create a unique pair ID to avoid duplicates
+        const pairId1 = event.id + '_' + collidingEvent.id;
+        const pairId2 = collidingEvent.id + '_' + event.id;
+        
+        if (!processedPairs.has(pairId1) && !processedPairs.has(pairId2)) {
+          processedPairs.add(pairId1);
+          processedPairs.add(pairId2);
+          
+          // Format times for display
+          const start1 = formatEventTime(event.start);
+          const end1 = formatEventTime(event.end);
+          const start2 = formatEventTime(collidingEvent.start);
+          const end2 = formatEventTime(collidingEvent.end);
+          
+          collisionPairs.push({
+            slot1: { time: `${start1} - ${end1}` },
+            slot2: { time: `${start2} - ${end2}` }
+          });
+        }
+      });
+    }
+    
+    return collisionPairs;
+  }
+  
+  // Format event time for display
+  function formatEventTime(dateStr) {
+    const date = new Date(dateStr);
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: mentorTimezone,
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    });
+    return formatter.format(date);
+  }
+  
+  // Update slot colors based on collisions
+  function updateSlotColors() {
+    if (!calendar) return;
+    
+    const allEvents = calendar.getEvents();
+    
+    // Reset all availability slots to blue
+    allEvents.forEach(event => {
+      if (event.extendedProps && event.extendedProps.isAvailability) {
+        event.setProp('backgroundColor', '#3b82f6');
+        event.setProp('borderColor', '#2563eb');
+      }
+    });
+    
+    // Check each slot for collisions
+    allEvents.forEach(event => {
+      if (event.extendedProps && event.extendedProps.isAvailability) {
+        const collisions = checkSlotCollisions(event.start, event.end, event.extendedProps.slotId);
+        
+        if (collisions.length > 0) {
+          // This slot has collisions - make it red
+          event.setProp('backgroundColor', '#ef4444');
+          event.setProp('borderColor', '#dc2626');
+          
+          // Also make colliding slots red
+          collisions.forEach(collidingEvent => {
+            collidingEvent.setProp('backgroundColor', '#ef4444');
+            collidingEvent.setProp('borderColor', '#dc2626');
+          });
+        }
+      }
+    });
+  }
+  
+  // Create an availability slot event from a date/time
+  function createAvailabilitySlotEvent(startDate, lengthMinutes) {
+    const endDate = new Date(startDate.getTime() + lengthMinutes * 60 * 1000);
+    
+    // Generate unique ID for this slot
+    const slotId = 'avail_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    
+    // Check for collisions
+    const collisions = checkSlotCollisions(startDate.toISOString(), endDate.toISOString());
+    const hasCollision = collisions.length > 0;
+    
+    return {
+      id: slotId,
+      title: 'Available',
+      start: startDate.toISOString(),
+      end: endDate.toISOString(),
+      backgroundColor: hasCollision ? '#ef4444' : '#3b82f6', // Red if collision, blue otherwise
+      borderColor: hasCollision ? '#dc2626' : '#2563eb',
+      classNames: ['availability-slot'],
+      extendedProps: {
+        isAvailability: true,
+        length: lengthMinutes,
+        slotId: slotId,
+        type: 'availability_slot' // Mark as availability slot (fixed length)
+      }
+    };
+  }
+  
+  // Handle date/time slot click in availability mode
+  function handleSlotClick(selectInfo) {
+    if (!isAvailabilityMode) return;
+    
+    // Only allow in day and week views
+    const currentView = calendar.view;
+    if (currentView.type !== 'timeGridDay' && currentView.type !== 'timeGridWeek') {
+      return;
+    }
+    
+    const startDate = selectInfo.start;
+    
+    // Use fixed session_length from mentor profile (ignore selection duration)
+    const lengthMinutes = sessionLength;
+    
+    // Create the slot event with fixed length
+    const slotEvent = createAvailabilitySlotEvent(startDate, lengthMinutes);
+    
+    // Add to availability events
+    availabilityEvents.push(slotEvent);
+    
+    // Add to created slots tracking (for saving)
+    createdAvailabilitySlots.push({
+      id: slotEvent.extendedProps.slotId,
+      start: slotEvent.start,
+      end: slotEvent.end,
+      length: lengthMinutes,
+      type: 'availability_slot' // Include type
+    });
+    
+    // Add event to calendar
+    calendar.addEvent(slotEvent);
+    
+    // Update colors to check for collisions
+    updateSlotColors();
+    
+    // Enable Save button
+    updateSaveButton();
+    
+    // Unselect the time slot
+    calendar.unselect();
+  }
+  
+  // Handle event drop (when dragging availability slots)
+  function handleEventDrop(dropInfo) {
+    if (!isAvailabilityMode) return;
+    
+    const event = dropInfo.event;
+    
+    // Only handle availability slots
+    if (!event.extendedProps || !event.extendedProps.isAvailability) {
+      return;
+    }
+    
+    // Update the slot in our tracking array
+    const slotId = event.extendedProps.slotId;
+    const slotIndex = createdAvailabilitySlots.findIndex(s => s.id === slotId);
+    
+    if (slotIndex !== -1) {
+      // Convert Date objects to ISO strings properly
+      const newStart = event.start instanceof Date ? event.start.toISOString() : event.start;
+      const newEnd = event.end instanceof Date ? event.end.toISOString() : event.end;
+      
+      // Update the slot with new start/end times
+      createdAvailabilitySlots[slotIndex].start = newStart;
+      createdAvailabilitySlots[slotIndex].end = newEnd;
+      
+      // Preserve type if it exists
+      if (!createdAvailabilitySlots[slotIndex].type) {
+        createdAvailabilitySlots[slotIndex].type = event.extendedProps?.type || 'availability_slot';
+      }
+      
+      // Check for collisions and update colors
+      updateSlotColors();
+      
+      // Enable Save button since we have changes
+      updateSaveButton();
+    } else {
+      // Slot not found in tracking array - this shouldn't happen, but if it does,
+      // we should still enable the save button as a safety measure
+      console.warn('Slot moved but not found in tracking array:', slotId);
+      updateSaveButton();
+    }
+  }
+  
+  // Handle event resize (when resizing availability slots)
+  function handleEventResize(resizeInfo) {
+    if (!isAvailabilityMode) return;
+    
+    const event = resizeInfo.event;
+    
+    // Only handle availability slots
+    if (!event.extendedProps || !event.extendedProps.isAvailability) {
+      return;
+    }
+    
+    // Prevent resizing if this is an availability_slot (fixed length)
+    const slotType = event.extendedProps.type || 'availability_slot';
+    if (slotType === 'availability_slot') {
+      // Revert to original length
+      const originalLength = event.extendedProps.length || sessionLength;
+      const startDate = new Date(event.start);
+      const endDate = new Date(startDate.getTime() + originalLength * 60 * 1000);
+      
+      // Prevent the resize by setting the end time back
+      event.setEnd(endDate);
+      
+      // Show a message to the user
+      console.log('Availability slots have fixed length and cannot be resized.');
+      return;
+    }
+    
+    // Allow resizing for session slots (type !== 'availability_slot')
+    const slotId = event.extendedProps.slotId;
+    const slotIndex = createdAvailabilitySlots.findIndex(s => s.id === slotId);
+    
+    if (slotIndex !== -1) {
+      // Calculate new length
+      const startDate = new Date(event.start);
+      const endDate = new Date(event.end);
+      const diffMs = endDate.getTime() - startDate.getTime();
+      const lengthMinutes = Math.round(diffMs / (1000 * 60));
+      
+      createdAvailabilitySlots[slotIndex].start = event.start.toISOString();
+      createdAvailabilitySlots[slotIndex].end = event.end.toISOString();
+      createdAvailabilitySlots[slotIndex].length = lengthMinutes;
+      
+      // Update extended props
+      event.setExtendedProp('length', lengthMinutes);
+      
+      // Check for collisions and update colors
+      updateSlotColors();
+      
+      // Enable Save button since we have changes
+      updateSaveButton();
+    }
+  }
+  
+  // Handle event removal (when deleting availability slots)
+  function handleEventRemove(removeInfo) {
+    if (!isAvailabilityMode) return;
+    
+    const event = removeInfo.event;
+    
+    // Only handle availability slots
+    if (!event.extendedProps || !event.extendedProps.isAvailability) {
+      return;
+    }
+    
+    // Remove from tracking arrays
+    const slotId = event.extendedProps.slotId;
+    const slotIndex = createdAvailabilitySlots.findIndex(s => s.id === slotId);
+    
+    if (slotIndex !== -1) {
+      createdAvailabilitySlots.splice(slotIndex, 1);
+      
+      // Also remove from availabilityEvents if it exists there
+      const eventIndex = availabilityEvents.findIndex(e => e.id === event.id);
+      if (eventIndex !== -1) {
+        availabilityEvents.splice(eventIndex, 1);
+      }
+      
+      // Update colors and save button
+      updateSlotColors();
+      updateSaveButton();
+    }
+  }
 
   function scrollToAppropriateTime() {
     if (!calendar) return;
@@ -1233,10 +1991,25 @@
         return '';
       },
       headerToolbar: false,
-      selectable: true,
+      selectable: isAvailabilityMode, // Only allow selection in availability mode
+      selectMirror: true,
+      selectOverlap: false, // Prevent overlapping selections
+      editable: isAvailabilityMode, // Allow dragging/resizing in availability mode
+      eventStartEditable: isAvailabilityMode, // Allow dragging
+      eventDurationEditable: function(info) {
+        // Only allow resizing if it's not an availability_slot (fixed length)
+        if (!isAvailabilityMode) return false;
+        const slotType = info.event.extendedProps?.type || 'availability_slot';
+        return slotType !== 'availability_slot'; // Allow resize only for non-availability slots
+      },
+      eventResizableFromStart: true, // Allow resizing from start (if allowed)
       firstDay: 1, // Start week with Monday
       allDaySlot: false, // Remove all-day row from week and day views
-      events: exampleEvents,
+      events: availabilityEvents,
+      select: handleSlotClick, // Handle slot selection
+      eventDrop: handleEventDrop, // Handle event drag
+      eventResize: handleEventResize, // Handle event resize
+      eventRemove: handleEventRemove, // Handle event removal
       // Remove all-day slot from specific views
       views: {
         timeGridWeek: {
@@ -1376,28 +2149,156 @@
     });
   }
 
+  // Load saved availability slots from backend
+  async function loadSavedAvailabilitySlots() {
+    try {
+      const response = await fetch('{% url "general:dashboard_mentor:get_availability" %}');
+      const data = await response.json();
+      
+      if (data.success && calendar) {
+        // Clear existing availability events and tracking
+        availabilityEvents = [];
+        createdAvailabilitySlots = [];
+        originalSavedSlots = []; // Reset original state
+        
+        // Load one-time slots
+        // Note: Slots are stored in UTC (standard time) in the database
+        // FullCalendar will automatically display them adjusted to mentorTimezone
+        // because we set timeZone: mentorTimezone in the calendar configuration
+        if (data.one_time_slots && Array.isArray(data.one_time_slots)) {
+          data.one_time_slots.forEach(slot => {
+            try {
+              // Parse the slot dates (they're stored in UTC ISO format)
+              // JavaScript Date will parse them correctly, and FullCalendar will
+              // display them in the mentor's timezone automatically
+              const startDate = new Date(slot.start);
+              const endDate = new Date(slot.end);
+              
+              // Skip if dates are invalid
+              if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+                return;
+              }
+              
+              // Calculate length if not provided
+              const lengthMinutes = slot.length || Math.round((endDate.getTime() - startDate.getTime()) / (1000 * 60));
+              
+              // Use existing ID or generate one
+              const slotId = slot.id || 'saved_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+              
+              // Get type from saved slot or default to 'availability_slot'
+              const slotType = slot.type || 'availability_slot';
+              
+              // Create calendar event
+              const slotEvent = {
+                id: slotId,
+                title: 'Available',
+                start: startDate.toISOString(),
+                end: endDate.toISOString(),
+                backgroundColor: '#3b82f6',
+                borderColor: '#2563eb',
+                classNames: ['availability-slot'],
+                extendedProps: {
+                  isAvailability: true,
+                  length: lengthMinutes,
+                  slotId: slotId,
+                  type: slotType, // Include type from saved slot
+                  isSaved: true // Mark as saved slot
+                }
+              };
+              
+              availabilityEvents.push(slotEvent);
+              
+              // Track in createdAvailabilitySlots for collision detection and saving
+              const slotData = {
+                id: slotId,
+                start: slotEvent.start,
+                end: slotEvent.end,
+                length: lengthMinutes,
+                type: slotType // Include type
+              };
+              
+              createdAvailabilitySlots.push(slotData);
+              
+              // Store in originalSavedSlots for change detection (deep copy)
+              originalSavedSlots.push({
+                id: slotId,
+                start: slotEvent.start,
+                end: slotEvent.end,
+                length: lengthMinutes,
+                type: slotType
+              });
+              
+              // Only add to calendar if we're in availability mode
+              // Events are stored in availabilityEvents array and will be shown/hidden based on toggle
+              if (isAvailabilityMode) {
+                calendar.addEvent(slotEvent);
+              }
+            } catch (e) {
+              console.warn('Error loading slot:', e);
+            }
+          });
+        }
+        
+        // After loading, update calendar display based on current mode
+        updateCalendarEventsForMode();
+        
+        // Check for collisions and update colors (only if in availability mode)
+        if (isAvailabilityMode) {
+          updateSlotColors();
+        }
+        updateSaveButton(); // This will disable the button since state matches original
+      }
+    } catch (error) {
+      console.error('Error loading availability slots:', error);
+      throw error; // Re-throw so caller can handle it
+    }
+  }
+  
   function openOverlay() {
     overlay.classList.add("is-visible");
     
-    // Re-read timezone from profile when opening (in case it was updated)
+    // Re-read timezone and session_length from profile when opening (in case it was updated)
     updateTimezoneFromProfile();
     startTimezoneClock();
+    
+    // Reset availability mode when opening
+    isAvailabilityMode = false;
+    if (toggleBtn) {
+      toggleBtn.classList.remove("active");
+    }
 
     if (!calendar) {
       initCalendar();
+      // Load saved slots after calendar is initialized
+      setTimeout(() => {
+        loadSavedAvailabilitySlots().then(() => {
+          // Ensure calendar shows correct events based on mode
+          updateCalendarEventsForMode();
+        });
+      }, 100);
     } else {
       // Update calendar timezone in case it changed
       calendar.setOption('timeZone', mentorTimezone);
-      calendar.render();
-      setTimeout(() => {
-        calendar.updateSize();
-        markHourSlots();
-        updateDateDisplay(); // Update date display when opening overlay
-        // If current view is day or week view, scroll appropriately
-        if (calendar.view.type === 'timeGridDay' || calendar.view.type === 'timeGridWeek') {
-          setTimeout(() => scrollToAppropriateTime(), 150);
-        }
-      }, 50);
+      calendar.setOption('selectable', isAvailabilityMode);
+      calendar.setOption('editable', isAvailabilityMode);
+      calendar.setOption('eventStartEditable', isAvailabilityMode);
+      
+      // Load saved slots (they'll be filtered by mode inside loadSavedAvailabilitySlots)
+      loadSavedAvailabilitySlots().then(() => {
+        // Ensure calendar shows correct events based on mode
+        updateCalendarEventsForMode();
+        
+        calendar.render();
+        setTimeout(() => {
+          calendar.updateSize();
+          markHourSlots();
+          updateDateDisplay(); // Update date display when opening overlay
+          // If current view is day or week view, scroll appropriately
+          if (calendar.view.type === 'timeGridDay' || calendar.view.type === 'timeGridWeek') {
+            setTimeout(() => scrollToAppropriateTime(), 150);
+          }
+        }, 50);
+      });
     }
   }
 
@@ -1432,23 +2333,57 @@
     }, 300);
   }
 
+  // Function to update calendar events based on current mode
+  function updateCalendarEventsForMode() {
+    if (!calendar) return;
+    
+    // Remove all events first
+    calendar.removeAllEvents();
+    
+    // Add events based on current mode
+    if (isAvailabilityMode) {
+      // Show availability slots
+      availabilityEvents.forEach(event => {
+        calendar.addEvent(event);
+      });
+    } else {
+      // Sessions mode - don't show availability slots
+      // TODO: Load and show actual sessions here when sessions are implemented
+    }
+    
+    calendar.render();
+  }
+  
   // Toggle button functionality (Sessions / Availability)
   const toggleBtn = document.getElementById("availabilityCalendarToggle");
   if (toggleBtn) {
     // Default to "Sessions" mode (not active = sessions, active = availability)
     toggleBtn.addEventListener("click", function() {
       toggleBtn.classList.toggle("active");
-      const isAvailabilityMode = toggleBtn.classList.contains("active");
+      isAvailabilityMode = toggleBtn.classList.contains("active");
       
-      // TODO: Implement toggle functionality
-      // When false (Sessions): Show scheduled sessions
-      // When true (Availability): Show availability slots
       console.log("Toggle mode:", isAvailabilityMode ? "Availability" : "Sessions");
       
-      // Update calendar events based on mode
+      // Update calendar based on mode
       if (calendar) {
-        // This is where you would filter/update calendar events
-        // For now, just log the state
+        // Enable/disable selection and editing based on mode
+        calendar.setOption('selectable', isAvailabilityMode);
+        calendar.setOption('editable', isAvailabilityMode);
+        calendar.setOption('eventStartEditable', isAvailabilityMode);
+        // Set eventDurationEditable as a function to check slot type
+        calendar.setOption('eventDurationEditable', function(info) {
+          if (!isAvailabilityMode) return false;
+          const slotType = info.event.extendedProps?.type || 'availability_slot';
+          return slotType !== 'availability_slot'; // Allow resize only for non-availability slots
+        });
+        
+        // Update events based on mode
+        updateCalendarEventsForMode();
+        
+        // Update colors if in availability mode
+        if (isAvailabilityMode) {
+          updateSlotColors();
+        }
       }
     });
   }

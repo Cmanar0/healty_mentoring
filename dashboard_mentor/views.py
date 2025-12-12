@@ -588,25 +588,15 @@ def save_availability(request):
         from datetime import datetime
         from django.utils import timezone
         import uuid
+        try:
+            import pytz
+        except ImportError:
+            pytz = None
         
         mentor_profile = request.user.mentor_profile
         data = json.loads(request.body)
         availability_list = data.get('availability', [])
         selected_date_str = data.get('selected_date')
-        
-        # Get the date being edited - prefer selected_date from request, fallback to first item's date
-        edited_date_str = selected_date_str
-        if not edited_date_str and availability_list and len(availability_list) > 0:
-            edited_date_str = availability_list[0].get('date')
-        if not edited_date_str:
-            return JsonResponse({'success': False, 'error': 'No date specified'}, status=400)
-        
-        # Allow empty array - it means clear all slots for this day
-        # Empty array is valid when:
-        # 1. User wants to clear all one-time slots for a day
-        # 2. User is updating skip_dates for recurring slots (skip_dates updates are sent in availability_list)
-        # 3. User is deleting recurring slots (delete_all flags are sent in availability_list)
-        # Empty availability_list is allowed - it just means remove all one-time slots for this date
         
         # Get existing slots - use new field names with fallback to old for backward compatibility
         try:
@@ -619,12 +609,96 @@ def save_availability(request):
         except AttributeError:
             existing_recurring_slots = list(mentor_profile.recurring_availability_slots or [])
         
-        # Remove all existing one-time slots for the edited date (we'll replace them)
-        edited_date_obj = datetime.strptime(edited_date_str, '%Y-%m-%d').date()
-        final_one_time_slots = [
-            slot for slot in existing_one_time_slots
-            if datetime.fromisoformat(slot['start'].replace('Z', '+00:00')).date() != edited_date_obj
-        ]
+        # Collect all dates that have slots in the request
+        edited_dates = set()
+        for avail_item in availability_list:
+            date_str = avail_item.get('date')
+            if date_str:
+                edited_dates.add(date_str)
+        
+        # If no dates found but we have a selected_date, use that
+        if not edited_dates and selected_date_str:
+            edited_dates.add(selected_date_str)
+        elif not edited_dates and availability_list and len(availability_list) > 0:
+            # Fallback to first item's date
+            date_str = availability_list[0].get('date')
+            if date_str:
+                edited_dates.add(date_str)
+        
+        if not edited_dates:
+            return JsonResponse({'success': False, 'error': 'No date specified'}, status=400)
+        
+        # Convert date strings to date objects for comparison
+        edited_date_objs = set()
+        for date_str in edited_dates:
+            try:
+                edited_date_objs.add(datetime.strptime(date_str, '%Y-%m-%d').date())
+            except ValueError:
+                continue
+        
+        # Remove all existing one-time slots for any of the edited dates (we'll replace them)
+        # We need to compare dates in the mentor's local timezone, not UTC
+        final_one_time_slots = []
+        
+        # Get mentor's timezone for date conversion
+        mentor_timezone_str = mentor_profile.selected_timezone or mentor_profile.time_zone or 'UTC'
+        if pytz:
+            try:
+                mentor_tz = pytz.timezone(mentor_timezone_str)
+            except Exception:
+                mentor_tz = None
+        else:
+            mentor_tz = None
+        
+        for slot in existing_one_time_slots:
+            try:
+                # Parse the slot's start datetime - handle various formats
+                slot_start_str = slot.get('start', '')
+                if not slot_start_str:
+                    continue
+                
+                # Normalize timezone indicators
+                slot_start_str = slot_start_str.replace('Z', '+00:00')
+                
+                # Parse datetime - handle both timezone-aware and naive formats
+                try:
+                    slot_start_dt_utc = datetime.fromisoformat(slot_start_str)
+                except ValueError:
+                    # Try parsing without timezone info
+                    slot_start_dt_utc = datetime.fromisoformat(slot_start_str.replace('+00:00', '').replace('-00:00', ''))
+                    slot_start_dt_utc = timezone.make_aware(slot_start_dt_utc)
+                
+                # Ensure timezone-aware (should be UTC)
+                if slot_start_dt_utc.tzinfo is None:
+                    slot_start_dt_utc = timezone.make_aware(slot_start_dt_utc)
+                else:
+                    # Ensure it's UTC - only if pytz is available
+                    if pytz:
+                        if slot_start_dt_utc.tzinfo != pytz.UTC:
+                            slot_start_dt_utc = slot_start_dt_utc.astimezone(pytz.UTC)
+                    else:
+                        # If pytz not available, use Django's timezone.utc
+                        if slot_start_dt_utc.tzinfo != timezone.utc:
+                            # Convert to UTC using Django's timezone
+                            slot_start_dt_utc = timezone.make_aware(slot_start_dt_utc.replace(tzinfo=None))
+                
+                # Convert UTC datetime to mentor's local timezone to get the correct date
+                if mentor_tz:
+                    slot_start_dt_local = slot_start_dt_utc.astimezone(mentor_tz)
+                    slot_date_local = slot_start_dt_local.date()
+                else:
+                    # Fallback: use UTC date
+                    slot_date_local = slot_start_dt_utc.date()
+                
+                # Only keep slots that are NOT on any of the edited dates (compare local dates)
+                if slot_date_local not in edited_date_objs:
+                    final_one_time_slots.append(slot)
+            except (ValueError, KeyError, AttributeError) as e:
+                # Skip invalid slots but log for debugging
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning(f'Error parsing slot date: {e}, slot: {slot}')
+                continue
         
         # Track which recurring slot IDs are being edited/converted (to remove old ones)
         edited_recurring_slot_ids = set()
@@ -657,18 +731,33 @@ def save_availability(request):
                     slot_id = existing_recurring_slot.get('id')
                     created_at = existing_recurring_slot.get('created_at', timezone.now().isoformat())
                     
-                    # Build datetime strings with timezone
-                    start_datetime_str = f"{date_str}T{start_time}:00+00:00"
-                    end_datetime_str = f"{date_str}T{end_time}:00+00:00"
-                    
                     try:
-                        # Parse datetime
-                        start_dt = datetime.fromisoformat(start_datetime_str.replace('+00:00', ''))
-                        end_dt = datetime.fromisoformat(end_datetime_str.replace('+00:00', ''))
+                        # Get mentor's timezone to properly convert local time to UTC
+                        mentor_timezone_str = mentor_profile.selected_timezone or mentor_profile.time_zone or 'UTC'
                         
-                        # Make timezone-aware
-                        start_dt = timezone.make_aware(start_dt)
-                        end_dt = timezone.make_aware(end_dt)
+                        # Parse the date and time as being in the mentor's local timezone
+                        local_datetime_str = f"{date_str} {start_time}:00"
+                        local_end_datetime_str = f"{date_str} {end_time}:00"
+                        
+                        # Parse as naive datetime (no timezone info)
+                        start_dt_naive = datetime.strptime(local_datetime_str, '%Y-%m-%d %H:%M:%S')
+                        end_dt_naive = datetime.strptime(local_end_datetime_str, '%Y-%m-%d %H:%M:%S')
+                        
+                        # Convert from mentor's timezone to UTC for storage
+                        try:
+                            import pytz
+                            mentor_tz = pytz.timezone(mentor_timezone_str)
+                            # Localize the naive datetime to mentor's timezone
+                            start_dt_local = mentor_tz.localize(start_dt_naive)
+                            end_dt_local = mentor_tz.localize(end_dt_naive)
+                            # Convert to UTC
+                            start_dt = start_dt_local.astimezone(pytz.UTC)
+                            end_dt = end_dt_local.astimezone(pytz.UTC)
+                        except (ImportError, Exception):
+                            # Fallback: if pytz not available or timezone invalid, treat as UTC
+                            # Make timezone-aware as UTC
+                            start_dt = timezone.make_aware(start_dt_naive)
+                            end_dt = timezone.make_aware(end_dt_naive)
                         
                         # Validate end > start
                         if end_dt <= start_dt:
@@ -679,12 +768,22 @@ def save_availability(request):
                         if not length_minutes or length_minutes <= 0:
                             length_minutes = int((end_dt - start_dt).total_seconds() / 60)
                         
+                        # Preserve booked status if provided, otherwise default to False
+                        booked = avail_item.get('booked', False)
+                        # Note: When converting from recurring to one-time, booked status starts fresh (False)
+                        # since recurring slots use booked_dates instead
+                        
+                        # Get type from request or default to 'availability_slot'
+                        slot_type = avail_item.get('type', 'availability_slot')
+                        
                         # Create one-time slot with preserved id and created_at
                         one_time_slot = {
                             'id': slot_id,
                             'start': start_dt.isoformat(),
                             'end': end_dt.isoformat(),
                             'length': length_minutes,
+                            'booked': booked,
+                            'type': slot_type,
                             'created_at': created_at
                         }
                         new_one_time_slots.append(one_time_slot)
@@ -713,11 +812,18 @@ def save_availability(request):
                 elif slot_type == 'weekly':
                     # Weekly: single weekday of selected date, no day_of_month
                     weekday_names = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
-                    weekday_index = edited_date_obj.weekday()  # 0=Monday, 6=Sunday
-                    weekdays = [weekday_names[weekday_index]]
+                    # Use the date from the current slot item
+                    slot_date_obj = datetime.strptime(date_str, '%Y-%m-%d').date() if date_str else None
+                    if slot_date_obj:
+                        weekday_index = slot_date_obj.weekday()  # 0=Monday, 6=Sunday
+                        weekdays = [weekday_names[weekday_index]]
+                    else:
+                        weekdays = []
                 elif slot_type == 'monthly':
                     # Monthly: day_of_month = selected date's day, weekdays ignored
-                    day_of_month = edited_date_obj.day  # 1-31
+                    # Use the date from the current slot item
+                    slot_date_obj = datetime.strptime(date_str, '%Y-%m-%d').date() if date_str else None
+                    day_of_month = slot_date_obj.day if slot_date_obj else None  # 1-31
                     weekdays = []  # Ignored for monthly
                 else:
                     # Fallback
@@ -728,7 +834,7 @@ def save_availability(request):
                 if recurring_slot_id:
                     edited_recurring_slot_ids.add(recurring_slot_id)
                     slot_id = recurring_slot_id
-                    # Find and preserve created_at and skip_dates from existing slot
+                    # Find and preserve created_at, skip_dates, and booked_dates from existing slot
                     existing_slot = next((s for s in existing_recurring_slots if s.get('id') == recurring_slot_id), None)
                     created_at = existing_slot.get('created_at', timezone.now().isoformat()) if existing_slot else timezone.now().isoformat()
                     
@@ -744,21 +850,34 @@ def save_availability(request):
                     if type_changed or start_time_changed or end_time_changed:
                         # Configuration changed - reset skip_dates (they were specific to old config)
                         skip_dates = avail_item.get('skip_dates', [])  # Only use new skip_dates from request
+                        # Also reset booked_dates when configuration changes
+                        booked_dates = avail_item.get('booked_dates', [])
                     else:
                         # Configuration unchanged - merge skip_dates: keep existing ones and add new ones from request
                         existing_skip_dates = existing_slot.get('skip_dates', []) if existing_slot else []
                         new_skip_dates = avail_item.get('skip_dates', [])
                         # Combine and deduplicate skip_dates
                         skip_dates = list(set(existing_skip_dates + new_skip_dates))
+                        
+                        # Merge booked_dates: keep existing ones and add new ones from request
+                        existing_booked_dates = existing_slot.get('booked_dates', []) if existing_slot else []
+                        new_booked_dates = avail_item.get('booked_dates', [])
+                        # Combine and deduplicate booked_dates
+                        booked_dates = list(set(existing_booked_dates + new_booked_dates))
                 else:
                     slot_id = str(uuid.uuid4())
                     created_at = timezone.now().isoformat()
                     skip_dates = avail_item.get('skip_dates', [])
+                    booked_dates = avail_item.get('booked_dates', [])
+                
+                # Get slot_type from request or default to 'availability_slot'
+                slot_type_value = avail_item.get('slot_type', 'availability_slot')
                 
                 # Build recurring slot with proper structure
                 recurring_slot = {
                     'id': slot_id,
                     'type': slot_type,
+                    'slot_type': slot_type_value,
                     'start_time': start_time,
                     'end_time': end_time,
                     'created_at': created_at
@@ -767,6 +886,10 @@ def save_availability(request):
                 # Add skip_dates if any
                 if skip_dates:
                     recurring_slot['skip_dates'] = skip_dates
+                
+                # Add booked_dates if any
+                if booked_dates:
+                    recurring_slot['booked_dates'] = booked_dates
                 
                 # Add weekdays for daily/weekly, day_of_month for monthly
                 if slot_type == 'monthly':
@@ -780,18 +903,34 @@ def save_availability(request):
                 if not all([date_str, start_time, end_time]):
                     continue
                 
-                # Build datetime strings with timezone
-                start_datetime_str = f"{date_str}T{start_time}:00+00:00"
-                end_datetime_str = f"{date_str}T{end_time}:00+00:00"
-                
                 try:
-                    # Parse datetime
-                    start_dt = datetime.fromisoformat(start_datetime_str.replace('+00:00', ''))
-                    end_dt = datetime.fromisoformat(end_datetime_str.replace('+00:00', ''))
+                    # Get mentor's timezone to properly convert local time to UTC
+                    mentor_timezone_str = mentor_profile.selected_timezone or mentor_profile.time_zone or 'UTC'
                     
-                    # Make timezone-aware
-                    start_dt = timezone.make_aware(start_dt)
-                    end_dt = timezone.make_aware(end_dt)
+                    # Parse the date and time as being in the mentor's local timezone
+                    # Format: "YYYY-MM-DD HH:MM" in mentor's timezone
+                    local_datetime_str = f"{date_str} {start_time}:00"
+                    local_end_datetime_str = f"{date_str} {end_time}:00"
+                    
+                    # Parse as naive datetime (no timezone info)
+                    start_dt_naive = datetime.strptime(local_datetime_str, '%Y-%m-%d %H:%M:%S')
+                    end_dt_naive = datetime.strptime(local_end_datetime_str, '%Y-%m-%d %H:%M:%S')
+                    
+                    # Convert from mentor's timezone to UTC for storage
+                    try:
+                        import pytz
+                        mentor_tz = pytz.timezone(mentor_timezone_str)
+                        # Localize the naive datetime to mentor's timezone
+                        start_dt_local = mentor_tz.localize(start_dt_naive)
+                        end_dt_local = mentor_tz.localize(end_dt_naive)
+                        # Convert to UTC
+                        start_dt = start_dt_local.astimezone(pytz.UTC)
+                        end_dt = end_dt_local.astimezone(pytz.UTC)
+                    except (ImportError, Exception):
+                        # Fallback: if pytz not available or timezone invalid, treat as UTC
+                        # Make timezone-aware as UTC
+                        start_dt = timezone.make_aware(start_dt_naive)
+                        end_dt = timezone.make_aware(end_dt_naive)
                     
                     # Validate end > start
                     if end_dt <= start_dt:
@@ -812,16 +951,43 @@ def save_availability(request):
                     if not created_at:
                         created_at = timezone.now().isoformat()
                     
+                    # Preserve booked status if provided, otherwise default to False
+                    # Check if this slot already exists to preserve its booked status
+                    booked = False
+                    if slot_id:
+                        existing_slot = next((s for s in existing_one_time_slots if s.get('id') == slot_id), None)
+                        if existing_slot:
+                            booked = existing_slot.get('booked', False)
+                    
+                    # Allow override from request
+                    if 'booked' in avail_item:
+                        booked = avail_item.get('booked', False)
+                    
+                    # Get type from request or default to 'availability_slot'
+                    slot_type = avail_item.get('type', 'availability_slot')
+                    
                     # Create one-time slot
                     one_time_slot = {
                         'id': slot_id,
                         'start': start_dt.isoformat(),
                         'end': end_dt.isoformat(),
                         'length': length_minutes,
+                        'booked': booked,
+                        'type': slot_type,
                         'created_at': created_at
                     }
                     new_one_time_slots.append(one_time_slot)
                 except ValueError as e:
+                    # Log the error for debugging
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.error(f'Error processing one-time slot: {e}, avail_item: {avail_item}')
+                    continue
+                except Exception as e:
+                    # Log unexpected errors
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.error(f'Unexpected error processing one-time slot: {e}, avail_item: {avail_item}')
                     continue
         
         # Remove recurring slots that are being edited/converted (we'll replace or remove them)
@@ -833,23 +999,89 @@ def save_availability(request):
         # Merge: keep existing one-time slots from other dates + add new slots for edited date
         # Merge: keep existing recurring slots (except edited ones) + add new/updated recurring slots
         final_one_time_slots = final_one_time_slots + new_one_time_slots
+        
+        # Deduplicate by ID to prevent duplicates (keep the LAST occurrence, which preserves new slots)
+        # Since new_one_time_slots are added after final_one_time_slots, duplicates will be new slots
+        # We iterate and keep track of seen IDs, but when we see a duplicate, we replace the old one
+        seen_ids = {}
+        deduplicated_one_time_slots = []
+        for slot in final_one_time_slots:
+            slot_id = slot.get('id')
+            if slot_id:
+                if slot_id in seen_ids:
+                    # Replace the old slot with the new one (new slots come later)
+                    old_index = seen_ids[slot_id]
+                    deduplicated_one_time_slots[old_index] = slot
+                else:
+                    # First time seeing this ID, add it
+                    seen_ids[slot_id] = len(deduplicated_one_time_slots)
+                    deduplicated_one_time_slots.append(slot)
+            else:
+                # Slots without IDs should still be added (shouldn't happen, but be safe)
+                deduplicated_one_time_slots.append(slot)
+        
         final_recurring_slots = final_recurring_slots + new_recurring_slots
         
         # Save to MentorProfile - use new field names (migration has been applied)
-        mentor_profile.one_time_slots = final_one_time_slots
+        # Store slots in UTC (standard time) - they will be displayed adjusted to mentor's timezone
+        mentor_profile.one_time_slots = deduplicated_one_time_slots
         mentor_profile.recurring_slots = final_recurring_slots
         mentor_profile.save()
         
+        # Debug logging
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f'Saved availability: {len(new_one_time_slots)} new one-time slots, {len(deduplicated_one_time_slots)} total one-time slots')
+        
+        # Create a summary message with all edited dates
+        dates_summary = ', '.join(sorted(edited_dates)) if edited_dates else 'selected date(s)'
         return JsonResponse({
             'success': True,
-            'message': f'Successfully saved {len(new_one_time_slots)} one-time slot(s) and {len(new_recurring_slots)} recurring slot(s) for {edited_date_str}',
+            'message': f'Successfully saved {len(new_one_time_slots)} one-time slot(s) and {len(new_recurring_slots)} recurring slot(s) for {dates_summary}',
             'one_time_count': len(new_one_time_slots),
             'recurring_count': len(new_recurring_slots),
-            'date': edited_date_str
+            'total_one_time_slots': len(deduplicated_one_time_slots),
+            'dates': sorted(list(edited_dates)) if edited_dates else []
         })
         
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'error': 'Invalid JSON data'}, status=400)
+    except Exception as e:
+        # Log the full error with traceback for debugging
+        import logging
+        import traceback
+        logger = logging.getLogger(__name__)
+        logger.error(f'Error saving availability: {str(e)}\n{traceback.format_exc()}')
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+def get_availability(request):
+    """Get mentor availability slots from profile"""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        return JsonResponse({'success': False, 'error': 'Only mentors can fetch availability'}, status=403)
+    
+    try:
+        mentor_profile = request.user.mentor_profile
+        
+        # Get one-time slots - use new field name with fallback to old
+        try:
+            one_time_slots = list(mentor_profile.one_time_slots or [])
+        except AttributeError:
+            one_time_slots = list(mentor_profile.availability_slots or [])
+        
+        # Get recurring slots - use new field name with fallback to old
+        try:
+            recurring_slots = list(mentor_profile.recurring_slots or [])
+        except AttributeError:
+            recurring_slots = list(mentor_profile.recurring_availability_slots or [])
+        
+        return JsonResponse({
+            'success': True,
+            'one_time_slots': one_time_slots,
+            'recurring_slots': recurring_slots
+        })
+        
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
