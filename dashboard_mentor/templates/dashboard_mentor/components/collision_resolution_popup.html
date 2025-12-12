@@ -1,0 +1,520 @@
+{% load static %}
+
+<!-- Collision Resolution Popup -->
+<div id="collisionResolutionPopup" class="collision-resolution-popup" aria-hidden="true">
+  <div class="collision-resolution-backdrop"></div>
+  <div class="collision-resolution-content">
+    <div class="collision-resolution-header">
+      <h3 class="collision-resolution-title">
+        <span class="collision-icon">⚠️</span>
+        Collisions Detected
+      </h3>
+      <button class="collision-resolution-close" id="collisionResolutionClose" aria-label="Close">×</button>
+    </div>
+    
+    <div class="collision-resolution-body">
+      <p class="collision-resolution-description">
+        The following availability slots overlap. Please resolve these conflicts before continuing.
+      </p>
+      
+      <div class="collision-list-container" id="collisionListContainer">
+        <div class="collision-list-header">
+          <span class="collision-count" id="collisionCount">0 collisions</span>
+        </div>
+        <div class="collision-items" id="collisionItems">
+          <!-- Collisions will be dynamically added here -->
+        </div>
+      </div>
+    </div>
+    
+    <div class="collision-resolution-footer">
+      <button class="collision-btn collision-btn-secondary" id="collisionCancelBtn">
+        Cancel
+      </button>
+      <button class="collision-btn collision-btn-danger" id="collisionDeleteAllBtn">
+        Delete All Colliding Slots
+      </button>
+    </div>
+  </div>
+</div>
+
+<style>
+/* Collision Resolution Popup Styles */
+.collision-resolution-popup {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 4000;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+  pointer-events: none;
+}
+
+.collision-resolution-popup.is-visible {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.collision-resolution-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.7);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.collision-resolution-content {
+  position: relative;
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 
+    0 25px 50px -12px rgba(0, 0, 0, 0.25),
+    0 0 0 1px rgba(0, 0, 0, 0.05);
+  width: 90%;
+  max-width: 600px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  transform: scale(0.95);
+  transition: transform 0.3s ease;
+  z-index: 4001;
+}
+
+.collision-resolution-popup.is-visible .collision-resolution-content {
+  transform: scale(1);
+}
+
+.collision-resolution-header {
+  padding: 24px;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.collision-resolution-title {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #dc2626;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.collision-icon {
+  font-size: 1.75rem;
+}
+
+.collision-resolution-close {
+  border: none;
+  background: transparent;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  cursor: pointer;
+  color: #94a3b8;
+  font-size: 1.5rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.collision-resolution-close:hover {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.collision-resolution-body {
+  padding: 24px;
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.collision-resolution-description {
+  margin: 0 0 20px 0;
+  color: #64748b;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.collision-list-container {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #f8fafc;
+  overflow: hidden;
+}
+
+.collision-list-header {
+  padding: 12px 16px;
+  background: #fee2e2;
+  border-bottom: 1px solid #fecaca;
+}
+
+.collision-count {
+  font-weight: 600;
+  color: #991b1b;
+  font-size: 0.875rem;
+}
+
+.collision-items {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.collision-item {
+  padding: 16px;
+  border-bottom: 1px solid #e5e7eb;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.collision-item:last-child {
+  border-bottom: none;
+}
+
+.collision-item:hover {
+  background: #ffffff;
+}
+
+.collision-item-number {
+  font-weight: 600;
+  color: #64748b;
+  min-width: 24px;
+  font-size: 0.875rem;
+}
+
+.collision-item-content {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.collision-slot-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.collision-slot-date {
+  font-weight: 600;
+  color: #334155;
+  font-size: 0.875rem;
+}
+
+.collision-slot-time {
+  font-family: 'Courier New', monospace;
+  color: #64748b;
+  font-size: 0.8125rem;
+}
+
+.collision-vs {
+  color: #dc2626;
+  font-weight: 700;
+  font-size: 0.875rem;
+  padding: 0 8px;
+}
+
+.collision-resolution-footer {
+  padding: 20px 24px;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.collision-btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.collision-btn-secondary {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.collision-btn-secondary:hover {
+  background: #e2e8f0;
+  color: #1e293b;
+}
+
+.collision-btn-danger {
+  background: #dc2626;
+  color: #ffffff;
+}
+
+.collision-btn-danger:hover {
+  background: #b91c1c;
+}
+
+.collision-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Empty state */
+.collision-items-empty {
+  padding: 40px 20px;
+  text-align: center;
+  color: #64748b;
+  font-size: 0.875rem;
+}
+
+.collision-items-empty.hidden {
+  display: none;
+}
+</style>
+
+<script>
+(function() {
+  const popup = document.getElementById('collisionResolutionPopup');
+  const backdrop = document.querySelector('.collision-resolution-backdrop');
+  const closeBtn = document.getElementById('collisionResolutionClose');
+  const cancelBtn = document.getElementById('collisionCancelBtn');
+  const deleteAllBtn = document.getElementById('collisionDeleteAllBtn');
+  const collisionItems = document.getElementById('collisionItems');
+  const collisionCount = document.getElementById('collisionCount');
+  const collisionListContainer = document.getElementById('collisionListContainer');
+  
+  let collisions = [];
+  let isSessionLengthChangeMode = false;
+  let onResolveCallback = null;
+  
+  // Function to get all collisions from calendar
+  function getAllCollisions() {
+    if (typeof window.getCalendarCollisions === 'function') {
+      return window.getCalendarCollisions();
+    }
+    return [];
+  }
+  
+  // Format collision for display
+  function formatCollision(collision, index) {
+    const slot1 = collision.slot1;
+    const slot2 = collision.slot2;
+    
+    // Format date
+    const date1 = new Date(slot1.start);
+    const date2 = new Date(slot2.start);
+    const dateStr = date1.toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'short', 
+      day: 'numeric' 
+    });
+    
+    // Format times
+    const time1 = date1.toLocaleTimeString('en-US', { 
+      hour: '2-digit', 
+      minute: '2-digit',
+      hour12: true 
+    });
+    const time2 = date2.toLocaleTimeString('en-US', { 
+      hour: '2-digit', 
+      minute: '2-digit',
+      hour12: true 
+    });
+    
+    return {
+      index: index + 1,
+      date: dateStr,
+      slot1Time: time1,
+      slot2Time: time2,
+      slot1Start: slot1.start,
+      slot2Start: slot2.start,
+      slot1Id: slot1.id,
+      slot2Id: slot2.id
+    };
+  }
+  
+  // Render collisions
+  function renderCollisions() {
+    collisions = getAllCollisions();
+    
+    if (collisions.length === 0) {
+      collisionItems.innerHTML = '<div class="collision-items-empty">No collisions found.</div>';
+      collisionCount.textContent = '0 collisions';
+      deleteAllBtn.disabled = true;
+      return;
+    }
+    
+    deleteAllBtn.disabled = false;
+    collisionCount.textContent = `${collisions.length} collision${collisions.length !== 1 ? 's' : ''}`;
+    
+    collisionItems.innerHTML = collisions.map((collision, index) => {
+      const formatted = formatCollision(collision, index);
+      return `
+        <div class="collision-item" data-slot1-id="${formatted.slot1Id}" data-slot2-id="${formatted.slot2Id}">
+          <span class="collision-item-number">${formatted.index}.</span>
+          <div class="collision-item-content">
+            <div class="collision-slot-info">
+              <span class="collision-slot-date">${formatted.date}</span>
+              <span class="collision-slot-time">${formatted.slot1Time}</span>
+            </div>
+            <span class="collision-vs">vs</span>
+            <div class="collision-slot-info">
+              <span class="collision-slot-date">${formatted.date}</span>
+              <span class="collision-slot-time">${formatted.slot2Time}</span>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+    
+    // Add click handlers to collision items
+    collisionItems.querySelectorAll('.collision-item').forEach(item => {
+      item.addEventListener('click', function() {
+        const slot1Id = this.dataset.slot1Id;
+        const slot2Id = this.dataset.slot2Id;
+        navigateToCollision(slot1Id, slot2Id);
+      });
+    });
+  }
+  
+  // Navigate to collision in calendar
+  function navigateToCollision(slot1Id, slot2Id) {
+    if (typeof window.navigateToCollisionInCalendar === 'function') {
+      window.navigateToCollisionInCalendar(slot1Id, slot2Id);
+    }
+  }
+  
+  // Open popup
+  function openCollisionPopup(sessionLengthChangeMode = false) {
+    isSessionLengthChangeMode = sessionLengthChangeMode;
+    renderCollisions();
+    popup.classList.add('is-visible');
+    
+    // Start polling for collision updates
+    startCollisionPolling();
+  }
+  
+  // Close popup
+  function closeCollisionPopup() {
+    popup.classList.remove('is-visible');
+    stopCollisionPolling();
+    
+    if (onResolveCallback) {
+      onResolveCallback(false); // false = cancelled
+      onResolveCallback = null;
+    }
+  }
+  
+  // Poll for collision updates
+  let collisionPollInterval = null;
+  function startCollisionPolling() {
+    if (collisionPollInterval) return;
+    
+    collisionPollInterval = setInterval(() => {
+      const newCollisions = getAllCollisions();
+      if (newCollisions.length !== collisions.length) {
+        renderCollisions();
+        // If all collisions resolved, close popup
+        if (newCollisions.length === 0 && !isSessionLengthChangeMode) {
+          closeCollisionPopup();
+        }
+      }
+    }, 500);
+  }
+  
+  function stopCollisionPolling() {
+    if (collisionPollInterval) {
+      clearInterval(collisionPollInterval);
+      collisionPollInterval = null;
+    }
+  }
+  
+  // Delete all colliding slots
+  async function deleteAllCollidingSlots() {
+    if (collisions.length === 0) return;
+    
+    // Collect all unique slot IDs
+    const slotIdsToDelete = new Set();
+    collisions.forEach(collision => {
+      slotIdsToDelete.add(collision.slot1.id);
+      slotIdsToDelete.add(collision.slot2.id);
+    });
+    
+    // Delete slots via calendar API
+    if (typeof window.deleteSlotsByIds === 'function') {
+      await window.deleteSlotsByIds(Array.from(slotIdsToDelete));
+    }
+    
+    // Save changes
+    if (typeof window.saveCalendarChanges === 'function') {
+      await window.saveCalendarChanges();
+    }
+    
+    // Close popup and calendar
+    closeCollisionPopup();
+    if (typeof window.closeCalendarOverlay === 'function') {
+      window.closeCalendarOverlay();
+    }
+    
+    if (onResolveCallback) {
+      onResolveCallback(true); // true = resolved
+      onResolveCallback = null;
+    }
+  }
+  
+  // Event handlers
+  if (closeBtn) {
+    closeBtn.addEventListener('click', closeCollisionPopup);
+  }
+  
+  if (backdrop) {
+    backdrop.addEventListener('click', function(e) {
+      // Only close if not in session length change mode
+      if (!isSessionLengthChangeMode) {
+        closeCollisionPopup();
+      }
+    });
+  }
+  
+  if (cancelBtn) {
+    cancelBtn.addEventListener('click', closeCollisionPopup);
+  }
+  
+  if (deleteAllBtn) {
+    deleteAllBtn.addEventListener('click', deleteAllCollidingSlots);
+  }
+  
+  // Close on Escape key (only if not in session length change mode)
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && popup.classList.contains('is-visible')) {
+      if (!isSessionLengthChangeMode) {
+        closeCollisionPopup();
+      }
+    }
+  });
+  
+  // Expose functions globally
+  window.openCollisionResolutionPopup = openCollisionPopup;
+  window.closeCollisionResolutionPopup = closeCollisionPopup;
+  window.setCollisionResolveCallback = function(callback) {
+    onResolveCallback = callback;
+  };
+  window.isCollisionPopupOpen = function() {
+    return popup.classList.contains('is-visible');
+  };
+  window.isSessionLengthChangeMode = function() {
+    return isSessionLengthChangeMode;
+  };
+})();
+</script>
+

@@ -15,6 +15,7 @@ from dashboard_mentor.constants import (
 from general.email_service import EmailService
 import json
 import os
+from datetime import datetime, timedelta
 
 @login_required
 def dashboard(request):
@@ -174,6 +175,305 @@ def account(request):
         },
     )
 
+def check_time_overlap(start1, end1, start2, end2):
+    """Check if two time ranges overlap"""
+    return start1 < end2 and start2 < end1
+
+def expand_recurring_slot_to_dates(recurring_slot, start_date, end_date):
+    """
+    Expand a recurring slot to actual date/time ranges within a date range.
+    Returns a list of (date_str, start_time_str, end_time_str) tuples.
+    """
+    expanded = []
+    
+    try:
+        slot_type = recurring_slot.get('type', 'weekly')
+        weekdays = recurring_slot.get('weekdays', [])
+        day_of_month = recurring_slot.get('day_of_month')
+        start_time_str = recurring_slot.get('start_time', '09:00')
+        end_time_str = recurring_slot.get('end_time', '17:00')
+        skip_dates = set(recurring_slot.get('skip_dates', []))
+        booked_dates = set(recurring_slot.get('booked_dates', []))
+        created_at = recurring_slot.get('created_at')
+        
+        # Parse start and end times
+        start_hour, start_minute = map(int, start_time_str.split(':'))
+        end_hour, end_minute = map(int, end_time_str.split(':'))
+        
+        # Parse date range
+        if isinstance(start_date, str):
+            start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+        if isinstance(end_date, str):
+            end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+        
+        # Get creation date if available
+        creation_date = None
+        if created_at:
+            try:
+                creation_date = datetime.fromisoformat(created_at.replace('Z', '+00:00')).date()
+            except:
+                pass
+        
+        # Generate dates based on recurrence type
+        current_date = start_date
+        
+        while current_date <= end_date:
+            date_str = current_date.isoformat()
+            
+            # Skip if before creation date
+            if creation_date and current_date < creation_date:
+                current_date += timedelta(days=1)
+                continue
+            
+            # Skip if in skip_dates or booked_dates
+            if date_str in skip_dates or date_str in booked_dates:
+                current_date += timedelta(days=1)
+                continue
+            
+            matches = False
+            
+            if slot_type == 'daily':
+                matches = True
+            elif slot_type == 'weekly':
+                weekday_name = current_date.strftime('%A').lower()
+                matches = weekday_name in weekdays
+            elif slot_type == 'monthly':
+                if day_of_month is not None:
+                    # Check if current date's day matches
+                    if current_date.day == day_of_month:
+                        matches = True
+                    # Handle edge case: if slot is for day 31 but month doesn't have 31 days
+                    elif day_of_month > 28:
+                        last_day = (current_date.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
+                        if current_date.day == last_day.day and day_of_month > last_day.day:
+                            matches = True
+            
+            if matches:
+                expanded.append((date_str, start_time_str, end_time_str))
+            
+            current_date += timedelta(days=1)
+    
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.warning(f'Error expanding recurring slot: {e}')
+    
+    return expanded
+
+def check_slot_collisions(one_time_slots, recurring_slots, new_session_length):
+    """
+    Check if updating slot lengths to new_session_length would create collisions.
+    Returns True if collisions exist, False otherwise.
+    """
+    from datetime import datetime as dt
+    
+    # Get all dates that have slots
+    all_dates = set()
+    for slot in one_time_slots:
+        try:
+            start_dt = datetime.fromisoformat(slot['start'].replace('Z', '+00:00'))
+            all_dates.add(start_dt.date().isoformat())
+        except:
+            pass
+    
+    # Expand recurring slots to get all dates
+    if all_dates:
+        min_date = min(all_dates)
+        max_date = max(all_dates)
+        # Expand a bit to catch edge cases
+        min_date_obj = datetime.strptime(min_date, '%Y-%m-%d').date() - timedelta(days=30)
+        max_date_obj = datetime.strptime(max_date, '%Y-%m-%d').date() + timedelta(days=30)
+    else:
+        # If no one-time slots, check next 90 days for recurring slots
+        min_date_obj = datetime.now().date()
+        max_date_obj = min_date_obj + timedelta(days=90)
+    
+    # Build a map of date -> list of time ranges for that date
+    date_slots = {}
+    
+    # Add one-time slots
+    for slot in one_time_slots:
+        try:
+            start_dt = datetime.fromisoformat(slot['start'].replace('Z', '+00:00'))
+            end_dt = datetime.fromisoformat(slot['end'].replace('Z', '+00:00'))
+            date_str = start_dt.date().isoformat()
+            
+            # Calculate new end time with new session length
+            new_end_dt = start_dt + timedelta(minutes=new_session_length)
+            
+            if date_str not in date_slots:
+                date_slots[date_str] = []
+            
+            date_slots[date_str].append({
+                'start': start_dt.time(),
+                'end': new_end_dt.time(),
+                'type': 'one_time',
+                'id': slot.get('id')
+            })
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f'Error processing one-time slot: {e}')
+            continue
+    
+    # Expand and add recurring slots
+    for recurring_slot in recurring_slots:
+        expanded = expand_recurring_slot_to_dates(recurring_slot, min_date_obj, max_date_obj)
+        for date_str, start_time_str, end_time_str in expanded:
+            try:
+                start_hour, start_minute = map(int, start_time_str.split(':'))
+                end_hour, end_minute = map(int, end_time_str.split(':'))
+                
+                # Create datetime objects for this date
+                date_obj = datetime.strptime(date_str, '%Y-%m-%d').date()
+                start_dt = datetime.combine(date_obj, dt.min.time().replace(hour=start_hour, minute=start_minute))
+                original_end_dt = datetime.combine(date_obj, dt.min.time().replace(hour=end_hour, minute=end_minute))
+                
+                # Calculate new end time with new session length
+                new_end_dt = start_dt + timedelta(minutes=new_session_length)
+                
+                if date_str not in date_slots:
+                    date_slots[date_str] = []
+                
+                date_slots[date_str].append({
+                    'start': start_dt.time(),
+                    'end': new_end_dt.time(),
+                    'type': 'recurring',
+                    'id': recurring_slot.get('id')
+                })
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning(f'Error processing expanded recurring slot: {e}')
+                continue
+    
+    # Check for collisions within each date
+    for date_str, slots in date_slots.items():
+        # Sort slots by start time
+        slots.sort(key=lambda x: x['start'])
+        
+        # Check each slot against all others
+        for i in range(len(slots)):
+            for j in range(i + 1, len(slots)):
+                slot1 = slots[i]
+                slot2 = slots[j]
+                
+                # Check if they overlap
+                if check_time_overlap(slot1['start'], slot1['end'], slot2['start'], slot2['end']):
+                    return True  # Collision found
+    
+    return False  # No collisions
+
+def update_slots_for_session_length(mentor_profile, old_length, new_length):
+    """
+    Update all availability slots when session length changes.
+    Returns True if collisions exist (when lengthening), False otherwise.
+    """
+    # Get slots
+    try:
+        one_time_slots = list(mentor_profile.one_time_slots or [])
+    except AttributeError:
+        one_time_slots = list(mentor_profile.availability_slots or [])
+    
+    try:
+        recurring_slots = list(mentor_profile.recurring_slots or [])
+    except AttributeError:
+        recurring_slots = list(mentor_profile.recurring_availability_slots or [])
+    
+    # If shortening, update directly
+    if new_length < old_length:
+        # Update one-time slots
+        updated_one_time = []
+        for slot in one_time_slots:
+            try:
+                start_dt = datetime.fromisoformat(slot['start'].replace('Z', '+00:00'))
+                new_end_dt = start_dt + timedelta(minutes=new_length)
+                slot['end'] = new_end_dt.isoformat()
+                slot['length'] = new_length
+                updated_one_time.append(slot)
+            except:
+                updated_one_time.append(slot)  # Keep invalid slots as-is
+        
+        # Update recurring slots end_time
+        updated_recurring = []
+        for slot in recurring_slots:
+            try:
+                start_hour, start_minute = map(int, slot.get('start_time', '09:00').split(':'))
+                new_end_dt = datetime(2000, 1, 1, start_hour, start_minute) + timedelta(minutes=new_length)
+                slot['end_time'] = new_end_dt.strftime('%H:%M')
+                updated_recurring.append(slot)
+            except:
+                updated_recurring.append(slot)  # Keep invalid slots as-is
+        
+        # Save updated slots
+        mentor_profile.one_time_slots = updated_one_time
+        mentor_profile.recurring_slots = updated_recurring
+        mentor_profile.save()
+        return False  # No collisions when shortening
+    
+    # If lengthening, check for collisions first
+    elif new_length > old_length:
+        has_collisions = check_slot_collisions(one_time_slots, recurring_slots, new_length)
+        
+        if not has_collisions:
+            # No collisions, update safely
+            updated_one_time = []
+            for slot in one_time_slots:
+                try:
+                    start_dt = datetime.fromisoformat(slot['start'].replace('Z', '+00:00'))
+                    new_end_dt = start_dt + timedelta(minutes=new_length)
+                    slot['end'] = new_end_dt.isoformat()
+                    slot['length'] = new_length
+                    updated_one_time.append(slot)
+                except:
+                    updated_one_time.append(slot)
+            
+            updated_recurring = []
+            for slot in recurring_slots:
+                try:
+                    start_hour, start_minute = map(int, slot.get('start_time', '09:00').split(':'))
+                    new_end_dt = datetime(2000, 1, 1, start_hour, start_minute) + timedelta(minutes=new_length)
+                    slot['end_time'] = new_end_dt.strftime('%H:%M')
+                    updated_recurring.append(slot)
+                except:
+                    updated_recurring.append(slot)
+            
+            mentor_profile.one_time_slots = updated_one_time
+            mentor_profile.recurring_slots = updated_recurring
+            mentor_profile.save()
+            return False  # No collisions
+        
+        else:
+            # Collisions exist - update slots anyway so user can see collisions in calendar
+            # User will need to resolve them manually
+            updated_one_time = []
+            for slot in one_time_slots:
+                try:
+                    start_dt = datetime.fromisoformat(slot['start'].replace('Z', '+00:00'))
+                    new_end_dt = start_dt + timedelta(minutes=new_length)
+                    slot['end'] = new_end_dt.isoformat()
+                    slot['length'] = new_length
+                    updated_one_time.append(slot)
+                except:
+                    updated_one_time.append(slot)
+            
+            updated_recurring = []
+            for slot in recurring_slots:
+                try:
+                    start_hour, start_minute = map(int, slot.get('start_time', '09:00').split(':'))
+                    new_end_dt = datetime(2000, 1, 1, start_hour, start_minute) + timedelta(minutes=new_length)
+                    slot['end_time'] = new_end_dt.strftime('%H:%M')
+                    updated_recurring.append(slot)
+                except:
+                    updated_recurring.append(slot)
+            
+            mentor_profile.one_time_slots = updated_one_time
+            mentor_profile.recurring_slots = updated_recurring
+            mentor_profile.save()
+            return True  # Has collisions
+    
+    return False  # No change in length
+
 @login_required
 def profile(request):
     if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
@@ -299,13 +599,25 @@ def profile(request):
             
             # Handle session length
             session_length = request.POST.get("session_length", "")
+            old_session_length = profile.session_length
+            has_collisions = False
+            
             if session_length:
                 try:
-                    profile.session_length = int(session_length)
+                    new_session_length = int(session_length)
+                    profile.session_length = new_session_length
                 except ValueError:
                     profile.session_length = None
+                    new_session_length = None
             else:
                 profile.session_length = None
+                new_session_length = None
+            
+            # If session length changed, update availability slots
+            if old_session_length and new_session_length and old_session_length != new_session_length:
+                has_collisions = update_slots_for_session_length(
+                    profile, old_session_length, new_session_length
+                )
             
             # Handle first session free (boolean checkbox)
             profile.first_session_free = request.POST.get("first_session_free") == "on"
@@ -350,8 +662,17 @@ def profile(request):
             profile.save()
             
             from django.contrib import messages
-            messages.success(request, 'Profile updated successfully!')
-            return redirect("/dashboard/mentor/profile/")
+            if has_collisions:
+                messages.warning(
+                    request, 
+                    'Session length updated, but collisions detected in availability slots. '
+                    'Please review and resolve collisions in the calendar.'
+                )
+                # Redirect to my_sessions page with flag to open calendar
+                return redirect("/dashboard/mentor/my-sessions/?open_calendar=true")
+            else:
+                messages.success(request, 'Profile updated successfully!')
+                return redirect("/dashboard/mentor/profile/")
     
     # Compute profile completion percentage (same as account view)
     # Each field contributes equally: 100% / 15 fields = ~6.67% per field
@@ -568,6 +889,9 @@ def my_sessions(request):
     # Get mentor's timezone (use selected_timezone, fallback to time_zone)
     mentor_timezone = mentor_profile.selected_timezone or mentor_profile.time_zone or 'UTC'
     
+    # Check if calendar should auto-open (e.g., after session length change with collisions)
+    open_calendar = request.GET.get('open_calendar', 'false').lower() == 'true'
+    
     return render(request, 'dashboard_mentor/my_sessions.html', {
         'common_timezones': COMMON_TIMEZONES,
         'debug': settings.DEBUG,
@@ -575,6 +899,7 @@ def my_sessions(request):
         'recurring_slots': recurring_slots_data,
         'session_length': session_length,
         'mentor_timezone': mentor_timezone,
+        'open_calendar': open_calendar,
     })
 
 @login_required
@@ -597,6 +922,7 @@ def save_availability(request):
         data = json.loads(request.body)
         availability_list = data.get('availability', [])
         selected_date_str = data.get('selected_date')
+        explicit_edited_dates = data.get('edited_dates', [])  # Dates that originally had slots
         
         # Get existing slots - use new field names with fallback to old for backward compatibility
         try:
@@ -614,6 +940,11 @@ def save_availability(request):
         for avail_item in availability_list:
             date_str = avail_item.get('date')
             if date_str:
+                edited_dates.add(date_str)
+        
+        # Also include explicitly provided dates (for handling deletions)
+        if explicit_edited_dates:
+            for date_str in explicit_edited_dates:
                 edited_dates.add(date_str)
         
         # If no dates found but we have a selected_date, use that
@@ -900,37 +1231,39 @@ def save_availability(request):
                 new_recurring_slots.append(recurring_slot)
             else:
                 # Handle regular one-time slots (not converted)
-                if not all([date_str, start_time, end_time]):
+                # Check if we have ISO strings directly (preferred method)
+                start_iso = avail_item.get('start_iso')
+                end_iso = avail_item.get('end_iso')
+                
+                if start_iso and end_iso:
+                    # Use UTC ISO strings directly - FullCalendar handles timezone conversion
+                    try:
+                        # Parse ISO string (handle both Z and +00:00 formats)
+                        start_iso_clean = start_iso.replace('Z', '+00:00')
+                        end_iso_clean = end_iso.replace('Z', '+00:00')
+                        start_dt = datetime.fromisoformat(start_iso_clean)
+                        end_dt = datetime.fromisoformat(end_iso_clean)
+                        
+                        # Ensure timezone-aware (should already be UTC)
+                        if start_dt.tzinfo is None:
+                            start_dt = timezone.make_aware(start_dt)
+                        if end_dt.tzinfo is None:
+                            end_dt = timezone.make_aware(end_dt)
+                    except (ValueError, AttributeError):
+                        # If ISO parsing fails, skip this slot
+                        continue
+                elif all([date_str, start_time, end_time]):
+                    # Fallback: parse date/time as UTC (times are already UTC from frontend)
+                    utc_datetime_str = f"{date_str} {start_time}:00"
+                    utc_end_datetime_str = f"{date_str} {end_time}:00"
+                    start_dt_naive = datetime.strptime(utc_datetime_str, '%Y-%m-%d %H:%M:%S')
+                    end_dt_naive = datetime.strptime(utc_end_datetime_str, '%Y-%m-%d %H:%M:%S')
+                    start_dt = timezone.make_aware(start_dt_naive)
+                    end_dt = timezone.make_aware(end_dt_naive)
+                else:
                     continue
                 
                 try:
-                    # Get mentor's timezone to properly convert local time to UTC
-                    mentor_timezone_str = mentor_profile.selected_timezone or mentor_profile.time_zone or 'UTC'
-                    
-                    # Parse the date and time as being in the mentor's local timezone
-                    # Format: "YYYY-MM-DD HH:MM" in mentor's timezone
-                    local_datetime_str = f"{date_str} {start_time}:00"
-                    local_end_datetime_str = f"{date_str} {end_time}:00"
-                    
-                    # Parse as naive datetime (no timezone info)
-                    start_dt_naive = datetime.strptime(local_datetime_str, '%Y-%m-%d %H:%M:%S')
-                    end_dt_naive = datetime.strptime(local_end_datetime_str, '%Y-%m-%d %H:%M:%S')
-                    
-                    # Convert from mentor's timezone to UTC for storage
-                    try:
-                        import pytz
-                        mentor_tz = pytz.timezone(mentor_timezone_str)
-                        # Localize the naive datetime to mentor's timezone
-                        start_dt_local = mentor_tz.localize(start_dt_naive)
-                        end_dt_local = mentor_tz.localize(end_dt_naive)
-                        # Convert to UTC
-                        start_dt = start_dt_local.astimezone(pytz.UTC)
-                        end_dt = end_dt_local.astimezone(pytz.UTC)
-                    except (ImportError, Exception):
-                        # Fallback: if pytz not available or timezone invalid, treat as UTC
-                        # Make timezone-aware as UTC
-                        start_dt = timezone.make_aware(start_dt_naive)
-                        end_dt = timezone.make_aware(end_dt_naive)
                     
                     # Validate end > start
                     if end_dt <= start_dt:
@@ -1083,6 +1416,55 @@ def get_availability(request):
         })
         
     except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+@require_POST
+def delete_availability_slot(request):
+    """Delete a specific availability slot by ID"""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        return JsonResponse({'success': False, 'error': 'Only mentors can delete availability slots'}, status=403)
+    
+    try:
+        import json
+        mentor_profile = request.user.mentor_profile
+        data = json.loads(request.body)
+        slot_id = data.get('slot_id')
+        
+        if not slot_id:
+            return JsonResponse({'success': False, 'error': 'Slot ID is required'}, status=400)
+        
+        # Get existing one-time slots - use new field name with fallback to old
+        try:
+            one_time_slots = list(mentor_profile.one_time_slots or [])
+        except AttributeError:
+            one_time_slots = list(mentor_profile.availability_slots or [])
+        
+        # Find and remove the slot with matching ID
+        original_count = len(one_time_slots)
+        one_time_slots = [slot for slot in one_time_slots if slot.get('id') != slot_id]
+        
+        if len(one_time_slots) == original_count:
+            return JsonResponse({'success': False, 'error': 'Slot not found'}, status=404)
+        
+        # Save updated slots back to profile
+        try:
+            mentor_profile.one_time_slots = one_time_slots
+        except AttributeError:
+            mentor_profile.availability_slots = one_time_slots
+        
+        mentor_profile.save()
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Availability slot deleted successfully'
+        })
+        
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f'Error deleting availability slot: {e}')
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 
