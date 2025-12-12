@@ -8,12 +8,6 @@
     <header class="availability-calendar-header">
       <div class="availability-calendar-title-group">
         <h2>Manage Sessions & Availability</h2>
-        <p class="availability-calendar-subtitle">
-          <span class="timezone-label">Your Timezone</span>
-          <span class="timezone-value" id="timezoneDisplayValue">UTC+01</span>
-          <span class="timezone-time" id="timezoneTimeDisplay">--:--:--</span>
-          <a href="{% url 'general:dashboard_mentor:profile' %}#timezone-section" class="timezone-change-link">Change</a>
-        </p>
       </div>
 
       <div class="availability-calendar-toggle-group">
@@ -161,44 +155,6 @@
   line-height: 1.2;
 }
 
-.availability-calendar-title-group .availability-calendar-subtitle {
-  margin: 4px 0 0 0;
-  font-size: 0.875rem;
-  color: #64748b;
-  font-weight: 400;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.availability-calendar-subtitle .timezone-label {
-  font-weight: 500;
-}
-
-.availability-calendar-subtitle .timezone-value {
-  font-weight: 500;
-}
-
-.availability-calendar-subtitle .timezone-time {
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  color: #334155;
-  font-family: 'Courier New', monospace;
-}
-
-.availability-calendar-subtitle .timezone-change-link {
-  color: var(--dash-primary, #3b82f6);
-  text-decoration: none;
-  font-weight: 500;
-  margin-left: 4px;
-  transition: color 0.2s ease;
-}
-
-.availability-calendar-subtitle .timezone-change-link:hover {
-  color: #2563eb;
-  text-decoration: underline;
-}
 
 /* Toggle Group */
 .availability-calendar-toggle-group {
@@ -686,12 +642,6 @@
   line-height: 1.3;
 }
 
-.availability-calendar-title-group .availability-calendar-subtitle {
-  margin: 2px 0 0 0;
-  font-size: 0.75rem;
-  color: #64748b;
-  line-height: 1.2;
-}
 
 .availability-calendar-nav {
   display: flex;
@@ -1073,6 +1023,9 @@
 .collision-warning-btn-ok:hover {
   background: #2563eb;
 }
+.fc-direction-ltr .fc-timegrid-col-events {
+margin: 0}
+
 </style>
 
 <!-- ===================== JS ===================== -->
@@ -1083,9 +1036,6 @@
   const openTriggers = document.querySelectorAll("[data-open-availability-calendar]");
   const closeTriggers = document.querySelectorAll("[data-close-availability-calendar]");
   const viewBtnEls = document.querySelectorAll("[data-calendar-view]");
-  const subtitleEl = document.querySelector(".availability-calendar-subtitle");
-  const timezoneValueEl = document.getElementById("timezoneDisplayValue");
-  const timezoneTimeEl = document.getElementById("timezoneTimeDisplay");
   const dateDisplayEl = document.getElementById("calendarDateDisplay");
 
   // Format date display based on current view type
@@ -1380,9 +1330,6 @@
     mentorTimezoneDisplay = getTimezoneDisplayName(mentorTimezone);
     sessionLength = getSessionLength();
     
-    // Update timezone display
-    updateTimezoneDisplay();
-    
     // Update calendar timezone if it exists
     if (calendar) {
       calendar.setOption('timeZone', mentorTimezone);
@@ -1445,48 +1392,11 @@
     return getCurrentTimezoneOffset(mentorTimezone);
   }
   
-  // Update timezone display and start real-time clock
-  function updateTimezoneDisplay() {
-    if (timezoneValueEl) {
-      // Extract just the UTC offset (e.g., "UTC+01")
-      const offset = extractUTCOffset(mentorTimezoneDisplay);
-      timezoneValueEl.textContent = offset;
-    }
-  }
-  
-  // Update real-time clock in timezone
-  function updateTimezoneClock() {
-    if (timezoneTimeEl && mentorTimezone) {
-      try {
-        const now = new Date();
-        const formatter = new Intl.DateTimeFormat('en-US', {
-          timeZone: mentorTimezone,
-          hour: '2-digit',
-          minute: '2-digit',
-          second: '2-digit',
-          hour12: false
-        });
-        timezoneTimeEl.textContent = formatter.format(now);
-      } catch (e) {
-        console.warn('Could not update timezone clock:', e);
-      }
-    }
-  }
-  
-  // Start clock update interval
-  let clockInterval = null;
-  function startTimezoneClock() {
-    updateTimezoneClock();
-    if (clockInterval) clearInterval(clockInterval);
-    clockInterval = setInterval(updateTimezoneClock, 1000);
-  }
-  
   // Initialize session length
   sessionLength = getSessionLength();
   
-  // Update timezone display immediately
-  updateTimezoneDisplay();
-  startTimezoneClock();
+  // Clock interval variable (kept for closeOverlay cleanup)
+  let clockInterval = null;
   
   // Collision warning modal handlers
   const collisionModal = document.getElementById("collisionWarningModal");
@@ -2431,9 +2341,6 @@
 
     calendar.render();
 
-    // Update timezone display
-    updateTimezoneDisplay();
-
     // Mark hour slots for CSS targeting - call multiple times to ensure they persist
     setTimeout(() => {
       markHourSlots();
@@ -2635,7 +2542,6 @@
     
     // Re-read timezone and session_length from profile when opening (in case it was updated)
     updateTimezoneFromProfile();
-    startTimezoneClock();
     
     // Reset availability mode when opening
     isAvailabilityMode = false;
@@ -2650,6 +2556,16 @@
         loadSavedAvailabilitySlots().then(() => {
           // Ensure calendar shows correct events based on mode
           updateCalendarEventsForMode();
+          
+          // If opened from session length change, check for collisions after slots load
+          if (openedFromSessionLengthChange) {
+            setTimeout(() => {
+              updateSlotColors();
+              if (hasAnyCollisions() && typeof window.openCollisionResolutionPopup === 'function') {
+                window.openCollisionResolutionPopup(true);
+              }
+            }, 500);
+          }
         });
       }, 100);
     } else {
@@ -2685,6 +2601,16 @@
           // If current view is day or week view, scroll appropriately
           if (calendar.view.type === 'timeGridDay' || calendar.view.type === 'timeGridWeek') {
             setTimeout(() => scrollToAppropriateTime(), 150);
+          }
+          
+          // If opened from session length change, check for collisions after slots load
+          if (openedFromSessionLengthChange) {
+            setTimeout(() => {
+              updateSlotColors();
+              if (hasAnyCollisions() && typeof window.openCollisionResolutionPopup === 'function') {
+                window.openCollisionResolutionPopup(true);
+              }
+            }, 500);
           }
         }, 50);
       });
@@ -2732,7 +2658,8 @@
       }
       // Open the overlay
       openOverlay();
-      // After opening, ensure availability mode is active and check for collisions
+      // After opening, ensure availability mode is active
+      // Note: Collision check will happen in openOverlay() after slots are loaded
       setTimeout(() => {
         if (calendar && isAvailabilityMode) {
           // Update calendar options for availability mode
@@ -2747,16 +2674,9 @@
             const slotType = info.event.extendedProps?.type || 'availability_slot';
             return slotType !== 'availability_slot';
           });
-          // Update events and check for collisions
+          // Update events
           updateCalendarEventsForMode();
           updateSlotColors(); // This will highlight collisions
-          
-          // Check for collisions and show collision resolution popup if they exist
-          setTimeout(() => {
-            if (hasAnyCollisions() && typeof window.openCollisionResolutionPopup === 'function') {
-              window.openCollisionResolutionPopup(true); // true = from session length change
-            }
-          }, 800);
         }
       }, 500);
       // Remove the parameter from URL without reloading
@@ -2766,24 +2686,6 @@
     }, 300); // Small delay to ensure page is loaded
   }
   
-  // Handle "Change" link click - scroll to Time Zone section on profile page
-  const changeLink = document.querySelector('.timezone-change-link');
-  if (changeLink) {
-    changeLink.addEventListener('click', function(e) {
-      // Close the calendar overlay first
-      closeOverlay();
-    });
-  }
-  
-  // Handle hash navigation when page loads (if coming from calendar with #timezone-section)
-  if (window.location.hash === '#timezone-section') {
-    setTimeout(() => {
-      const timezoneSection = document.getElementById('timezone-section');
-      if (timezoneSection) {
-        timezoneSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-    }, 300);
-  }
 
   // Function to update calendar events based on current mode
   function updateCalendarEventsForMode() {
@@ -2932,9 +2834,6 @@
 
       if (calendar) {
         calendar.changeView(targetView);
-        const timezoneDisplay = getTimezoneDisplayName(mentorTimezone);
-        // Don't update subtitle - keep it fixed as "Your Timezone UTC+01 [time] Change"
-        // The subtitle is already set in HTML and updated by updateTimezoneDisplay()
 
         setTimeout(() => {
           calendar.updateSize();
@@ -2957,6 +2856,30 @@
   // Navigate to collision in calendar
   window.navigateToCollisionInCalendar = function(slot1Id, slot2Id) {
     if (!calendar) return;
+    
+    // Ensure availability mode is on
+    if (!isAvailabilityMode) {
+      isAvailabilityMode = true;
+      if (toggleBtn) {
+        toggleBtn.classList.add("active");
+      }
+      
+      // Update calendar options for availability mode
+      calendar.setOption('selectable', true);
+      calendar.setOption('editable', function(info) {
+        return true; // Allow editing in availability mode
+      });
+      calendar.setOption('eventStartEditable', function(info) {
+        return true; // Allow dragging in availability mode
+      });
+      calendar.setOption('eventDurationEditable', function(info) {
+        const slotType = info.event.extendedProps?.type || 'availability_slot';
+        return slotType !== 'availability_slot';
+      });
+      
+      // Update events to show availability slots properly
+      updateCalendarEventsForMode();
+    }
     
     // Find the events by slotId (check both id and extendedProps.slotId)
     const allEvents = calendar.getEvents();
@@ -2984,8 +2907,24 @@
     // Switch to day view
     calendar.changeView('timeGridDay');
     
+    // Update view toggle buttons to show Day as active
+    const viewToggleButtons = document.querySelectorAll('.view-toggle-btn');
+    viewToggleButtons.forEach(btn => {
+      if (btn.dataset.calendarView === 'timeGridDay') {
+        btn.classList.add('is-active');
+      } else {
+        btn.classList.remove('is-active');
+      }
+    });
+    
     // Navigate to the date
     calendar.gotoDate(targetDate);
+    
+    // Update date display
+    setTimeout(() => {
+      calendar.updateSize();
+      updateDateDisplay();
+    }, 50);
     
     // Scroll to the time
     setTimeout(() => {

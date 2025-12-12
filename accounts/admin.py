@@ -154,11 +154,11 @@ class MentorProfileAdmin(admin.ModelAdmin):
         }),
         ('Availability - One-Time Slots', {
             'fields': ('one_time_slots',),
-            'description': 'List of one-time availability windows. Format: [{"id": "<uuid>", "start": "YYYY-MM-DDTHH:MM:SS+00:00", "end": "YYYY-MM-DDTHH:MM:SS+00:00", "length": <minutes>, "created_at": "YYYY-MM-DDTHH:MM:SS+00:00"}]'
+            'description': 'List of one-time availability windows. Format: [{"id": "<uuid>", "start": "YYYY-MM-DDTHH:MM:SS+00:00", "end": "YYYY-MM-DDTHH:MM:SS+00:00", "length": <minutes>, "booked": <boolean>, "type": "availability_slot"|"session", "created_at": "YYYY-MM-DDTHH:MM:SS+00:00"}]'
         }),
         ('Availability - Recurring Slots', {
             'fields': ('recurring_slots',),
-            'description': 'List of recurring availability rules. Format: [{"id": "<uuid>", "type": "daily"|"weekly"|"monthly", "weekdays": [...], "day_of_month": <1-31|null>, "start_time": "HH:MM", "end_time": "HH:MM", "created_at": "YYYY-MM-DDTHH:MM:SS+00:00"}]'
+            'description': 'List of recurring availability rules. Format: [{"id": "<uuid>", "type": "daily"|"weekly"|"monthly", "slot_type": "availability_slot"|"session", "weekdays": [...], "day_of_month": <1-31|null>, "start_time": "HH:MM", "end_time": "HH:MM", "skip_dates": ["YYYY-MM-DD", ...], "booked_dates": ["YYYY-MM-DD", ...], "created_at": "YYYY-MM-DDTHH:MM:SS+00:00"}]'
         }),
     )
     filter_horizontal = ('sessions', 'clients')

@@ -204,6 +204,8 @@ class MentorProfile(models.Model):
     #     "start": "YYYY-MM-DDTHH:MM:SS+00:00",
     #     "end": "YYYY-MM-DDTHH:MM:SS+00:00",
     #     "length": <minutes>,
+    #     "booked": <boolean>,  // false by default, true when slot is booked
+    #     "type": "availability_slot" | "session",  // "availability_slot" = fixed length, "session" = resizable
     #     "created_at": "YYYY-MM-DDTHH:MM:SS+00:00"
     #   }
     # ]
@@ -212,12 +214,14 @@ class MentorProfile(models.Model):
     # Structure: [
     #   {
     #     "id": "<uuid>",
-    #     "type": "daily" | "weekly" | "monthly",
+    #     "type": "daily" | "weekly" | "monthly",  // recurrence pattern type
+    #     "slot_type": "availability_slot" | "session",  // "availability_slot" = fixed length, "session" = resizable
     #     "weekdays": [...],               // for daily/weekly (weekly = 1 weekday)
     #     "day_of_month": <1–31|null>,     // for monthly recurrences
     #     "start_time": "HH:MM",
     #     "end_time": "HH:MM",
     #     "skip_dates": ["YYYY-MM-DD", ...], // dates to skip (excluded from recurrence)
+    #     "booked_dates": ["YYYY-MM-DD", ...], // dates that are booked (similar to skip_dates but for bookings)
     #     "created_at": "YYYY-MM-DDTHH:MM:SS+00:00"
     #   }
     # ]

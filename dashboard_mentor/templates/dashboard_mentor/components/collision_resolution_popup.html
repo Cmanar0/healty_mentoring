@@ -389,6 +389,9 @@
   
   // Navigate to collision in calendar
   function navigateToCollision(slot1Id, slot2Id) {
+    // Close the collision popup when navigating
+    closeCollisionPopup();
+    
     if (typeof window.navigateToCollisionInCalendar === 'function') {
       window.navigateToCollisionInCalendar(slot1Id, slot2Id);
     }

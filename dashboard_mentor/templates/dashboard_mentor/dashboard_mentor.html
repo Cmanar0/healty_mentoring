@@ -232,7 +232,7 @@
                 <div class="create-new-section" id="createNewSection">
                     <h3 class="create-new-title">Create new</h3>
                     <div class="create-new-grid">
-                        <button class="create-new-btn btn-session">
+                        <button class="create-new-btn btn-session" data-open-availability-calendar>
                             <div class="create-icon"><i class="fas fa-calendar-plus"></i></div>
                             <span class="create-label">Session</span>
                         </button>
@@ -598,4 +598,6 @@ document.addEventListener('DOMContentLoaded', function() {
     border-left: 3px solid #ef4444;
 }
 </style>
+
+{% include "dashboard_mentor/components/calendar_availability_popup.html" %}
 {% endblock %}
