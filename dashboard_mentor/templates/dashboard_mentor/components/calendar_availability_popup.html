@@ -2085,6 +2085,34 @@ margin: 0}
     return false;
   }
   
+  // Check if originalSavedSlots (database data) has collisions
+  function hasCollisionsInDatabase() {
+    if (!sessionLength || !originalSavedSlots || originalSavedSlots.length === 0) {
+      return false;
+    }
+    
+    // Check each slot against all other slots for collisions
+    for (let i = 0; i < originalSavedSlots.length; i++) {
+      const slot1 = originalSavedSlots[i];
+      const slot1Start = new Date(slot1.start);
+      const slot1End = new Date(slot1.end);
+      
+      // Check against all other slots
+      for (let j = i + 1; j < originalSavedSlots.length; j++) {
+        const slot2 = originalSavedSlots[j];
+        const slot2Start = new Date(slot2.start);
+        const slot2End = new Date(slot2.end);
+        
+        // Check if slots overlap
+        if (slotsOverlap(slot1Start, slot1End, slot2Start, slot2End)) {
+          return true; // Found a collision
+        }
+      }
+    }
+    
+    return false; // No collisions found
+  }
+  
   // Get all collision pairs for display (used by collision resolution popup)
   function getAllCollisionsForResolution() {
     if (!calendar) return [];
@@ -3285,7 +3313,29 @@ margin: 0}
   }
 
   function closeOverlay() {
-    // If opened from session length change and collisions exist, prevent closing
+    // Check if database has collisions - this handles both cases:
+    // 1) After session length change
+    // 2) After page refresh/opening from collision detection
+    if (hasCollisionsInDatabase()) {
+      // If user has unsaved changes (fixed collisions client-side but didn't save)
+      if (hasUnsavedChanges()) {
+        // Show warning that they need to save before closing
+        if (typeof showNotification !== 'undefined') {
+          showNotification('Please save your changes before closing. There are collisions in your saved availability slots that need to be resolved.', 'warning');
+        } else {
+          alert('Please save your changes before closing. There are collisions in your saved availability slots that need to be resolved.');
+        }
+        return; // Prevent closing
+      } else {
+        // Database has collisions but no unsaved changes - show collision resolution popup
+        if (typeof window.openCollisionResolutionPopup === 'function') {
+          window.openCollisionResolutionPopup(true); // true = from session length change
+        }
+        return; // Prevent closing
+      }
+    }
+    
+    // If opened from session length change and collisions exist (in current client state), prevent closing
     if (openedFromSessionLengthChange && hasAnyCollisions()) {
       // Show collision resolution popup
       if (typeof window.openCollisionResolutionPopup === 'function') {
