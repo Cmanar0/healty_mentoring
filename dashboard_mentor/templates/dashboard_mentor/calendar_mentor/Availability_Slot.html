@@ -4,10 +4,12 @@
     <button type="button" class="mentor-calendar-slot-delete" aria-label="Delete availability slot" data-slot-delete>
       ×
     </button>
-    <div class="mentor-calendar-slot-title">
-      Available
+    <div class="mentor-calendar-slot-body" data-slot-body>
+      <div class="mentor-calendar-slot-title">
+        Available
+      </div>
+      <div class="mentor-calendar-slot-time" data-slot-time></div>
     </div>
-    <div class="mentor-calendar-slot-time" data-slot-time></div>
     <div class="mentor-calendar-slot-meta" data-slot-meta>
       <div class="mentor-calendar-slot-duration" data-slot-duration>-- min</div>
 
@@ -42,13 +44,20 @@
     position: relative;
     display: flex;
     flex-direction: column;
-    gap: 2px;
-    padding: 6px 8px;
+    padding: 0;
     border-radius: var(--mentor-calendar-slot-radius, 10px);
     color: #ffffff;
     overflow: hidden;
     box-sizing: border-box;
   }
+
+  .mentor-calendar-slot-body {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 6px 8px 10px;
+  }
+
   .mentor-calendar-slot-title {
     font-weight: 700;
     font-size: 0.85rem;
@@ -61,13 +70,12 @@
   }
 
   .mentor-calendar-slot-meta {
-    margin-top: 4px;
-    padding-top: 4px;
+    margin-top: auto; /* pin to bottom of the slot */
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 8px;
-    border-top: 1px solid rgba(255, 255, 255, 0.25);
+    gap: 14px; /* extra space between minutes and dropdown */
+    padding: 8px;
   }
 
   .mentor-calendar-slot-duration {
@@ -81,13 +89,12 @@
   .mentor-calendar-recurrence-dropdown {
     position: relative;
     flex: 0 1 auto;
-    width: 140px;           /* fixed width so it won't overflow the slot */
-    max-width: 55%;         /* but still shrink in narrow slots */
-    min-width: 110px;
+    width: 100px;           /* fixed width so it won't overflow the slot */
+    max-width: 100px;         /* but still shrink in narrow slots */
+    min-width: 80px;
   }
 
   .mentor-calendar-recurrence-trigger.custom-dropdown-trigger {
-    width: auto;
     padding: 4px 10px;
     border-radius: 8px;
     border: 1px solid rgba(255, 255, 255, 0.65);
