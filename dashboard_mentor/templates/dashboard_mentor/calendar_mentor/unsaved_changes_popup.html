@@ -1,0 +1,138 @@
+{# Popup shown when user tries to close calendar with unsaved changes #}
+
+<div id="mentorCalendarUnsavedChangesOverlay" class="unsaved-changes-overlay" aria-hidden="true">
+  <div class="unsaved-changes-backdrop" data-unsaved-changes-close></div>
+
+  <div class="unsaved-changes-modal" role="dialog" aria-modal="true" aria-label="Unsaved changes">
+    <header class="unsaved-changes-header">
+      <h3 class="unsaved-changes-title">Unsaved changes</h3>
+      <button type="button" class="unsaved-changes-close" data-unsaved-changes-close aria-label="Close">&times;</button>
+    </header>
+
+    <div class="unsaved-changes-body">
+      <p class="unsaved-changes-message">
+        You have unsaved changes. If you close now, your changes will be lost.
+      </p>
+    </div>
+
+    <footer class="unsaved-changes-footer">
+      <button type="button" class="unsaved-changes-btn unsaved-changes-btn--secondary" data-unsaved-changes-cancel>
+        Stay
+      </button>
+      <button type="button" class="unsaved-changes-btn unsaved-changes-btn--primary" id="unsavedChangesDiscardBtn">
+        Discard & Close
+      </button>
+    </footer>
+  </div>
+</div>
+
+<style>
+  .unsaved-changes-overlay {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(15, 23, 42, 0.25);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+    z-index: 10100; /* above all calendar popups */
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s ease, visibility 0.2s ease;
+  }
+  .unsaved-changes-overlay.is-visible {
+    opacity: 1;
+    visibility: visible;
+  }
+  .unsaved-changes-backdrop {
+    position: absolute;
+    inset: 0;
+  }
+
+  .unsaved-changes-modal {
+    position: relative;
+    width: min(520px, calc(100vw - 24px));
+    background: #ffffff;
+    border-radius: 14px;
+    box-shadow: 0 18px 60px rgba(0,0,0,0.25);
+    overflow: hidden;
+    border: 1px solid #e2e8f0;
+  }
+
+  .unsaved-changes-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 16px 12px;
+    border-bottom: 1px solid #e2e8f0;
+  }
+  .unsaved-changes-title {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 700;
+    color: #0f172a;
+  }
+  .unsaved-changes-close {
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    color: #64748b;
+    font-size: 1.35rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+  }
+  .unsaved-changes-close:hover {
+    background: #f1f5f9;
+    color: #0f172a;
+  }
+
+  .unsaved-changes-body {
+    padding: 14px 16px;
+  }
+
+  .unsaved-changes-message {
+    margin: 0;
+    color: #334155;
+    font-size: 0.95rem;
+    line-height: 1.4;
+  }
+
+  .unsaved-changes-footer {
+    padding: 12px 16px 16px;
+    border-top: 1px solid #e2e8f0;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+  }
+
+  .unsaved-changes-btn {
+    height: 40px;
+    border-radius: 10px;
+    padding: 0 14px;
+    border: 1px solid #e2e8f0;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .unsaved-changes-btn--secondary {
+    background: #ffffff;
+    color: #0f172a;
+  }
+  .unsaved-changes-btn--secondary:hover {
+    background: #f8fafc;
+  }
+  .unsaved-changes-btn--primary {
+    background: #334156;
+    color: #ffffff;
+    border-color: #334156;
+  }
+  .unsaved-changes-btn--primary:hover {
+    background: #25324a;
+    border-color: #25324a;
+  }
+</style>

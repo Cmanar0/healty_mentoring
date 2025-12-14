@@ -67,6 +67,7 @@
 {% include "dashboard_mentor/calendar_mentor/session_switch_mode_popup.html" %}
 {% include "dashboard_mentor/calendar_mentor/session_settings.html" %}
 {% include "dashboard_mentor/calendar_mentor/schedule_session_popup.html" %}
+{% include "dashboard_mentor/calendar_mentor/unsaved_changes_popup.html" %}
 
 <style>
   /* --- Overlay --- */
@@ -587,6 +588,8 @@
   const scheduleSessionOverlay = document.getElementById('mentorScheduleSessionOverlay');
   const scheduleSessionEmailInput = document.getElementById('scheduleSessionEmailInput');
   const scheduleSessionSendBtn = document.getElementById('scheduleSessionSendBtn');
+  const unsavedChangesOverlay = document.getElementById('mentorCalendarUnsavedChangesOverlay');
+  const unsavedChangesDiscardBtn = document.getElementById('unsavedChangesDiscardBtn');
   
   if (!overlay || !root) return;
 
@@ -1525,7 +1528,23 @@
     }, 50);
   }
 
-  function close() {
+  function setUnsavedChangesVisible(isVisible) {
+    if (!unsavedChangesOverlay) return;
+    unsavedChangesOverlay.classList.toggle('is-visible', !!isVisible);
+    unsavedChangesOverlay.setAttribute('aria-hidden', isVisible ? 'false' : 'true');
+  }
+
+  function closeUnsavedChangesPopup() {
+    setUnsavedChangesVisible(false);
+  }
+
+  function hasUnsavedCalendarChanges() {
+    // Contract per your rule: Save enabled => unsaved changes exist
+    if (saveBtn && saveBtn.disabled === false) return true;
+    return !!(dirtyAvailability || dirtySession);
+  }
+
+  function closeNow() {
     // Always close the settings popup too (if open)
     if (availabilitySettingsOverlay && availabilitySettingsOverlay.classList.contains('is-visible')) {
       closeAvailabilitySettings();
@@ -1542,6 +1561,9 @@
     if (scheduleSessionOverlay && scheduleSessionOverlay.classList.contains('is-visible')) {
       closeScheduleSessionPopup();
     }
+    if (unsavedChangesOverlay && unsavedChangesOverlay.classList.contains('is-visible')) {
+      closeUnsavedChangesPopup();
+    }
     overlay.classList.remove('is-visible');
     overlay.setAttribute('aria-hidden', 'true');
     // Destroy calendar so it reconstructs cleanly on next open
@@ -1550,6 +1572,15 @@
     dirtyAvailability = false;
     dirtySession = false;
     updateSaveButtonState();
+  }
+
+  function attemptClose() {
+    // If there are unsaved changes, ask for confirmation first
+    if (hasUnsavedCalendarChanges()) {
+      setUnsavedChangesVisible(true);
+      return;
+    }
+    closeNow();
   }
 
   // --- Event Listeners ---
@@ -1695,7 +1726,7 @@
 
   // Close handlers
   overlay.querySelectorAll('[data-mentor-calendar-close]').forEach(el => {
-    el.addEventListener('click', close);
+    el.addEventListener('click', attemptClose);
   });
   
   document.addEventListener('keydown', (e) => {
@@ -1718,6 +1749,11 @@
       closeScheduleSessionPopup();
       return;
     }
+    if (unsavedChangesOverlay && unsavedChangesOverlay.classList.contains('is-visible')) {
+      e.preventDefault();
+      closeUnsavedChangesPopup();
+      return;
+    }
     if (availabilitySwitchOverlay && availabilitySwitchOverlay.classList.contains('is-visible')) {
       e.preventDefault();
       closeAvailabilitySwitchPopup();
@@ -1728,8 +1764,30 @@
       closeSessionSwitchPopup();
       return;
     }
-    close();
+    attemptClose();
   });
+
+  // Unsaved changes popup handlers
+  if (unsavedChangesOverlay) {
+    unsavedChangesOverlay.querySelectorAll('[data-unsaved-changes-close]').forEach(el => {
+      el.addEventListener('click', (e) => {
+        e.preventDefault();
+        closeUnsavedChangesPopup();
+      });
+    });
+    unsavedChangesOverlay.querySelectorAll('[data-unsaved-changes-cancel]').forEach(el => {
+      el.addEventListener('click', (e) => {
+        e.preventDefault();
+        closeUnsavedChangesPopup();
+      });
+    });
+  }
+  if (unsavedChangesDiscardBtn) {
+    unsavedChangesDiscardBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      closeNow();
+    });
+  }
 
   // Public API
   window.MentorCalendar = { open, close };
