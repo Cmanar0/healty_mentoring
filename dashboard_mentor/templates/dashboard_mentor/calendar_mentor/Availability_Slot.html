@@ -66,6 +66,7 @@
   .mentor-calendar-slot {
     position: relative;
     display: flex;
+    justify-content: space-between;
     flex-direction: column;
     padding: 0;
     border-radius: var(--mentor-calendar-slot-radius, 10px);
@@ -93,12 +94,11 @@
   }
 
   .mentor-calendar-slot-meta {
-    margin-top: auto; /* pin to bottom of the slot */
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 14px; /* extra space between minutes and dropdown */
-    padding: 8px;
+    padding: 8px 8px 0px;
   }
 
   .mentor-calendar-slot-duration {
