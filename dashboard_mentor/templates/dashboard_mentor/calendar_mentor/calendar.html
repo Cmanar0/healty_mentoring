@@ -66,6 +66,7 @@
 {% include "dashboard_mentor/calendar_mentor/availability_switch_mode_popup.html" %}
 {% include "dashboard_mentor/calendar_mentor/session_switch_mode_popup.html" %}
 {% include "dashboard_mentor/calendar_mentor/session_settings.html" %}
+{% include "dashboard_mentor/calendar_mentor/schedule_session_popup.html" %}
 
 <style>
   /* --- Overlay --- */
@@ -532,6 +533,20 @@
     color: #ffffff !important;
   }
 
+  /* Sessions mode: availability hover is light + clickable */
+  .mentor-calendar-root:not(.is-mode-availability) .fc-event.event-type-availability {
+    cursor: pointer;
+  }
+  .mentor-calendar-root:not(.is-mode-availability) .fc-event.event-type-availability:hover {
+    background-color: #dbeafe !important;
+    border-color: #93c5fd !important;
+  }
+  .mentor-calendar-root:not(.is-mode-availability) .fc-event.event-type-availability:hover .mentor-calendar-slot,
+  .mentor-calendar-root:not(.is-mode-availability) .fc-event.event-type-availability:hover .mentor-calendar-slot-title,
+  .mentor-calendar-root:not(.is-mode-availability) .fc-event.event-type-availability:hover [data-slot-time] {
+    color: #0f172a !important;
+  }
+
 </style>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.css">
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
@@ -565,6 +580,9 @@
   const sessionSettingsDateInput = document.getElementById('sessionSettingsDate');
   const sessionSettingsTimeInput = document.getElementById('sessionSettingsTime');
   const sessionSettingsApplyBtn = document.getElementById('sessionSettingsApplyBtn');
+  const scheduleSessionOverlay = document.getElementById('mentorScheduleSessionOverlay');
+  const scheduleSessionEmailInput = document.getElementById('scheduleSessionEmailInput');
+  const scheduleSessionSendBtn = document.getElementById('scheduleSessionSendBtn');
   
   if (!overlay || !root) return;
 
@@ -575,6 +593,7 @@
   let sessionSwitchEventId = null;
   let sessionSwitchOpenSettingsAfterSwitch = false;
   let sessionSettingsEventId = null;
+  let scheduleSessionEventId = null;
 
   // Timezone source of truth: mentorprofile.selected_timezone (fallback: detected_timezone)
   function resolveMentorTimezone() {
@@ -815,6 +834,46 @@
     closeSessionSettings();
   }
 
+  // --- Schedule session popup helpers ---
+  function setScheduleSessionVisible(isVisible) {
+    if (!scheduleSessionOverlay) return;
+    scheduleSessionOverlay.classList.toggle('is-visible', !!isVisible);
+    scheduleSessionOverlay.setAttribute('aria-hidden', isVisible ? 'false' : 'true');
+  }
+
+  function closeScheduleSessionPopup() {
+    scheduleSessionEventId = null;
+    if (scheduleSessionEmailInput) scheduleSessionEmailInput.value = '';
+    setScheduleSessionVisible(false);
+  }
+
+  function openScheduleSessionPopupForEvent(fcEvent) {
+    if (!scheduleSessionOverlay || !fcEvent) return;
+    scheduleSessionEventId = fcEvent.id || null;
+    setScheduleSessionVisible(true);
+    if (scheduleSessionEmailInput) {
+      scheduleSessionEmailInput.focus();
+      scheduleSessionEmailInput.select?.();
+    }
+  }
+
+  function sendScheduleSessionEmail() {
+    const email = (scheduleSessionEmailInput?.value || '').trim();
+    if (!email) {
+      if (typeof showNotification === 'function') showNotification('Please enter an email.', 'error');
+      else alert('Please enter an email.');
+      return;
+    }
+    const ev = calendar && scheduleSessionEventId ? calendar.getEventById(scheduleSessionEventId) : null;
+    console.log('[MentorCalendar] schedule session send', {
+      email,
+      eventId: scheduleSessionEventId,
+      startIso: ev?.start ? ev.start.toISOString() : null,
+      endIso: ev?.end ? ev.end.toISOString() : null
+    });
+    closeScheduleSessionPopup();
+  }
+
   // --- Switch-to-sessions-mode popup helpers ---
   function setSessionSwitchVisible(isVisible) {
     if (!sessionSwitchOverlay) return;
@@ -848,6 +907,11 @@
 
   // Track dates which originally had availability (for deletion support)
   let originalAvailabilityDates = new Set();
+
+  // Distinguish single click vs double click on availability slots (Sessions mode)
+  // Single click opens "Schedule session" popup, but we wait briefly to see if it's a double-click.
+  let __availabilityClickTimer = null;
+  let __availabilityClickEventId = null;
 
   const GET_AVAILABILITY_URL = "{% url 'general:dashboard_mentor:get_availability' %}";
   const SAVE_AVAILABILITY_URL = "{% url 'general:dashboard_mentor:save_availability' %}";
@@ -1178,7 +1242,39 @@
           const mode = info.event?.extendedProps?.slotMode;
           if (!info.el) return;
 
+          // Availability slot: in Sessions mode, single click schedules session (debounced).
+          if (mode === 'availability') {
+            info.el.addEventListener('click', (e) => {
+              // Only for Sessions mode
+              if (isAvailabilityMode) return;
+
+              // If a previous timer is pending, clear it (we'll overwrite with this click)
+              if (__availabilityClickTimer) {
+                clearTimeout(__availabilityClickTimer);
+                __availabilityClickTimer = null;
+              }
+              __availabilityClickEventId = info.event.id;
+
+              // Wait a bit to see if this becomes a double-click
+              __availabilityClickTimer = window.setTimeout(() => {
+                __availabilityClickTimer = null;
+                __availabilityClickEventId = null;
+                openScheduleSessionPopupForEvent(info.event);
+              }, 220);
+
+              e.preventDefault();
+              e.stopPropagation();
+            });
+          }
+
           info.el.addEventListener('dblclick', (e) => {
+            // Cancel any pending single-click schedule action for this availability event
+            if (mode === 'availability' && __availabilityClickTimer && __availabilityClickEventId === info.event.id) {
+              clearTimeout(__availabilityClickTimer);
+              __availabilityClickTimer = null;
+              __availabilityClickEventId = null;
+            }
+
             e.preventDefault();
             e.stopPropagation();
             if (mode === 'availability') {
@@ -1237,6 +1333,8 @@
         markDirty(mode);
         recomputeCollisions();
       },
+      // eventClick is intentionally unused for availability slots because we debounce
+      // single-click vs double-click inside eventDidMount.
       eventResize: function(info) {
         const mode = info.event.extendedProps?.slotMode;
         if (mode !== 'session') {
@@ -1437,6 +1535,9 @@
     if (sessionSettingsOverlay && sessionSettingsOverlay.classList.contains('is-visible')) {
       closeSessionSettings();
     }
+    if (scheduleSessionOverlay && scheduleSessionOverlay.classList.contains('is-visible')) {
+      closeScheduleSessionPopup();
+    }
     overlay.classList.remove('is-visible');
     overlay.setAttribute('aria-hidden', 'true');
     // Destroy calendar so it reconstructs cleanly on next open
@@ -1572,6 +1673,22 @@
     });
   }
 
+  // Schedule session popup handlers
+  if (scheduleSessionOverlay) {
+    scheduleSessionOverlay.querySelectorAll('[data-schedule-session-close]').forEach(el => {
+      el.addEventListener('click', (e) => {
+        e.preventDefault();
+        closeScheduleSessionPopup();
+      });
+    });
+  }
+  if (scheduleSessionSendBtn) {
+    scheduleSessionSendBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      sendScheduleSessionEmail();
+    });
+  }
+
   // Close handlers
   overlay.querySelectorAll('[data-mentor-calendar-close]').forEach(el => {
     el.addEventListener('click', close);
@@ -1590,6 +1707,11 @@
     if (sessionSettingsOverlay && sessionSettingsOverlay.classList.contains('is-visible')) {
       e.preventDefault();
       closeSessionSettings();
+      return;
+    }
+    if (scheduleSessionOverlay && scheduleSessionOverlay.classList.contains('is-visible')) {
+      e.preventDefault();
+      closeScheduleSessionPopup();
       return;
     }
     if (availabilitySwitchOverlay && availabilitySwitchOverlay.classList.contains('is-visible')) {
