@@ -393,7 +393,8 @@
   .mentor-calendar-root .fc-event.is-dropdown-open,
   .mentor-calendar-root .fc-timegrid-event.is-dropdown-open,
   .mentor-calendar-root .fc-daygrid-event.is-dropdown-open {
-    z-index: 10010;
+    /* FullCalendar may set z-index inline; force override */
+    z-index: 20000 !important;
   }
 
   /* 

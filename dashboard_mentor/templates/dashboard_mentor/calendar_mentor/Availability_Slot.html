@@ -27,9 +27,6 @@
           <button type="button" class="dropdown-item" data-value="weekly">
             <span>Weekly</span>
           </button>
-          <button type="button" class="dropdown-item" data-value="biweekly">
-            <span>Every 2 weeks</span>
-          </button>
           <button type="button" class="dropdown-item last-item" data-value="monthly">
             <span>Monthly</span>
           </button>
@@ -49,8 +46,7 @@
     padding: 6px 8px;
     border-radius: var(--mentor-calendar-slot-radius, 10px);
     color: #ffffff;
-    /* Allow recurrence menu to escape the slot box */
-    overflow: visible;
+    overflow: hidden;
     box-sizing: border-box;
   }
   .mentor-calendar-slot-title {
@@ -91,7 +87,7 @@
   }
 
   .mentor-calendar-recurrence-trigger.custom-dropdown-trigger {
-    width: 100%;
+    width: auto;
     padding: 4px 10px;
     border-radius: 8px;
     border: 1px solid rgba(255, 255, 255, 0.65);
@@ -131,8 +127,6 @@
 
   .mentor-calendar-recurrence-menu.custom-dropdown-menu {
     position: absolute;
-    top: auto;
-    bottom: calc(100% + 8px); /* open upward so it stays visible */
     right: 0;
     left: auto;
     min-width: 200px;
@@ -140,20 +134,34 @@
     border-radius: 12px;
     box-shadow: 0 4px 20px rgba(0,0,0,0.15);
     padding: 0; /* critical: no padding on container */
-    z-index: 10005; /* above calendar modal content */
+    z-index: 30000; /* above all calendar slots/events */
     opacity: 0;
     visibility: hidden;
     transform: translateY(-10px);
     transition: all 0.2s ease;
   }
 
-  .mentor-calendar-recurrence-dropdown.active .mentor-calendar-recurrence-menu {
-    opacity: 1;
-    visibility: visible;
-    transform: translateY(0);
+  /* In-slot menu is used as a template; actual menu is rendered "floating" above calendar */
+  .mentor-calendar-recurrence-menu.custom-dropdown-menu {
+    display: none;
   }
 
-  .mentor-calendar-recurrence-menu .dropdown-item {
+  .mentor-calendar-floating-recurrence-menu {
+    position: fixed;
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.25);
+    padding: 0; /* critical: no padding on container */
+    z-index: 50000; /* above all calendar slots/events */
+    min-width: 200px;
+    max-width: calc(100vw - 16px);
+    opacity: 1;
+    visibility: visible;
+    transform: none;
+  }
+
+  .mentor-calendar-recurrence-menu .dropdown-item,
+  .mentor-calendar-floating-recurrence-menu .dropdown-item {
     display: flex;
     align-items: center;
     gap: 12px;
@@ -170,22 +178,27 @@
     text-align: left;
   }
 
-  .mentor-calendar-recurrence-menu .dropdown-item:hover {
+  .mentor-calendar-recurrence-menu .dropdown-item:hover,
+  .mentor-calendar-floating-recurrence-menu .dropdown-item:hover {
     background: rgba(16, 185, 129, 0.1);
     color: #10b981; /* --dash-primary */
   }
 
   /* Maintain rounded corners on hover (per style guide) */
-  .mentor-calendar-recurrence-menu .dropdown-item.first-item {
+  .mentor-calendar-recurrence-menu .dropdown-item.first-item,
+  .mentor-calendar-floating-recurrence-menu .dropdown-item.first-item {
     border-radius: 12px 12px 0 0;
   }
-  .mentor-calendar-recurrence-menu .dropdown-item.last-item {
+  .mentor-calendar-recurrence-menu .dropdown-item.last-item,
+  .mentor-calendar-floating-recurrence-menu .dropdown-item.last-item {
     border-radius: 0 0 12px 12px;
   }
-  .mentor-calendar-recurrence-menu .dropdown-item.first-item:hover {
+  .mentor-calendar-recurrence-menu .dropdown-item.first-item:hover,
+  .mentor-calendar-floating-recurrence-menu .dropdown-item.first-item:hover {
     border-radius: 12px 12px 0 0;
   }
-  .mentor-calendar-recurrence-menu .dropdown-item.last-item:hover {
+  .mentor-calendar-recurrence-menu .dropdown-item.last-item:hover,
+  .mentor-calendar-floating-recurrence-menu .dropdown-item.last-item:hover {
     border-radius: 0 0 12px 12px;
   }
   .mentor-calendar-slot--availability {
@@ -254,20 +267,137 @@ window.MentorCalendarSlotComponents.AvailabilitySlot = {
       const items = Array.from(dropdown.querySelectorAll('.dropdown-item'));
       const eventId = props?.eventId || '';
 
-      const closeAll = () => {
-        document.querySelectorAll('.mentor-calendar-recurrence-dropdown.active').forEach(d => {
-          d.classList.remove('active');
-        });
+      const fcEventEl = el.closest?.('.fc-event');
+      const setDropdownOpen = (isOpen) => {
+        if (!fcEventEl) return;
+        fcEventEl.classList.toggle('is-dropdown-open', !!isOpen);
       };
 
-      const open = () => {
-        closeAll();
+      // ---- Floating menu (renders outside FullCalendar stacking contexts) ----
+      const globalState = (window.__mentorCalendarRecurrenceFloatingState = window.__mentorCalendarRecurrenceFloatingState || {
+        menuEl: null,
+        ownerDropdown: null,
+        ownerEventId: null,
+        onReposition: null
+      });
+
+      const closeFloatingMenu = () => {
+        if (globalState.menuEl) {
+          globalState.menuEl.remove();
+          globalState.menuEl = null;
+        }
+        if (globalState.onReposition) {
+          window.removeEventListener('resize', globalState.onReposition);
+          window.removeEventListener('scroll', globalState.onReposition, { capture: true });
+          globalState.onReposition = null;
+        }
+        if (globalState.ownerDropdown) {
+          globalState.ownerDropdown.classList.remove('active');
+          globalState.ownerDropdown = null;
+        }
+        if (globalState.ownerEventId) {
+          document.querySelectorAll('.fc-event.is-dropdown-open').forEach(ev => ev.classList.remove('is-dropdown-open'));
+          globalState.ownerEventId = null;
+        }
+      };
+
+      const positionFloatingMenu = (menuEl) => {
+        if (!trigger) return;
+        const rect = trigger.getBoundingClientRect();
+
+        // Decide direction based on trigger position (upper half -> down, lower half -> up)
+        const midY = rect.top + rect.height / 2;
+        const openUp = midY > (window.innerHeight / 2);
+
+        // Measure after it exists in DOM
+        const m = menuEl.getBoundingClientRect();
+        const margin = 8;
+
+        let top = openUp ? (rect.top - margin - m.height) : (rect.bottom + margin);
+        // Clamp vertically into viewport if needed
+        top = Math.max(margin, Math.min(top, window.innerHeight - m.height - margin));
+
+        let left = rect.right - m.width;
+        left = Math.max(margin, Math.min(left, window.innerWidth - m.width - margin));
+
+        menuEl.style.top = `${Math.round(top)}px`;
+        menuEl.style.left = `${Math.round(left)}px`;
+      };
+
+      const openFloatingMenu = () => {
+        closeFloatingMenu();
+
         dropdown.classList.add('active');
+        setDropdownOpen(true);
+
+        const templateMenu = dropdown.querySelector('[data-recurrence-menu]');
+        if (!templateMenu) return;
+
+        const menuEl = templateMenu.cloneNode(true);
+        // Remove "custom-dropdown-menu" behavior (which defaults to hidden unless .active container)
+        menuEl.classList.remove('custom-dropdown-menu');
+        menuEl.classList.remove('mentor-calendar-recurrence-menu');
+        menuEl.classList.add('mentor-calendar-floating-recurrence-menu');
+        menuEl.style.display = 'block';
+        menuEl.style.opacity = '1';
+        menuEl.style.visibility = 'visible';
+        menuEl.style.transform = 'none';
+
+        // Sync active item inside the floating menu based on current selection
+        const currentValue = (eventId && window.MentorCalendarRecurrenceSelections[eventId]) ? window.MentorCalendarRecurrenceSelections[eventId] : (input?.value || 'none');
+        const floatingItems = Array.from(menuEl.querySelectorAll('.dropdown-item'));
+        floatingItems.forEach(i => i.classList.remove('active'));
+        const activeItem = floatingItems.find(i => (i.getAttribute('data-value') || 'none') === currentValue) || floatingItems[0];
+        if (activeItem) activeItem.classList.add('active');
+
+        // Prevent drag start + handle selection
+        floatingItems.forEach((item) => {
+          item.addEventListener('pointerdown', (e) => e.stopPropagation());
+          item.addEventListener('mousedown', (e) => e.stopPropagation());
+          item.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const value = item.getAttribute('data-value') || 'none';
+            const text = item.querySelector('span')?.textContent?.trim() || 'No repeat';
+
+            if (input) input.value = value;
+            if (selectedText) selectedText.textContent = text;
+
+            // Keep the in-slot template state in sync too (helps on rerender)
+            items.forEach(i => i.classList.remove('active'));
+            const matching = items.find(i => (i.getAttribute('data-value') || 'none') === value);
+            if (matching) matching.classList.add('active');
+
+            el.dataset.recurrence = value;
+            if (eventId) window.MentorCalendarRecurrenceSelections[eventId] = value;
+            console.log('[AvailabilitySlot] recurrence selected:', { eventId: props?.eventId, value });
+
+            closeFloatingMenu();
+          });
+        });
+
+        // Add to DOM, measure, position
+        document.body.appendChild(menuEl);
+        positionFloatingMenu(menuEl);
+
+        // Keep positioned while open
+        const onReposition = () => positionFloatingMenu(menuEl);
+        window.addEventListener('resize', onReposition, { passive: true });
+        window.addEventListener('scroll', onReposition, { passive: true, capture: true });
+
+        globalState.menuEl = menuEl;
+        globalState.ownerDropdown = dropdown;
+        globalState.ownerEventId = eventId || 'unknown';
+        globalState.onReposition = onReposition;
       };
 
-      const toggle = () => {
-        if (dropdown.classList.contains('active')) dropdown.classList.remove('active');
-        else open();
+      const toggleFloatingMenu = () => {
+        if (globalState.ownerDropdown === dropdown && dropdown.classList.contains('active')) {
+          closeFloatingMenu();
+        } else {
+          openFloatingMenu();
+        }
       };
 
       if (trigger) {
@@ -277,16 +407,9 @@ window.MentorCalendarSlotComponents.AvailabilitySlot = {
         trigger.addEventListener('click', (e) => {
           e.preventDefault();
           e.stopPropagation();
-          toggle();
+          toggleFloatingMenu();
         });
       }
-
-      // Boost stacking context when open, so menu draws above nearby events
-      const fcEventEl = el.closest?.('.fc-event');
-      const setDropdownOpen = (isOpen) => {
-        if (!fcEventEl) return;
-        fcEventEl.classList.toggle('is-dropdown-open', !!isOpen);
-      };
 
       // Restore previously selected value (keeps selection visible across rerenders)
       const restoredValue = (eventId && window.MentorCalendarRecurrenceSelections[eventId]) ? window.MentorCalendarRecurrenceSelections[eventId] : (input?.value || 'none');
@@ -300,31 +423,6 @@ window.MentorCalendarSlotComponents.AvailabilitySlot = {
         el.dataset.recurrence = restoredValue;
       }
 
-      items.forEach((item) => {
-        // Prevent drag start when clicking items
-        item.addEventListener('pointerdown', (e) => e.stopPropagation());
-        item.addEventListener('mousedown', (e) => e.stopPropagation());
-        item.addEventListener('click', (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-
-          const value = item.getAttribute('data-value') || 'none';
-          const text = item.querySelector('span')?.textContent?.trim() || 'No repeat';
-
-          if (input) input.value = value;
-          if (selectedText) selectedText.textContent = text;
-
-          items.forEach(i => i.classList.remove('active'));
-          item.classList.add('active');
-
-          dropdown.classList.remove('active');
-          setDropdownOpen(false);
-          el.dataset.recurrence = value;
-          if (eventId) window.MentorCalendarRecurrenceSelections[eventId] = value;
-          console.log('[AvailabilitySlot] recurrence selected:', { eventId: props?.eventId, value });
-        });
-      });
-
       // One global outside-click handler (close on outside click)
       if (!window.__mentorCalendarRecurrenceDropdownBound) {
         window.__mentorCalendarRecurrenceDropdownBound = true;
@@ -332,16 +430,10 @@ window.MentorCalendarSlotComponents.AvailabilitySlot = {
           const target = e.target;
           if (!(target instanceof Element)) return;
           if (target.closest('.mentor-calendar-recurrence-dropdown')) return;
-          closeAll();
-          document.querySelectorAll('.fc-event.is-dropdown-open').forEach(ev => ev.classList.remove('is-dropdown-open'));
+          if (target.closest('.mentor-calendar-floating-recurrence-menu')) return;
+          closeFloatingMenu();
         });
       }
-
-      // Keep fc-event class in sync when this dropdown opens/closes
-      const observer = new MutationObserver(() => {
-        setDropdownOpen(dropdown.classList.contains('active'));
-      });
-      observer.observe(dropdown, { attributes: true, attributeFilter: ['class'] });
     }
 
     const deleteBtn = el.querySelector('[data-slot-delete]');
