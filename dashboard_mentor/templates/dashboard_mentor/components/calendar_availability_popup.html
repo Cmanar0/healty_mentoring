@@ -1878,6 +1878,7 @@ margin: 0}
       }
 
       setSaveButtonLoading(true);
+      let savedOk = false;
       try {
         // Send to backend - send all slots, backend will handle them by date
         const response = await fetch('{% url "general:dashboard_mentor:save_availability" %}', {
@@ -1900,6 +1901,7 @@ margin: 0}
           }
           return;
         }
+        savedOk = true;
 
         // Reload saved slots from backend to reflect the saved state
         try {
@@ -1919,6 +1921,28 @@ margin: 0}
         }
       } finally {
         setSaveButtonLoading(false);
+
+        // After a successful save, treat current state as the new baseline
+        // so the Save button is disabled again (no unsaved changes).
+        if (savedOk) {
+          const cloneSlot = (slot) => ({
+            id: slot?.id,
+            start: slot?.start instanceof Date ? new Date(slot.start.getTime()) : slot?.start,
+            end: slot?.end instanceof Date ? new Date(slot.end.getTime()) : slot?.end,
+            length: slot?.length,
+            type: slot?.type || 'availability_slot'
+          });
+          originalSavedSlots = createdAvailabilitySlots.map(cloneSlot);
+
+          // Reset original dates to the currently saved dates
+          originalDatesWithSlots = new Set();
+          createdAvailabilitySlots.forEach((slot) => {
+            const startIso = slot?.start instanceof Date ? slot.start.toISOString() : String(slot?.start || '');
+            const dateStr = startIso.includes('T') ? startIso.split('T')[0] : '';
+            if (dateStr) originalDatesWithSlots.add(dateStr);
+          });
+        }
+
         updateSaveButton();
       }
     });

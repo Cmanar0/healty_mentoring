@@ -757,6 +757,9 @@
 
       console.log('[MentorCalendar] saved availability slots:', availabilityPayload.length);
       await loadSavedAvailability();
+      // After a successful save, disable the Save button again.
+      dirtyAvailability = false;
+      dirtySession = false;
     } catch (e) {
       console.error('[MentorCalendar] error saving availability:', e);
     } finally {
