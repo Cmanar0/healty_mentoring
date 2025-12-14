@@ -1,7 +1,9 @@
 {# Template used by the mentor calendar popup for rendering a "Session" slot #}
 <template id="mentorCalendarSessionSlotTemplate">
   <div class="mentor-calendar-slot mentor-calendar-slot--session" data-slot-root>
-    <div class="mentor-calendar-slot-title">Session</div>
+    <div class="mentor-calendar-slot-title">
+      <span class="mentor-calendar-slot-badge mentor-calendar-slot-badge--session">Session</span>
+    </div>
     <div class="mentor-calendar-slot-time" data-slot-time></div>
   </div>
 </template>
@@ -22,13 +24,26 @@
     font-size: 0.85rem;
     line-height: 1.1;
   }
+  .mentor-calendar-slot-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-weight: 800;
+    letter-spacing: 0.2px;
+    font-size: 0.82rem;
+    line-height: 1.2;
+  }
+  .mentor-calendar-slot-badge--session {
+    background: rgba(16, 185, 129, 0.95); /* green */
+    color: #ffffff;
+  }
   .mentor-calendar-slot-time {
     font-weight: 600;
     font-size: 0.8rem;
     opacity: 0.95;
   }
   .mentor-calendar-slot--session {
-    background: rgba(16, 185, 129, 0.95); /* green */
+    background: rgba(16, 185, 129, 0); /* green */
   }
 </style>
 

@@ -368,8 +368,52 @@
     border-top: 1px solid var(--fc-border-color) !important;
   }
 
-</style>
+  /* --- Dynamic Slot Styling based on Mode --- */
 
+  /* Base Event Styles (handled by FullCalendar inline styles usually, but we set overrides) */
+  .mentor-calendar-root .fc-event,
+  .mentor-calendar-root .fc-timegrid-event,
+  .mentor-calendar-root .fc-daygrid-event {
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    border-width: 2px !important;
+    border-style: solid !important;
+  }
+
+  /* 
+     Mode: SESSIONS (Default) 
+     - Session Slots (Green): Normal
+     - Availability Slots (Blue): Ghost
+  */
+  .mentor-calendar-root:not(.is-mode-availability) .event-type-availability {
+    background-color: #eff6ff !important;
+    border-color: #3b82f6 !important;
+    color: #0f172a !important; /* Black text */
+  }
+  .mentor-calendar-root:not(.is-mode-availability) .event-type-availability .fc-event-main,
+  .mentor-calendar-root:not(.is-mode-availability) .event-type-availability .fc-event-time,
+  .mentor-calendar-root:not(.is-mode-availability) .event-type-availability .fc-event-title, 
+  .mentor-calendar-root:not(.is-mode-availability) .event-type-availability [data-slot-time] {
+    color: #0f172a !important;
+  }
+
+  /* 
+     Mode: AVAILABILITY 
+     - Session Slots (Green): Ghost
+     - Availability Slots (Blue): Normal
+  */
+  .mentor-calendar-root.is-mode-availability .event-type-session {
+    background-color: #f0fdf4 !important;
+    border-color: #10b981 !important;
+    color: #0f172a !important; /* Black text */
+  }
+  .mentor-calendar-root.is-mode-availability .event-type-session .fc-event-main,
+  .mentor-calendar-root.is-mode-availability .event-type-session .fc-event-time,
+  .mentor-calendar-root.is-mode-availability .event-type-session .fc-event-title,
+  .mentor-calendar-root.is-mode-availability .event-type-session [data-slot-time] {
+    color: #0f172a !important;
+  }
+
+</style>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.css">
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/locales-all.global.min.js"></script>
@@ -499,6 +543,7 @@
           backgroundColor: '#3b82f6',
           borderColor: '#2563eb',
           textColor: '#ffffff',
+          classNames: ['event-type-availability'], // Added class
           extendedProps: { slotMode: 'availability', type: 'availability_slot' }
         });
       });
@@ -594,6 +639,16 @@
   function setMode(nextIsAvailability) {
     isAvailabilityMode = !!nextIsAvailability;
     renderModeToggle();
+    
+    // Toggle class on root for CSS styling
+    if (root) {
+      if (isAvailabilityMode) {
+        root.classList.add('is-mode-availability');
+      } else {
+        root.classList.remove('is-mode-availability');
+      }
+    }
+
     console.log('[MentorCalendar] isAvailabilityMode =', isAvailabilityMode);
   }
 
@@ -688,6 +743,7 @@
           backgroundColor: mode === 'availability' ? '#3b82f6' : '#10b981',
           borderColor: mode === 'availability' ? '#2563eb' : '#059669',
           textColor: '#ffffff',
+          classNames: [mode === 'availability' ? 'event-type-availability' : 'event-type-session'], // Added class
           extendedProps: { slotMode: mode }
         });
 
