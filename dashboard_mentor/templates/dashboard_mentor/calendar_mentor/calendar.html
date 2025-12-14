@@ -62,6 +62,9 @@
 
 {% include "dashboard_mentor/calendar_mentor/Session_slot.html" %}
 {% include "dashboard_mentor/calendar_mentor/Availability_Slot.html" %}
+{% include "dashboard_mentor/calendar_mentor/availability_settings.html" %}
+{% include "dashboard_mentor/calendar_mentor/availability_switch_mode_popup.html" %}
+{% include "dashboard_mentor/calendar_mentor/session_switch_mode_popup.html" %}
 
 <style>
   /* --- Overlay --- */
@@ -546,10 +549,25 @@
   const modeAvailabilityBtn = document.getElementById('mentorCalendarModeAvailability');
   const sessionSlotTpl = document.getElementById('mentorCalendarSessionSlotTemplate');
   const availabilitySlotTpl = document.getElementById('mentorCalendarAvailabilitySlotTemplate');
+
+  // Availability settings popup (opens on dblclick availability slot)
+  const availabilitySettingsOverlay = document.getElementById('mentorAvailabilitySettingsOverlay');
+  const availabilitySettingsDateInput = document.getElementById('availabilitySettingsDate');
+  const availabilitySettingsTimeInput = document.getElementById('availabilitySettingsTime');
+  const availabilitySettingsDurationMinutesEl = document.getElementById('availabilitySettingsDurationMinutes');
+  const availabilitySettingsSaveBtn = document.getElementById('availabilitySettingsSaveBtn');
+  const availabilitySwitchOverlay = document.getElementById('mentorAvailabilitySwitchModeOverlay');
+  const availabilitySwitchToAvailabilityBtn = document.getElementById('availabilitySwitchToAvailabilityBtn');
+  const sessionSwitchOverlay = document.getElementById('mentorSessionSwitchModeOverlay');
+  const sessionSwitchToSessionsBtn = document.getElementById('sessionSwitchToSessionsBtn');
   
   if (!overlay || !root) return;
 
   let calendar = null;
+  let availabilitySettingsEventId = null;
+  let availabilitySwitchEventId = null;
+  let availabilitySwitchOpenSettingsAfterSwitch = false;
+  let sessionSwitchEventId = null;
 
   // Timezone source of truth: mentorprofile.selected_timezone (fallback: detected_timezone)
   function resolveMentorTimezone() {
@@ -587,6 +605,147 @@
 
   // Calendar timezone variable (used by FullCalendar init + save grouping)
   let timezone_variable = resolveMentorTimezone();
+
+  // --- Availability settings popup helpers ---
+  function setAvailabilitySettingsVisible(isVisible) {
+    if (!availabilitySettingsOverlay) return;
+    availabilitySettingsOverlay.classList.toggle('is-visible', !!isVisible);
+    availabilitySettingsOverlay.setAttribute('aria-hidden', isVisible ? 'false' : 'true');
+  }
+
+  function closeAvailabilitySettings() {
+    availabilitySettingsEventId = null;
+    setAvailabilitySettingsVisible(false);
+  }
+
+  function openAvailabilitySettingsForEvent(fcEvent) {
+    if (!availabilitySettingsOverlay || !fcEvent) return;
+    if (!availabilitySettingsDateInput || !availabilitySettingsTimeInput) return;
+
+    availabilitySettingsEventId = fcEvent.id || null;
+
+    // Duration comes from mentor profile session_length
+    const durationMinutes = resolveMentorSessionLengthMinutes();
+    if (availabilitySettingsDurationMinutesEl) {
+      availabilitySettingsDurationMinutesEl.textContent = String(durationMinutes);
+    }
+
+    // Populate start date/time in the calendar timezone
+    try {
+      if (window.luxon && window.luxon.DateTime && fcEvent.start) {
+        const dt = window.luxon.DateTime.fromJSDate(fcEvent.start).setZone(timezone_variable);
+        availabilitySettingsDateInput.value = dt.toISODate();      // YYYY-MM-DD
+        availabilitySettingsTimeInput.value = dt.toFormat('HH:mm'); // 24h time
+      }
+    } catch (e) {
+      console.warn('[MentorCalendar] Could not prefill availability settings:', e);
+    }
+
+    setAvailabilitySettingsVisible(true);
+  }
+
+  function applyAvailabilitySettings() {
+    if (!calendar) return;
+    if (!availabilitySettingsEventId) return;
+    if (!availabilitySettingsDateInput || !availabilitySettingsTimeInput) return;
+
+    const ev = calendar.getEventById(availabilitySettingsEventId);
+    if (!ev) {
+      closeAvailabilitySettings();
+      return;
+    }
+
+    const dateStr = (availabilitySettingsDateInput.value || '').trim();
+    const timeStr = (availabilitySettingsTimeInput.value || '').trim();
+    if (!dateStr || !timeStr) {
+      if (typeof showNotification === 'function') {
+        showNotification('Please choose a date and time.', 'error');
+      } else {
+        alert('Please choose a date and time.');
+      }
+      return;
+    }
+
+    if (!(window.luxon && window.luxon.DateTime)) {
+      console.warn('[MentorCalendar] Luxon is required for availability settings editing.');
+      return;
+    }
+
+    const durationMinutes = resolveMentorSessionLengthMinutes();
+    const dt = window.luxon.DateTime.fromISO(`${dateStr}T${timeStr}`, { zone: timezone_variable });
+    if (!dt.isValid) {
+      if (typeof showNotification === 'function') {
+        showNotification('Invalid date/time.', 'error');
+      } else {
+        alert('Invalid date/time.');
+      }
+      return;
+    }
+
+    const startJs = dt.toJSDate();
+    const endJs = dt.plus({ minutes: durationMinutes }).toJSDate();
+
+    ev.setStart(startJs);
+    ev.setEnd(endJs);
+
+    markDirty('availability');
+    recomputeCollisions();
+    closeAvailabilitySettings();
+  }
+
+  // --- Switch-to-availability-mode popup helpers ---
+  function setAvailabilitySwitchVisible(isVisible) {
+    if (!availabilitySwitchOverlay) return;
+    availabilitySwitchOverlay.classList.toggle('is-visible', !!isVisible);
+    availabilitySwitchOverlay.setAttribute('aria-hidden', isVisible ? 'false' : 'true');
+  }
+
+  function closeAvailabilitySwitchPopup() {
+    availabilitySwitchEventId = null;
+    setAvailabilitySwitchVisible(false);
+  }
+
+  function openAvailabilitySwitchPopupForEventId(eventId, openSettingsAfterSwitch) {
+    if (!availabilitySwitchOverlay) return;
+    availabilitySwitchEventId = eventId || null;
+    availabilitySwitchOpenSettingsAfterSwitch = !!openSettingsAfterSwitch;
+    setAvailabilitySwitchVisible(true);
+  }
+
+  function switchToAvailabilityModeAndOpenSettings() {
+    if (!calendar) return;
+    const id = availabilitySwitchEventId;
+    const shouldOpenSettings = !!availabilitySwitchOpenSettingsAfterSwitch;
+    closeAvailabilitySwitchPopup();
+    if (!id) return;
+
+    setMode(true);
+    const ev = calendar.getEventById(id);
+    if (ev && shouldOpenSettings) openAvailabilitySettingsForEvent(ev);
+  }
+
+  // --- Switch-to-sessions-mode popup helpers ---
+  function setSessionSwitchVisible(isVisible) {
+    if (!sessionSwitchOverlay) return;
+    sessionSwitchOverlay.classList.toggle('is-visible', !!isVisible);
+    sessionSwitchOverlay.setAttribute('aria-hidden', isVisible ? 'false' : 'true');
+  }
+
+  function closeSessionSwitchPopup() {
+    sessionSwitchEventId = null;
+    setSessionSwitchVisible(false);
+  }
+
+  function openSessionSwitchPopupForEventId(eventId) {
+    if (!sessionSwitchOverlay) return;
+    sessionSwitchEventId = eventId || null;
+    setSessionSwitchVisible(true);
+  }
+
+  function switchToSessionsMode() {
+    closeSessionSwitchPopup();
+    setMode(false);
+  }
 
   // Track dates which originally had availability (for deletion support)
   let originalAvailabilityDates = new Set();
@@ -674,9 +833,6 @@
         // Track local date keys for deletion support
         originalAvailabilityDates.add(getLocalDateKeyFromUtcIso(startIso));
 
-        // Determine if editable based on current mode
-        const isEditable = isAvailabilityMode === true; // Availability slots only editable in Availability mode
-
         calendar.addEvent({
           id: slot.id || ('availability_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8)),
           start: startIso,
@@ -686,7 +842,9 @@
           borderColor: '#2563eb',
           textColor: '#ffffff',
           classNames: ['event-type-availability'], // Added class
-          editable: isEditable, // Init based on current mode
+          // Allow drag start in Sessions mode so we can show the switch popup on drop.
+          // The move will be reverted in eventDrop if not in Availability mode.
+          editable: true,
           extendedProps: { slotMode: 'availability', type: 'availability_slot' }
         });
       });
@@ -757,6 +915,9 @@
 
       console.log('[MentorCalendar] saved availability slots:', availabilityPayload.length);
       await loadSavedAvailability();
+      if (typeof showNotification === 'function') {
+        showNotification('Saved successfully.', 'success');
+      }
       // After a successful save, disable the Save button again.
       dirtyAvailability = false;
       dirtySession = false;
@@ -852,12 +1013,16 @@
         const slotMode = ev.extendedProps?.slotMode;
         let shouldBeEditable = false;
         
-        if (isAvailabilityMode) {
-          // In avail mode: Availability slots editable, Sessions NOT
-          if (slotMode === 'availability') shouldBeEditable = true;
+        if (slotMode === 'availability') {
+          // Allow drag start in Sessions mode so we can show the switch popup on drop.
+          // The move will be reverted if not in Availability mode.
+          shouldBeEditable = true;
+        } else if (slotMode === 'session') {
+          // Allow drag start in Availability mode so we can show the switch popup on drop.
+          // The move/resize will be reverted if not in Sessions mode.
+          shouldBeEditable = true;
         } else {
-          // In session mode: Session slots editable, Availability NOT
-          if (slotMode === 'session') shouldBeEditable = true;
+          shouldBeEditable = false;
         }
         
         // Use setProp to update the 'editable' property
@@ -907,6 +1072,28 @@
       eventClassNames: function(arg) {
         return arg.event.extendedProps?.hasCollision ? ['is-collision'] : [];
       },
+
+      eventDidMount: function(info) {
+        // Double-click availability slot -> open availability settings popup
+        try {
+          const mode = info.event?.extendedProps?.slotMode;
+          if (mode !== 'availability') return;
+          if (!info.el) return;
+
+          info.el.addEventListener('dblclick', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (!isAvailabilityMode) {
+              openAvailabilitySwitchPopupForEventId(info.event.id, true);
+              return;
+            }
+            openAvailabilitySettingsForEvent(info.event);
+          });
+        } catch (e) {
+          // non-fatal
+          console.warn('[MentorCalendar] eventDidMount dblclick bind failed:', e);
+        }
+      },
       slotDuration: '00:05:00',
       snapDuration: '00:05:00',
       slotLabelInterval: '01:00:00',
@@ -919,6 +1106,18 @@
       },
       eventDrop: function(info) {
         const mode = info.event.extendedProps?.slotMode;
+        // Dragging availability in Sessions mode: revert and prompt to switch
+        if (mode === 'availability' && !isAvailabilityMode) {
+          info.revert();
+          openAvailabilitySwitchPopupForEventId(info.event.id, false);
+          return;
+        }
+        // Dragging session in Availability mode: revert and prompt to switch
+        if (mode === 'session' && isAvailabilityMode) {
+          info.revert();
+          openSessionSwitchPopupForEventId(info.event.id);
+          return;
+        }
         console.log('[MentorCalendar] eventDrop', {
           mode,
           id: info.event.id,
@@ -935,6 +1134,12 @@
           // Safety: availability should never resize
           info.revert();
           console.log('[MentorCalendar] prevented resize for non-session slot', { id: info.event.id, mode });
+          return;
+        }
+        // Resizing session in Availability mode: revert and prompt to switch
+        if (isAvailabilityMode) {
+          info.revert();
+          openSessionSwitchPopupForEventId(info.event.id);
           return;
         }
         console.log('[MentorCalendar] eventResize', {
@@ -1110,6 +1315,16 @@
   }
 
   function close() {
+    // Always close the settings popup too (if open)
+    if (availabilitySettingsOverlay && availabilitySettingsOverlay.classList.contains('is-visible')) {
+      closeAvailabilitySettings();
+    }
+    if (availabilitySwitchOverlay && availabilitySwitchOverlay.classList.contains('is-visible')) {
+      closeAvailabilitySwitchPopup();
+    }
+    if (sessionSwitchOverlay && sessionSwitchOverlay.classList.contains('is-visible')) {
+      closeSessionSwitchPopup();
+    }
     overlay.classList.remove('is-visible');
     overlay.setAttribute('aria-hidden', 'true');
     // Destroy calendar so it reconstructs cleanly on next open
@@ -1157,13 +1372,98 @@
     });
   }
 
+  // Availability settings popup handlers
+  if (availabilitySettingsOverlay) {
+    availabilitySettingsOverlay.querySelectorAll('[data-availability-settings-close]').forEach(el => {
+      el.addEventListener('click', (e) => {
+        e.preventDefault();
+        closeAvailabilitySettings();
+      });
+    });
+    availabilitySettingsOverlay.querySelectorAll('[data-availability-settings-cancel]').forEach(el => {
+      el.addEventListener('click', (e) => {
+        e.preventDefault();
+        closeAvailabilitySettings();
+      });
+    });
+  }
+  if (availabilitySettingsSaveBtn) {
+    availabilitySettingsSaveBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      applyAvailabilitySettings();
+    });
+  }
+
+  // Switch-to-availability-mode popup handlers
+  if (availabilitySwitchOverlay) {
+    availabilitySwitchOverlay.querySelectorAll('[data-availability-switch-close]').forEach(el => {
+      el.addEventListener('click', (e) => {
+        e.preventDefault();
+        closeAvailabilitySwitchPopup();
+      });
+    });
+    availabilitySwitchOverlay.querySelectorAll('[data-availability-switch-cancel]').forEach(el => {
+      el.addEventListener('click', (e) => {
+        e.preventDefault();
+        closeAvailabilitySwitchPopup();
+      });
+    });
+  }
+  if (availabilitySwitchToAvailabilityBtn) {
+    availabilitySwitchToAvailabilityBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      switchToAvailabilityModeAndOpenSettings();
+    });
+  }
+
+  // Switch-to-sessions-mode popup handlers
+  if (sessionSwitchOverlay) {
+    sessionSwitchOverlay.querySelectorAll('[data-session-switch-close]').forEach(el => {
+      el.addEventListener('click', (e) => {
+        e.preventDefault();
+        closeSessionSwitchPopup();
+      });
+    });
+    sessionSwitchOverlay.querySelectorAll('[data-session-switch-cancel]').forEach(el => {
+      el.addEventListener('click', (e) => {
+        e.preventDefault();
+        closeSessionSwitchPopup();
+      });
+    });
+  }
+  if (sessionSwitchToSessionsBtn) {
+    sessionSwitchToSessionsBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      switchToSessionsMode();
+    });
+  }
+
   // Close handlers
   overlay.querySelectorAll('[data-mentor-calendar-close]').forEach(el => {
     el.addEventListener('click', close);
   });
   
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && overlay.classList.contains('is-visible')) close();
+    if (e.key !== 'Escape') return;
+    if (!overlay.classList.contains('is-visible')) return;
+
+    // Priority: close settings popup first, then availability switch, then session switch, then the calendar popup.
+    if (availabilitySettingsOverlay && availabilitySettingsOverlay.classList.contains('is-visible')) {
+      e.preventDefault();
+      closeAvailabilitySettings();
+      return;
+    }
+    if (availabilitySwitchOverlay && availabilitySwitchOverlay.classList.contains('is-visible')) {
+      e.preventDefault();
+      closeAvailabilitySwitchPopup();
+      return;
+    }
+    if (sessionSwitchOverlay && sessionSwitchOverlay.classList.contains('is-visible')) {
+      e.preventDefault();
+      closeSessionSwitchPopup();
+      return;
+    }
+    close();
   });
 
   // Public API

@@ -1,0 +1,204 @@
+{# Popup shown when mentor double-clicks an availability slot in the calendar #}
+
+<div id="mentorAvailabilitySettingsOverlay" class="availability-settings-overlay" aria-hidden="true">
+  <div class="availability-settings-backdrop" data-availability-settings-close></div>
+
+  <div class="availability-settings-modal" role="dialog" aria-modal="true" aria-label="Availability settings">
+    <header class="availability-settings-header">
+      <h3 class="availability-settings-title">Availability Settings</h3>
+      <button type="button" class="availability-settings-close" data-availability-settings-close aria-label="Close">
+        &times;
+      </button>
+    </header>
+
+    <div class="availability-settings-body">
+      <div class="availability-settings-row">
+        <label class="availability-settings-label" for="availabilitySettingsDate">Start date</label>
+        <input id="availabilitySettingsDate" class="availability-settings-input" type="date" />
+      </div>
+
+      <div class="availability-settings-row">
+        <label class="availability-settings-label" for="availabilitySettingsTime">Start time</label>
+        <input id="availabilitySettingsTime" class="availability-settings-input" type="time" step="60" />
+      </div>
+
+      <div class="availability-settings-row availability-settings-row--duration">
+        <div class="availability-settings-label">Duration</div>
+        <div class="availability-settings-duration">
+          <span id="availabilitySettingsDurationMinutes">--</span> minutes
+          <span class="availability-settings-duration-hint">
+            You can change the length of your slots in
+            <a class="availability-settings-profile-link" href="/dashboard/mentor/profile/#session-configuration">profile</a>.
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <footer class="availability-settings-footer">
+      <button type="button" class="availability-settings-btn availability-settings-btn--secondary" data-availability-settings-cancel>
+        Cancel
+      </button>
+      <button type="button" class="availability-settings-btn availability-settings-btn--primary" id="availabilitySettingsSaveBtn">
+        Apply
+      </button>
+    </footer>
+  </div>
+</div>
+
+<style>
+  .availability-settings-overlay {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(15, 23, 42, 0.25);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+    z-index: 10050; /* above mentor calendar overlay */
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s ease, visibility 0.2s ease;
+  }
+  .availability-settings-overlay.is-visible {
+    opacity: 1;
+    visibility: visible;
+  }
+  .availability-settings-backdrop {
+    position: absolute;
+    inset: 0;
+  }
+
+  .availability-settings-modal {
+    position: relative;
+    width: min(520px, calc(100vw - 24px));
+    background: #ffffff;
+    border-radius: 14px;
+    box-shadow: 0 18px 60px rgba(0,0,0,0.25);
+    overflow: hidden;
+    border: 1px solid #e2e8f0;
+  }
+
+  .availability-settings-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 16px 12px;
+    border-bottom: 1px solid #e2e8f0;
+  }
+  .availability-settings-title {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 700;
+    color: #0f172a;
+  }
+  .availability-settings-close {
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    color: #64748b;
+    font-size: 1.1rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .availability-settings-close:hover {
+    background: #f1f5f9;
+    color: #0f172a;
+  }
+
+  .availability-settings-body {
+    padding: 14px 16px;
+    display: grid;
+    gap: 12px;
+  }
+
+  .availability-settings-row {
+    display: grid;
+    grid-template-columns: 140px 1fr;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .availability-settings-label {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #334155;
+  }
+
+  .availability-settings-input {
+    height: 40px;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+    padding: 0 12px;
+    font-size: 0.95rem;
+    color: #0f172a;
+    background: #ffffff;
+  }
+  .availability-settings-input:focus {
+    outline: none;
+    border-color: #94a3b8;
+    box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.25);
+  }
+
+  .availability-settings-row--duration {
+    align-items: start;
+  }
+  .availability-settings-duration {
+    display: grid;
+    gap: 6px;
+    font-size: 0.95rem;
+    color: #0f172a;
+  }
+  .availability-settings-duration-hint {
+    font-size: 0.85rem;
+    color: #64748b;
+  }
+  .availability-settings-profile-link {
+    color: #334156;
+    text-decoration: underline;
+    font-weight: 600;
+  }
+
+  .availability-settings-footer {
+    padding: 12px 16px 16px;
+    border-top: 1px solid #e2e8f0;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+  }
+
+  .availability-settings-btn {
+    height: 40px;
+    border-radius: 10px;
+    padding: 0 14px;
+    border: 1px solid #e2e8f0;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .availability-settings-btn--secondary {
+    background: #ffffff;
+    color: #0f172a;
+  }
+  .availability-settings-btn--secondary:hover {
+    background: #f8fafc;
+  }
+  .availability-settings-btn--primary {
+    background: #334156;
+    color: #ffffff;
+    border-color: #334156;
+  }
+  .availability-settings-btn--primary:hover {
+    filter: brightness(0.95);
+  }
+
+  @media (max-width: 520px) {
+    .availability-settings-row {
+      grid-template-columns: 1fr;
+      gap: 6px;
+    }
+  }
+</style>
