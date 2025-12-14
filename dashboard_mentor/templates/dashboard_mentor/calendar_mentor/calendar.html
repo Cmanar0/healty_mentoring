@@ -1,0 +1,684 @@
+{% load static %}
+
+{# Entry-point popup template. Include this from a page via: {% include "dashboard_mentor/calendar_mentor/calendar.html" %} #}
+
+<div id="mentorCalendarOverlay" class="mentor-calendar-overlay" aria-hidden="true">
+  <div class="mentor-calendar-backdrop" data-mentor-calendar-close></div>
+
+  <div class="mentor-calendar-modal" role="dialog" aria-modal="true" aria-label="Calendar">
+    <header class="mentor-calendar-header">
+      <div class="mentor-calendar-date-group">
+        <h2 id="mentorCalendarDateDisplay">Loading...</h2>
+      </div>
+
+      <div class="mentor-calendar-controls">
+        <div class="mentor-calendar-nav">
+          <button class="calendar-nav-btn" data-calendar-nav="prev" aria-label="Previous">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M10 12L6 8L10 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <button class="calendar-nav-btn" data-calendar-nav="today" aria-label="Today">Today</button>
+          <button class="calendar-nav-btn" data-calendar-nav="next" aria-label="Next">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M6 4L10 8L6 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </div>
+
+        <div class="mentor-calendar-view-toggle">
+          <button class="view-toggle-btn" data-calendar-view="timeGridDay">Day</button>
+          <button class="view-toggle-btn is-active" data-calendar-view="timeGridWeek">Week</button>
+          <button class="view-toggle-btn" data-calendar-view="dayGridMonth">Month</button>
+        </div>
+
+        <div class="mentor-calendar-mode-toggle" aria-label="Mode toggle">
+          <button type="button" id="mentorCalendarModeSessions" class="mode-toggle-btn is-active" data-mode="sessions">
+            Sessions
+          </button>
+          <button type="button" id="mentorCalendarModeAvailability" class="mode-toggle-btn" data-mode="availability">
+            Availability
+          </button>
+        </div>
+
+        <div class="mentor-calendar-timezone">
+          <select id="mentorCalendarTimezoneSelect" class="mentor-calendar-tz-select" aria-label="Timezone"></select>
+        </div>
+
+        <button type="button" class="mentor-calendar-close" data-mentor-calendar-close aria-label="Close">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <div class="mentor-calendar-body">
+      <div id="mentorCalendarRoot" class="mentor-calendar-root"></div>
+    </div>
+  </div>
+</div>
+
+{% include "dashboard_mentor/calendar_mentor/Session_slot.html" %}
+{% include "dashboard_mentor/calendar_mentor/Availability_Slot.html" %}
+
+<style>
+  /* --- Overlay --- */
+  .mentor-calendar-overlay {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    z-index: 9999;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+  }
+  .mentor-calendar-overlay.is-visible {
+    opacity: 1;
+    visibility: visible;
+  }
+  .mentor-calendar-backdrop {
+    position: absolute;
+    inset: 0;
+  }
+
+  /* --- Modal --- */
+  .mentor-calendar-modal {
+    background: #ffffff;
+    width: 95%;
+    max-width: 1400px;
+    height: 90vh;
+    border-radius: 24px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 
+      0 25px 50px -12px rgba(0, 0, 0, 0.25),
+      0 0 0 1px rgba(0, 0, 0, 0.05);
+    transform: translateY(20px);
+    transition: transform 0.3s ease, opacity 0.3s ease;
+    opacity: 0;
+  }
+  .mentor-calendar-overlay.is-visible .mentor-calendar-modal {
+    transform: translateY(0);
+    opacity: 1;
+  }
+
+  /* --- Header --- */
+  .mentor-calendar-header {
+    padding: 20px 32px;
+    background: #ffffff;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 24px;
+    border-bottom: 1px solid #f1f5f9;
+  }
+
+  /* Date Display (Left) */
+  .mentor-calendar-date-group h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #0f172a;
+    letter-spacing: -0.025em;
+    line-height: 1.2;
+    min-width: 200px; /* Prevent jumping */
+  }
+
+  /* Controls Group (Right) */
+  .mentor-calendar-controls {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  /* Nav Buttons */
+  .mentor-calendar-nav {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: #f8fafc;
+    padding: 4px;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+  }
+
+  .calendar-nav-btn {
+    border: none;
+    background: transparent;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    cursor: pointer;
+    color: #64748b;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    padding: 0;
+  }
+
+  .calendar-nav-btn[data-calendar-nav="today"] {
+    width: auto;
+    padding: 0 12px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #475569;
+  }
+
+  .calendar-nav-btn:hover {
+    background: #ffffff;
+    color: #0f172a;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  }
+
+  /* View Toggle (Segmented Control) */
+  .mentor-calendar-view-toggle {
+    display: flex;
+    align-items: center;
+    background: #f1f5f9;
+    border-radius: 10px;
+    padding: 4px;
+    gap: 0;
+    border: 1px solid #e2e8f0;
+  }
+
+  .view-toggle-btn {
+    padding: 6px 16px;
+    border: none;
+    cursor: pointer;
+    border-radius: 8px;
+    background: transparent;
+    color: #64748b;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+  }
+
+  .view-toggle-btn:hover:not(.is-active) {
+    color: #334155;
+    background: rgba(0,0,0,0.03);
+  }
+
+  .view-toggle-btn.is-active {
+    background: #3b82f6;
+    color: #ffffff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    font-weight: 600;
+  }
+
+  /* Sessions / Availability toggle */
+  .mentor-calendar-mode-toggle {
+    display: flex;
+    align-items: center;
+    background: #f1f5f9;
+    border-radius: 10px;
+    padding: 4px;
+    border: 1px solid #e2e8f0;
+    gap: 4px;
+  }
+  .mode-toggle-btn {
+    padding: 6px 14px;
+    border: none;
+    cursor: pointer;
+    border-radius: 8px;
+    background: transparent;
+    color: #64748b;
+    font-size: 0.875rem;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+  }
+  .mode-toggle-btn:hover:not(.is-active) {
+    color: #334155;
+    background: rgba(0,0,0,0.03);
+  }
+  .mode-toggle-btn.is-active[data-mode="sessions"] {
+    background: #10b981; /* green */
+    color: #ffffff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  }
+  .mode-toggle-btn.is-active[data-mode="availability"] {
+    background: #3b82f6; /* blue */
+    color: #ffffff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  }
+
+  /* Timezone dropdown */
+  .mentor-calendar-timezone {
+    display: flex;
+    align-items: center;
+  }
+  .mentor-calendar-tz-select {
+    height: 40px;
+    max-width: 260px;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+    background: #ffffff;
+    color: #334155;
+    padding: 0 12px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    outline: none;
+  }
+  .mentor-calendar-tz-select:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
+  }
+
+  /* Close Button */
+  .mentor-calendar-close {
+    border: none;
+    background: transparent;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    cursor: pointer;
+    color: #94a3b8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    margin-left: 8px;
+  }
+
+  .mentor-calendar-close:hover {
+    background: #fee2e2;
+    color: #ef4444;
+    transform: rotate(90deg);
+  }
+
+  /* --- Body --- */
+  .mentor-calendar-body {
+    flex: 1;
+    min-height: 0;
+    background: #f8fafc;
+    position: relative;
+    padding: 0;
+  }
+
+  .mentor-calendar-root {
+    height: 100%;
+    background: #ffffff;
+  }
+
+  /* --- FullCalendar Overrides (Matching Availability Popup) --- */
+  .mentor-calendar-root {
+    font-family: inherit;
+    --fc-border-color: #cbd5e1;
+    --fc-page-bg-color: #ffffff;
+    --fc-neutral-bg-color: #f8fafc;
+    --fc-today-bg-color: #f0fdf4;
+    --fc-now-indicator-color: #ef4444;
+  }
+
+  /* Headers */
+  .mentor-calendar-root .fc-theme-standard th {
+    border: 1px solid var(--fc-border-color);
+    background: #f8fafc;
+    padding: 12px 0;
+  }
+
+  .mentor-calendar-root .fc-col-header-cell-cushion {
+    color: #64748b;
+    font-weight: 600;
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  /* Time Labels */
+  .mentor-calendar-root .fc-timegrid-axis-cushion,
+  .mentor-calendar-root .fc-timegrid-slot-label-cushion {
+    color: #64748b;
+    font-size: 0.75rem;
+    font-weight: 500;
+  }
+
+  /* Strictly enforce 1px borders everywhere to match popup */
+  .mentor-calendar-root .fc-theme-standard td, 
+  .mentor-calendar-root .fc-theme-standard th,
+  .mentor-calendar-root .fc-scrollgrid,
+  .mentor-calendar-root .fc-timegrid-col,
+  .mentor-calendar-root .fc-daygrid-day-frame {
+    border: 1px solid var(--fc-border-color) !important;
+  }
+
+  /* Prevent double borders in month view */
+  .mentor-calendar-root .fc-daygrid-day-frame {
+    border: none !important; 
+  }
+  .mentor-calendar-root .fc-daygrid-day {
+    border: 1px solid var(--fc-border-color) !important;
+  }
+
+  /* Hour Slots */
+  .mentor-calendar-root .fc-timegrid-slot {
+    height: 20px;
+    border-bottom: 1px dotted #e2e8f0; /* Default weak lines */
+  }
+  
+  /* Class we'll add via JS for strong hour lines */
+  .mentor-calendar-root .fc-hour-slot {
+    border-top: 1px solid var(--fc-border-color) !important;
+  }
+
+  /* Slot chip styling (rendered via templates in eventContent) */
+  .mentor-calendar-slot {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 6px 8px;
+    border-radius: 10px;
+    color: #ffffff;
+    overflow: hidden;
+  }
+  .mentor-calendar-slot-title {
+    font-weight: 700;
+    font-size: 0.85rem;
+    line-height: 1.1;
+  }
+  .mentor-calendar-slot-time {
+    font-weight: 600;
+    font-size: 0.8rem;
+    opacity: 0.95;
+  }
+  .mentor-calendar-slot--session {
+    background: rgba(16, 185, 129, 0.95); /* green */
+  }
+  .mentor-calendar-slot--availability {
+    background: rgba(59, 130, 246, 0.95); /* blue */
+  }
+</style>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.css">
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/locales-all.global.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/luxon@3/build/global/luxon.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@fullcalendar/luxon3@6.1.10/index.global.min.js"></script>
+
+<script>
+(function() {
+  const overlay = document.getElementById('mentorCalendarOverlay');
+  const root = document.getElementById('mentorCalendarRoot');
+  const dateDisplay = document.getElementById('mentorCalendarDateDisplay');
+  const tzSelect = document.getElementById('mentorCalendarTimezoneSelect');
+  const modeSessionsBtn = document.getElementById('mentorCalendarModeSessions');
+  const modeAvailabilityBtn = document.getElementById('mentorCalendarModeAvailability');
+  const sessionSlotTpl = document.getElementById('mentorCalendarSessionSlotTemplate');
+  const availabilitySlotTpl = document.getElementById('mentorCalendarAvailabilitySlotTemplate');
+  
+  if (!overlay || !root) return;
+
+  let calendar = null;
+
+  // Single source of truth for timezone (edit this string):
+  let timezone_variable = 'Africa/Djibouti';
+
+  // Mode toggle (for now: only boolean + logs)
+  // false = Sessions (green), true = Availability (blue)
+  let isAvailabilityMode = false;
+
+  function renderModeToggle() {
+    if (!modeSessionsBtn || !modeAvailabilityBtn) return;
+    modeSessionsBtn.classList.toggle('is-active', !isAvailabilityMode);
+    modeAvailabilityBtn.classList.toggle('is-active', isAvailabilityMode);
+  }
+
+  function setMode(nextIsAvailability) {
+    isAvailabilityMode = !!nextIsAvailability;
+    renderModeToggle();
+    console.log('[MentorCalendar] isAvailabilityMode =', isAvailabilityMode);
+  }
+
+  function getSupportedTimezones() {
+    try {
+      if (typeof Intl.supportedValuesOf === 'function') {
+        const list = Intl.supportedValuesOf('timeZone');
+        if (Array.isArray(list) && list.length) return list;
+      }
+    } catch (e) {}
+    // Minimal fallback list (works everywhere)
+    return ['UTC', 'Europe/Prague', 'Africa/Djibouti', 'America/New_York', 'Asia/Tokyo'];
+  }
+
+  function populateTimezoneSelect() {
+    if (!tzSelect) return;
+    const zones = getSupportedTimezones();
+    tzSelect.innerHTML = '';
+
+    // Ensure UTC first
+    const ordered = ['UTC', ...zones.filter(z => z !== 'UTC')];
+    ordered.forEach(tz => {
+      const opt = document.createElement('option');
+      opt.value = tz;
+      opt.textContent = tz;
+      tzSelect.appendChild(opt);
+    });
+    tzSelect.value = timezone_variable;
+  }
+
+  function initCalendar(initialView, initialDate) {
+    if (calendar) return;
+    if (!window.FullCalendar || !window.FullCalendar.Calendar) {
+      console.error('[MentorCalendar] FullCalendar not loaded');
+      return;
+    }
+    if (!window.FullCalendarLuxon3) {
+      console.warn('[MentorCalendar] FullCalendarLuxon3 plugin not loaded. Named IANA timeZone values may behave like local time.');
+    }
+
+    calendar = new FullCalendar.Calendar(root, {
+      plugins: window.FullCalendarLuxon3 ? [window.FullCalendarLuxon3] : [],
+      timeZone: timezone_variable,
+      initialView: initialView || 'timeGridWeek',
+      initialDate: initialDate || undefined,
+      height: '100%',
+      nowIndicator: true,
+      headerToolbar: false, // Custom header
+      allDaySlot: false,
+      slotDuration: '00:15:00',
+      slotLabelInterval: '01:00',
+      
+      // Events
+      datesSet: function(info) {
+        updateDateTitle(info.view.title);
+        updateActiveViewButton(info.view.type);
+        styleGridLines();
+      },
+      dateClick: function(info) {
+        // One-click slot creation only in Day/Week timeGrid views
+        const viewType = info.view?.type;
+        if (viewType !== 'timeGridDay' && viewType !== 'timeGridWeek') return;
+
+        const mode = isAvailabilityMode ? 'availability' : 'session';
+        const durationMinutes = 60; // for now: fixed length
+
+        const startIso = info.date.toISOString();
+        const endIso = new Date(info.date.getTime() + durationMinutes * 60 * 1000).toISOString();
+
+        calendar.addEvent({
+          id: mode + '_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
+          start: startIso,
+          end: endIso,
+          allDay: false,
+          backgroundColor: mode === 'availability' ? '#3b82f6' : '#10b981',
+          borderColor: mode === 'availability' ? '#2563eb' : '#059669',
+          textColor: '#ffffff',
+          extendedProps: { slotMode: mode }
+        });
+
+        console.log('[MentorCalendar] created slot', { mode, startIso, endIso, isAvailabilityMode });
+      },
+      eventContent: function(arg) {
+        const mode = arg.event.extendedProps?.slotMode || 'availability';
+        const tpl = mode === 'session' ? sessionSlotTpl : availabilitySlotTpl;
+        if (!tpl || !tpl.content) return true;
+
+        const startStr = calendar.formatDate(arg.event.start, { hour: 'numeric', minute: '2-digit', hour12: true });
+        const endStr = calendar.formatDate(arg.event.end, { hour: 'numeric', minute: '2-digit', hour12: true });
+
+        const node = tpl.content.firstElementChild.cloneNode(true);
+        const timeEl = node.querySelector('[data-slot-time]');
+        if (timeEl) timeEl.textContent = `${startStr} – ${endStr}`;
+
+        return { domNodes: [node] };
+      },
+      windowResize: function() {
+        calendar.updateSize();
+        styleGridLines();
+      }
+    });
+
+    calendar.render();
+    
+    // Initial style application
+    setTimeout(styleGridLines, 50);
+    console.log('[MentorCalendar] Active timeZone:', calendar.getOption('timeZone'));
+  }
+
+  function updateDateTitle(title) {
+    if (dateDisplay) {
+      dateDisplay.textContent = title;
+    }
+  }
+
+  function updateActiveViewButton(viewType) {
+    document.querySelectorAll('.view-toggle-btn').forEach(btn => {
+      btn.classList.toggle('is-active', btn.dataset.calendarView === viewType);
+    });
+  }
+
+  // --- Custom Styling Logic similar to Availability Popup ---
+  function styleGridLines() {
+    // 1. Mark hour slots for solid borders
+    const slots = root.querySelectorAll('tr');
+    slots.forEach(slot => {
+        // FullCalendar 6 uses data-time on slot rows, or we check structure
+        // Simple heuristic: if it has a label or is top of hour
+        const labelCell = slot.querySelector('.fc-timegrid-slot-label');
+        if (labelCell && labelCell.getAttribute('data-time')) {
+           const time = labelCell.getAttribute('data-time');
+           if (time.endsWith(':00:00')) {
+             slot.classList.add('fc-hour-slot');
+             // Also target the sibling td which is the actual lane
+             const lane = slot.querySelector('.fc-timegrid-slot-lane');
+             if(lane) lane.classList.add('fc-hour-slot');
+           }
+        }
+    });
+
+    // Fallback if needed, but the above usually works well in FC v6
+    // Extra pass for rows that might be missed by simple label check
+    const timeSlots = root.querySelectorAll('.fc-timegrid-slot-lane');
+    timeSlots.forEach((slot, i) => {
+       // Assuming 15min slots per tr, index 0 is first. 
+       // We can simply trust the label checking above for now.
+    });
+  }
+
+
+  function destroyCalendar() {
+    if (!calendar) return;
+    try {
+      calendar.destroy();
+    } finally {
+      calendar = null;
+      root.innerHTML = '';
+    }
+  }
+
+  function setTimezone(tz) {
+    if (typeof tz !== 'string' || !tz.trim()) return;
+    timezone_variable = tz.trim();
+    // Timezone is immutable per calendar instance -> destroy + recreate
+    if (overlay.classList.contains('is-visible')) {
+      const currentView = calendar ? calendar.view.type : 'timeGridWeek';
+      const currentDate = calendar ? calendar.getDate() : null;
+      destroyCalendar();
+      initCalendar(currentView, currentDate);
+      setTimeout(() => calendar && calendar.updateSize(), 50);
+    }
+    if (tzSelect) tzSelect.value = timezone_variable;
+  }
+
+  function open() {
+    overlay.classList.add('is-visible');
+    overlay.setAttribute('aria-hidden', 'false');
+    // Small delay to ensure transitions work and DOM is ready
+    setTimeout(() => {
+        populateTimezoneSelect();
+        renderModeToggle();
+        initCalendar();
+        if (calendar) calendar.updateSize();
+    }, 50);
+  }
+
+  function close() {
+    overlay.classList.remove('is-visible');
+    overlay.setAttribute('aria-hidden', 'true');
+  }
+
+  // --- Event Listeners ---
+
+  // Navigation Buttons
+  overlay.querySelectorAll('[data-calendar-nav]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (!calendar) return;
+      const action = btn.dataset.calendarNav;
+      if (action === 'prev') calendar.prev();
+      if (action === 'next') calendar.next();
+      if (action === 'today') calendar.today();
+    });
+  });
+
+  // View Toggle Buttons
+  overlay.querySelectorAll('[data-calendar-view]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (!calendar) return;
+      calendar.changeView(btn.dataset.calendarView);
+    });
+  });
+
+  // Mode toggle buttons (boolean only, no behavior yet)
+  if (modeSessionsBtn) {
+    modeSessionsBtn.addEventListener('click', () => setMode(false));
+  }
+  if (modeAvailabilityBtn) {
+    modeAvailabilityBtn.addEventListener('click', () => setMode(true));
+  }
+
+  // Timezone dropdown
+  if (tzSelect) {
+    tzSelect.addEventListener('change', () => {
+      setTimezone(tzSelect.value);
+    });
+  }
+
+  // Close handlers
+  overlay.querySelectorAll('[data-mentor-calendar-close]').forEach(el => {
+    el.addEventListener('click', close);
+  });
+  
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && overlay.classList.contains('is-visible')) close();
+  });
+
+  // Public API
+  window.MentorCalendar = { open, close, setTimezone };
+  window.setMentorCalendarTimezone = setTimezone;
+
+  document.querySelectorAll('[data-open-mentor-calendar]').forEach(el => {
+    el.addEventListener('click', (e) => {
+      e.preventDefault();
+      open();
+    });
+  });
+})();
+</script>
