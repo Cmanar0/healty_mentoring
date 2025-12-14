@@ -382,35 +382,44 @@
   /* 
      Mode: SESSIONS (Default) 
      - Session Slots (Green): Normal
-     - Availability Slots (Blue): Ghost
+     - Availability Slots (Grey): Disabled/Ghost
   */
   .mentor-calendar-root:not(.is-mode-availability) .event-type-availability {
-    background-color: #eff6ff !important;
-    border-color: #3b82f6 !important;
-    color: #0f172a !important; /* Black text */
+    background-color: #f1f5f9 !important; /* Slate-100 */
+    border-color: #cbd5e1 !important;     /* Slate-300 */
+    opacity: 0.8;
   }
   .mentor-calendar-root:not(.is-mode-availability) .event-type-availability .fc-event-main,
   .mentor-calendar-root:not(.is-mode-availability) .event-type-availability .fc-event-time,
   .mentor-calendar-root:not(.is-mode-availability) .event-type-availability .fc-event-title, 
   .mentor-calendar-root:not(.is-mode-availability) .event-type-availability [data-slot-time] {
-    color: #0f172a !important;
+    color: #94a3b8 !important; /* Slate-400 */
+  }
+  .mentor-calendar-root:not(.is-mode-availability) .event-type-availability .mentor-calendar-slot-title {
+    color: #94a3b8 !important; /* Slate-400 */
+  }
+  .mentor-calendar-root:not(.is-mode-availability) .event-type-availability .mentor-calendar-slot-delete {
+    display: none !important;
   }
 
   /* 
      Mode: AVAILABILITY 
-     - Session Slots (Green): Ghost
+     - Session Slots (Grey): Disabled/Ghost
      - Availability Slots (Blue): Normal
   */
   .mentor-calendar-root.is-mode-availability .event-type-session {
-    background-color: #f0fdf4 !important;
-    border-color: #10b981 !important;
-    color: #0f172a !important; /* Black text */
+    background-color: #f1f5f9 !important; /* Slate-100 */
+    border-color: #cbd5e1 !important;     /* Slate-300 */
+    opacity: 0.8;
   }
   .mentor-calendar-root.is-mode-availability .event-type-session .fc-event-main,
   .mentor-calendar-root.is-mode-availability .event-type-session .fc-event-time,
   .mentor-calendar-root.is-mode-availability .event-type-session .fc-event-title,
   .mentor-calendar-root.is-mode-availability .event-type-session [data-slot-time] {
-    color: #0f172a !important;
+    color: #94a3b8 !important; /* Slate-400 */
+  }
+  .mentor-calendar-root.is-mode-availability .event-type-session .mentor-calendar-slot-title {
+    color: #94a3b8 !important; /* Slate-400 */
   }
 
 </style>
@@ -535,6 +544,9 @@
         // Track local date keys for deletion support
         originalAvailabilityDates.add(getLocalDateKeyFromUtcIso(startIso));
 
+        // Determine if editable based on current mode
+        const isEditable = isAvailabilityMode === true; // Availability slots only editable in Availability mode
+
         calendar.addEvent({
           id: slot.id || ('availability_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8)),
           start: startIso,
@@ -544,6 +556,7 @@
           borderColor: '#2563eb',
           textColor: '#ffffff',
           classNames: ['event-type-availability'], // Added class
+          editable: isEditable, // Init based on current mode
           extendedProps: { slotMode: 'availability', type: 'availability_slot' }
         });
       });
@@ -649,6 +662,25 @@
       }
     }
 
+    // Update editability of all existing events
+    if (calendar) {
+      calendar.getEvents().forEach(ev => {
+        const slotMode = ev.extendedProps?.slotMode;
+        let shouldBeEditable = false;
+        
+        if (isAvailabilityMode) {
+          // In avail mode: Availability slots editable, Sessions NOT
+          if (slotMode === 'availability') shouldBeEditable = true;
+        } else {
+          // In session mode: Session slots editable, Availability NOT
+          if (slotMode === 'session') shouldBeEditable = true;
+        }
+        
+        // Use setProp to update the 'editable' property
+        ev.setProp('editable', shouldBeEditable);
+      });
+    }
+
     console.log('[MentorCalendar] isAvailabilityMode =', isAvailabilityMode);
   }
 
@@ -744,6 +776,7 @@
           borderColor: mode === 'availability' ? '#2563eb' : '#059669',
           textColor: '#ffffff',
           classNames: [mode === 'availability' ? 'event-type-availability' : 'event-type-session'], // Added class
+          editable: true, // Always editable on creation (since it matches current mode)
           extendedProps: { slotMode: mode }
         });
 
