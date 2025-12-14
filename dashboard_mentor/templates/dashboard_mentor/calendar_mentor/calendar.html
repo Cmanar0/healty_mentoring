@@ -419,6 +419,30 @@
   const GET_AVAILABILITY_URL = "{% url 'general:dashboard_mentor:get_availability' %}";
   const SAVE_AVAILABILITY_URL = "{% url 'general:dashboard_mentor:save_availability' %}";
 
+  // Save button enablement:
+  // - availability changes: persisted by Save
+  // - session changes: not persisted yet, but should still enable Save (per your rule)
+  let dirtyAvailability = false;
+  let dirtySession = false;
+
+  function updateSaveButtonState() {
+    if (!saveBtn) return;
+    const isDirty = dirtyAvailability || dirtySession;
+    saveBtn.disabled = !isDirty;
+  }
+
+  function markDirty(slotMode) {
+    if (slotMode === 'availability') dirtyAvailability = true;
+    else if (slotMode === 'session') dirtySession = true;
+    else dirtyAvailability = true; // conservative fallback
+    updateSaveButtonState();
+  }
+
+  function clearDirtyAvailability() {
+    dirtyAvailability = false;
+    updateSaveButtonState();
+  }
+
   function getCookie(name) {
     const value = `; ${document.cookie}`;
     const parts = value.split(`; ${name}=`);
@@ -480,6 +504,8 @@
       });
 
       console.log('[MentorCalendar] loaded availability slots:', slots.length);
+      // Loaded state matches DB for availability
+      clearDirtyAvailability();
     } catch (e) {
       console.error('[MentorCalendar] error loading availability:', e);
     }
@@ -549,8 +575,8 @@
       console.error('[MentorCalendar] error saving availability:', e);
     } finally {
       if (saveBtn) {
-        saveBtn.disabled = false;
         saveBtn.textContent = 'Save';
+        updateSaveButtonState();
       }
     }
   }
@@ -624,6 +650,7 @@
           endIso: info.event.end ? info.event.end.toISOString() : null,
           timeZone: timezone_variable
         });
+        markDirty(mode);
       },
       eventResize: function(info) {
         const mode = info.event.extendedProps?.slotMode;
@@ -640,6 +667,7 @@
           endIso: info.event.end ? info.event.end.toISOString() : null,
           timeZone: timezone_variable
         });
+        markDirty('session');
       },
       dateClick: function(info) {
         // One-click slot creation only in Day/Week timeGrid views
@@ -664,6 +692,7 @@
         });
 
         console.log('[MentorCalendar] created slot', { mode, startIso, endIso, isAvailabilityMode });
+        markDirty(mode);
       },
       eventContent: function(arg) {
         const mode = arg.event.extendedProps?.slotMode || 'availability';
@@ -706,7 +735,23 @@
     // Initial style application
     setTimeout(styleGridLines, 50);
     console.log('[MentorCalendar] Active timeZone:', calendar.getOption('timeZone'));
+    // Save starts disabled until the user makes a change
+    updateSaveButtonState();
   }
+
+  // Internal API for slot components (client-only changes; DB persistence happens on Save)
+  window.MentorCalendarInternal = window.MentorCalendarInternal || {};
+  window.MentorCalendarInternal.removeEventById = function(eventId) {
+    if (!calendar || !eventId) return;
+    const ev = calendar.getEventById(eventId);
+    if (!ev) return;
+    console.log('[MentorCalendar] removing event (client-only):', {
+      id: ev.id,
+      slotMode: ev.extendedProps?.slotMode
+    });
+    markDirty(ev.extendedProps?.slotMode);
+    ev.remove();
+  };
 
   function updateDateTitle(title) {
     if (dateDisplay) {

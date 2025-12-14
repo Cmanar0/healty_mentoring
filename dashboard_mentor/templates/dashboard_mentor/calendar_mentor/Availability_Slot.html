@@ -1,6 +1,9 @@
 {# Template used by the mentor calendar popup for rendering an "Availability" slot #}
 <template id="mentorCalendarAvailabilitySlotTemplate">
   <div class="mentor-calendar-slot mentor-calendar-slot--availability" data-slot-root>
+    <button type="button" class="mentor-calendar-slot-delete" aria-label="Delete availability slot" data-slot-delete>
+      ×
+    </button>
     <div class="mentor-calendar-slot-title">Available</div>
     <div class="mentor-calendar-slot-time" data-slot-time></div>
   </div>
@@ -9,6 +12,7 @@
 <style>
   /* Availability slot styles (kept with the template for separation of concerns) */
   .mentor-calendar-slot {
+    position: relative;
     display: flex;
     flex-direction: column;
     gap: 2px;
@@ -30,6 +34,28 @@
   .mentor-calendar-slot--availability {
     background: rgba(59, 130, 246, 0.95); /* blue */
   }
+
+  .mentor-calendar-slot-delete {
+    position: absolute;
+    top: 4px;
+    right: 6px;
+    width: 18px;
+    height: 18px;
+    border: none;
+    border-radius: 6px;
+    background: rgba(15, 23, 42, 0.18);
+    color: rgba(255, 255, 255, 0.95);
+    font-size: 16px;
+    line-height: 18px;
+    padding: 0;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .mentor-calendar-slot-delete:hover {
+    background: rgba(239, 68, 68, 0.95);
+  }
 </style>
 
 <script>
@@ -44,6 +70,24 @@ window.MentorCalendarSlotComponents.AvailabilitySlot = {
     el.dataset.eventId = props?.eventId || '';
     // Keep this log for now (per your request)
     console.log('[AvailabilitySlot] mount props:', props);
+
+    const deleteBtn = el.querySelector('[data-slot-delete]');
+    if (deleteBtn) {
+      // Prevent drag start when interacting with the button
+      deleteBtn.addEventListener('pointerdown', (e) => {
+        e.stopPropagation();
+      });
+      deleteBtn.addEventListener('mousedown', (e) => {
+        e.stopPropagation();
+      });
+      deleteBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const eventId = props?.eventId;
+        if (!eventId) return;
+        window.MentorCalendarInternal?.removeEventById?.(eventId);
+      });
+    }
   }
 };
 </script>
