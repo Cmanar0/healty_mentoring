@@ -313,7 +313,7 @@
     --fc-border-color: #cbd5e1;
     --fc-page-bg-color: #ffffff;
     --fc-neutral-bg-color: #f8fafc;
-    --fc-today-bg-color: #f0fdf4;
+    --fc-today-bg-color: #fefce8;
     --fc-now-indicator-color: #ef4444;
     /* Ensure slots have consistent rounding everywhere (wrapper + inner) */
     --mentor-calendar-slot-radius: 10px;
@@ -380,13 +380,20 @@
     border-width: 2px !important;
     border-style: solid !important;
     border-radius: var(--mentor-calendar-slot-radius) !important;
-    overflow: hidden; /* clip inner content to same radius */
+    overflow: visible; /* allow dropdowns/popovers to escape the event box */
   }
 
   /* Inner slot content should match the event wrapper radius */
   .mentor-calendar-root .mentor-calendar-slot {
     border-radius: var(--mentor-calendar-slot-radius);
     box-sizing: border-box;
+  }
+
+  /* When a slot dropdown is open, lift the event above neighbors */
+  .mentor-calendar-root .fc-event.is-dropdown-open,
+  .mentor-calendar-root .fc-timegrid-event.is-dropdown-open,
+  .mentor-calendar-root .fc-daygrid-event.is-dropdown-open {
+    z-index: 10010;
   }
 
   /* 
@@ -924,11 +931,18 @@
     if (!calendar || !eventId) return;
     const ev = calendar.getEventById(eventId);
     if (!ev) return;
+    const slotMode = ev.extendedProps?.slotMode;
     console.log('[MentorCalendar] removing event (client-only):', {
       id: ev.id,
-      slotMode: ev.extendedProps?.slotMode
+      slotMode: slotMode
     });
-    markDirty(ev.extendedProps?.slotMode);
+    
+    // Reminder: removing availability is client-only until user clicks Save
+    if (slotMode === 'availability' && typeof showNotification === 'function') {
+      showNotification("Don't forget to save the changes.", 'note');
+    }
+    
+    markDirty(slotMode);
     ev.remove();
     recomputeCollisions();
   };

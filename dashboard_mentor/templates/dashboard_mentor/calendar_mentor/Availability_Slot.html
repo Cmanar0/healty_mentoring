@@ -8,6 +8,34 @@
       Available
     </div>
     <div class="mentor-calendar-slot-time" data-slot-time></div>
+    <div class="mentor-calendar-slot-meta" data-slot-meta>
+      <div class="mentor-calendar-slot-duration" data-slot-duration>-- min</div>
+
+      <div class="custom-dropdown-container mentor-calendar-recurrence-dropdown" data-recurrence-dropdown>
+        <button type="button" class="custom-dropdown-trigger mentor-calendar-recurrence-trigger" aria-label="Recurrence" data-recurrence-trigger>
+          <span class="dropdown-selected-text" data-recurrence-selected>No repeat</span>
+          <span class="mentor-calendar-recurrence-chevron" aria-hidden="true">▾</span>
+        </button>
+        <input type="hidden" value="none" data-recurrence-input />
+        <div class="custom-dropdown-menu mentor-calendar-recurrence-menu" data-recurrence-menu>
+          <button type="button" class="dropdown-item first-item active" data-value="none">
+            <span>No repeat</span>
+          </button>
+          <button type="button" class="dropdown-item" data-value="daily">
+            <span>Daily</span>
+          </button>
+          <button type="button" class="dropdown-item" data-value="weekly">
+            <span>Weekly</span>
+          </button>
+          <button type="button" class="dropdown-item" data-value="biweekly">
+            <span>Every 2 weeks</span>
+          </button>
+          <button type="button" class="dropdown-item last-item" data-value="monthly">
+            <span>Monthly</span>
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -21,7 +49,8 @@
     padding: 6px 8px;
     border-radius: var(--mentor-calendar-slot-radius, 10px);
     color: #ffffff;
-    overflow: hidden;
+    /* Allow recurrence menu to escape the slot box */
+    overflow: visible;
     box-sizing: border-box;
   }
   .mentor-calendar-slot-title {
@@ -33,6 +62,131 @@
     font-weight: 600;
     font-size: 0.8rem;
     opacity: 0.95;
+  }
+
+  .mentor-calendar-slot-meta {
+    margin-top: 4px;
+    padding-top: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.25);
+  }
+
+  .mentor-calendar-slot-duration {
+    font-weight: 700;
+    font-size: 0.75rem;
+    opacity: 0.95;
+    white-space: nowrap;
+  }
+
+  /* --- Recurrence dropdown (scoped; follows DROPDOWN_MENU_STYLE_GUIDE.md) --- */
+  .mentor-calendar-recurrence-dropdown {
+    position: relative;
+    flex: 0 1 auto;
+    width: 140px;           /* fixed width so it won't overflow the slot */
+    max-width: 55%;         /* but still shrink in narrow slots */
+    min-width: 110px;
+  }
+
+  .mentor-calendar-recurrence-trigger.custom-dropdown-trigger {
+    width: 100%;
+    padding: 4px 10px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.65);
+    background: rgba(255, 255, 255, 0.95);
+    color: #0f172a;
+    font-size: 0.8rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    cursor: pointer;
+  }
+
+  .mentor-calendar-recurrence-trigger .dropdown-selected-text {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Per style guide: no trigger background change on hover */
+  .mentor-calendar-recurrence-trigger.custom-dropdown-trigger:hover {
+    background: rgba(255, 255, 255, 0.95);
+    border-color: rgba(255, 255, 255, 0.95);
+  }
+
+  .mentor-calendar-recurrence-chevron {
+    font-size: 0.75rem;
+    opacity: 0.8;
+    transition: transform 0.2s ease;
+  }
+
+  .mentor-calendar-recurrence-dropdown.active .mentor-calendar-recurrence-chevron {
+    transform: rotate(180deg);
+  }
+
+  .mentor-calendar-recurrence-menu.custom-dropdown-menu {
+    position: absolute;
+    top: auto;
+    bottom: calc(100% + 8px); /* open upward so it stays visible */
+    right: 0;
+    left: auto;
+    min-width: 200px;
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    padding: 0; /* critical: no padding on container */
+    z-index: 10005; /* above calendar modal content */
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: all 0.2s ease;
+  }
+
+  .mentor-calendar-recurrence-dropdown.active .mentor-calendar-recurrence-menu {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+  }
+
+  .mentor-calendar-recurrence-menu .dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 20px;
+    color: #1e293b; /* --dash-text-main */
+    text-decoration: none;
+    transition: background 0.2s ease;
+    border: none;
+    background: transparent;
+    width: 100%;
+    cursor: pointer;
+    font-size: 0.95rem;
+    font-weight: 400;
+    text-align: left;
+  }
+
+  .mentor-calendar-recurrence-menu .dropdown-item:hover {
+    background: rgba(16, 185, 129, 0.1);
+    color: #10b981; /* --dash-primary */
+  }
+
+  /* Maintain rounded corners on hover (per style guide) */
+  .mentor-calendar-recurrence-menu .dropdown-item.first-item {
+    border-radius: 12px 12px 0 0;
+  }
+  .mentor-calendar-recurrence-menu .dropdown-item.last-item {
+    border-radius: 0 0 12px 12px;
+  }
+  .mentor-calendar-recurrence-menu .dropdown-item.first-item:hover {
+    border-radius: 12px 12px 0 0;
+  }
+  .mentor-calendar-recurrence-menu .dropdown-item.last-item:hover {
+    border-radius: 0 0 12px 12px;
   }
   .mentor-calendar-slot--availability {
     background: rgba(59, 131, 246, 0); /* blue */
@@ -73,6 +227,122 @@ window.MentorCalendarSlotComponents.AvailabilitySlot = {
     el.dataset.eventId = props?.eventId || '';
     // Keep this log for now (per your request)
     console.log('[AvailabilitySlot] mount props:', props);
+
+    // Duration (minutes)
+    try {
+      const startIso = props?.startIso;
+      const endIso = props?.endIso;
+      const durationEl = el.querySelector('[data-slot-duration]');
+      if (durationEl && startIso && endIso) {
+        const startMs = new Date(startIso).getTime();
+        const endMs = new Date(endIso).getTime();
+        const minutes = Math.max(0, Math.round((endMs - startMs) / 60000));
+        durationEl.textContent = `${minutes} min`;
+      }
+    } catch (e) {
+      // Non-fatal (UI will show "-- min")
+      console.warn('[AvailabilitySlot] duration compute failed:', e);
+    }
+
+    // Recurrence dropdown (client-only; does not persist yet)
+    const dropdown = el.querySelector('[data-recurrence-dropdown]');
+    if (dropdown) {
+      window.MentorCalendarRecurrenceSelections = window.MentorCalendarRecurrenceSelections || {};
+      const trigger = dropdown.querySelector('[data-recurrence-trigger]');
+      const selectedText = dropdown.querySelector('[data-recurrence-selected]');
+      const input = dropdown.querySelector('[data-recurrence-input]');
+      const items = Array.from(dropdown.querySelectorAll('.dropdown-item'));
+      const eventId = props?.eventId || '';
+
+      const closeAll = () => {
+        document.querySelectorAll('.mentor-calendar-recurrence-dropdown.active').forEach(d => {
+          d.classList.remove('active');
+        });
+      };
+
+      const open = () => {
+        closeAll();
+        dropdown.classList.add('active');
+      };
+
+      const toggle = () => {
+        if (dropdown.classList.contains('active')) dropdown.classList.remove('active');
+        else open();
+      };
+
+      if (trigger) {
+        // Prevent drag start when interacting with the dropdown trigger
+        trigger.addEventListener('pointerdown', (e) => e.stopPropagation());
+        trigger.addEventListener('mousedown', (e) => e.stopPropagation());
+        trigger.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          toggle();
+        });
+      }
+
+      // Boost stacking context when open, so menu draws above nearby events
+      const fcEventEl = el.closest?.('.fc-event');
+      const setDropdownOpen = (isOpen) => {
+        if (!fcEventEl) return;
+        fcEventEl.classList.toggle('is-dropdown-open', !!isOpen);
+      };
+
+      // Restore previously selected value (keeps selection visible across rerenders)
+      const restoredValue = (eventId && window.MentorCalendarRecurrenceSelections[eventId]) ? window.MentorCalendarRecurrenceSelections[eventId] : (input?.value || 'none');
+      const restoredItem = items.find(i => (i.getAttribute('data-value') || 'none') === restoredValue) || items[0];
+      if (restoredItem) {
+        const restoredText = restoredItem.querySelector('span')?.textContent?.trim() || 'No repeat';
+        if (input) input.value = restoredValue;
+        if (selectedText) selectedText.textContent = restoredText;
+        items.forEach(i => i.classList.remove('active'));
+        restoredItem.classList.add('active');
+        el.dataset.recurrence = restoredValue;
+      }
+
+      items.forEach((item) => {
+        // Prevent drag start when clicking items
+        item.addEventListener('pointerdown', (e) => e.stopPropagation());
+        item.addEventListener('mousedown', (e) => e.stopPropagation());
+        item.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+
+          const value = item.getAttribute('data-value') || 'none';
+          const text = item.querySelector('span')?.textContent?.trim() || 'No repeat';
+
+          if (input) input.value = value;
+          if (selectedText) selectedText.textContent = text;
+
+          items.forEach(i => i.classList.remove('active'));
+          item.classList.add('active');
+
+          dropdown.classList.remove('active');
+          setDropdownOpen(false);
+          el.dataset.recurrence = value;
+          if (eventId) window.MentorCalendarRecurrenceSelections[eventId] = value;
+          console.log('[AvailabilitySlot] recurrence selected:', { eventId: props?.eventId, value });
+        });
+      });
+
+      // One global outside-click handler (close on outside click)
+      if (!window.__mentorCalendarRecurrenceDropdownBound) {
+        window.__mentorCalendarRecurrenceDropdownBound = true;
+        document.addEventListener('click', (e) => {
+          const target = e.target;
+          if (!(target instanceof Element)) return;
+          if (target.closest('.mentor-calendar-recurrence-dropdown')) return;
+          closeAll();
+          document.querySelectorAll('.fc-event.is-dropdown-open').forEach(ev => ev.classList.remove('is-dropdown-open'));
+        });
+      }
+
+      // Keep fc-event class in sync when this dropdown opens/closes
+      const observer = new MutationObserver(() => {
+        setDropdownOpen(dropdown.classList.contains('active'));
+      });
+      observer.observe(dropdown, { attributes: true, attributeFilter: ['class'] });
+    }
 
     const deleteBtn = el.querySelector('[data-slot-delete]');
     if (deleteBtn) {
