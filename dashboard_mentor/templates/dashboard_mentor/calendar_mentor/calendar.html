@@ -181,12 +181,13 @@
 
   /* View Toggle (Segmented Control) */
   .mentor-calendar-view-toggle {
+    min-width: 245px;
     display: flex;
     align-items: center;
     background: #f1f5f9;
     border-radius: 10px;
     padding: 4px;
-    gap: 0;
+    gap: 5px;
     border: 1px solid #e2e8f0;
   }
 
@@ -208,7 +209,7 @@
   }
 
   .view-toggle-btn.is-active {
-    background: #3b82f6;
+    background: #334156;
     color: #ffffff;
     box-shadow: 0 1px 3px rgba(0,0,0,0.1);
     font-weight: 600;
@@ -1108,6 +1109,12 @@
   function close() {
     overlay.classList.remove('is-visible');
     overlay.setAttribute('aria-hidden', 'true');
+    // Destroy calendar so it reconstructs cleanly on next open
+    destroyCalendar();
+    // Reset save state (fresh on next open)
+    dirtyAvailability = false;
+    dirtySession = false;
+    updateSaveButtonState();
   }
 
   // --- Event Listeners ---

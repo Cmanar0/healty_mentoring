@@ -409,7 +409,7 @@
 }
 
 .view-toggle-btn.is-active {
-  background: #3b82f6;
+  background: #334156;
   color: #ffffff;
   box-shadow: 0 1px 3px rgba(0,0,0,0.1);
   font-weight: 600;
@@ -1210,7 +1210,7 @@
 }
 
 .view-toggle-btn.is-active {
-  background: #3b82f6;
+  background: #334156;
   color: #fff;
 }
 
@@ -3327,6 +3327,27 @@ margin: 0}
       clearInterval(clockInterval);
       clockInterval = null;
     }
+
+    // IMPORTANT: fully destroy the calendar on close so it can be reconstructed on next open
+    if (calendar) {
+      try {
+        calendar.destroy();
+      } catch (e) {
+        console.warn('Error destroying calendar:', e);
+      } finally {
+        calendar = null;
+      }
+    }
+    if (calendarRoot) {
+      calendarRoot.innerHTML = '';
+    }
+
+    // Reset local state (fresh start on next open)
+    createdAvailabilitySlots = [];
+    originalSavedSlots = [];
+    originalDatesWithSlots = new Set();
+    setSaveButtonLoading(false);
+    updateSaveButton();
   }
   
   // Expose closeOverlay globally
