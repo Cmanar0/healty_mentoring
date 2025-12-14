@@ -422,6 +422,22 @@
     color: #94a3b8 !important; /* Slate-400 */
   }
 
+  /* --- Collision styling (red) --- */
+  .mentor-calendar-root .fc-event.is-collision,
+  .mentor-calendar-root .fc-timegrid-event.is-collision,
+  .mentor-calendar-root .fc-daygrid-event.is-collision {
+    background-color: #ef4444 !important; /* red-500 */
+    border-color: #b91c1c !important;     /* red-700 */
+    opacity: 1 !important;
+  }
+  .mentor-calendar-root .fc-event.is-collision .fc-event-main,
+  .mentor-calendar-root .fc-event.is-collision .fc-event-time,
+  .mentor-calendar-root .fc-event.is-collision .fc-event-title,
+  .mentor-calendar-root .fc-event.is-collision [data-slot-time],
+  .mentor-calendar-root .fc-event.is-collision .mentor-calendar-slot-title {
+    color: #ffffff !important;
+  }
+
 </style>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.css">
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
@@ -562,6 +578,7 @@
       });
 
       console.log('[MentorCalendar] loaded availability slots:', slots.length);
+      recomputeCollisions();
       // Loaded state matches DB for availability
       clearDirtyAvailability();
     } catch (e) {
@@ -643,6 +660,61 @@
   // false = Sessions (green), true = Availability (blue)
   let isAvailabilityMode = false;
 
+  function rangesOverlap(aStart, aEnd, bStart, bEnd) {
+    if (!aStart || !aEnd || !bStart || !bEnd) return false;
+    const a0 = aStart.getTime();
+    const a1 = aEnd.getTime();
+    const b0 = bStart.getTime();
+    const b1 = bEnd.getTime();
+    // Strict overlap (touching at boundary is NOT a collision)
+    return a0 < b1 && b0 < a1;
+  }
+
+  function recomputeCollisions() {
+    if (!calendar) return;
+
+    const activeMode = isAvailabilityMode ? 'availability' : 'session';
+    const allEvents = calendar.getEvents();
+    const activeEvents = allEvents.filter(ev => ev.extendedProps?.slotMode === activeMode);
+
+    const collisionIds = new Set();
+
+    for (let i = 0; i < activeEvents.length; i++) {
+      const a = activeEvents[i];
+      const aStart = a.start;
+      const aEnd = a.end;
+      if (!aStart || !aEnd) continue;
+
+      for (let j = 0; j < allEvents.length; j++) {
+        const b = allEvents[j];
+        if (!b || b.id === a.id) continue;
+        const bStart = b.start;
+        const bEnd = b.end;
+        if (!bStart || !bEnd) continue;
+
+        if (rangesOverlap(aStart, aEnd, bStart, bEnd)) {
+          // Always mark the active-mode event red if it overlaps ANY other event.
+          collisionIds.add(a.id);
+          // If the other event is ALSO active-mode, it should be marked red too.
+          if (b.extendedProps?.slotMode === activeMode) collisionIds.add(b.id);
+        }
+      }
+    }
+
+    let changed = false;
+    allEvents.forEach(ev => {
+      // Only events for the currently selected mode can be flagged red.
+      const shouldFlag = (ev.extendedProps?.slotMode === activeMode) && collisionIds.has(ev.id);
+      const currentFlag = !!ev.extendedProps?.hasCollision;
+      if (currentFlag !== shouldFlag) {
+        ev.setExtendedProp('hasCollision', shouldFlag);
+        changed = true;
+      }
+    });
+
+    if (changed) calendar.rerenderEvents();
+  }
+
   function renderModeToggle() {
     if (!modeSessionsBtn || !modeAvailabilityBtn) return;
     modeSessionsBtn.classList.toggle('is-active', !isAvailabilityMode);
@@ -682,6 +754,7 @@
     }
 
     console.log('[MentorCalendar] isAvailabilityMode =', isAvailabilityMode);
+    recomputeCollisions();
   }
 
   function initCalendar(initialView, initialDate) {
@@ -719,6 +792,9 @@
         // Only Session slots can be resized (from either edge)
         return info.event.extendedProps?.slotMode === 'session';
       },
+      eventClassNames: function(arg) {
+        return arg.event.extendedProps?.hasCollision ? ['is-collision'] : [];
+      },
       slotDuration: '00:15:00',
       slotLabelInterval: '01:00',
       
@@ -738,6 +814,7 @@
           timeZone: timezone_variable
         });
         markDirty(mode);
+        recomputeCollisions();
       },
       eventResize: function(info) {
         const mode = info.event.extendedProps?.slotMode;
@@ -755,6 +832,7 @@
           timeZone: timezone_variable
         });
         markDirty('session');
+        recomputeCollisions();
       },
       dateClick: function(info) {
         // One-click slot creation only in Day/Week timeGrid views
@@ -782,6 +860,7 @@
 
         console.log('[MentorCalendar] created slot', { mode, startIso, endIso, isAvailabilityMode });
         markDirty(mode);
+        recomputeCollisions();
       },
       eventContent: function(arg) {
         const mode = arg.event.extendedProps?.slotMode || 'availability';
@@ -826,6 +905,7 @@
     console.log('[MentorCalendar] Active timeZone:', calendar.getOption('timeZone'));
     // Save starts disabled until the user makes a change
     updateSaveButtonState();
+    recomputeCollisions();
   }
 
   // Internal API for slot components (client-only changes; DB persistence happens on Save)
@@ -840,6 +920,7 @@
     });
     markDirty(ev.extendedProps?.slotMode);
     ev.remove();
+    recomputeCollisions();
   };
 
   function updateDateTitle(title) {
