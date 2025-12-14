@@ -232,7 +232,7 @@
                 <div class="create-new-section" id="createNewSection">
                     <h3 class="create-new-title">Create new</h3>
                     <div class="create-new-grid">
-                        <button class="create-new-btn btn-session" data-open-availability-calendar>
+                        <button class="create-new-btn btn-session" data-open-mentor-calendar data-mentor-calendar-initial-mode="sessions">
                             <div class="create-icon"><i class="fas fa-calendar-plus"></i></div>
                             <span class="create-label">Session</span>
                         </button>
@@ -526,6 +526,17 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+
+// Close Invite Client modal on Escape
+document.addEventListener('keydown', function(e) {
+    if (e.key !== 'Escape') return;
+    const inviteModal = document.getElementById('inviteClientModal');
+    if (!inviteModal) return;
+    if (inviteModal.classList.contains('active')) {
+        e.preventDefault();
+        closeInviteClientModal();
+    }
+});
 </script>
 
 <!-- Invite Client Modal -->
@@ -599,5 +610,6 @@ document.addEventListener('DOMContentLoaded', function() {
 }
 </style>
 
-{% include "dashboard_mentor/components/calendar_availability_popup.html" %}
+{# New mentor calendar popup (Sessions + Availability) #}
+{% include "dashboard_mentor/calendar_mentor/calendar.html" %}
 {% endblock %}

@@ -1514,9 +1514,16 @@
     }
   }
 
-  function open() {
+  function open(triggerEl) {
     overlay.classList.add('is-visible');
     overlay.setAttribute('aria-hidden', 'false');
+    
+    // Optional: allow opener to force initial mode.
+    // Supported values: 'sessions' | 'availability'
+    const requestedMode = (triggerEl && triggerEl.dataset && triggerEl.dataset.mentorCalendarInitialMode) ? String(triggerEl.dataset.mentorCalendarInitialMode) : '';
+    if (requestedMode === 'sessions') setMode(false);
+    if (requestedMode === 'availability') setMode(true);
+
     // Small delay to ensure transitions work and DOM is ready
     setTimeout(() => {
         // Re-resolve timezone from profile on each open (in case it changed)
@@ -1795,7 +1802,7 @@
   document.querySelectorAll('[data-open-mentor-calendar]').forEach(el => {
     el.addEventListener('click', (e) => {
       e.preventDefault();
-      open();
+      open(el);
     });
   });
 })();
