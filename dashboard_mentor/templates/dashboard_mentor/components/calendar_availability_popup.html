@@ -41,7 +41,10 @@
           <button class="view-toggle-btn is-active" data-calendar-view="timeGridWeek">Week</button>
           <button class="view-toggle-btn" data-calendar-view="dayGridMonth">Month</button>
         </div>
-        <button class="availability-calendar-save-btn" id="availabilityCalendarSaveBtn" disabled>Save</button>
+        <button class="availability-calendar-save-btn" id="availabilityCalendarSaveBtn" disabled aria-busy="false">
+          <span class="btn-label">Save</span>
+          <span class="btn-spinner" aria-hidden="true"></span>
+        </button>
         <button class="availability-calendar-close-btn" data-close-availability-calendar>✕</button>
       </div>
     </header>
@@ -428,6 +431,44 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  min-width: 96px; /* prevent width shift when loading spinner shows */
+  position: relative; /* for centering spinner */
+}
+
+.availability-calendar-save-btn .btn-spinner {
+  display: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: currentColor;
+  animation: availability-save-spin 0.8s linear infinite;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+
+/* Better contrast for disabled/loading spinner */
+.availability-calendar-save-btn:disabled .btn-spinner {
+  border-color: rgba(100, 116, 139, 0.25);
+  border-top-color: #64748b;
+}
+
+.availability-calendar-save-btn.is-loading {
+  cursor: wait !important;
+}
+
+.availability-calendar-save-btn.is-loading .btn-label {
+  visibility: hidden; /* keep width, hide text */
+}
+
+.availability-calendar-save-btn.is-loading .btn-spinner {
+  display: inline-block;
+}
+
+@keyframes availability-save-spin {
+  to { transform: translate(-50%, -50%) rotate(360deg); }
 }
 
 /* Disabled state - just grey, no hover effects */
@@ -1683,10 +1724,16 @@ margin: 0}
       // Enable button if there are changes (including deletions)
       // Don't disable just because slots.length === 0 - deletions are valid changes
       saveBtn.disabled = !hasChanges;
-      // Reset button text if it was in "Saving..." state and we're not currently saving
-      if (saveBtn.textContent === 'Saving...' && !saveBtn.disabled) {
-        saveBtn.textContent = 'Save';
-      }
+    }
+  }
+
+  function setSaveButtonLoading(isLoading) {
+    if (!saveBtn) return;
+    const next = !!isLoading;
+    saveBtn.classList.toggle('is-loading', next);
+    saveBtn.setAttribute('aria-busy', next ? 'true' : 'false');
+    if (next) {
+      saveBtn.disabled = true;
     }
   }
   
@@ -1752,7 +1799,7 @@ margin: 0}
   
   // Save button click handler
   if (saveBtn) {
-    saveBtn.addEventListener('click', function() {
+    saveBtn.addEventListener('click', async function() {
       if (saveBtn.disabled) return;
       
       // Allow saving even if no slots (deletion is a valid change)
@@ -1829,61 +1876,51 @@ margin: 0}
         }
         return;
       }
-      
-      // Disable save button during request
-      saveBtn.disabled = true;
-      saveBtn.textContent = 'Saving...';
-      
-      // Send to backend - send all slots, backend will handle them by date
-      fetch('{% url "general:dashboard_mentor:save_availability" %}', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRFToken': csrfToken
-        },
-        body: JSON.stringify({
-          availability: allAvailabilityData,
-          selected_date: firstDate,
-          edited_dates: Array.from(originalDatesWithSlots) // Send all dates that originally had slots
-        })
-      })
-      .then(response => response.json())
-      .then(data => {
-        if (data.success) {
-          // Reset button text
-          saveBtn.textContent = 'Save';
-          
-          // Reload saved slots from backend to reflect the saved state
-          loadSavedAvailabilitySlots().then(() => {
-            // Show success notification (non-blocking)
-            if (typeof showNotification !== 'undefined') {
-              showNotification(data.message || 'Availability slots saved successfully!', 'success');
-            }
-          }).catch(error => {
-            console.error('Error reloading slots after save:', error);
-            // Show success notification even if reload fails
-            if (typeof showNotification !== 'undefined') {
-              showNotification(data.message || 'Availability slots saved successfully!', 'success');
-            }
-          });
-        } else {
-          // Show error notification
+
+      setSaveButtonLoading(true);
+      try {
+        // Send to backend - send all slots, backend will handle them by date
+        const response = await fetch('{% url "general:dashboard_mentor:save_availability" %}', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+          },
+          body: JSON.stringify({
+            availability: allAvailabilityData,
+            selected_date: firstDate,
+            edited_dates: Array.from(originalDatesWithSlots) // Send all dates that originally had slots
+          })
+        });
+
+        const data = await response.json();
+        if (!data.success) {
           if (typeof showNotification !== 'undefined') {
             showNotification(data.error || 'Failed to save availability slots.', 'error');
           }
-          saveBtn.disabled = false;
-          saveBtn.textContent = 'Save';
+          return;
         }
-      })
-      .catch(error => {
+
+        // Reload saved slots from backend to reflect the saved state
+        try {
+          await loadSavedAvailabilitySlots();
+        } catch (error) {
+          console.error('Error reloading slots after save:', error);
+          // Still treat save as successful even if reload fails
+        }
+
+        if (typeof showNotification !== 'undefined') {
+          showNotification(data.message || 'Availability slots saved successfully!', 'success');
+        }
+      } catch (error) {
         console.error('Error saving availability:', error);
-        // Show error notification
         if (typeof showNotification !== 'undefined') {
           showNotification('An error occurred while saving. Please try again.', 'error');
         }
-        saveBtn.disabled = false;
-        saveBtn.textContent = 'Save';
-      });
+      } finally {
+        setSaveButtonLoading(false);
+        updateSaveButton();
+      }
     });
   }
 

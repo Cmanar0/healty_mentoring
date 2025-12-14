@@ -41,8 +41,9 @@
           </button>
         </div>
 
-        <button type="button" id="mentorCalendarSaveBtn" class="mentor-calendar-save-btn" aria-label="Save availability">
-          Save
+        <button type="button" id="mentorCalendarSaveBtn" class="mentor-calendar-save-btn" aria-label="Save availability" aria-busy="false">
+          <span class="btn-label">Save</span>
+          <span class="btn-spinner" aria-hidden="true"></span>
         </button>
 
         <button type="button" class="mentor-calendar-close" data-mentor-calendar-close aria-label="Close">
@@ -262,6 +263,11 @@
     font-weight: 700;
     cursor: pointer;
     transition: all 0.2s ease;
+    min-width: 96px; /* prevent width shift when loading spinner shows */
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
   .mentor-calendar-save-btn:hover {
     background: #111827;
@@ -269,6 +275,34 @@
   .mentor-calendar-save-btn:disabled {
     opacity: 0.6;
     cursor: not-allowed;
+  }
+
+  .mentor-calendar-save-btn .btn-spinner {
+    display: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 999px;
+    border: 2px solid rgba(255, 255, 255, 0.35);
+    border-top-color: currentColor;
+    animation: mentor-save-spin 0.8s linear infinite;
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+  }
+
+  .mentor-calendar-save-btn.is-loading {
+    cursor: wait;
+  }
+  .mentor-calendar-save-btn.is-loading .btn-label {
+    visibility: hidden;
+  }
+  .mentor-calendar-save-btn.is-loading .btn-spinner {
+    display: inline-block;
+  }
+
+  @keyframes mentor-save-spin {
+    to { transform: translate(-50%, -50%) rotate(360deg); }
   }
 
   /* Close Button */
@@ -571,6 +605,14 @@
     saveBtn.disabled = !isDirty;
   }
 
+  function setSaveButtonLoading(isLoading) {
+    if (!saveBtn) return;
+    const next = !!isLoading;
+    saveBtn.classList.toggle('is-loading', next);
+    saveBtn.setAttribute('aria-busy', next ? 'true' : 'false');
+    if (next) saveBtn.disabled = true;
+  }
+
   function markDirty(slotMode) {
     if (slotMode === 'availability') dirtyAvailability = true;
     else if (slotMode === 'session') dirtySession = true;
@@ -659,10 +701,7 @@
 
   async function saveAvailabilityToBackend() {
     if (!calendar) return;
-    if (saveBtn) {
-      saveBtn.disabled = true;
-      saveBtn.textContent = 'Saving...';
-    }
+    setSaveButtonLoading(true);
 
     try {
       const availabilityEvents = calendar.getEvents().filter(ev => ev.extendedProps?.slotMode === 'availability');
@@ -720,10 +759,8 @@
     } catch (e) {
       console.error('[MentorCalendar] error saving availability:', e);
     } finally {
-      if (saveBtn) {
-        saveBtn.textContent = 'Save';
-        updateSaveButtonState();
-      }
+      setSaveButtonLoading(false);
+      updateSaveButtonState();
     }
   }
 
