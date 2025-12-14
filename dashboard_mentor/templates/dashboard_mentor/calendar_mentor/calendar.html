@@ -65,6 +65,7 @@
 {% include "dashboard_mentor/calendar_mentor/availability_settings.html" %}
 {% include "dashboard_mentor/calendar_mentor/availability_switch_mode_popup.html" %}
 {% include "dashboard_mentor/calendar_mentor/session_switch_mode_popup.html" %}
+{% include "dashboard_mentor/calendar_mentor/session_settings.html" %}
 
 <style>
   /* --- Overlay --- */
@@ -560,6 +561,10 @@
   const availabilitySwitchToAvailabilityBtn = document.getElementById('availabilitySwitchToAvailabilityBtn');
   const sessionSwitchOverlay = document.getElementById('mentorSessionSwitchModeOverlay');
   const sessionSwitchToSessionsBtn = document.getElementById('sessionSwitchToSessionsBtn');
+  const sessionSettingsOverlay = document.getElementById('mentorSessionSettingsOverlay');
+  const sessionSettingsDateInput = document.getElementById('sessionSettingsDate');
+  const sessionSettingsTimeInput = document.getElementById('sessionSettingsTime');
+  const sessionSettingsApplyBtn = document.getElementById('sessionSettingsApplyBtn');
   
   if (!overlay || !root) return;
 
@@ -568,6 +573,8 @@
   let availabilitySwitchEventId = null;
   let availabilitySwitchOpenSettingsAfterSwitch = false;
   let sessionSwitchEventId = null;
+  let sessionSwitchOpenSettingsAfterSwitch = false;
+  let sessionSettingsEventId = null;
 
   // Timezone source of truth: mentorprofile.selected_timezone (fallback: detected_timezone)
   function resolveMentorTimezone() {
@@ -724,6 +731,90 @@
     if (ev && shouldOpenSettings) openAvailabilitySettingsForEvent(ev);
   }
 
+  // --- Session settings popup helpers ---
+  function setSessionSettingsVisible(isVisible) {
+    if (!sessionSettingsOverlay) return;
+    sessionSettingsOverlay.classList.toggle('is-visible', !!isVisible);
+    sessionSettingsOverlay.setAttribute('aria-hidden', isVisible ? 'false' : 'true');
+  }
+
+  function closeSessionSettings() {
+    sessionSettingsEventId = null;
+    setSessionSettingsVisible(false);
+  }
+
+  function openSessionSettingsForEvent(fcEvent) {
+    if (!sessionSettingsOverlay || !fcEvent) return;
+    if (!sessionSettingsDateInput || !sessionSettingsTimeInput) return;
+
+    sessionSettingsEventId = fcEvent.id || null;
+
+    try {
+      if (window.luxon && window.luxon.DateTime && fcEvent.start) {
+        const dt = window.luxon.DateTime.fromJSDate(fcEvent.start).setZone(timezone_variable);
+        sessionSettingsDateInput.value = dt.toISODate();
+        sessionSettingsTimeInput.value = dt.toFormat('HH:mm');
+      }
+    } catch (e) {
+      console.warn('[MentorCalendar] Could not prefill session settings:', e);
+    }
+
+    setSessionSettingsVisible(true);
+  }
+
+  function applySessionSettings() {
+    if (!calendar) return;
+    if (!sessionSettingsEventId) return;
+    if (!sessionSettingsDateInput || !sessionSettingsTimeInput) return;
+
+    const ev = calendar.getEventById(sessionSettingsEventId);
+    if (!ev) {
+      closeSessionSettings();
+      return;
+    }
+
+    const dateStr = (sessionSettingsDateInput.value || '').trim();
+    const timeStr = (sessionSettingsTimeInput.value || '').trim();
+    if (!dateStr || !timeStr) {
+      if (typeof showNotification === 'function') {
+        showNotification('Please choose a date and time.', 'error');
+      } else {
+        alert('Please choose a date and time.');
+      }
+      return;
+    }
+
+    if (!(window.luxon && window.luxon.DateTime)) {
+      console.warn('[MentorCalendar] Luxon is required for session settings editing.');
+      return;
+    }
+
+    const dt = window.luxon.DateTime.fromISO(`${dateStr}T${timeStr}`, { zone: timezone_variable });
+    if (!dt.isValid) {
+      if (typeof showNotification === 'function') {
+        showNotification('Invalid date/time.', 'error');
+      } else {
+        alert('Invalid date/time.');
+      }
+      return;
+    }
+
+    // Keep existing duration
+    const prevStart = ev.start;
+    const prevEnd = ev.end;
+    const durationMs = (prevStart && prevEnd) ? (prevEnd.getTime() - prevStart.getTime()) : (resolveMentorSessionLengthMinutes() * 60 * 1000);
+
+    const startJs = dt.toJSDate();
+    const endJs = new Date(startJs.getTime() + Math.max(0, durationMs));
+
+    ev.setStart(startJs);
+    ev.setEnd(endJs);
+
+    markDirty('session');
+    recomputeCollisions();
+    closeSessionSettings();
+  }
+
   // --- Switch-to-sessions-mode popup helpers ---
   function setSessionSwitchVisible(isVisible) {
     if (!sessionSwitchOverlay) return;
@@ -733,18 +824,26 @@
 
   function closeSessionSwitchPopup() {
     sessionSwitchEventId = null;
+    sessionSwitchOpenSettingsAfterSwitch = false;
     setSessionSwitchVisible(false);
   }
 
-  function openSessionSwitchPopupForEventId(eventId) {
+  function openSessionSwitchPopupForEventId(eventId, openSettingsAfterSwitch) {
     if (!sessionSwitchOverlay) return;
     sessionSwitchEventId = eventId || null;
+    sessionSwitchOpenSettingsAfterSwitch = !!openSettingsAfterSwitch;
     setSessionSwitchVisible(true);
   }
 
   function switchToSessionsMode() {
+    const id = sessionSwitchEventId;
+    const shouldOpenSettings = !!sessionSwitchOpenSettingsAfterSwitch;
     closeSessionSwitchPopup();
     setMode(false);
+    if (shouldOpenSettings && calendar && id) {
+      const ev = calendar.getEventById(id);
+      if (ev) openSessionSettingsForEvent(ev);
+    }
   }
 
   // Track dates which originally had availability (for deletion support)
@@ -1074,20 +1173,30 @@
       },
 
       eventDidMount: function(info) {
-        // Double-click availability slot -> open availability settings popup
+        // Double-click slots -> open settings (or prompt to switch modes)
         try {
           const mode = info.event?.extendedProps?.slotMode;
-          if (mode !== 'availability') return;
           if (!info.el) return;
 
           info.el.addEventListener('dblclick', (e) => {
             e.preventDefault();
             e.stopPropagation();
-            if (!isAvailabilityMode) {
-              openAvailabilitySwitchPopupForEventId(info.event.id, true);
+            if (mode === 'availability') {
+              if (!isAvailabilityMode) {
+                openAvailabilitySwitchPopupForEventId(info.event.id, true);
+                return;
+              }
+              openAvailabilitySettingsForEvent(info.event);
               return;
             }
-            openAvailabilitySettingsForEvent(info.event);
+
+            if (mode === 'session') {
+              if (isAvailabilityMode) {
+                openSessionSwitchPopupForEventId(info.event.id, true);
+                return;
+              }
+              openSessionSettingsForEvent(info.event);
+            }
           });
         } catch (e) {
           // non-fatal
@@ -1115,7 +1224,7 @@
         // Dragging session in Availability mode: revert and prompt to switch
         if (mode === 'session' && isAvailabilityMode) {
           info.revert();
-          openSessionSwitchPopupForEventId(info.event.id);
+          openSessionSwitchPopupForEventId(info.event.id, false);
           return;
         }
         console.log('[MentorCalendar] eventDrop', {
@@ -1139,7 +1248,7 @@
         // Resizing session in Availability mode: revert and prompt to switch
         if (isAvailabilityMode) {
           info.revert();
-          openSessionSwitchPopupForEventId(info.event.id);
+          openSessionSwitchPopupForEventId(info.event.id, false);
           return;
         }
         console.log('[MentorCalendar] eventResize', {
@@ -1325,6 +1434,9 @@
     if (sessionSwitchOverlay && sessionSwitchOverlay.classList.contains('is-visible')) {
       closeSessionSwitchPopup();
     }
+    if (sessionSettingsOverlay && sessionSettingsOverlay.classList.contains('is-visible')) {
+      closeSessionSettings();
+    }
     overlay.classList.remove('is-visible');
     overlay.setAttribute('aria-hidden', 'true');
     // Destroy calendar so it reconstructs cleanly on next open
@@ -1438,6 +1550,28 @@
     });
   }
 
+  // Session settings popup handlers
+  if (sessionSettingsOverlay) {
+    sessionSettingsOverlay.querySelectorAll('[data-session-settings-close]').forEach(el => {
+      el.addEventListener('click', (e) => {
+        e.preventDefault();
+        closeSessionSettings();
+      });
+    });
+    sessionSettingsOverlay.querySelectorAll('[data-session-settings-cancel]').forEach(el => {
+      el.addEventListener('click', (e) => {
+        e.preventDefault();
+        closeSessionSettings();
+      });
+    });
+  }
+  if (sessionSettingsApplyBtn) {
+    sessionSettingsApplyBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      applySessionSettings();
+    });
+  }
+
   // Close handlers
   overlay.querySelectorAll('[data-mentor-calendar-close]').forEach(el => {
     el.addEventListener('click', close);
@@ -1447,10 +1581,15 @@
     if (e.key !== 'Escape') return;
     if (!overlay.classList.contains('is-visible')) return;
 
-    // Priority: close settings popup first, then availability switch, then session switch, then the calendar popup.
+    // Priority: close settings popups first, then switch popups, then the calendar popup.
     if (availabilitySettingsOverlay && availabilitySettingsOverlay.classList.contains('is-visible')) {
       e.preventDefault();
       closeAvailabilitySettings();
+      return;
+    }
+    if (sessionSettingsOverlay && sessionSettingsOverlay.classList.contains('is-visible')) {
+      e.preventDefault();
+      closeSessionSettings();
       return;
     }
     if (availabilitySwitchOverlay && availabilitySwitchOverlay.classList.contains('is-visible')) {
