@@ -89,17 +89,16 @@
   .mentor-calendar-recurrence-dropdown {
     position: relative;
     flex: 0 1 auto;
-    width: 100px;           /* fixed width so it won't overflow the slot */
+    width: auto;           /* fixed width so it won't overflow the slot */
     max-width: 100px;         /* but still shrink in narrow slots */
-    min-width: 80px;
   }
 
   .mentor-calendar-recurrence-trigger.custom-dropdown-trigger {
-    padding: 4px 10px;
+    padding: 4px 0px;
     border-radius: 8px;
-    border: 1px solid rgba(255, 255, 255, 0.65);
-    background: rgba(255, 255, 255, 0.95);
-    color: #0f172a;
+    border: 0px solid rgba(255, 255, 255, 0.65);
+    background: rgba(255, 255, 255, 0) !important;
+    color: #ffffff;
     font-size: 0.8rem;
     font-weight: 600;
     display: inline-flex;
@@ -118,8 +117,8 @@
 
   /* Per style guide: no trigger background change on hover */
   .mentor-calendar-recurrence-trigger.custom-dropdown-trigger:hover {
-    background: rgba(255, 255, 255, 0.95);
-    border-color: rgba(255, 255, 255, 0.95);
+    background: rgba(255, 255, 255, 0) !important;
+    border-color: rgba(255, 255, 255, 0);
   }
 
   .mentor-calendar-recurrence-chevron {
