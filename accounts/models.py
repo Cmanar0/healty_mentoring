@@ -1,5 +1,27 @@
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
+import os
+import uuid
+
 from django.db import models
+
+
+def _safe_upload_filename(prefix: str, filename: str) -> str:
+    """
+    Keep storage paths short to avoid max_length/path length issues.
+    """
+    _, ext = os.path.splitext(filename or "")
+    ext = (ext or "").lower()
+    if ext and len(ext) > 10:
+        ext = ext[:10]
+    return f"{prefix}/{uuid.uuid4().hex}{ext}"
+
+
+def mentor_profile_picture_upload_to(instance, filename: str) -> str:
+    return _safe_upload_filename("profiles", filename)
+
+
+def mentor_cover_image_upload_to(instance, filename: str) -> str:
+    return _safe_upload_filename("profiles/covers", filename)
 from django.utils import timezone
 from .managers import CustomUserManager
 
@@ -132,8 +154,8 @@ class MentorProfile(models.Model):
     personal_website = models.URLField(blank=True, null=True)
     bio = models.TextField(blank=True)
     quote = models.TextField(blank=True)
-    profile_picture = models.ImageField(upload_to="profiles/", blank=True, null=True)
-    cover_image = models.ImageField(upload_to="profiles/covers/", blank=True, null=True, help_text="Cover/banner image for profile")
+    profile_picture = models.ImageField(upload_to=mentor_profile_picture_upload_to, blank=True, null=True, max_length=255)
+    cover_image = models.ImageField(upload_to=mentor_cover_image_upload_to, blank=True, null=True, max_length=255, help_text="Cover/banner image for profile")
     
     # Billing Info (JSON for flexibility)
     billing = models.JSONField(default=dict, blank=True)
