@@ -380,7 +380,7 @@
     border-width: 2px !important;
     border-style: solid !important;
     border-radius: var(--mentor-calendar-slot-radius) !important;
-    overflow: visible; /* allow dropdowns/popovers to escape the event box */
+    overflow: hidden; /* keep slot content fully inside the event */
   }
 
   /* Inner slot content should match the event wrapper radius */
@@ -418,6 +418,20 @@
   }
   .mentor-calendar-root:not(.is-mode-availability) .event-type-availability .mentor-calendar-slot-delete {
     display: none !important;
+  }
+  .mentor-calendar-root:not(.is-mode-availability) .event-type-availability .mentor-calendar-slot-duration {
+    color: #94a3b8 !important; /* Slate-400 */
+    opacity: 0.8 !important;
+  }
+  .mentor-calendar-root:not(.is-mode-availability) .event-type-availability .mentor-calendar-recurrence-trigger {
+    background: #f1f5f9 !important; /* Slate-100 */
+    border-color: #cbd5e1 !important; /* Slate-300 */
+    color: #94a3b8 !important; /* Slate-400 */
+    pointer-events: none !important; /* Lock dropdown */
+    box-shadow: none !important;
+  }
+  .mentor-calendar-root:not(.is-mode-availability) .event-type-availability .mentor-calendar-recurrence-chevron {
+    opacity: 0.5 !important;
   }
 
   /* 
@@ -495,6 +509,22 @@
       console.warn('[MentorCalendar] Could not parse userProfileData for timezone:', e);
     }
     return 'UTC';
+  }
+
+  // Slot length source of truth: mentorprofile.session_length (minutes)
+  function resolveMentorSessionLengthMinutes() {
+    try {
+      const dataEl = document.getElementById('userProfileData');
+      if (dataEl && dataEl.textContent) {
+        const data = JSON.parse(dataEl.textContent);
+        const raw = data?.session_length;
+        const minutes = Number.parseInt(raw, 10);
+        if (Number.isFinite(minutes) && minutes > 0 && minutes <= 24 * 60) return minutes;
+      }
+    } catch (e) {
+      console.warn('[MentorCalendar] Could not parse userProfileData for session_length:', e);
+    }
+    return 60;
   }
 
   // Calendar timezone variable (used by FullCalendar init + save grouping)
@@ -858,7 +888,8 @@
         if (viewType !== 'timeGridDay' && viewType !== 'timeGridWeek') return;
 
         const mode = isAvailabilityMode ? 'availability' : 'session';
-        const durationMinutes = 60; // for now: fixed length
+        // Use mentor profile session_length (minutes) for slot length
+        const durationMinutes = resolveMentorSessionLengthMinutes();
 
         const startIso = info.date.toISOString();
         const endIso = new Date(info.date.getTime() + durationMinutes * 60 * 1000).toISOString();
