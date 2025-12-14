@@ -41,10 +41,6 @@
           </button>
         </div>
 
-        <div class="mentor-calendar-timezone">
-          <select id="mentorCalendarTimezoneSelect" class="mentor-calendar-tz-select" aria-label="Timezone"></select>
-        </div>
-
         <button type="button" id="mentorCalendarSaveBtn" class="mentor-calendar-save-btn" aria-label="Save availability">
           Save
         </button>
@@ -254,28 +250,6 @@
     box-shadow: 0 1px 3px rgba(0,0,0,0.1);
   }
 
-  /* Timezone dropdown */
-  .mentor-calendar-timezone {
-    display: flex;
-    align-items: center;
-  }
-  .mentor-calendar-tz-select {
-    height: 40px;
-    max-width: 160px;
-    border-radius: 10px;
-    border: 1px solid #e2e8f0;
-    background: #ffffff;
-    color: #334155;
-    padding: 0 12px;
-    font-size: 0.875rem;
-    font-weight: 500;
-    outline: none;
-  }
-  .mentor-calendar-tz-select:focus {
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
-  }
-
   /* Save button */
   .mentor-calendar-save-btn {
     height: 40px;
@@ -408,7 +382,6 @@
   const overlay = document.getElementById('mentorCalendarOverlay');
   const root = document.getElementById('mentorCalendarRoot');
   const dateDisplay = document.getElementById('mentorCalendarDateDisplay');
-  const tzSelect = document.getElementById('mentorCalendarTimezoneSelect');
   const saveBtn = document.getElementById('mentorCalendarSaveBtn');
   const modeSessionsBtn = document.getElementById('mentorCalendarModeSessions');
   const modeAvailabilityBtn = document.getElementById('mentorCalendarModeAvailability');
@@ -419,8 +392,26 @@
 
   let calendar = null;
 
-  // Single source of truth for timezone (edit this string):
-  let timezone_variable = 'Europe/Prague';
+  // Timezone source of truth: mentorprofile.selected_timezone (fallback: detected_timezone)
+  function resolveMentorTimezone() {
+    try {
+      const dataEl = document.getElementById('userProfileData');
+      if (dataEl && dataEl.textContent) {
+        const data = JSON.parse(dataEl.textContent);
+        const selected = (data.selected_timezone || '').trim();
+        const detected = (data.detected_timezone || '').trim();
+        const tz = selected || detected || 'UTC';
+        // Only accept IANA IDs or UTC
+        if (tz === 'UTC' || tz.includes('/')) return tz;
+      }
+    } catch (e) {
+      console.warn('[MentorCalendar] Could not parse userProfileData for timezone:', e);
+    }
+    return 'UTC';
+  }
+
+  // Calendar timezone variable (used by FullCalendar init + save grouping)
+  let timezone_variable = resolveMentorTimezone();
 
   // Track dates which originally had availability (for deletion support)
   let originalAvailabilityDates = new Set();
@@ -578,33 +569,6 @@
     isAvailabilityMode = !!nextIsAvailability;
     renderModeToggle();
     console.log('[MentorCalendar] isAvailabilityMode =', isAvailabilityMode);
-  }
-
-  function getSupportedTimezones() {
-    try {
-      if (typeof Intl.supportedValuesOf === 'function') {
-        const list = Intl.supportedValuesOf('timeZone');
-        if (Array.isArray(list) && list.length) return list;
-      }
-    } catch (e) {}
-    // Minimal fallback list (works everywhere)
-    return ['UTC', 'Europe/Prague', 'Africa/Djibouti', 'America/New_York', 'Asia/Tokyo'];
-  }
-
-  function populateTimezoneSelect() {
-    if (!tzSelect) return;
-    const zones = getSupportedTimezones();
-    tzSelect.innerHTML = '';
-
-    // Ensure UTC first
-    const ordered = ['UTC', ...zones.filter(z => z !== 'UTC')];
-    ordered.forEach(tz => {
-      const opt = document.createElement('option');
-      opt.value = tz;
-      opt.textContent = tz;
-      tzSelect.appendChild(opt);
-    });
-    tzSelect.value = timezone_variable;
   }
 
   function initCalendar(initialView, initialDate) {
@@ -795,28 +759,13 @@
     }
   }
 
-  function setTimezone(tz) {
-    if (typeof tz !== 'string' || !tz.trim()) return;
-    timezone_variable = tz.trim();
-    // Timezone is immutable per calendar instance -> destroy + recreate
-    if (overlay.classList.contains('is-visible')) {
-      const currentView = calendar ? calendar.view.type : 'timeGridWeek';
-      const currentDate = calendar ? calendar.getDate() : null;
-      destroyCalendar();
-      initCalendar(currentView, currentDate);
-      setTimeout(() => calendar && calendar.updateSize(), 50);
-      // Reload backend availability so date grouping/deletion state aligns to current timezone
-      setTimeout(() => loadSavedAvailability(), 60);
-    }
-    if (tzSelect) tzSelect.value = timezone_variable;
-  }
-
   function open() {
     overlay.classList.add('is-visible');
     overlay.setAttribute('aria-hidden', 'false');
     // Small delay to ensure transitions work and DOM is ready
     setTimeout(() => {
-        populateTimezoneSelect();
+        // Re-resolve timezone from profile on each open (in case it changed)
+        timezone_variable = resolveMentorTimezone();
         renderModeToggle();
         initCalendar();
         if (calendar) calendar.updateSize();
@@ -858,13 +807,6 @@
     modeAvailabilityBtn.addEventListener('click', () => setMode(true));
   }
 
-  // Timezone dropdown
-  if (tzSelect) {
-    tzSelect.addEventListener('change', () => {
-      setTimezone(tzSelect.value);
-    });
-  }
-
   // Save availability button
   if (saveBtn) {
     saveBtn.addEventListener('click', () => {
@@ -883,8 +825,7 @@
   });
 
   // Public API
-  window.MentorCalendar = { open, close, setTimezone };
-  window.setMentorCalendarTimezone = setTimezone;
+  window.MentorCalendar = { open, close };
 
   document.querySelectorAll('[data-open-mentor-calendar]').forEach(el => {
     el.addEventListener('click', (e) => {
