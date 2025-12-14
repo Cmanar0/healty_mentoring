@@ -254,10 +254,6 @@
 {% endif %}
 </script>
 
-<!-- Timezones Data (for timezone checker) -->
-{% if common_timezones %}
-{{ common_timezones|json_script:"timezonesData" }}
-{% endif %}
 {% endblock %}
 
 {% block scripts %}

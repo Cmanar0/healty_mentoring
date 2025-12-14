@@ -10,7 +10,7 @@ from accounts.models import CustomUser, UserProfile, MentorClientRelationship
 from dashboard_mentor.constants import (
     PREDEFINED_MENTOR_TYPES, PREDEFINED_TAGS, 
     PREDEFINED_LANGUAGES, PREDEFINED_CATEGORIES,
-    COMMON_TIMEZONES, QUALIFICATION_TYPES
+    QUALIFICATION_TYPES
 )
 from general.email_service import EmailService
 import json
@@ -23,7 +23,6 @@ def dashboard(request):
     if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
         return redirect('general:index')
     return render(request, 'dashboard_mentor/dashboard_mentor.html', {
-        'common_timezones': COMMON_TIMEZONES,
         'debug': settings.DEBUG,
     })
 
@@ -171,7 +170,6 @@ def account(request):
             "content_percentage": contentPercentage,
             "content_missing": content_missing,
             "billing_filled": billing_filled,
-            "common_timezones": COMMON_TIMEZONES,
         },
     )
 
@@ -786,7 +784,6 @@ def profile(request):
         'predefined_languages': PREDEFINED_LANGUAGES,
         'predefined_categories': PREDEFINED_CATEGORIES,
         'qualification_types': QUALIFICATION_TYPES,
-        'common_timezones': COMMON_TIMEZONES,
         'has_collisions_now': has_collisions_now,
         'debug': settings.DEBUG,
     })
@@ -817,7 +814,6 @@ def billing(request):
     
     return render(request, 'dashboard_mentor/billing.html', {
         'billing': profile.billing or {},
-        'common_timezones': COMMON_TIMEZONES,
         'debug': settings.DEBUG,
     })
 
@@ -909,7 +905,6 @@ def my_sessions(request):
     open_calendar = request.GET.get('open_calendar', 'false').lower() == 'true'
     
     return render(request, 'dashboard_mentor/my_sessions.html', {
-        'common_timezones': COMMON_TIMEZONES,
         'debug': settings.DEBUG,
         'availability_data': availability_data,
         'recurring_slots': recurring_slots_data,
@@ -1650,7 +1645,6 @@ def clients_list(request):
     
     return render(request, 'dashboard_mentor/clients.html', {
         'relationships': relationships,
-        'common_timezones': COMMON_TIMEZONES,
         'debug': settings.DEBUG,
     })
 

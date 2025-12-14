@@ -84,6 +84,52 @@
         initTimezoneChecker();
     }
 
+    // Build timezone list dynamically from the browser's supported IANA IDs
+    function getSupportedTimezoneIds() {
+        try {
+            if (typeof Intl.supportedValuesOf === 'function') {
+                const values = Intl.supportedValuesOf('timeZone');
+                if (values && values.length > 0) return values;
+            }
+        } catch (e) {
+            console.warn('Intl.supportedValuesOf not available, using fallback list', e);
+        }
+        return ['UTC', 'America/New_York', 'Europe/London', 'Asia/Tokyo', 'Australia/Sydney'];
+    }
+
+    function formatTimezoneName(id) {
+        try {
+            const parts = id.split('/');
+            const city = parts[parts.length - 1] || id;
+            return city.replace(/_/g, ' ');
+        } catch (e) {
+            return id;
+        }
+    }
+
+    function deriveRegion(id) {
+        try {
+            const parts = id.split('/');
+            return parts.length > 1 ? parts[0].replace(/_/g, ' ') : 'Other';
+        } catch (e) {
+            return 'Other';
+        }
+    }
+
+    function buildTimezoneList() {
+        const ids = getSupportedTimezoneIds();
+        return ids.map(id => ({
+            id,
+            name: formatTimezoneName(id),
+            region: deriveRegion(id),
+            offset: getCurrentTimezoneOffset(id)
+        }));
+    }
+
+    const TIMEZONE_OPTIONS = buildTimezoneList();
+    // Expose for other inline scripts (profile page, calendar overlays)
+    window.TIMEZONE_OPTIONS = TIMEZONE_OPTIONS;
+
     function initTimezoneChecker() {
         console.log('[Timezone Checker] Initializing...');
         
@@ -242,15 +288,9 @@
         const modalContent = document.createElement('div');
         modalContent.className = 'timezone-modal-content';
         
-        // Get timezone display names
-        const timezonesData = document.getElementById('timezonesData');
-        const commonTimezones = timezonesData ? JSON.parse(timezonesData.textContent) : [];
-        
         let detectedTzName = detectedTz;
-        const detectedTzObj = commonTimezones.find(tz => tz.id === detectedTz);
-        
+        const detectedTzObj = TIMEZONE_OPTIONS.find(tz => tz.id === detectedTz);
         if (detectedTzObj) {
-            // Use dynamic offset calculation (handles DST)
             const currentOffset = getCurrentTimezoneOffset(detectedTz);
             detectedTzName = detectedTzObj.name + ' (' + currentOffset + ')';
         }
@@ -326,7 +366,7 @@
         let currentSelectedTz = null;
         
         // Initialize timezone autocomplete
-        initializeTimezoneAutocomplete(timezoneInput, timezoneValue, timezoneSuggestions, commonTimezones, function(selectedTzObj) {
+        initializeTimezoneAutocomplete(timezoneInput, timezoneValue, timezoneSuggestions, TIMEZONE_OPTIONS, function(selectedTzObj) {
             currentSelectedTz = selectedTzObj.id;
             
             // Update button text
@@ -398,15 +438,11 @@
         const modalContent = document.createElement('div');
         modalContent.className = 'timezone-modal-content';
         
-        // Get timezone display names
-        const timezonesData = document.getElementById('timezonesData');
-        const commonTimezones = timezonesData ? JSON.parse(timezonesData.textContent) : [];
-        
         let detectedTzName = detectedTz;
         let selectedTzName = selectedTz;
         
-        const detectedTzObj = commonTimezones.find(tz => tz.id === detectedTz);
-        const selectedTzObj = commonTimezones.find(tz => tz.id === selectedTz);
+        const detectedTzObj = TIMEZONE_OPTIONS.find(tz => tz.id === detectedTz);
+        const selectedTzObj = TIMEZONE_OPTIONS.find(tz => tz.id === selectedTz);
         
         if (detectedTzObj) {
             // Use dynamic offset calculation (handles DST)
@@ -428,7 +464,7 @@
         
         // Build timezone options HTML
         let timezoneOptionsHTML = '';
-        commonTimezones.forEach(tz => {
+        TIMEZONE_OPTIONS.forEach(tz => {
             const selected = tz.id === selectedTz ? 'selected' : '';
             // Use dynamic offset calculation (handles DST)
             const currentOffset = getCurrentTimezoneOffset(tz.id);
@@ -502,7 +538,7 @@
         const originalSelectedTz = selectedTz;
         
         // Initialize timezone autocomplete
-        initializeTimezoneAutocomplete(timezoneInput, timezoneValue, timezoneSuggestions, commonTimezones, function(selectedTzObj) {
+        initializeTimezoneAutocomplete(timezoneInput, timezoneValue, timezoneSuggestions, TIMEZONE_OPTIONS, function(selectedTzObj) {
             currentSelectedTz = selectedTzObj.id;
             
             // Update button text - use dynamic offset (handles DST)

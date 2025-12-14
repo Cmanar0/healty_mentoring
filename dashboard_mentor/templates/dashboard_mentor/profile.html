@@ -212,7 +212,6 @@
                         
                         <!-- Hidden detected timezone for logic -->
                         <input type="hidden" id="detectedTimezoneValue" value="{{ user.profile.detected_timezone|default:'' }}">
-                        {{ common_timezones|json_script:"timezonesData" }}
                     </div>
 
                     <!-- Expertise (Tags) -->
@@ -1108,11 +1107,78 @@ function initializeTimezoneSelector() {
     const useDetectedTimezoneBtn = document.getElementById('useDetectedTimezoneBtn');
     const detectedTimezoneValue = document.getElementById('detectedTimezoneValue');
     
-    const timezonesData = document.getElementById('timezonesData');
+    if (!timezoneInput || !timezoneValue || !timezoneSuggestions) return;
     
-    if (!timezoneInput || !timezoneValue || !timezoneSuggestions || !timezonesData) return;
-    
-    const timezones = JSON.parse(timezonesData.textContent);
+    function formatTimezoneName(id) {
+        try {
+            const parts = id.split('/');
+            const city = parts[parts.length - 1] || id;
+            return city.replace(/_/g, ' ');
+        } catch (e) {
+            return id;
+        }
+    }
+
+    function deriveRegion(id) {
+        try {
+            const parts = id.split('/');
+            return parts.length > 1 ? parts[0].replace(/_/g, ' ') : 'Other';
+        } catch (e) {
+            return 'Other';
+        }
+    }
+
+    function getCurrentTimezoneOffset(ianaId) {
+        try {
+            const now = new Date();
+            const formatter = new Intl.DateTimeFormat('en', {
+                timeZone: ianaId,
+                timeZoneName: 'longOffset'
+            });
+            const parts = formatter.formatToParts(now);
+            const offsetPart = parts.find(p => p.type === 'timeZoneName');
+            if (offsetPart && offsetPart.value) {
+                const match = offsetPart.value.match(/GMT([+-]\d{1,2})(:?(\d{2}))?/);
+                if (match) {
+                    const sign = match[1].startsWith('-') ? '-' : '+';
+                    const hours = match[1].replace('+', '').replace('-', '');
+                    const minutes = match[3] ? match[3] : '00';
+                    return `UTC${sign}${hours.padStart(2, '0')}${minutes !== '00' ? ':' + minutes : ''}`;
+                }
+            }
+        } catch (e) {
+            console.warn('Could not get timezone offset for', ianaId, e);
+        }
+        return 'UTC+00';
+    }
+
+    function buildTimezoneList() {
+        if (window.TIMEZONE_OPTIONS && window.TIMEZONE_OPTIONS.length) {
+            return window.TIMEZONE_OPTIONS.map(tz => ({
+                ...tz,
+                offset: getCurrentTimezoneOffset(tz.id)
+            }));
+        }
+        let ids = [];
+        try {
+            if (typeof Intl.supportedValuesOf === 'function') {
+                ids = Intl.supportedValuesOf('timeZone');
+            }
+        } catch (e) {
+            console.warn('Intl.supportedValuesOf unavailable for profile timezone selector', e);
+        }
+        if (!ids || ids.length === 0) {
+            ids = ['UTC', 'America/New_York', 'Europe/London', 'Asia/Tokyo', 'Australia/Sydney'];
+        }
+        return ids.map(id => ({
+            id,
+            name: formatTimezoneName(id),
+            region: deriveRegion(id),
+            offset: getCurrentTimezoneOffset(id)
+        }));
+    }
+
+    const timezones = buildTimezoneList();
     let selectedTimezone = null;
     let timezoneUpdateInterval = null;
     let initialTimezoneValue = timezoneValue.value;

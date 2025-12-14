@@ -1472,6 +1472,13 @@ margin: 0}
   const viewBtnEls = document.querySelectorAll("[data-calendar-view]");
   const dateDisplayEl = document.getElementById("calendarDateDisplay");
 
+  // Helper: format using FullCalendar (single source of truth for timezone)
+  function formatCalDate(date, options) {
+    if (!calendar) return '';
+    // Use FullCalendar's timezone (set via timeZone option at init) as the single source of truth.
+    return calendar.formatDate(date, options || {});
+  }
+
   // Format date display based on current view type
   function updateDateDisplay() {
     if (!calendar || !dateDisplayEl) return;
@@ -1484,25 +1491,22 @@ margin: 0}
     
     if (view.type === 'timeGridDay') {
       // Day view: show specific date (e.g., "January 15, 2024")
-      const dateFormatter = new Intl.DateTimeFormat('en-US', {
+      displayText = formatCalDate(start, {
         year: 'numeric',
         month: 'long',
         day: 'numeric'
       });
-      displayText = dateFormatter.format(start);
     } else if (view.type === 'timeGridWeek') {
       // Week view: show date range (e.g., "Jan 15 - Jan 21, 2024")
-      const startFormatter = new Intl.DateTimeFormat('en-US', {
+      const startStr = formatCalDate(start, {
         month: 'short',
         day: 'numeric'
       });
-      const endFormatter = new Intl.DateTimeFormat('en-US', {
+      const endStr = formatCalDate(new Date(end.getTime() - 1), {
         month: 'short',
         day: 'numeric',
         year: 'numeric'
       });
-      const startStr = startFormatter.format(start);
-      const endStr = endFormatter.format(new Date(end.getTime() - 1)); // Subtract 1ms to get last day
       displayText = startStr + ' - ' + endStr;
     } else if (view.type === 'dayGridMonth') {
       // Month view: show month name and year (e.g., "January 2024")
@@ -1511,146 +1515,21 @@ margin: 0}
       const midDate = new Date((start.getTime() + end.getTime()) / 2);
       // Get the first day of the month that midDate falls into
       const monthStart = new Date(midDate.getFullYear(), midDate.getMonth(), 1);
-      const monthFormatter = new Intl.DateTimeFormat('en-US', {
+      displayText = formatCalDate(monthStart, {
         year: 'numeric',
         month: 'long'
       });
-      displayText = monthFormatter.format(monthStart);
     }
     
     dateDisplayEl.textContent = displayText;
   }
 
-  // Get current UTC offset for a timezone (handles DST automatically)
-  // Uses JavaScript's native timezone support - IANA timezones already handle DST
-  function getCurrentTimezoneOffset(ianaId) {
-    try {
-      const now = new Date();
-      
-      // Use Intl.DateTimeFormat to get the timezone offset
-      // This automatically handles DST based on the current date
-      const formatter = new Intl.DateTimeFormat('en', {
-        timeZone: ianaId,
-        timeZoneName: 'longOffset'
-      });
-      
-      const parts = formatter.formatToParts(now);
-      const offsetPart = parts.find(p => p.type === 'timeZoneName');
-      
-      if (offsetPart && offsetPart.value) {
-        // offsetPart.value will be like "GMT+1", "GMT+02:00", "GMT+1:00", etc.
-        // Extract the offset part
-        const offsetMatch = offsetPart.value.match(/GMT([+-])(\d{1,2})(:?(\d{2}))?/);
-        if (offsetMatch) {
-          const sign = offsetMatch[1];
-          const hours = parseInt(offsetMatch[2]) || 0;
-          const minutes = offsetMatch[4] ? parseInt(offsetMatch[4]) : 0;
-          
-          if (minutes === 0) {
-            return 'UTC' + sign + String(hours).padStart(2, '0');
-          } else {
-            return 'UTC' + sign + String(hours).padStart(2, '0') + ':' + String(minutes).padStart(2, '0');
-          }
-        }
-      }
-      
-      // Fallback: Calculate offset by comparing what time it is in UTC vs the timezone
-      // Format the same moment in both timezones and compare
-      const utcTimeStr = now.toLocaleString('sv-SE', { timeZone: 'UTC' }); // ISO-like format
-      const tzTimeStr = now.toLocaleString('sv-SE', { timeZone: ianaId });
-      
-      // Parse both (format: "YYYY-MM-DD HH:mm:ss")
-      const utcDate = new Date(utcTimeStr.replace(' ', 'T') + 'Z');
-      const tzDate = new Date(tzTimeStr.replace(' ', 'T') + 'Z');
-      
-      // The difference tells us the offset
-      const diffMs = tzDate.getTime() - utcDate.getTime();
-      const diffHours = diffMs / (1000 * 60 * 60);
-      
-      const sign = diffHours >= 0 ? '+' : '-';
-      const absHours = Math.abs(diffHours);
-      const hours = Math.floor(absHours);
-      const minutes = Math.round((absHours - hours) * 60);
-      
-      if (minutes === 0) {
-        return 'UTC' + sign + String(hours).padStart(2, '0');
-      } else {
-        return 'UTC' + sign + String(hours).padStart(2, '0') + ':' + String(minutes).padStart(2, '0');
-      }
-    } catch (e) {
-      console.warn('Could not get timezone offset for', ianaId, ':', e);
-      return 'UTC+0';
-    }
-  }
-
-  // Get timezone display name from IANA ID using COMMON_TIMEZONES, with dynamic offset
-  function getTimezoneDisplayName(ianaId) {
-    try {
-      const timezonesDataEl = document.getElementById('timezonesData');
-      if (timezonesDataEl && timezonesDataEl.textContent) {
-        const timezones = JSON.parse(timezonesDataEl.textContent);
-        const tz = timezones.find(t => t.id === ianaId);
-        if (tz) {
-          // Get current offset dynamically (handles DST)
-          const currentOffset = getCurrentTimezoneOffset(ianaId);
-          // Return format: "Prague (UTC+1)" or "Prague (UTC+2)" depending on season
-          return tz.name + ' (' + currentOffset + ')';
-        }
-      }
-    } catch (e) {
-      console.warn('Could not get timezone display name:', e);
-    }
-    // Fallback: return IANA ID with dynamic offset
-    const currentOffset = getCurrentTimezoneOffset(ianaId);
-    return ianaId + ' (' + currentOffset + ')';
-  }
-
-  // Helper: Find IANA ID from display name or IANA ID in COMMON_TIMEZONES
-  function findIanaIdFromTimezone(timezoneValue) {
-    if (!timezoneValue || !timezoneValue.trim()) return null;
-    
-    const trimmed = timezoneValue.trim();
-    
-    try {
-      const timezonesDataEl = document.getElementById('timezonesData');
-      if (timezonesDataEl && timezonesDataEl.textContent) {
-        const timezones = JSON.parse(timezonesDataEl.textContent);
-        
-        // First, try exact IANA ID match
-        const exactMatch = timezones.find(t => t.id === trimmed);
-        if (exactMatch) {
-          return exactMatch.id;
-        }
-        
-        // Then, try matching by display name (e.g., "Prague (UTC+1)")
-        const nameMatch = timezones.find(t => {
-          // Match exact name
-          if (t.name === trimmed) return true;
-          // Match name with offset (e.g., "Prague (UTC+1)")
-          const nameWithOffset = t.name + ' (' + t.offset + ')';
-          if (nameWithOffset === trimmed) return true;
-          // Match partial name (e.g., "Prague" matches "Prague (UTC+1)")
-          if (trimmed.startsWith(t.name + ' (')) return true;
-          return false;
-        });
-        
-        if (nameMatch) {
-          return nameMatch.id;
-        }
-      }
-    } catch (e) {
-      console.warn('Error looking up timezone in COMMON_TIMEZONES:', e);
-    }
-    
-    // If it looks like an IANA ID (contains '/'), return as-is
-    if (trimmed.includes('/')) {
-      return trimmed;
-    }
-    
-    return null;
-  }
+  // Timezone is represented only as an IANA string (mentorTimezone) and is applied only via
+  // FullCalendar's `timeZone` option. We do not compute offsets or display names here.
 
   // Resolve mentor timezone from global userProfileData JSON (provided by dashboard_mentor/base.html)
+  // Contract: returns only selected_timezone (preferred) or detected_timezone if they are IANA IDs (or 'UTC'),
+  // otherwise falls back to 'UTC'. No browser timezone detection.
   function resolveMentorTimezone() {
     let tz = null;
     try {
@@ -1665,10 +1544,10 @@ margin: 0}
           
           let rawTimezone = null;
           
-          // Priority 1: selected_timezone
+          // Priority 1: selected_timezone (force use if present)
           if (data.selected_timezone && data.selected_timezone.trim() !== '') {
             rawTimezone = data.selected_timezone.trim();
-            console.log('[Calendar] Using selected_timezone:', rawTimezone);
+            console.log('[Calendar] Using selected_timezone (forced):', rawTimezone);
           } 
           // Priority 2: detected_timezone
           else if (data.detected_timezone && data.detected_timezone.trim() !== '') {
@@ -1678,32 +1557,16 @@ margin: 0}
             console.warn('[Calendar] Both selected_timezone and detected_timezone are empty');
             console.warn('[Calendar] selected_timezone:', data.selected_timezone);
             console.warn('[Calendar] detected_timezone:', data.detected_timezone);
-            // Fallback: try browser-detected timezone
-            try {
-              const browserTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-              if (browserTz) {
-                rawTimezone = browserTz;
-                console.log('[Calendar] Fallback: Using browser-detected timezone:', browserTz);
-              }
-            } catch (e) {
-              console.warn('[Calendar] Could not detect browser timezone:', e);
-            }
           }
           
-          // Convert to IANA ID if we have a timezone value
+          // Use only valid IANA IDs (or 'UTC')
           if (rawTimezone) {
-            const ianaId = findIanaIdFromTimezone(rawTimezone);
-            if (ianaId) {
-              tz = ianaId;
-              console.log('[Calendar] Resolved timezone:', rawTimezone, '->', ianaId);
+            const candidate = rawTimezone.trim();
+            if (candidate === 'UTC' || candidate.includes('/')) {
+              tz = candidate;
+              console.log('[Calendar] Resolved timezone (IANA):', tz);
             } else {
-              // If lookup failed but it looks like an IANA ID, use it
-              if (rawTimezone.includes('/')) {
-                tz = rawTimezone;
-                console.log('[Calendar] Using raw timezone as IANA ID:', tz);
-              } else {
-                console.warn('[Calendar] Could not resolve timezone:', rawTimezone);
-              }
+              console.warn('[Calendar] Non-IANA timezone value ignored:', candidate);
             }
           }
         } else {
@@ -1716,15 +1579,10 @@ margin: 0}
       console.error('[Calendar] Could not resolve mentor timezone:', e);
     }
     
-    // Final fallback: browser timezone or UTC
+    // Final fallback: UTC
     if (!tz) {
-      try {
-        tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-        console.log('[Calendar] Final fallback: Using browser timezone:', tz);
-      } catch (e) {
-        tz = 'UTC';
-        console.warn('[Calendar] Final fallback: Using UTC');
-      }
+      tz = 'UTC';
+      console.warn('[Calendar] Final fallback: Using UTC');
     }
     
     console.log('[Calendar] Final resolved timezone:', tz);
@@ -1733,7 +1591,7 @@ margin: 0}
 
   let calendar = null;
   let mentorTimezone = resolveMentorTimezone();
-  let mentorTimezoneDisplay = getTimezoneDisplayName(mentorTimezone);
+  let mentorTimezoneDisplay = mentorTimezone;
   let isAvailabilityMode = false; // Track toggle state
   let sessionLength = 60; // Default session length in minutes
   let createdAvailabilitySlots = []; // Track created availability slots
@@ -1764,19 +1622,32 @@ margin: 0}
   
   // Function to update timezone (call this when popup opens to get latest values)
   function updateTimezoneFromProfile() {
-    mentorTimezone = resolveMentorTimezone();
-    mentorTimezoneDisplay = getTimezoneDisplayName(mentorTimezone);
-    sessionLength = getSessionLength();
+    const newTimezone = resolveMentorTimezone();
+    const newDisplay = newTimezone;
+    const newSessionLength = getSessionLength();
     
-    // Update calendar timezone if it exists
-    if (calendar) {
-      calendar.setOption('timeZone', mentorTimezone);
-      calendar.render();
+    // If timezone unchanged, just update session length and return
+    if (calendar && mentorTimezone === newTimezone) {
+      sessionLength = newSessionLength;
+      return false;
     }
+    
+    mentorTimezone = newTimezone;
+    mentorTimezoneDisplay = newDisplay;
+    sessionLength = newSessionLength;
+    
+    // Full reset required when timezone changes (timezone is immutable per calendar instance)
+    if (calendar) {
+      calendar.destroy();
+      calendar = null;
+    }
+    return true;
   }
   
   // Compare current slots with original saved state to detect changes
   function hasUnsavedChanges() {
+    const norm = (v) => (v instanceof Date ? v.toISOString() : v);
+    
     // If we had slots originally but now have none, that's a change (deletion)
     if (originalSavedSlots.length > 0 && createdAvailabilitySlots.length === 0) {
       return true;
@@ -1790,13 +1661,13 @@ margin: 0}
     // Create a map of original slots by ID for quick lookup
     const originalMap = new Map();
     originalSavedSlots.forEach(slot => {
-      const key = `${slot.id}_${slot.start}_${slot.end}_${slot.length}_${slot.type || 'availability_slot'}`;
+      const key = `${slot.id}_${norm(slot.start)}_${norm(slot.end)}_${slot.length}_${slot.type || 'availability_slot'}`;
       originalMap.set(key, true);
     });
     
     // Check if all current slots exist in original state
     for (const slot of createdAvailabilitySlots) {
-      const key = `${slot.id}_${slot.start}_${slot.end}_${slot.length}_${slot.type || 'availability_slot'}`;
+      const key = `${slot.id}_${norm(slot.start)}_${norm(slot.end)}_${slot.length}_${slot.type || 'availability_slot'}`;
       if (!originalMap.has(key)) {
         return true; // Found a slot that doesn't match original
       }
@@ -1819,16 +1690,7 @@ margin: 0}
     }
   }
   
-  // Extract UTC offset from timezone display name (e.g., "Prague (UTC+1)" -> "UTC+1")
-  function extractUTCOffset(displayName) {
-    // Extract offset from format like "Prague (UTC+1)" or "UTC+1"
-    const match = displayName.match(/UTC[+-]\d{1,2}(:\d{2})?/);
-    if (match) {
-      return match[0];
-    }
-    // Fallback: get current offset dynamically
-    return getCurrentTimezoneOffset(mentorTimezone);
-  }
+  // Offsets are not derived/displayed here; timezone is a single IANA string.
   
   // Initialize session length
   sessionLength = getSessionLength();
@@ -1907,12 +1769,11 @@ margin: 0}
       // Group slots by date and format them
       const slotsByDate = {};
       
-      // Send UTC ISO strings directly - FullCalendar handles all timezone conversion
-      // No need for selected_timezone - just use native calendar timezones
+      // Convert to UTC ISO strings only when sending to backend
       createdAvailabilitySlots.forEach(slot => {
-        // slot.start and slot.end are UTC ISO strings from FullCalendar
-        // Extract date for grouping (YYYY-MM-DD)
-        const dateStr = slot.start.split('T')[0];
+        const startIso = slot.start instanceof Date ? slot.start.toISOString() : new Date(slot.start).toISOString();
+        const endIso = slot.end instanceof Date ? slot.end.toISOString() : new Date(slot.end).toISOString();
+        const dateStr = startIso.split('T')[0];
         
         if (!slotsByDate[dateStr]) {
           slotsByDate[dateStr] = [];
@@ -1922,11 +1783,10 @@ margin: 0}
         const calendarEvent = calendar ? calendar.getEventById(slot.id) : null;
         const slotType = calendarEvent?.extendedProps?.type || slot.type || 'availability_slot';
         
-        // Send UTC ISO strings directly - backend will parse and store as UTC
         slotsByDate[dateStr].push({
           date: dateStr,
-          start_iso: slot.start, // UTC ISO string (e.g., "2024-12-12T05:00:00.000Z")
-          end_iso: slot.end,     // UTC ISO string
+          start_iso: startIso, // UTC ISO string (e.g., "2024-12-12T05:00:00.000Z")
+          end_iso: endIso,     // UTC ISO string
           length: slot.length,
           id: slot.id,
           type: slotType
@@ -2032,13 +1892,10 @@ margin: 0}
   
   // Check if two time ranges overlap
   function slotsOverlap(start1, end1, start2, end2) {
-    // Convert to timestamps for comparison
-    const s1 = new Date(start1).getTime();
-    const e1 = new Date(end1).getTime();
-    const s2 = new Date(start2).getTime();
-    const e2 = new Date(end2).getTime();
-    
-    // Two ranges overlap if: start1 < end2 AND start2 < end1
+    const s1 = start1 instanceof Date ? start1.getTime() : Date.parse(start1);
+    const e1 = end1 instanceof Date ? end1.getTime() : Date.parse(end1);
+    const s2 = start2 instanceof Date ? start2.getTime() : Date.parse(start2);
+    const e2 = end2 instanceof Date ? end2.getTime() : Date.parse(end2);
     return s1 < e2 && s2 < e1;
   }
   
@@ -2203,14 +2060,12 @@ margin: 0}
   
   // Format event time for display
   function formatEventTime(dateStr) {
-    const date = new Date(dateStr);
-    const formatter = new Intl.DateTimeFormat('en-US', {
-      timeZone: mentorTimezone,
+    const date = dateStr instanceof Date ? dateStr : new Date(dateStr);
+    return calendar ? calendar.formatDate(date, {
       hour: '2-digit',
       minute: '2-digit',
       hour12: false
-    });
-    return formatter.format(date);
+    }) : '';
   }
   
   // Update slot colors based on collisions
@@ -2250,19 +2105,22 @@ margin: 0}
   // Create an availability slot event from a date/time
   function createAvailabilitySlotEvent(startDate, lengthMinutes) {
     const endDate = new Date(startDate.getTime() + lengthMinutes * 60 * 1000);
+    const startIso = startDate.toISOString();
+    const endIso = endDate.toISOString();
     
     // Generate unique ID for this slot
     const slotId = 'avail_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
     
     // Check for collisions
-    const collisions = checkSlotCollisions(startDate.toISOString(), endDate.toISOString());
+    const collisions = checkSlotCollisions(startDate, endDate);
     const hasCollision = collisions.length > 0;
     
     return {
       id: slotId,
       title: 'Available',
-      start: startDate.toISOString(),
-      end: endDate.toISOString(),
+      // Always pass UTC ISO strings to FullCalendar (absolute time stays absolute)
+      start: startIso,
+      end: endIso,
       backgroundColor: hasCollision ? '#ef4444' : '#3b82f6', // Red if collision, blue otherwise
       borderColor: hasCollision ? '#dc2626' : '#2563eb',
       classNames: ['availability-slot'],
@@ -2271,8 +2129,8 @@ margin: 0}
         length: lengthMinutes,
         slotId: slotId,
         type: 'availability_slot', // Mark as availability slot (fixed length)
-        originalStart: startDate.toISOString(), // Store original start time to prevent movement
-        originalEnd: endDate.toISOString() // Store original end time to prevent resizing
+        originalStart: startIso, // Store original start time to prevent movement
+        originalEnd: endIso // Store original end time to prevent resizing
       }
     };
   }
@@ -2358,12 +2216,12 @@ margin: 0}
     
     // For availability slots, check if only one time changed (resize) vs both changed (drag)
     if (slotType === 'availability_slot' && draggedSlotStartingDateTime && draggedSlotEndingDateTime) {
-      const newStart = event.start instanceof Date ? event.start.toISOString() : event.start;
-      const newEnd = event.end instanceof Date ? event.end.toISOString() : event.end;
+      const newStart = event.start instanceof Date ? event.start : new Date(event.start);
+      const newEnd = event.end instanceof Date ? event.end : new Date(event.end);
       
       // Compare new times with original times
-      const startChanged = newStart !== draggedSlotStartingDateTime;
-      const endChanged = newEnd !== draggedSlotEndingDateTime;
+      const startChanged = newStart.toISOString() !== draggedSlotStartingDateTime;
+      const endChanged = newEnd.toISOString() !== draggedSlotEndingDateTime;
       
       // If ONLY one time changed, it's a resize (extend/shorten) - prevent it
       // If BOTH times changed, it's a drag (move) - allow it
@@ -2400,11 +2258,9 @@ margin: 0}
     const slotIndex = createdAvailabilitySlots.findIndex(s => s.id === slotId);
     
     if (slotIndex !== -1) {
-      // Convert Date objects to ISO strings properly
-      const newStart = event.start instanceof Date ? event.start.toISOString() : event.start;
-      const newEnd = event.end instanceof Date ? event.end.toISOString() : event.end;
-      
-      // Update the slot with new start/end times
+      // Update the slot with new start/end times (keep ISO strings in tracking)
+      const newStart = event.start instanceof Date ? event.start.toISOString() : new Date(event.start).toISOString();
+      const newEnd = event.end instanceof Date ? event.end.toISOString() : new Date(event.end).toISOString();
       createdAvailabilitySlots[slotIndex].start = newStart;
       createdAvailabilitySlots[slotIndex].end = newEnd;
       
@@ -2458,12 +2314,12 @@ margin: 0}
     // Prevent resizing if this is an availability_slot (fixed length)
     const slotType = event.extendedProps.type || 'availability_slot';
     if (slotType === 'availability_slot' && draggedSlotStartingDateTime && draggedSlotEndingDateTime) {
-      const newStart = event.start instanceof Date ? event.start.toISOString() : event.start;
-      const newEnd = event.end instanceof Date ? event.end.toISOString() : event.end;
+      const newStart = event.start instanceof Date ? event.start : new Date(event.start);
+      const newEnd = event.end instanceof Date ? event.end : new Date(event.end);
       
       // Compare new times with original times
-      const startChanged = newStart !== draggedSlotStartingDateTime;
-      const endChanged = newEnd !== draggedSlotEndingDateTime;
+      const startChanged = newStart.getTime() !== draggedSlotStartingDateTime.getTime();
+      const endChanged = newEnd.getTime() !== draggedSlotEndingDateTime.getTime();
       
       // If ONLY one time changed, it's a resize (extend/shorten) - prevent it
       // If BOTH times changed, it's a drag (move) - allow it
@@ -2506,8 +2362,9 @@ margin: 0}
       const diffMs = endDate.getTime() - startDate.getTime();
       const lengthMinutes = Math.round(diffMs / (1000 * 60));
       
-      createdAvailabilitySlots[slotIndex].start = event.start.toISOString();
-      createdAvailabilitySlots[slotIndex].end = event.end.toISOString();
+      // Keep tracking as ISO strings
+      createdAvailabilitySlots[slotIndex].start = event.start instanceof Date ? event.start.toISOString() : new Date(event.start).toISOString();
+      createdAvailabilitySlots[slotIndex].end = event.end instanceof Date ? event.end.toISOString() : new Date(event.end).toISOString();
       createdAvailabilitySlots[slotIndex].length = lengthMinutes;
       
       // Update extended props
@@ -2589,13 +2446,12 @@ margin: 0}
     const slotIndex = createdAvailabilitySlots.findIndex(s => s.id === slotId);
     
     if (slotIndex !== -1) {
-      // Convert Date objects to ISO strings properly
-      const newStart = fcEvent.start instanceof Date ? fcEvent.start.toISOString() : fcEvent.start;
-      const newEnd = fcEvent.end instanceof Date ? fcEvent.end.toISOString() : fcEvent.end;
+      const newStartIso = fcEvent.start instanceof Date ? fcEvent.start.toISOString() : new Date(fcEvent.start).toISOString();
+      const newEndIso = fcEvent.end instanceof Date ? fcEvent.end.toISOString() : new Date(fcEvent.end).toISOString();
       
-      // Update the slot with new start/end times
-      createdAvailabilitySlots[slotIndex].start = newStart;
-      createdAvailabilitySlots[slotIndex].end = newEnd;
+      // Update the slot with new start/end times (keep as UTC ISO strings)
+      createdAvailabilitySlots[slotIndex].start = newStartIso;
+      createdAvailabilitySlots[slotIndex].end = newEndIso;
       
       // Preserve type if it exists
       if (!createdAvailabilitySlots[slotIndex].type) {
@@ -2604,7 +2460,7 @@ margin: 0}
       
       // Update length if needed
       const lengthMinutes = fcEvent.extendedProps?.length || 
-        Math.round((new Date(newEnd).getTime() - new Date(newStart).getTime()) / (1000 * 60));
+        Math.round((Date.parse(newEndIso) - Date.parse(newStartIso)) / (1000 * 60));
       createdAvailabilitySlots[slotIndex].length = lengthMinutes;
       
       // Check for collisions and update colors
@@ -2682,14 +2538,14 @@ margin: 0}
       slotDuration: "00:05:00", // 5-minute intervals for thin rows
       slotLabelInterval: "01:00:00", // Show labels every hour
       slotLabelContent: function(arg) {
-        // Return hour number (0-23) - this matches the timezone correctly
-        const hour = arg.date.getHours();
-        const minutes = arg.date.getMinutes();
-        // Only show if exactly on the hour
-        if (minutes === 0 && hour >= 0 && hour <= 23) {
-          return hour.toString();
-        }
-        return '';
+        // Use the calendar timezone explicitly when formatting hour labels
+        const label = calendar.formatDate(arg.date, {
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: false,
+        });
+        // Show only on exact hour
+        return label.endsWith(':00') ? label.replace(':00', '') : '';
       },
       headerToolbar: false,
       selectable: isAvailabilityMode, // Only allow selection in availability mode
@@ -2724,8 +2580,8 @@ margin: 0}
         
         if (isAvailabilitySlot) {
           // Store the original start and end times
-          draggedSlotStartingDateTime = event.start instanceof Date ? event.start.toISOString() : event.start;
-          draggedSlotEndingDateTime = event.end instanceof Date ? event.end.toISOString() : event.end;
+          draggedSlotStartingDateTime = event.start instanceof Date ? event.start.toISOString() : new Date(event.start).toISOString();
+          draggedSlotEndingDateTime = event.end instanceof Date ? event.end.toISOString() : new Date(event.end).toISOString();
         }
       },
       eventResizeStart: function(resizeInfo) {
@@ -2735,8 +2591,8 @@ margin: 0}
         
         if (isAvailabilitySlot) {
           // Store the original start and end times
-          draggedSlotStartingDateTime = event.start instanceof Date ? event.start.toISOString() : event.start;
-          draggedSlotEndingDateTime = event.end instanceof Date ? event.end.toISOString() : event.end;
+          draggedSlotStartingDateTime = event.start instanceof Date ? event.start.toISOString() : new Date(event.start).toISOString();
+          draggedSlotEndingDateTime = event.end instanceof Date ? event.end.toISOString() : new Date(event.end).toISOString();
         }
       },
       eventDurationEditable: function(info) {
@@ -2791,20 +2647,17 @@ margin: 0}
       eventContent: function(arg) {
         // Custom content for availability slots
         if (arg.event.extendedProps?.isAvailability) {
-          // Format start and end times with AM/PM in mentor's timezone
-          const timeFormatter = new Intl.DateTimeFormat('en-US', {
-            timeZone: mentorTimezone,
+          // Format start and end times with AM/PM in mentor timezone
+          const startTime = calendar.formatDate(arg.event.start, {
             hour: 'numeric',
             minute: '2-digit',
             hour12: true
           });
-          
-          const startDate = new Date(arg.event.start);
-          const endDate = new Date(arg.event.end);
-          
-          // Format times with AM/PM
-          const startTime = timeFormatter.format(startDate);
-          const endTime = timeFormatter.format(endDate);
+          const endTime = calendar.formatDate(arg.event.end, {
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true
+          });
           
           // Get duration from extendedProps or calculate from event times
           const lengthMinutes = arg.event.extendedProps?.length || 
@@ -2869,18 +2722,18 @@ margin: 0}
           arg.el.style.cursor = 'pointer';
           arg.el.setAttribute('title', 'Click to view this day');
           // Store the date as a data attribute for event delegation
-          const dateStr = arg.date.toISOString();
-          arg.el.setAttribute('data-header-date', dateStr);
+          const dateStr = arg.date.getTime();
+          arg.el.setAttribute('data-header-date', String(dateStr));
           // Also set it on child elements that might be clicked
           const syncInner = arg.el.querySelector('.fc-scrollgrid-sync-inner');
           if (syncInner) {
-            syncInner.setAttribute('data-header-date', dateStr);
+            syncInner.setAttribute('data-header-date', String(dateStr));
             syncInner.style.cursor = 'pointer';
           }
           // Also set it on the cushion element (the text)
           const cushion = arg.el.querySelector('.fc-col-header-cell-cushion');
           if (cushion) {
-            cushion.setAttribute('data-header-date', dateStr);
+            cushion.setAttribute('data-header-date', String(dateStr));
             cushion.style.cursor = 'pointer';
           }
         }
@@ -2890,7 +2743,7 @@ margin: 0}
         console.log('Current view type:', calendar.view.type);
         console.log('Clicked date:', arg.date);
         console.log('Full arg object:', JSON.stringify({
-          date: arg.date ? arg.date.toISOString() : null,
+          date: arg.date ? arg.date.getTime() : null,
           view: arg.view ? arg.view.type : null,
           jsEvent: arg.jsEvent ? 'present' : null
         }, null, 2));
@@ -2942,18 +2795,20 @@ margin: 0}
           slotDuration: "00:05:00",
           slotLabelInterval: "01:00:00",
           slotLabelContent: function(arg) {
-            // Return hour number (0-23) - this matches the timezone correctly
-            const hour = arg.date.getHours();
-            const minutes = arg.date.getMinutes();
-            // Only show if exactly on the hour
-            if (minutes === 0 && hour >= 0 && hour <= 23) {
-              return hour.toString();
-            }
-            return '';
+            const label = calendar.formatDate(arg.date, {
+              hour: 'numeric',
+              minute: '2-digit',
+              hour12: false
+            });
+            return label.endsWith(':00') ? label.replace(':00', '') : '';
           },
           slotLaneClassNames: function(arg) {
-            const minutes = arg.date.getMinutes();
-            if (minutes === 0) {
+            const label = calendar.formatDate(arg.date, {
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: false
+            });
+            if (label.endsWith(':00')) {
               return ['fc-hour-slot'];
             }
             return [];
@@ -2966,18 +2821,20 @@ margin: 0}
           slotDuration: "00:05:00",
           slotLabelInterval: "01:00:00",
           slotLabelContent: function(arg) {
-            // Return hour number (0-23) - this matches the timezone correctly
-            const hour = arg.date.getHours();
-            const minutes = arg.date.getMinutes();
-            // Only show if exactly on the hour
-            if (minutes === 0 && hour >= 0 && hour <= 23) {
-              return hour.toString();
-            }
-            return '';
+            const label = calendar.formatDate(arg.date, {
+              hour: 'numeric',
+              minute: '2-digit',
+              hour12: false
+            });
+            return label.endsWith(':00') ? label.replace(':00', '') : '';
           },
           slotLaneClassNames: function(arg) {
-            const minutes = arg.date.getMinutes();
-            if (minutes === 0) {
+            const label = calendar.formatDate(arg.date, {
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: false
+            });
+            if (label.endsWith(':00')) {
               return ['fc-hour-slot'];
             }
             return [];
@@ -2986,6 +2843,8 @@ margin: 0}
         }
       }
     });
+
+    console.log('[Calendar ASSERT] Active timezone:', calendar.getOption('timeZone'));
 
     calendar.render();
 
@@ -3025,7 +2884,7 @@ margin: 0}
                        clickedElement.closest('[data-header-date]')?.getAttribute('data-header-date');
         
         if (dateStr) {
-          clickedDate = new Date(dateStr);
+          clickedDate = new Date(Number(dateStr));
           console.log('Date from data attribute:', clickedDate);
         } else {
           // Fallback: find the parent header cell and get its date
@@ -3183,19 +3042,17 @@ margin: 0}
         if (data.one_time_slots && Array.isArray(data.one_time_slots)) {
           data.one_time_slots.forEach(slot => {
             try {
-              // Parse the slot dates (they're stored in UTC ISO format)
-              // JavaScript Date will parse them correctly, and FullCalendar will
-              // display them in the mentor's timezone automatically
-              const startDate = new Date(slot.start);
-              const endDate = new Date(slot.end);
+              // Slots are stored as UTC ISO strings. Keep them as ISO for FullCalendar and tracking.
+              const startMs = Date.parse(slot.start);
+              const endMs = Date.parse(slot.end);
               
               // Skip if dates are invalid
-              if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+              if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) {
                 return;
               }
               
               // Calculate length if not provided
-              const lengthMinutes = slot.length || Math.round((endDate.getTime() - startDate.getTime()) / (1000 * 60));
+              const lengthMinutes = slot.length || Math.round((endMs - startMs) / (1000 * 60));
               
               // Use existing ID or generate one
               const slotId = slot.id || 'saved_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
@@ -3211,8 +3068,8 @@ margin: 0}
                 id: slotId,
                 title: 'Available',
                 // Use the UTC ISO string directly - FullCalendar will handle timezone conversion
-                start: slot.start, // Already in UTC ISO format
-                end: slot.end, // Already in UTC ISO format
+                start: slot.start, // UTC ISO string
+                end: slot.end, // UTC ISO string
                 backgroundColor: '#3b82f6',
                 borderColor: '#2563eb',
                 classNames: ['availability-slot'],
@@ -3230,11 +3087,10 @@ margin: 0}
               availabilityEvents.push(slotEvent);
               
               // Track in createdAvailabilitySlots for collision detection and saving
-              // Use the UTC ISO strings directly (same as slotEvent.start/end)
               const slotData = {
                 id: slotId,
-                start: slot.start, // UTC ISO string from backend
-                end: slot.end, // UTC ISO string from backend
+                start: slot.start, // UTC ISO string
+                end: slot.end, // UTC ISO string
                 length: lengthMinutes,
                 type: slotType // Include type
               };
@@ -3286,7 +3142,8 @@ margin: 0}
     overlay.setAttribute('aria-hidden', 'false'); // Fix accessibility issue
     
     // Re-read timezone and session_length from profile when opening (in case it was updated)
-    updateTimezoneFromProfile();
+    // If timezone changed, calendar instance was destroyed (timezone immutable per instance)
+    const didTimezoneReset = updateTimezoneFromProfile();
     
     // Reset availability mode when opening
     isAvailabilityMode = false;
@@ -3296,7 +3153,7 @@ margin: 0}
 
     if (!calendar) {
       initCalendar();
-      // Load saved slots after calendar is initialized
+      // Load saved slots after calendar is initialized (or re-initialized due to timezone change)
       setTimeout(() => {
         loadSavedAvailabilitySlots().then(() => {
           // Ensure calendar shows correct events based on mode
@@ -3314,8 +3171,6 @@ margin: 0}
         });
       }, 100);
     } else {
-      // Update calendar timezone in case it changed
-      calendar.setOption('timeZone', mentorTimezone);
       calendar.setOption('selectable', isAvailabilityMode);
       calendar.setOption('editable', function(info) {
         // Availability slots are NEVER editable in Sessions mode - they must be fixed like a rock
@@ -3351,8 +3206,8 @@ margin: 0}
         const isAvailabilitySlot = event.extendedProps?.isAvailability || event.extendedProps?.type === 'availability_slot';
         
         if (isAvailabilitySlot) {
-          draggedSlotStartingDateTime = event.start instanceof Date ? event.start.toISOString() : event.start;
-          draggedSlotEndingDateTime = event.end instanceof Date ? event.end.toISOString() : event.end;
+          draggedSlotStartingDateTime = event.start instanceof Date ? event.start : new Date(event.start);
+          draggedSlotEndingDateTime = event.end instanceof Date ? event.end : new Date(event.end);
         }
       });
       calendar.setOption('eventResizeStart', function(resizeInfo) {
@@ -3361,8 +3216,8 @@ margin: 0}
         const isAvailabilitySlot = event.extendedProps?.isAvailability || event.extendedProps?.type === 'availability_slot';
         
         if (isAvailabilitySlot) {
-          draggedSlotStartingDateTime = event.start instanceof Date ? event.start.toISOString() : event.start;
-          draggedSlotEndingDateTime = event.end instanceof Date ? event.end.toISOString() : event.end;
+          draggedSlotStartingDateTime = event.start instanceof Date ? event.start : new Date(event.start);
+          draggedSlotEndingDateTime = event.end instanceof Date ? event.end : new Date(event.end);
         }
       });
       
@@ -3622,8 +3477,8 @@ margin: 0}
             const isAvailabilitySlot = event.extendedProps?.isAvailability || event.extendedProps?.type === 'availability_slot';
             
             if (isAvailabilitySlot) {
-              draggedSlotStartingDateTime = event.start instanceof Date ? event.start.toISOString() : event.start;
-              draggedSlotEndingDateTime = event.end instanceof Date ? event.end.toISOString() : event.end;
+              draggedSlotStartingDateTime = event.start instanceof Date ? event.start : new Date(event.start);
+              draggedSlotEndingDateTime = event.end instanceof Date ? event.end : new Date(event.end);
             }
           });
           
@@ -3634,8 +3489,8 @@ margin: 0}
             const isAvailabilitySlot = event.extendedProps?.isAvailability || event.extendedProps?.type === 'availability_slot';
             
             if (isAvailabilitySlot) {
-              draggedSlotStartingDateTime = event.start instanceof Date ? event.start.toISOString() : event.start;
-              draggedSlotEndingDateTime = event.end instanceof Date ? event.end.toISOString() : event.end;
+              draggedSlotStartingDateTime = event.start instanceof Date ? event.start : new Date(event.start);
+              draggedSlotEndingDateTime = event.end instanceof Date ? event.end : new Date(event.end);
             }
           });
           
@@ -3882,11 +3737,16 @@ margin: 0}
       updateDateDisplay();
     }, 50);
     
-    // Scroll to the time
+    // Scroll to the time (using calendar timezone formatting)
     setTimeout(() => {
-      const hours = targetDate.getHours();
-      const minutes = targetDate.getMinutes();
-      calendar.scrollToTime({ hours: hours, minutes: minutes });
+      const scrollTimeStr = formatCalDate(targetDate, {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+      });
+      if (scrollTimeStr) {
+        calendar.scrollToTime(scrollTimeStr);
+      }
       
       // Highlight the events briefly
       if (event1) {
@@ -3979,27 +3839,25 @@ margin: 0}
     if (!popup || !slotInfoEl || !emailInput) return;
     
     // Format the slot time information
-    const startDate = new Date(event.start);
-    const endDate = new Date(event.end);
+    const startDate = event.start instanceof Date ? event.start : new Date(event.start);
+    const endDate = event.end instanceof Date ? event.end : new Date(event.end);
     
-    // Format date and time
-    const dateFormatter = new Intl.DateTimeFormat('en-US', {
+    const dateStr = formatCalDate(startDate, {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
       day: 'numeric'
     });
-    
-    const timeFormatter = new Intl.DateTimeFormat('en-US', {
-      timeZone: mentorTimezone,
+    const startTime = formatCalDate(startDate, {
       hour: 'numeric',
       minute: '2-digit',
       hour12: true
     });
-    
-    const dateStr = dateFormatter.format(startDate);
-    const startTime = timeFormatter.format(startDate);
-    const endTime = timeFormatter.format(endDate);
+    const endTime = formatCalDate(endDate, {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    });
     const duration = Math.round((endDate - startDate) / (1000 * 60));
     
     // Display slot information
@@ -4173,8 +4031,8 @@ margin: 0}
             const isAvailabilitySlot = event.extendedProps?.isAvailability || event.extendedProps?.type === 'availability_slot';
             
             if (isAvailabilitySlot) {
-              draggedSlotStartingDateTime = event.start instanceof Date ? event.start.toISOString() : event.start;
-              draggedSlotEndingDateTime = event.end instanceof Date ? event.end.toISOString() : event.end;
+              draggedSlotStartingDateTime = event.start instanceof Date ? event.start : new Date(event.start);
+              draggedSlotEndingDateTime = event.end instanceof Date ? event.end : new Date(event.end);
             }
           });
           calendar.setOption('eventDragStart', function(dragInfo) {
@@ -4183,8 +4041,8 @@ margin: 0}
             const isAvailabilitySlot = event.extendedProps?.isAvailability || event.extendedProps?.type === 'availability_slot';
             
             if (isAvailabilitySlot) {
-              draggedSlotStartingDateTime = event.start instanceof Date ? event.start.toISOString() : event.start;
-              draggedSlotEndingDateTime = event.end instanceof Date ? event.end.toISOString() : event.end;
+              draggedSlotStartingDateTime = event.start instanceof Date ? event.start : new Date(event.start);
+              draggedSlotEndingDateTime = event.end instanceof Date ? event.end : new Date(event.end);
             }
           });
           

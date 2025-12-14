@@ -5,7 +5,6 @@ from django.views.decorators.http import require_POST, require_http_methods
 from django.core.paginator import Paginator
 from django.contrib import messages
 from .models import Notification
-from dashboard_mentor.constants import COMMON_TIMEZONES
 import json
 
 @login_required
