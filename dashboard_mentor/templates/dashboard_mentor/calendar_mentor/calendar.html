@@ -45,6 +45,10 @@
           <select id="mentorCalendarTimezoneSelect" class="mentor-calendar-tz-select" aria-label="Timezone"></select>
         </div>
 
+        <button type="button" id="mentorCalendarSaveBtn" class="mentor-calendar-save-btn" aria-label="Save availability">
+          Save
+        </button>
+
         <button type="button" class="mentor-calendar-close" data-mentor-calendar-close aria-label="Close">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -257,7 +261,7 @@
   }
   .mentor-calendar-tz-select {
     height: 40px;
-    max-width: 260px;
+    max-width: 160px;
     border-radius: 10px;
     border: 1px solid #e2e8f0;
     background: #ffffff;
@@ -270,6 +274,27 @@
   .mentor-calendar-tz-select:focus {
     border-color: #3b82f6;
     box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
+  }
+
+  /* Save button */
+  .mentor-calendar-save-btn {
+    height: 40px;
+    padding: 0 14px;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+    background: #0f172a;
+    color: #ffffff;
+    font-size: 0.875rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .mentor-calendar-save-btn:hover {
+    background: #111827;
+  }
+  .mentor-calendar-save-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
   }
 
   /* Close Button */
@@ -369,37 +394,12 @@
     border-top: 1px solid var(--fc-border-color) !important;
   }
 
-  /* Slot chip styling (rendered via templates in eventContent) */
-  .mentor-calendar-slot {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    padding: 6px 8px;
-    border-radius: 10px;
-    color: #ffffff;
-    overflow: hidden;
-  }
-  .mentor-calendar-slot-title {
-    font-weight: 700;
-    font-size: 0.85rem;
-    line-height: 1.1;
-  }
-  .mentor-calendar-slot-time {
-    font-weight: 600;
-    font-size: 0.8rem;
-    opacity: 0.95;
-  }
-  .mentor-calendar-slot--session {
-    background: rgba(16, 185, 129, 0.95); /* green */
-  }
-  .mentor-calendar-slot--availability {
-    background: rgba(59, 130, 246, 0.95); /* blue */
-  }
 </style>
 
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.css">
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/locales-all.global.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@fullcalendar/interaction@6.1.10/index.global.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/luxon@3/build/global/luxon.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@fullcalendar/luxon3@6.1.10/index.global.min.js"></script>
 
@@ -409,6 +409,7 @@
   const root = document.getElementById('mentorCalendarRoot');
   const dateDisplay = document.getElementById('mentorCalendarDateDisplay');
   const tzSelect = document.getElementById('mentorCalendarTimezoneSelect');
+  const saveBtn = document.getElementById('mentorCalendarSaveBtn');
   const modeSessionsBtn = document.getElementById('mentorCalendarModeSessions');
   const modeAvailabilityBtn = document.getElementById('mentorCalendarModeAvailability');
   const sessionSlotTpl = document.getElementById('mentorCalendarSessionSlotTemplate');
@@ -419,7 +420,149 @@
   let calendar = null;
 
   // Single source of truth for timezone (edit this string):
-  let timezone_variable = 'Africa/Djibouti';
+  let timezone_variable = 'Europe/Prague';
+
+  // Track dates which originally had availability (for deletion support)
+  let originalAvailabilityDates = new Set();
+
+  const GET_AVAILABILITY_URL = "{% url 'general:dashboard_mentor:get_availability' %}";
+  const SAVE_AVAILABILITY_URL = "{% url 'general:dashboard_mentor:save_availability' %}";
+
+  function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+    return null;
+  }
+
+  function getLocalDateKeyFromUtcIso(isoUtc) {
+    try {
+      if (window.luxon && window.luxon.DateTime) {
+        return window.luxon.DateTime.fromISO(isoUtc, { zone: 'utc' })
+          .setZone(timezone_variable)
+          .toISODate();
+      }
+    } catch (e) {}
+    // Fallback: UTC date
+    return String(isoUtc).split('T')[0];
+  }
+
+  async function loadSavedAvailability() {
+    if (!calendar) return;
+    try {
+      const res = await fetch(GET_AVAILABILITY_URL, { headers: { 'Accept': 'application/json' } });
+      const data = await res.json();
+      if (!data.success) {
+        console.warn('[MentorCalendar] get_availability failed:', data);
+        return;
+      }
+
+      // Remove only availability events; keep session events created client-side (ignored for save)
+      calendar.getEvents().forEach(ev => {
+        if (ev.extendedProps?.slotMode === 'availability') ev.remove();
+      });
+
+      originalAvailabilityDates = new Set();
+
+      const slots = Array.isArray(data.one_time_slots) ? data.one_time_slots : [];
+      slots.forEach(slot => {
+        // Ignore non-availability for now
+        if (slot.type && slot.type !== 'availability_slot') return;
+
+        if (!slot.start || !slot.end) return;
+        const startIso = slot.start;
+        const endIso = slot.end;
+
+        // Track local date keys for deletion support
+        originalAvailabilityDates.add(getLocalDateKeyFromUtcIso(startIso));
+
+        calendar.addEvent({
+          id: slot.id || ('availability_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8)),
+          start: startIso,
+          end: endIso,
+          allDay: false,
+          backgroundColor: '#3b82f6',
+          borderColor: '#2563eb',
+          textColor: '#ffffff',
+          extendedProps: { slotMode: 'availability', type: 'availability_slot' }
+        });
+      });
+
+      console.log('[MentorCalendar] loaded availability slots:', slots.length);
+    } catch (e) {
+      console.error('[MentorCalendar] error loading availability:', e);
+    }
+  }
+
+  async function saveAvailabilityToBackend() {
+    if (!calendar) return;
+    if (saveBtn) {
+      saveBtn.disabled = true;
+      saveBtn.textContent = 'Saving...';
+    }
+
+    try {
+      const availabilityEvents = calendar.getEvents().filter(ev => ev.extendedProps?.slotMode === 'availability');
+
+      const availabilityPayload = availabilityEvents.map(ev => {
+        const startIso = ev.start ? ev.start.toISOString() : null;
+        const endIso = ev.end ? ev.end.toISOString() : null;
+        if (!startIso || !endIso) return null;
+
+        const dateKey = getLocalDateKeyFromUtcIso(startIso);
+        const length = Math.max(0, Math.round((Date.parse(endIso) - Date.parse(startIso)) / 60000));
+
+        return {
+          id: ev.id,
+          type: 'availability_slot',
+          date: dateKey,
+          start_iso: startIso,
+          end_iso: endIso,
+          length: length
+        };
+      }).filter(Boolean);
+
+      // edited_dates must include previous dates too, for deletion behavior
+      const editedDates = new Set(originalAvailabilityDates);
+      availabilityPayload.forEach(item => editedDates.add(item.date));
+
+      const editedDatesArr = Array.from(editedDates);
+      const selectedDate = editedDatesArr[0] || getLocalDateKeyFromUtcIso(new Date().toISOString());
+
+      const csrf = getCookie('csrftoken');
+      if (!csrf) {
+        console.warn('[MentorCalendar] Missing csrftoken cookie');
+      }
+
+      const res = await fetch(SAVE_AVAILABILITY_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrf || ''
+        },
+        body: JSON.stringify({
+          availability: availabilityPayload,
+          selected_date: selectedDate,
+          edited_dates: editedDatesArr
+        })
+      });
+      const data = await res.json();
+      if (!data.success) {
+        console.warn('[MentorCalendar] save_availability failed:', data);
+        return;
+      }
+
+      console.log('[MentorCalendar] saved availability slots:', availabilityPayload.length);
+      await loadSavedAvailability();
+    } catch (e) {
+      console.error('[MentorCalendar] error saving availability:', e);
+    } finally {
+      if (saveBtn) {
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Save';
+      }
+    }
+  }
 
   // Mode toggle (for now: only boolean + logs)
   // false = Sessions (green), true = Availability (blue)
@@ -473,9 +616,15 @@
     if (!window.FullCalendarLuxon3) {
       console.warn('[MentorCalendar] FullCalendarLuxon3 plugin not loaded. Named IANA timeZone values may behave like local time.');
     }
+    if (!window.FullCalendarInteraction) {
+      console.warn('[MentorCalendar] FullCalendarInteraction plugin not loaded. Drag/drop and dateClick may not work.');
+    }
 
     calendar = new FullCalendar.Calendar(root, {
-      plugins: window.FullCalendarLuxon3 ? [window.FullCalendarLuxon3] : [],
+      plugins: [
+        ...(window.FullCalendarLuxon3 ? [window.FullCalendarLuxon3] : []),
+        ...(window.FullCalendarInteraction ? [window.FullCalendarInteraction] : [])
+      ],
       timeZone: timezone_variable,
       initialView: initialView || 'timeGridWeek',
       initialDate: initialDate || undefined,
@@ -483,6 +632,16 @@
       nowIndicator: true,
       headerToolbar: false, // Custom header
       allDaySlot: false,
+      editable: true, // enables drag+resize (fine-grained control below)
+      eventStartEditable: true, // allow dragging for both slot types
+      eventDurationEditable: function(info) {
+        // Only Session slots can be resized
+        return info.event.extendedProps?.slotMode === 'session';
+      },
+      eventResizableFromStart: function(info) {
+        // Only Session slots can be resized (from either edge)
+        return info.event.extendedProps?.slotMode === 'session';
+      },
       slotDuration: '00:15:00',
       slotLabelInterval: '01:00',
       
@@ -491,6 +650,32 @@
         updateDateTitle(info.view.title);
         updateActiveViewButton(info.view.type);
         styleGridLines();
+      },
+      eventDrop: function(info) {
+        const mode = info.event.extendedProps?.slotMode;
+        console.log('[MentorCalendar] eventDrop', {
+          mode,
+          id: info.event.id,
+          startIso: info.event.start ? info.event.start.toISOString() : null,
+          endIso: info.event.end ? info.event.end.toISOString() : null,
+          timeZone: timezone_variable
+        });
+      },
+      eventResize: function(info) {
+        const mode = info.event.extendedProps?.slotMode;
+        if (mode !== 'session') {
+          // Safety: availability should never resize
+          info.revert();
+          console.log('[MentorCalendar] prevented resize for non-session slot', { id: info.event.id, mode });
+          return;
+        }
+        console.log('[MentorCalendar] eventResize', {
+          mode,
+          id: info.event.id,
+          startIso: info.event.start ? info.event.start.toISOString() : null,
+          endIso: info.event.end ? info.event.end.toISOString() : null,
+          timeZone: timezone_variable
+        });
       },
       dateClick: function(info) {
         // One-click slot creation only in Day/Week timeGrid views
@@ -527,6 +712,22 @@
         const node = tpl.content.firstElementChild.cloneNode(true);
         const timeEl = node.querySelector('[data-slot-time]');
         if (timeEl) timeEl.textContent = `${startStr} – ${endStr}`;
+
+        // "Props" passed to the slot component (keeps calendar.html light)
+        const props = {
+          slotMode: mode,
+          isAvailabilityMode,
+          timezone: timezone_variable,
+          eventId: arg.event.id,
+          startIso: arg.event.start ? arg.event.start.toISOString() : null,
+          endIso: arg.event.end ? arg.event.end.toISOString() : null
+        };
+
+        if (mode === 'session') {
+          window.MentorCalendarSlotComponents?.SessionSlot?.mount?.(node, props);
+        } else {
+          window.MentorCalendarSlotComponents?.AvailabilitySlot?.mount?.(node, props);
+        }
 
         return { domNodes: [node] };
       },
@@ -604,6 +805,8 @@
       destroyCalendar();
       initCalendar(currentView, currentDate);
       setTimeout(() => calendar && calendar.updateSize(), 50);
+      // Reload backend availability so date grouping/deletion state aligns to current timezone
+      setTimeout(() => loadSavedAvailability(), 60);
     }
     if (tzSelect) tzSelect.value = timezone_variable;
   }
@@ -617,6 +820,7 @@
         renderModeToggle();
         initCalendar();
         if (calendar) calendar.updateSize();
+        loadSavedAvailability();
     }, 50);
   }
 
@@ -658,6 +862,14 @@
   if (tzSelect) {
     tzSelect.addEventListener('change', () => {
       setTimezone(tzSelect.value);
+    });
+  }
+
+  // Save availability button
+  if (saveBtn) {
+    saveBtn.addEventListener('click', () => {
+      console.log('[MentorCalendar] Save clicked. Saving availability only (sessions ignored).');
+      saveAvailabilityToBackend();
     });
   }
 

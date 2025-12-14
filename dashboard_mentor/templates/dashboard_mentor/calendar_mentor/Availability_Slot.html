@@ -1,9 +1,51 @@
 {# Template used by the mentor calendar popup for rendering an "Availability" slot #}
 <template id="mentorCalendarAvailabilitySlotTemplate">
-  <div class="mentor-calendar-slot mentor-calendar-slot--availability">
+  <div class="mentor-calendar-slot mentor-calendar-slot--availability" data-slot-root>
     <div class="mentor-calendar-slot-title">Available</div>
     <div class="mentor-calendar-slot-time" data-slot-time></div>
   </div>
 </template>
+
+<style>
+  /* Availability slot styles (kept with the template for separation of concerns) */
+  .mentor-calendar-slot {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 6px 8px;
+    border-radius: 10px;
+    color: #ffffff;
+    overflow: hidden;
+  }
+  .mentor-calendar-slot-title {
+    font-weight: 700;
+    font-size: 0.85rem;
+    line-height: 1.1;
+  }
+  .mentor-calendar-slot-time {
+    font-weight: 600;
+    font-size: 0.8rem;
+    opacity: 0.95;
+  }
+  .mentor-calendar-slot--availability {
+    background: rgba(59, 130, 246, 0.95); /* blue */
+  }
+</style>
+
+<script>
+// Availability slot "component" (keeps per-slot logic here, not in calendar.html)
+window.MentorCalendarSlotComponents = window.MentorCalendarSlotComponents || {};
+window.MentorCalendarSlotComponents.AvailabilitySlot = {
+  mount(el, props) {
+    if (!el) return;
+    el.dataset.slotMode = props?.slotMode || 'availability';
+    el.dataset.isAvailabilityMode = String(!!props?.isAvailabilityMode);
+    el.dataset.timezone = props?.timezone || '';
+    el.dataset.eventId = props?.eventId || '';
+    // Keep this log for now (per your request)
+    console.log('[AvailabilitySlot] mount props:', props);
+  }
+};
+</script>
 
 
