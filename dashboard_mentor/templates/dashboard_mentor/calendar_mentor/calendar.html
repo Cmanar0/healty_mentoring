@@ -359,10 +359,32 @@
     border: 1px solid var(--fc-border-color) !important;
   }
 
-  /* Hour Slots */
+  /* TimeGrid "drop rows" (FullCalendar time slots)
+     - slotDuration controls how many rows per hour
+     - snapDuration controls drag/drop snapping
+  */
+  .mentor-calendar-root .fc-timegrid-slot,
+  .mentor-calendar-root .fc-timegrid-slot table,
+  .mentor-calendar-root .fc-timegrid-slot tr,
+  .mentor-calendar-root .fc-timegrid-slot td,
+  .mentor-calendar-root .fc-timegrid-slot-lane,
+  .mentor-calendar-root .fc-timegrid-slot-lane table,
+  .mentor-calendar-root .fc-timegrid-slot-lane tr,
+  .mentor-calendar-root .fc-timegrid-slot-lane td {
+    height: 9px !important;       /* 5-min row height */
+    min-height: 9px !important;
+    max-height: 9px !important;
+    line-height: 9px !important;
+  }
+
+  .mentor-calendar-root table.fc-timegrid-slots tr td {
+    padding: 0 !important;
+  }
+
+  /* Hide horizontal borders for 5-min rows (we keep strong hour lines instead) */
   .mentor-calendar-root .fc-timegrid-slot {
-    height: 20px;
-    border-bottom: 1px dotted #e2e8f0; /* Default weak lines */
+    border-top: none !important;
+    border-bottom: none !important;
   }
   
   /* Class we'll add via JS for strong hour lines */
@@ -843,8 +865,9 @@
       eventClassNames: function(arg) {
         return arg.event.extendedProps?.hasCollision ? ['is-collision'] : [];
       },
-      slotDuration: '00:15:00',
-      slotLabelInterval: '01:00',
+      slotDuration: '00:05:00',
+      snapDuration: '00:05:00',
+      slotLabelInterval: '01:00:00',
       
       // Events
       datesSet: function(info) {
