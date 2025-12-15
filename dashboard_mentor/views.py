@@ -193,6 +193,7 @@ def expand_recurring_slot_to_dates(recurring_slot, start_date, end_date):
         skip_dates = set(recurring_slot.get('skip_dates', []))
         booked_dates = set(recurring_slot.get('booked_dates', []))
         created_at = recurring_slot.get('created_at')
+        slot_start_date_str = recurring_slot.get('start_date')
         
         # Parse start and end times
         start_hour, start_minute = map(int, start_time_str.split(':'))
@@ -203,6 +204,14 @@ def expand_recurring_slot_to_dates(recurring_slot, start_date, end_date):
             start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
         if isinstance(end_date, str):
             end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+
+        # Parse slot start_date if provided (preferred over created_at for forward-only rendering)
+        slot_start_date = None
+        if slot_start_date_str:
+            try:
+                slot_start_date = datetime.strptime(slot_start_date_str, '%Y-%m-%d').date()
+            except Exception:
+                slot_start_date = None
         
         # Get creation date if available
         creation_date = None
@@ -214,11 +223,16 @@ def expand_recurring_slot_to_dates(recurring_slot, start_date, end_date):
         
         # Generate dates based on recurrence type
         current_date = start_date
+        if slot_start_date and current_date < slot_start_date:
+            current_date = slot_start_date
         
         while current_date <= end_date:
             date_str = current_date.isoformat()
             
-            # Skip if before creation date
+            # Skip if before slot start_date (or before creation_date for legacy data)
+            if slot_start_date and current_date < slot_start_date:
+                current_date += timedelta(days=1)
+                continue
             if creation_date and current_date < creation_date:
                 current_date += timedelta(days=1)
                 continue
@@ -1051,6 +1065,7 @@ def save_availability(request):
         
         for avail_item in availability_list:
             date_str = avail_item.get('date')
+            start_date_str = avail_item.get('start_date') or date_str
             start_time = avail_item.get('start')
             end_time = avail_item.get('end')
             is_recurring = avail_item.get('is_recurring', False)
@@ -1155,7 +1170,7 @@ def save_availability(request):
                     # Weekly: single weekday of selected date, no day_of_month
                     weekday_names = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
                     # Use the date from the current slot item
-                    slot_date_obj = datetime.strptime(date_str, '%Y-%m-%d').date() if date_str else None
+                    slot_date_obj = datetime.strptime(start_date_str, '%Y-%m-%d').date() if start_date_str else None
                     if slot_date_obj:
                         weekday_index = slot_date_obj.weekday()  # 0=Monday, 6=Sunday
                         weekdays = [weekday_names[weekday_index]]
@@ -1164,7 +1179,7 @@ def save_availability(request):
                 elif slot_type == 'monthly':
                     # Monthly: day_of_month = selected date's day, weekdays ignored
                     # Use the date from the current slot item
-                    slot_date_obj = datetime.strptime(date_str, '%Y-%m-%d').date() if date_str else None
+                    slot_date_obj = datetime.strptime(start_date_str, '%Y-%m-%d').date() if start_date_str else None
                     day_of_month = slot_date_obj.day if slot_date_obj else None  # 1-31
                     weekdays = []  # Ignored for monthly
                 else:
@@ -1179,6 +1194,7 @@ def save_availability(request):
                     # Find and preserve created_at, skip_dates, and booked_dates from existing slot
                     existing_slot = next((s for s in existing_recurring_slots if s.get('id') == recurring_slot_id), None)
                     created_at = existing_slot.get('created_at', timezone.now().isoformat()) if existing_slot else timezone.now().isoformat()
+                    existing_start_date = existing_slot.get('start_date') if existing_slot else None
                     
                     # Check if type, start_time, or end_time changed - if so, reset skip_dates
                     existing_type = existing_slot.get('type') if existing_slot else None
@@ -1211,6 +1227,7 @@ def save_availability(request):
                     created_at = timezone.now().isoformat()
                     skip_dates = avail_item.get('skip_dates', [])
                     booked_dates = avail_item.get('booked_dates', [])
+                    existing_start_date = None
                 
                 # Get slot_type from request or default to 'availability_slot'
                 slot_type_value = avail_item.get('slot_type', 'availability_slot')
@@ -1220,6 +1237,9 @@ def save_availability(request):
                     'id': slot_id,
                     'type': slot_type,
                     'slot_type': slot_type_value,
+                    # Forward-only rendering: start_date is the first date this rule is effective.
+                    # Prefer the provided start_date (from client), otherwise keep existing.
+                    'start_date': start_date_str or existing_start_date or (date_str or ''),
                     'start_time': start_time,
                     'end_time': end_time,
                     'created_at': created_at

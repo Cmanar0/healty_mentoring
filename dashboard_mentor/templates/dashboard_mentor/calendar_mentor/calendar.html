@@ -68,6 +68,8 @@
 {% include "dashboard_mentor/calendar_mentor/session_settings.html" %}
 {% include "dashboard_mentor/calendar_mentor/schedule_session_popup.html" %}
 {% include "dashboard_mentor/calendar_mentor/unsaved_changes_popup.html" %}
+{% include "dashboard_mentor/calendar_mentor/recurring_delete_popup.html" %}
+{% include "dashboard_mentor/calendar_mentor/recurring_move_popup.html" %}
 
 <style>
   /* --- Overlay --- */
@@ -552,6 +554,15 @@
     color: #1e3a8a !important; /* Blue-900 */
   }
 
+  /* Blink notification for invalid recurring drag (cross-day) */
+  .mentor-calendar-root .fc-event.recurring-blink {
+    animation: mentorRecurringBlink 0.22s ease-in-out 0s 3;
+  }
+  @keyframes mentorRecurringBlink {
+    0%, 100% { filter: none; }
+    50% { filter: brightness(1.35) saturate(0.95); }
+  }
+
 </style>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.css">
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
@@ -590,6 +601,12 @@
   const scheduleSessionSendBtn = document.getElementById('scheduleSessionSendBtn');
   const unsavedChangesOverlay = document.getElementById('mentorCalendarUnsavedChangesOverlay');
   const unsavedChangesDiscardBtn = document.getElementById('unsavedChangesDiscardBtn');
+  const recurringDeleteOverlay = document.getElementById('mentorRecurringDeleteOverlay');
+  const recurringDeleteOneBtn = document.getElementById('recurringDeleteOneBtn');
+  const recurringDeleteAllBtn = document.getElementById('recurringDeleteAllBtn');
+  const recurringMoveOverlay = document.getElementById('mentorRecurringMoveOverlay');
+  const recurringMoveOneBtn = document.getElementById('recurringMoveOneBtn');
+  const recurringMoveAllBtn = document.getElementById('recurringMoveAllBtn');
   
   if (!overlay || !root) return;
 
@@ -601,6 +618,8 @@
   let sessionSwitchOpenSettingsAfterSwitch = false;
   let sessionSettingsEventId = null;
   let scheduleSessionEventId = null;
+  let pendingRecurringDelete = null; // { eventId, recurringId, instanceDate }
+  let pendingRecurringMove = null;   // { recurringId, instanceDate, newStartIso, newEndIso }
 
   // Timezone source of truth: mentorprofile.selected_timezone (fallback: detected_timezone)
   function resolveMentorTimezone() {
@@ -720,6 +739,7 @@
       const recurringId = ev.extendedProps.recurringId;
       const rule = recurringAvailabilityRules.get(recurringId);
       if (rule) {
+        rule.start_date = dateStr;
         rule.start_time = timeStr;
         rule.end_time = dt.plus({ minutes: durationMinutes }).toFormat('HH:mm');
         rule.anchor_date = dateStr;
@@ -948,8 +968,32 @@
 
   // Recurring availability rules (source of truth, persisted to mentor_profile.recurring_slots)
   // Map<recurringId, rule>
-  // rule: { id, type: 'daily'|'weekly'|'monthly', start_time, end_time, weekdays?, day_of_month?, skip_dates?, booked_dates?, slot_type, anchor_date }
+  // rule: { id, type: 'daily'|'weekly'|'monthly', start_date, start_time, end_time, weekdays?, day_of_month?, skip_dates?, booked_dates?, slot_type }
   let recurringAvailabilityRules = new Map();
+  // Track full-series deletions so backend removes them from recurring_slots
+  let deletedRecurringRules = new Map(); // Map<recurringId, ruleSnapshot>
+
+  // If the user tries to drag a recurring occurrence in a blocked view (month),
+  // we'll blink the whole series to hint it's recurring.
+  let lastBlockedRecurringDrag = null; // { recurringId: string, atMs: number }
+
+  function generateClientId(prefix) {
+    const rand = Math.random().toString(36).slice(2, 10);
+    return `${prefix || 'id'}_${Date.now()}_${rand}`;
+  }
+
+  function blinkRecurringSeries(recurringId) {
+    if (!root || !recurringId) return;
+    const els = root.querySelectorAll(`.fc-event[data-recurring-id="${CSS.escape(recurringId)}"]`);
+    els.forEach((el) => {
+      el.classList.remove('recurring-blink');
+      // restart animation
+      // eslint-disable-next-line no-unused-expressions
+      void el.offsetWidth;
+      el.classList.add('recurring-blink');
+      el.addEventListener('animationend', () => el.classList.remove('recurring-blink'), { once: true });
+    });
+  }
 
   function getLocalDateKeyFromJsDate(dateObj) {
     try {
@@ -1040,10 +1084,12 @@
       if (!rule || !rule.id || !rule.type) return;
       const skip = new Set(rule.skip_dates || []);
       const booked = new Set(rule.booked_dates || []);
+      const startDate = String(rule.start_date || '');
 
       for (let i = 0; i < days; i++) {
         const d = startDay.plus({ days: i });
         const dateStr = d.toISODate();
+        if (startDate && dateStr < startDate) continue;
         if (skip.has(dateStr) || booked.has(dateStr)) continue;
 
         let matches = false;
@@ -1071,7 +1117,6 @@
         const instanceId = `${rule.id}__${dateStr}`;
         calendar.addEvent({
           id: instanceId,
-          groupId: rule.id,
           start: startDt.toJSDate(),
           end: endDt.toJSDate(),
           allDay: false,
@@ -1164,6 +1209,7 @@
 
       originalAvailabilityDates = new Set();
       recurringAvailabilityRules = new Map();
+      deletedRecurringRules = new Map();
       // Ensure recurrence UI selections reflect persisted recurring rules
       window.MentorCalendarRecurrenceSelections = window.MentorCalendarRecurrenceSelections || {};
 
@@ -1205,10 +1251,13 @@
         const end_time = String(rule?.end_time || '');
         if (!start_time || !end_time) return;
 
+        const start_date = String(rule?.start_date || '') || (rule?.created_at ? String(rule.created_at).split('T')[0] : '') || getLocalDateKeyFromUtcIso(new Date().toISOString());
+
         const normalized = {
           id,
           type, // daily|weekly|monthly
           slot_type: rule?.slot_type || 'availability_slot',
+          start_date,
           start_time,
           end_time,
           weekdays: Array.isArray(rule?.weekdays) ? rule.weekdays : [],
@@ -1217,7 +1266,7 @@
           booked_dates: Array.isArray(rule?.booked_dates) ? rule.booked_dates : [],
           created_at: rule?.created_at || null
         };
-        normalized.anchor_date = computeAnchorDateForRecurringRule(normalized);
+        normalized.anchor_date = start_date;
         recurringAvailabilityRules.set(id, normalized);
         window.MentorCalendarRecurrenceSelections[id] = type;
       });
@@ -1268,14 +1317,15 @@
       // Recurring rules payload (one item per rule)
       const recurringPayload = Array.from(recurringAvailabilityRules.values()).map((rule) => {
         if (!rule || !rule.id || !rule.type) return null;
-        const anchor = rule.anchor_date || computeAnchorDateForRecurringRule(rule) || getLocalDateKeyFromUtcIso(new Date().toISOString());
+        const startDate = rule.start_date || rule.anchor_date || computeAnchorDateForRecurringRule(rule) || getLocalDateKeyFromUtcIso(new Date().toISOString());
         return {
           // Backend uses recurring_slot_id as the source-of-truth ID
           recurring_slot_id: rule.id,
           is_recurring: true,
           recurrence_rule: rule.type, // daily|weekly|monthly
           slot_type: rule.slot_type || 'availability_slot',
-          date: anchor,
+          date: startDate,
+          start_date: startDate,
           start: rule.start_time,
           end: rule.end_time,
           skip_dates: Array.isArray(rule.skip_dates) ? rule.skip_dates : [],
@@ -1283,7 +1333,23 @@
         };
       }).filter(Boolean);
 
-      const availabilityPayload = oneTimePayload.concat(recurringPayload);
+      // Deleted recurring series (delete_all): backend will remove by id
+      const deleteSeriesPayload = Array.from(deletedRecurringRules.values()).map((rule) => {
+        if (!rule || !rule.id) return null;
+        const startDate = rule.start_date || getLocalDateKeyFromUtcIso(new Date().toISOString());
+        return {
+          recurring_slot_id: rule.id,
+          is_recurring: true,
+          recurrence_rule: rule.type || 'weekly',
+          delete_all: true,
+          date: startDate,
+          start_date: startDate,
+          start: rule.start_time || '09:00',
+          end: rule.end_time || '10:00'
+        };
+      }).filter(Boolean);
+
+      const availabilityPayload = oneTimePayload.concat(recurringPayload, deleteSeriesPayload);
 
       // edited_dates must include previous dates too, for deletion behavior
       const editedDates = new Set(originalAvailabilityDates);
@@ -1317,7 +1383,8 @@
 
       console.log('[MentorCalendar] saved availability:', {
         oneTime: oneTimePayload.length,
-        recurring: recurringPayload.length
+        recurring: recurringPayload.length,
+        deletedRecurring: deleteSeriesPayload.length
       });
       await loadSavedAvailability();
       if (typeof showNotification === 'function') {
@@ -1474,6 +1541,21 @@
         // Only Session slots can be resized (from either edge)
         return info.event.extendedProps?.slotMode === 'session';
       },
+      eventAllow: function(dropInfo, draggedEvent) {
+        // For recurring availability instances:
+        // - allow moving across days in timeGrid views (we'll prompt for "this one" vs "all future")
+        // - disallow dragging in Month view (dayGridMonth) for clarity
+        try {
+          if (draggedEvent?.extendedProps?.isRecurringInstance) {
+            const viewType = calendar?.view?.type;
+            if (viewType === 'dayGridMonth') {
+              lastBlockedRecurringDrag = { recurringId: String(draggedEvent.extendedProps.recurringId || ''), atMs: Date.now() };
+              return false;
+            }
+          }
+        } catch (e) {}
+        return true;
+      },
       eventClassNames: function(arg) {
         return arg.event.extendedProps?.hasCollision ? ['is-collision'] : [];
       },
@@ -1483,6 +1565,12 @@
         try {
           const mode = info.event?.extendedProps?.slotMode;
           if (!info.el) return;
+
+          // Tag recurring instances so we can style the whole series (blink)
+          if (info.event?.extendedProps?.isRecurringInstance && info.event?.extendedProps?.recurringId) {
+            info.el.dataset.recurringId = String(info.event.extendedProps.recurringId);
+            if (info.event.extendedProps.instanceDate) info.el.dataset.instanceDate = String(info.event.extendedProps.instanceDate);
+          }
 
           // Availability slot: in Sessions mode, single click schedules session (debounced).
           if (mode === 'availability') {
@@ -1541,6 +1629,22 @@
           console.warn('[MentorCalendar] eventDidMount dblclick bind failed:', e);
         }
       },
+      eventDragStop: function(info) {
+        // If we just blocked a recurring drag (e.g., Month view), blink the series.
+        try {
+          if (info?.event?.extendedProps?.isRecurringInstance) {
+            const rid = String(info.event.extendedProps.recurringId || '');
+            if (lastBlockedRecurringDrag && lastBlockedRecurringDrag.recurringId === rid) {
+              const dt = Date.now() - (lastBlockedRecurringDrag.atMs || 0);
+              // only trigger near the time the block happened (avoid stale)
+              if (dt >= 0 && dt < 800) {
+                blinkRecurringSeries(rid);
+              }
+              lastBlockedRecurringDrag = null;
+            }
+          }
+        } catch (e) {}
+      },
       slotDuration: '00:05:00',
       snapDuration: '00:05:00',
       slotLabelInterval: '01:00:00',
@@ -1554,10 +1658,17 @@
       },
       eventDrop: function(info) {
         const mode = info.event.extendedProps?.slotMode;
-        // Recurring instances are rendered projections; edit via settings instead of dragging.
+        // Recurring instances: confirm move (one occurrence vs all).
         if (mode === 'availability' && info.event.extendedProps?.isRecurringInstance && isAvailabilityMode) {
-          info.revert();
-          openAvailabilitySettingsForEvent(info.event);
+          const recurringId = info.event.extendedProps?.recurringId;
+          const instanceDate = info.event.extendedProps?.instanceDate || getLocalDateKeyFromJsDate(info.event.start);
+          const newStartIso = info.event.start ? info.event.start.toISOString() : null;
+          const newEndIso = info.event.end ? info.event.end.toISOString() : null;
+          info.revert(); // keep UI stable until user chooses
+          if (recurringId && instanceDate && newStartIso && newEndIso) {
+            pendingRecurringMove = { recurringId, instanceDate, newStartIso, newEndIso };
+            setRecurringMoveVisible(true);
+          }
           return;
         }
         // Dragging availability in Sessions mode: revert and prompt to switch
@@ -1731,8 +1842,9 @@
       // Switch recurring pattern (keep times)
       rule.type = value;
       // Update weekday/day_of_month anchor based on the instance date (best UX)
-      const instanceDate = payload?.instanceDate || rule.anchor_date || getLocalDateKeyFromUtcIso(new Date().toISOString());
+      const instanceDate = payload?.instanceDate || rule.anchor_date || rule.start_date || getLocalDateKeyFromUtcIso(new Date().toISOString());
       rule.anchor_date = instanceDate;
+      if (!rule.start_date) rule.start_date = instanceDate;
       if (value === 'weekly') {
         const wd = weekdayNameFromIsoDate(instanceDate);
         rule.weekdays = wd ? [wd] : (rule.weekdays || []);
@@ -1768,6 +1880,7 @@
         id: eventId,
         type: value,
         slot_type: 'availability_slot',
+        start_date: dateStr,
         start_time: startTime,
         end_time: endTime,
         skip_dates: [],
@@ -1806,20 +1919,11 @@
       slotMode: slotMode
     });
     
-    // Recurring availability instance: delete only this occurrence by adding it to skip_dates
+    // Recurring availability instance: ask whether to delete one vs all
     if (slotMode === 'availability' && ev.extendedProps?.isRecurringInstance && ev.extendedProps?.recurringId) {
       const recurringId = ev.extendedProps.recurringId;
       const instanceDate = ev.extendedProps.instanceDate || getLocalDateKeyFromJsDate(ev.start);
-      const rule = recurringAvailabilityRules.get(recurringId);
-      if (rule && instanceDate) {
-        rule.skip_dates = Array.isArray(rule.skip_dates) ? rule.skip_dates : [];
-        if (!rule.skip_dates.includes(instanceDate)) rule.skip_dates.push(instanceDate);
-        recurringAvailabilityRules.set(recurringId, rule);
-      }
-      if (typeof showNotification === 'function') showNotification("Don't forget to save the changes.", 'note');
-      markDirty('availability');
-      ev.remove();
-      recomputeCollisions();
+      openRecurringDeletePopup({ eventId: ev.id, recurringId, instanceDate });
       return;
     }
 
@@ -1940,6 +2044,10 @@
     }
     if (unsavedChangesOverlay && unsavedChangesOverlay.classList.contains('is-visible')) {
       closeUnsavedChangesPopup();
+    }
+    if (recurringDeleteOverlay && recurringDeleteOverlay.classList.contains('is-visible')) {
+      setRecurringDeleteVisible(false);
+      pendingRecurringDelete = null;
     }
     overlay.classList.remove('is-visible');
     overlay.setAttribute('aria-hidden', 'true');
@@ -2126,6 +2234,17 @@
       closeScheduleSessionPopup();
       return;
     }
+    if (recurringMoveOverlay && recurringMoveOverlay.classList.contains('is-visible')) {
+      e.preventDefault();
+      cancelRecurringMove();
+      return;
+    }
+    if (recurringDeleteOverlay && recurringDeleteOverlay.classList.contains('is-visible')) {
+      e.preventDefault();
+      setRecurringDeleteVisible(false);
+      pendingRecurringDelete = null;
+      return;
+    }
     if (unsavedChangesOverlay && unsavedChangesOverlay.classList.contains('is-visible')) {
       e.preventDefault();
       closeUnsavedChangesPopup();
@@ -2163,6 +2282,263 @@
     unsavedChangesDiscardBtn.addEventListener('click', (e) => {
       e.preventDefault();
       closeNow();
+    });
+  }
+
+  // Recurring delete popup helpers/handlers
+  function setRecurringDeleteVisible(isVisible) {
+    if (!recurringDeleteOverlay) return;
+    recurringDeleteOverlay.classList.toggle('is-visible', !!isVisible);
+    recurringDeleteOverlay.setAttribute('aria-hidden', isVisible ? 'false' : 'true');
+  }
+
+  function openRecurringDeletePopup(payload) {
+    pendingRecurringDelete = payload || null;
+    setRecurringDeleteVisible(true);
+  }
+
+  function deleteRecurringOccurrenceOnly() {
+    const p = pendingRecurringDelete;
+    if (!p || !calendar) {
+      setRecurringDeleteVisible(false);
+      pendingRecurringDelete = null;
+      return;
+    }
+    const rule = recurringAvailabilityRules.get(p.recurringId);
+    if (rule && p.instanceDate) {
+      rule.skip_dates = Array.isArray(rule.skip_dates) ? rule.skip_dates : [];
+      if (!rule.skip_dates.includes(p.instanceDate)) rule.skip_dates.push(p.instanceDate);
+      recurringAvailabilityRules.set(p.recurringId, rule);
+    }
+    const ev = calendar.getEventById(p.eventId);
+    if (ev) ev.remove();
+    markDirty('availability');
+    renderRecurringInstancesForCurrentView();
+    recomputeCollisions();
+    setRecurringDeleteVisible(false);
+    pendingRecurringDelete = null;
+  }
+
+  function deleteRecurringSeries() {
+    const p = pendingRecurringDelete;
+    if (!p || !calendar) {
+      setRecurringDeleteVisible(false);
+      pendingRecurringDelete = null;
+      return;
+    }
+    const existing = recurringAvailabilityRules.get(p.recurringId);
+    if (existing) deletedRecurringRules.set(p.recurringId, existing);
+    recurringAvailabilityRules.delete(p.recurringId);
+    if (window.MentorCalendarRecurrenceSelections) delete window.MentorCalendarRecurrenceSelections[p.recurringId];
+
+    // Remove all rendered instances for this recurringId
+    calendar.getEvents().forEach(ev => {
+      if (ev.extendedProps?.recurringId === p.recurringId || String(ev.id || '').startsWith(p.recurringId + '__')) {
+        ev.remove();
+      }
+    });
+
+    markDirty('availability');
+    renderRecurringInstancesForCurrentView();
+    recomputeCollisions();
+    setRecurringDeleteVisible(false);
+    pendingRecurringDelete = null;
+  }
+
+  if (recurringDeleteOverlay) {
+    recurringDeleteOverlay.querySelectorAll('[data-recurring-delete-close]').forEach(el => {
+      el.addEventListener('click', (e) => {
+        e.preventDefault();
+        setRecurringDeleteVisible(false);
+        pendingRecurringDelete = null;
+      });
+    });
+    recurringDeleteOverlay.querySelectorAll('[data-recurring-delete-cancel]').forEach(el => {
+      el.addEventListener('click', (e) => {
+        e.preventDefault();
+        setRecurringDeleteVisible(false);
+        pendingRecurringDelete = null;
+      });
+    });
+  }
+  if (recurringDeleteOneBtn) {
+    recurringDeleteOneBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      deleteRecurringOccurrenceOnly();
+    });
+  }
+  if (recurringDeleteAllBtn) {
+    recurringDeleteAllBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      deleteRecurringSeries();
+    });
+  }
+
+  // Recurring move popup helpers/handlers
+  function setRecurringMoveVisible(isVisible) {
+    if (!recurringMoveOverlay) return;
+    recurringMoveOverlay.classList.toggle('is-visible', !!isVisible);
+    recurringMoveOverlay.setAttribute('aria-hidden', isVisible ? 'false' : 'true');
+  }
+
+  function cancelRecurringMove() {
+    pendingRecurringMove = null;
+    setRecurringMoveVisible(false);
+  }
+
+  function applyRecurringMoveAll() {
+    const p = pendingRecurringMove;
+    if (!p) return cancelRecurringMove();
+    const rule = recurringAvailabilityRules.get(p.recurringId);
+    if (!rule || !(window.luxon && window.luxon.DateTime)) return cancelRecurringMove();
+
+    const newStart = window.luxon.DateTime.fromISO(p.newStartIso, { zone: 'utc' }).setZone(timezone_variable);
+    const newEnd = window.luxon.DateTime.fromISO(p.newEndIso, { zone: 'utc' }).setZone(timezone_variable);
+    if (!newStart.isValid || !newEnd.isValid || newEnd <= newStart) return cancelRecurringMove();
+
+    // Change all future slots:
+    // - Materialize occurrences from TODAY (mentor timezone) up to the new start date (exclusive) into one-time slots
+    // - Update the recurring rule to start at the new date/time
+    // - Reset skip_dates (and we ignore booked_dates per your direction)
+    const todayLocal = window.luxon.DateTime.now().setZone(timezone_variable).startOf('day');
+    const newStartDate = newStart.toISODate(); // local date of the dragged occurrence
+    const newStartDay = window.luxon.DateTime.fromISO(newStartDate, { zone: timezone_variable }).startOf('day');
+
+    // Helper: does rule match a given date?
+    const matchesRuleOnDate = (ruleObj, dateStr) => {
+      if (!ruleObj || !ruleObj.type) return false;
+      if (ruleObj.start_date && dateStr < ruleObj.start_date) return false;
+      if (Array.isArray(ruleObj.skip_dates) && ruleObj.skip_dates.includes(dateStr)) return false;
+
+      if (ruleObj.type === 'daily') return true;
+      if (ruleObj.type === 'weekly') {
+        const wd = weekdayNameFromIsoDate(dateStr);
+        return Array.isArray(ruleObj.weekdays) ? ruleObj.weekdays.includes(wd) : false;
+      }
+      if (ruleObj.type === 'monthly') {
+        const dom = Number(ruleObj.day_of_month);
+        if (!Number.isFinite(dom) || dom < 1) return false;
+        const d = window.luxon.DateTime.fromISO(dateStr, { zone: timezone_variable });
+        if (!d.isValid) return false;
+        const daysInMonth = d.daysInMonth;
+        const targetDay = dom > daysInMonth ? daysInMonth : dom;
+        return d.day === targetDay;
+      }
+      return false;
+    };
+
+    // Materialize from max(today, rule.start_date) to newStartDate (exclusive)
+    let cursor = todayLocal;
+    if (rule.start_date) {
+      const rs = window.luxon.DateTime.fromISO(String(rule.start_date), { zone: timezone_variable }).startOf('day');
+      if (rs.isValid && cursor < rs) cursor = rs;
+    }
+    const endExclusive = newStartDay;
+
+    while (cursor < endExclusive) {
+      const dStr = cursor.toISODate();
+      if (matchesRuleOnDate(rule, dStr)) {
+        const startDt = window.luxon.DateTime.fromISO(`${dStr}T${rule.start_time}`, { zone: timezone_variable });
+        const endDt = window.luxon.DateTime.fromISO(`${dStr}T${rule.end_time}`, { zone: timezone_variable });
+        if (startDt.isValid && endDt.isValid && endDt > startDt) {
+          const newId = generateClientId('availability');
+          calendar.addEvent({
+            id: newId,
+            start: startDt.toJSDate(),
+            end: endDt.toJSDate(),
+            allDay: false,
+            backgroundColor: '#3b82f6',
+            borderColor: '#2563eb',
+            textColor: '#ffffff',
+            classNames: ['event-type-availability'],
+            editable: true,
+            extendedProps: { slotMode: 'availability', type: 'availability_slot' }
+          });
+        }
+      }
+      cursor = cursor.plus({ days: 1 });
+    }
+
+    // Update recurring rule forward from the dragged occurrence (new date + time)
+    rule.start_date = newStartDate;
+    rule.start_time = newStart.toFormat('HH:mm');
+    rule.end_time = newEnd.toFormat('HH:mm');
+    rule.skip_dates = [];
+
+    // If the move changed the day, update weekly/monthly pattern accordingly
+    if (rule.type === 'weekly') {
+      const wd = weekdayNameFromIsoDate(newStartDate);
+      rule.weekdays = wd ? [wd] : (rule.weekdays || []);
+      rule.day_of_month = null;
+    } else if (rule.type === 'monthly') {
+      rule.day_of_month = newStart.day;
+      rule.weekdays = [];
+    }
+
+    recurringAvailabilityRules.set(p.recurringId, rule);
+    markDirty('availability');
+    renderRecurringInstancesForCurrentView();
+    recomputeCollisions();
+    cancelRecurringMove();
+  }
+
+  function applyRecurringMoveOne() {
+    const p = pendingRecurringMove;
+    if (!p || !calendar) return cancelRecurringMove();
+
+    // 1) Skip original occurrence date in the series
+    const rule = recurringAvailabilityRules.get(p.recurringId);
+    if (rule && p.instanceDate) {
+      rule.skip_dates = Array.isArray(rule.skip_dates) ? rule.skip_dates : [];
+      if (!rule.skip_dates.includes(p.instanceDate)) rule.skip_dates.push(p.instanceDate);
+      recurringAvailabilityRules.set(p.recurringId, rule);
+    }
+
+    // 2) Add a new one-time availability slot at the new position
+    const newId = generateClientId('availability');
+    calendar.addEvent({
+      id: newId,
+      start: p.newStartIso,
+      end: p.newEndIso,
+      allDay: false,
+      backgroundColor: '#3b82f6',
+      borderColor: '#2563eb',
+      textColor: '#ffffff',
+      classNames: ['event-type-availability'],
+      editable: true,
+      extendedProps: { slotMode: 'availability', type: 'availability_slot' }
+    });
+
+    markDirty('availability');
+    renderRecurringInstancesForCurrentView();
+    recomputeCollisions();
+    cancelRecurringMove();
+  }
+
+  if (recurringMoveOverlay) {
+    recurringMoveOverlay.querySelectorAll('[data-recurring-move-close]').forEach(el => {
+      el.addEventListener('click', (e) => {
+        e.preventDefault();
+        cancelRecurringMove();
+      });
+    });
+    recurringMoveOverlay.querySelectorAll('[data-recurring-move-cancel]').forEach(el => {
+      el.addEventListener('click', (e) => {
+        e.preventDefault();
+        cancelRecurringMove();
+      });
+    });
+  }
+  if (recurringMoveOneBtn) {
+    recurringMoveOneBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      applyRecurringMoveOne();
+    });
+  }
+  if (recurringMoveAllBtn) {
+    recurringMoveAllBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      applyRecurringMoveAll();
     });
   }
 
