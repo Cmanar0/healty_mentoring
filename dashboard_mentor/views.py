@@ -272,18 +272,36 @@ def expand_recurring_slot_to_dates(recurring_slot, start_date, end_date):
     
     return expanded
 
-def check_slot_collisions(one_time_slots, recurring_slots, new_session_length):
+def check_slot_collisions(one_time_slots, recurring_slots, new_session_length, mentor_timezone_str: str = None):
     """
     Check if updating slot lengths to new_session_length would create collisions.
     Returns True if collisions exist, False otherwise.
     """
     from datetime import datetime as dt
+    from datetime import timezone as dt_timezone
+
+    tzinfo = None
+    if mentor_timezone_str:
+        # Prefer stdlib zoneinfo, fallback to pytz if available.
+        try:
+            from zoneinfo import ZoneInfo
+            tzinfo = ZoneInfo(str(mentor_timezone_str))
+        except Exception:
+            try:
+                import pytz
+                tzinfo = pytz.timezone(str(mentor_timezone_str))
+            except Exception:
+                tzinfo = None
     
     # Get all dates that have slots
     all_dates = set()
     for slot in one_time_slots:
         try:
             start_dt = datetime.fromisoformat(slot['start'].replace('Z', '+00:00'))
+            if start_dt.tzinfo is None:
+                start_dt = start_dt.replace(tzinfo=dt_timezone.utc)
+            if tzinfo:
+                start_dt = start_dt.astimezone(tzinfo)
             all_dates.add(start_dt.date().isoformat())
         except:
             pass
@@ -308,6 +326,13 @@ def check_slot_collisions(one_time_slots, recurring_slots, new_session_length):
         try:
             start_dt = datetime.fromisoformat(slot['start'].replace('Z', '+00:00'))
             end_dt = datetime.fromisoformat(slot['end'].replace('Z', '+00:00'))
+            if start_dt.tzinfo is None:
+                start_dt = start_dt.replace(tzinfo=dt_timezone.utc)
+            if end_dt.tzinfo is None:
+                end_dt = end_dt.replace(tzinfo=dt_timezone.utc)
+            if tzinfo:
+                start_dt = start_dt.astimezone(tzinfo)
+                end_dt = end_dt.astimezone(tzinfo)
             date_str = start_dt.date().isoformat()
             
             # Calculate new end time with new session length
@@ -425,7 +450,8 @@ def update_slots_for_session_length(mentor_profile, old_length, new_length):
     
     # If lengthening, check for collisions first
     elif new_length > old_length:
-        has_collisions = check_slot_collisions(one_time_slots, recurring_slots, new_length)
+        mentor_tz = mentor_profile.selected_timezone or mentor_profile.time_zone or 'UTC'
+        has_collisions = check_slot_collisions(one_time_slots, recurring_slots, new_length, mentor_timezone_str=mentor_tz)
         
         if not has_collisions:
             # No collisions, update safely
@@ -789,7 +815,8 @@ def profile(request):
         except AttributeError:
             recurring_slots = list(profile.recurring_availability_slots or [])
         
-        has_collisions_now = check_slot_collisions(one_time_slots, recurring_slots, profile.session_length)
+        mentor_tz = profile.selected_timezone or profile.time_zone or 'UTC'
+        has_collisions_now = check_slot_collisions(one_time_slots, recurring_slots, profile.session_length, mentor_timezone_str=mentor_tz)
     
     return render(request, 'dashboard_mentor/profile.html', {
         'user': user,
@@ -1403,10 +1430,12 @@ def save_availability(request):
         mentor_profile.collisions = False
         try:
             if mentor_profile.session_length:
+                mentor_tz = mentor_profile.selected_timezone or mentor_profile.time_zone or 'UTC'
                 has_collisions_now = check_slot_collisions(
                     list(mentor_profile.one_time_slots or []),
                     list(mentor_profile.recurring_slots or []),
-                    mentor_profile.session_length
+                    mentor_profile.session_length,
+                    mentor_timezone_str=mentor_tz
                 )
                 mentor_profile.collisions = bool(has_collisions_now)
         except Exception:
@@ -1481,9 +1510,30 @@ def check_availability_collisions(request):
     try:
         mentor_profile = request.user.mentor_profile
 
-        # Use persisted collision state as the source of truth.
-        # This is set when session length increases create collisions, and cleared after calendar saves.
+        # Primary source of truth is persisted collision state.
         has_collisions = bool(getattr(mentor_profile, 'collisions', False))
+
+        # Self-heal: if the flag is true, recompute with mentor timezone and clear it if resolved.
+        # This prevents the "calendar keeps auto-opening" issue after collisions are fixed.
+        try:
+            if has_collisions and mentor_profile.session_length:
+                mentor_tz = mentor_profile.selected_timezone or mentor_profile.time_zone or 'UTC'
+                recomputed = check_slot_collisions(
+                    list(mentor_profile.one_time_slots or []),
+                    list(mentor_profile.recurring_slots or []),
+                    mentor_profile.session_length,
+                    mentor_timezone_str=mentor_tz
+                )
+                if bool(recomputed) != bool(has_collisions):
+                    mentor_profile.collisions = bool(recomputed)
+                    mentor_profile.save(update_fields=['collisions'])
+                has_collisions = bool(recomputed)
+            elif not mentor_profile.session_length and has_collisions:
+                mentor_profile.collisions = False
+                mentor_profile.save(update_fields=['collisions'])
+                has_collisions = False
+        except Exception:
+            pass
         
         return JsonResponse({
             'success': True,
