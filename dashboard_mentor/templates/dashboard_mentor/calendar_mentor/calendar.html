@@ -1136,6 +1136,14 @@
         });
       }
     });
+
+    // Recurring instances are real events. Some FullCalendar builds mount event DOM asynchronously,
+    // so schedule collision recompute right after paint to ensure red styling applies immediately.
+    try {
+      window.requestAnimationFrame(() => recomputeCollisions());
+    } catch (e) {
+      setTimeout(() => recomputeCollisions(), 0);
+    }
   }
 
   const GET_AVAILABILITY_URL = "{% url 'general:dashboard_mentor:get_availability' %}";
@@ -1457,7 +1465,24 @@
       }
     });
 
-    if (changed) calendar.rerenderEvents();
+    // Some FullCalendar builds don't re-run `eventClassNames` when extendedProps change.
+    // To ensure collisions appear red immediately, toggle the DOM class directly.
+    try {
+      if (root) {
+        const els = root.querySelectorAll('.fc-event[data-event-id]');
+        els.forEach((el) => {
+          const id = String(el.dataset.eventId || '');
+          if (!id) return;
+          const ev = calendar.getEventById(id);
+          if (!ev) return;
+          const shouldFlag = (ev.extendedProps?.slotMode === activeMode) && collisionIds.has(id);
+          el.classList.toggle('is-collision', !!shouldFlag);
+        });
+      }
+    } catch (e) {
+      // Never let collision rendering break navigation.
+      console.warn('[MentorCalendar] collision DOM update failed:', e);
+    }
   }
 
   function renderModeToggle() {
@@ -1565,6 +1590,8 @@
         try {
           const mode = info.event?.extendedProps?.slotMode;
           if (!info.el) return;
+          // Used by collision DOM updates (some builds don't rerender classes reliably)
+          info.el.dataset.eventId = String(info.event?.id || '');
 
           // Tag recurring instances so we can style the whole series (blink)
           if (info.event?.extendedProps?.isRecurringInstance && info.event?.extendedProps?.recurringId) {
@@ -1667,6 +1694,25 @@
           info.revert(); // keep UI stable until user chooses
           if (recurringId && instanceDate && newStartIso && newEndIso) {
             pendingRecurringMove = { recurringId, instanceDate, newStartIso, newEndIso };
+            // Button label: if we're going to materialize dates between today and instanceDate,
+            // make it explicit this affects only future slots.
+            try {
+              if (window.luxon && window.luxon.DateTime) {
+                const rule = recurringAvailabilityRules.get(recurringId);
+                const todayLocal = window.luxon.DateTime.now().setZone(timezone_variable).startOf('day');
+                const effectiveStart = rule?.start_date
+                  ? window.luxon.DateTime.fromISO(String(rule.start_date), { zone: timezone_variable }).startOf('day')
+                  : todayLocal;
+                const windowStart = (effectiveStart.isValid && effectiveStart > todayLocal) ? effectiveStart : todayLocal;
+                const instanceDay = window.luxon.DateTime.fromISO(String(instanceDate), { zone: timezone_variable }).startOf('day');
+                const shouldMaterialize = windowStart.isValid && instanceDay.isValid && windowStart < instanceDay;
+                setRecurringMoveAllButtonLabel(shouldMaterialize ? 'All future slots' : 'All');
+              } else {
+                setRecurringMoveAllButtonLabel('All');
+              }
+            } catch (e) {
+              setRecurringMoveAllButtonLabel('All');
+            }
             setRecurringMoveVisible(true);
           }
           return;
@@ -2381,8 +2427,14 @@
     recurringMoveOverlay.setAttribute('aria-hidden', isVisible ? 'false' : 'true');
   }
 
+  function setRecurringMoveAllButtonLabel(label) {
+    if (!recurringMoveAllBtn) return;
+    recurringMoveAllBtn.textContent = label || 'All';
+  }
+
   function cancelRecurringMove() {
     pendingRecurringMove = null;
+    setRecurringMoveAllButtonLabel('All');
     setRecurringMoveVisible(false);
   }
 
