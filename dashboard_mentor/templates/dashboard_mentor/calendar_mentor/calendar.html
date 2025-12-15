@@ -1552,8 +1552,6 @@
       markDirty('availability');
       renderRecurringInstancesForCurrentView();
       recomputeCollisions();
-      // Persist immediately (matches old "delete all" behavior)
-      await saveAvailabilityToBackend();
     }
   };
 
@@ -1682,6 +1680,8 @@
       // After a successful save, disable the Save button again.
       dirtyAvailability = false;
       dirtySession = false;
+      // If we were opened due to a session-length collision recovery flow, saving means resolution is persisted.
+      openedFromSessionLengthChange = false;
     } catch (e) {
       console.error('[MentorCalendar] error saving availability:', e);
     } finally {
@@ -2412,6 +2412,15 @@
     if (openedFromSessionLengthChange && hasAvailabilityCollisionsInHorizon()) {
       if (typeof window.openCollisionResolutionPopup === 'function') {
         window.openCollisionResolutionPopup(true); // locked popup behavior handled by the popup itself
+      }
+      return;
+    }
+
+    // In the session-length-change recovery flow, do not allow discarding changes.
+    // The mentor must save to persist collision resolution to the database.
+    if (openedFromSessionLengthChange && hasUnsavedCalendarChanges()) {
+      if (typeof showNotification === 'function') {
+        showNotification('Please save your changes to resolve collisions.', 'warning');
       }
       return;
     }

@@ -500,17 +500,11 @@
         await window.deleteSlotsByIds(Array.from(slotIdsToDelete));
       }
       
-      // Save changes
-      if (typeof window.saveCalendarChanges === 'function') {
-        await window.saveCalendarChanges();
-      }
+      // Note: do NOT auto-save here. Deletions should be client-only until user clicks Save.
     }
     
-    // Close popup and calendar
+    // Close popup only. Changes remain unsaved until user clicks Save.
     closeCollisionPopup();
-    if (typeof window.closeCalendarOverlay === 'function') {
-      window.closeCalendarOverlay();
-    }
     
     if (onResolveCallback) {
       onResolveCallback(true); // true = resolved
