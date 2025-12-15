@@ -307,6 +307,11 @@ window.MentorCalendarSlotComponents.AvailabilitySlot = {
       const input = dropdown.querySelector('[data-recurrence-input]');
       const items = Array.from(dropdown.querySelectorAll('.dropdown-item'));
       const eventId = props?.eventId || '';
+      const recurringId = props?.recurringId || '';
+      // Source of truth for recurrence selection:
+      // - recurring slot: key by recurringId so all instances share one value
+      // - one-time slot: key by eventId
+      const recurrenceKey = recurringId || eventId;
 
       const updateTriggerVisuals = (item) => {
         if (!item) return;
@@ -403,7 +408,9 @@ window.MentorCalendarSlotComponents.AvailabilitySlot = {
         menuEl.style.transform = 'none';
 
         // Sync active item inside the floating menu based on current selection
-        const currentValue = (eventId && window.MentorCalendarRecurrenceSelections[eventId]) ? window.MentorCalendarRecurrenceSelections[eventId] : (input?.value || 'none');
+        const currentValue = (recurrenceKey && window.MentorCalendarRecurrenceSelections[recurrenceKey])
+          ? window.MentorCalendarRecurrenceSelections[recurrenceKey]
+          : (input?.value || 'none');
         const floatingItems = Array.from(menuEl.querySelectorAll('.dropdown-item'));
         floatingItems.forEach(i => i.classList.remove('active'));
         const activeItem = floatingItems.find(i => (i.getAttribute('data-value') || 'none') === currentValue) || floatingItems[0];
@@ -430,8 +437,18 @@ window.MentorCalendarSlotComponents.AvailabilitySlot = {
             if (templateCounterpart) templateCounterpart.classList.add('active');
 
             el.dataset.recurrence = value;
-            if (eventId) window.MentorCalendarRecurrenceSelections[eventId] = value;
-            console.log('[AvailabilitySlot] recurrence selected:', { eventId: props?.eventId, value });
+            if (recurrenceKey) window.MentorCalendarRecurrenceSelections[recurrenceKey] = value;
+            console.log('[AvailabilitySlot] recurrence selected:', { eventId, recurringId, recurrenceKey, value });
+
+            // Notify calendar logic so it can render/persist recurring rules.
+            if (typeof window.MentorCalendarInternal?.setRecurrenceForEvent === 'function') {
+              window.MentorCalendarInternal.setRecurrenceForEvent({
+                eventId,
+                recurringId,
+                instanceDate: props?.instanceDate || '',
+                value
+              });
+            }
 
             closeFloatingMenu();
           });
@@ -472,7 +489,9 @@ window.MentorCalendarSlotComponents.AvailabilitySlot = {
       }
 
       // Restore previously selected value (keeps selection visible across rerenders)
-      const restoredValue = (eventId && window.MentorCalendarRecurrenceSelections[eventId]) ? window.MentorCalendarRecurrenceSelections[eventId] : (input?.value || 'none');
+      const restoredValue = (recurrenceKey && window.MentorCalendarRecurrenceSelections[recurrenceKey])
+        ? window.MentorCalendarRecurrenceSelections[recurrenceKey]
+        : (input?.value || 'none');
       const restoredItem = items.find(i => (i.getAttribute('data-value') || 'none') === restoredValue) || items[0];
       if (restoredItem) {
         updateTriggerVisuals(restoredItem);

@@ -715,6 +715,32 @@
       return;
     }
 
+    // If this is a recurring instance, update the recurring rule (not just this single rendered instance)
+    if (ev.extendedProps?.isRecurringInstance && ev.extendedProps?.recurringId) {
+      const recurringId = ev.extendedProps.recurringId;
+      const rule = recurringAvailabilityRules.get(recurringId);
+      if (rule) {
+        rule.start_time = timeStr;
+        rule.end_time = dt.plus({ minutes: durationMinutes }).toFormat('HH:mm');
+        rule.anchor_date = dateStr;
+        if (rule.type === 'weekly') {
+          const wd = weekdayNameFromIsoDate(dateStr);
+          rule.weekdays = wd ? [wd] : (rule.weekdays || []);
+          rule.day_of_month = null;
+        } else if (rule.type === 'monthly') {
+          rule.day_of_month = dt.day;
+          rule.weekdays = [];
+        }
+        recurringAvailabilityRules.set(recurringId, rule);
+        markDirty('availability');
+        renderRecurringInstancesForCurrentView();
+        recomputeCollisions();
+        closeAvailabilitySettings();
+        return;
+      }
+    }
+
+    // One-time slot: update this event directly
     const startJs = dt.toJSDate();
     const endJs = dt.plus({ minutes: durationMinutes }).toJSDate();
 
@@ -920,6 +946,153 @@
   let __availabilityClickTimer = null;
   let __availabilityClickEventId = null;
 
+  // Recurring availability rules (source of truth, persisted to mentor_profile.recurring_slots)
+  // Map<recurringId, rule>
+  // rule: { id, type: 'daily'|'weekly'|'monthly', start_time, end_time, weekdays?, day_of_month?, skip_dates?, booked_dates?, slot_type, anchor_date }
+  let recurringAvailabilityRules = new Map();
+
+  function getLocalDateKeyFromJsDate(dateObj) {
+    try {
+      if (window.luxon && window.luxon.DateTime && dateObj instanceof Date) {
+        return window.luxon.DateTime.fromJSDate(dateObj).setZone(timezone_variable).toISODate();
+      }
+    } catch (e) {}
+    return dateObj instanceof Date ? dateObj.toISOString().split('T')[0] : '';
+  }
+
+  function getLocalTimeHHmmFromJsDate(dateObj) {
+    try {
+      if (window.luxon && window.luxon.DateTime && dateObj instanceof Date) {
+        return window.luxon.DateTime.fromJSDate(dateObj).setZone(timezone_variable).toFormat('HH:mm');
+      }
+    } catch (e) {}
+    return '';
+  }
+
+  function weekdayNameFromIsoDate(isoDate) {
+    try {
+      if (window.luxon && window.luxon.DateTime) {
+        const dt = window.luxon.DateTime.fromISO(isoDate, { zone: timezone_variable });
+        const names = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
+        // Luxon: 1=Monday..7=Sunday
+        return names[Math.max(0, Math.min(6, dt.weekday - 1))];
+      }
+    } catch (e) {}
+    return '';
+  }
+
+  function computeAnchorDateForRecurringRule(rule) {
+    // Used only for saving weekly/monthly rules (backend derives weekdays/day_of_month from provided date)
+    try {
+      if (!(window.luxon && window.luxon.DateTime)) return null;
+      const now = window.luxon.DateTime.now().setZone(timezone_variable).startOf('day');
+      if (!rule || !rule.type) return now.toISODate();
+      if (rule.type === 'daily') return now.toISODate();
+      if (rule.type === 'weekly') {
+        const target = Array.isArray(rule.weekdays) && rule.weekdays.length ? rule.weekdays[0] : null;
+        if (!target) return now.toISODate();
+        for (let i = 0; i < 14; i++) {
+          const d = now.plus({ days: i });
+          if (weekdayNameFromIsoDate(d.toISODate()) === target) return d.toISODate();
+        }
+        return now.toISODate();
+      }
+      if (rule.type === 'monthly') {
+        const dom = Number(rule.day_of_month);
+        if (!Number.isFinite(dom) || dom < 1) return now.toISODate();
+        // choose current month if possible, else next month
+        const candidateMonths = [0, 1];
+        for (const addMonths of candidateMonths) {
+          const m = now.plus({ months: addMonths });
+          const daysInMonth = m.daysInMonth;
+          const day = dom > daysInMonth ? daysInMonth : dom;
+          const d = m.set({ day });
+          if (d >= now) return d.toISODate();
+        }
+        return now.toISODate();
+      }
+    } catch (e) {}
+    return null;
+  }
+
+  function clearRecurringInstanceEvents() {
+    if (!calendar) return;
+    calendar.getEvents().forEach(ev => {
+      if (ev.extendedProps?.isRecurringInstance) ev.remove();
+    });
+  }
+
+  function renderRecurringInstancesForCurrentView() {
+    if (!calendar) return;
+    if (!(window.luxon && window.luxon.DateTime)) return;
+    clearRecurringInstanceEvents();
+
+    const view = calendar.view;
+    const start = view?.activeStart;
+    const end = view?.activeEnd;
+    if (!(start instanceof Date) || !(end instanceof Date)) return;
+
+    const startDay = window.luxon.DateTime.fromJSDate(start).setZone(timezone_variable).startOf('day');
+    const endDay = window.luxon.DateTime.fromJSDate(end).setZone(timezone_variable).startOf('day');
+    const days = Math.max(0, Math.round(endDay.diff(startDay, 'days').days));
+
+    recurringAvailabilityRules.forEach((rule) => {
+      if (!rule || !rule.id || !rule.type) return;
+      const skip = new Set(rule.skip_dates || []);
+      const booked = new Set(rule.booked_dates || []);
+
+      for (let i = 0; i < days; i++) {
+        const d = startDay.plus({ days: i });
+        const dateStr = d.toISODate();
+        if (skip.has(dateStr) || booked.has(dateStr)) continue;
+
+        let matches = false;
+        if (rule.type === 'daily') {
+          matches = true;
+        } else if (rule.type === 'weekly') {
+          const wd = weekdayNameFromIsoDate(dateStr);
+          matches = Array.isArray(rule.weekdays) ? rule.weekdays.includes(wd) : false;
+        } else if (rule.type === 'monthly') {
+          const dom = Number(rule.day_of_month);
+          if (Number.isFinite(dom) && dom > 0) {
+            // Match exact day, or if dom > daysInMonth, match last day (backend behavior)
+            const daysInMonth = d.daysInMonth;
+            const targetDay = dom > daysInMonth ? daysInMonth : dom;
+            matches = d.day === targetDay;
+          }
+        }
+        if (!matches) continue;
+
+        const startDt = window.luxon.DateTime.fromISO(`${dateStr}T${rule.start_time}`, { zone: timezone_variable });
+        const endDt = window.luxon.DateTime.fromISO(`${dateStr}T${rule.end_time}`, { zone: timezone_variable });
+        if (!startDt.isValid || !endDt.isValid) continue;
+        if (endDt <= startDt) continue;
+
+        const instanceId = `${rule.id}__${dateStr}`;
+        calendar.addEvent({
+          id: instanceId,
+          groupId: rule.id,
+          start: startDt.toJSDate(),
+          end: endDt.toJSDate(),
+          allDay: false,
+          backgroundColor: '#3b82f6',
+          borderColor: '#2563eb',
+          textColor: '#ffffff',
+          classNames: ['event-type-availability', 'event-type-availability-recurring'],
+          editable: true,
+          extendedProps: {
+            slotMode: 'availability',
+            type: 'availability_slot',
+            isRecurringInstance: true,
+            recurringId: rule.id,
+            instanceDate: dateStr,
+            recurrence: rule.type
+          }
+        });
+      }
+    });
+  }
+
   const GET_AVAILABILITY_URL = "{% url 'general:dashboard_mentor:get_availability' %}";
   const SAVE_AVAILABILITY_URL = "{% url 'general:dashboard_mentor:save_availability' %}";
 
@@ -990,6 +1163,9 @@
       });
 
       originalAvailabilityDates = new Set();
+      recurringAvailabilityRules = new Map();
+      // Ensure recurrence UI selections reflect persisted recurring rules
+      window.MentorCalendarRecurrenceSelections = window.MentorCalendarRecurrenceSelections || {};
 
       const slots = Array.isArray(data.one_time_slots) ? data.one_time_slots : [];
       slots.forEach(slot => {
@@ -1019,6 +1195,34 @@
         });
       });
 
+      // Load recurring rules (raw JSON) and render occurrences for the current view
+      const recurring = Array.isArray(data.recurring_slots) ? data.recurring_slots : [];
+      recurring.forEach((rule) => {
+        const id = String(rule?.id || '');
+        const type = String(rule?.type || '');
+        if (!id || !type) return;
+        const start_time = String(rule?.start_time || '');
+        const end_time = String(rule?.end_time || '');
+        if (!start_time || !end_time) return;
+
+        const normalized = {
+          id,
+          type, // daily|weekly|monthly
+          slot_type: rule?.slot_type || 'availability_slot',
+          start_time,
+          end_time,
+          weekdays: Array.isArray(rule?.weekdays) ? rule.weekdays : [],
+          day_of_month: rule?.day_of_month ?? null,
+          skip_dates: Array.isArray(rule?.skip_dates) ? rule.skip_dates : [],
+          booked_dates: Array.isArray(rule?.booked_dates) ? rule.booked_dates : [],
+          created_at: rule?.created_at || null
+        };
+        normalized.anchor_date = computeAnchorDateForRecurringRule(normalized);
+        recurringAvailabilityRules.set(id, normalized);
+        window.MentorCalendarRecurrenceSelections[id] = type;
+      });
+      renderRecurringInstancesForCurrentView();
+
       console.log('[MentorCalendar] loaded availability slots:', slots.length);
       recomputeCollisions();
       // Loaded state matches DB for availability
@@ -1033,9 +1237,11 @@
     setSaveButtonLoading(true);
 
     try {
-      const availabilityEvents = calendar.getEvents().filter(ev => ev.extendedProps?.slotMode === 'availability');
+      const availabilityEvents = calendar.getEvents().filter(ev =>
+        ev.extendedProps?.slotMode === 'availability' && !ev.extendedProps?.isRecurringInstance
+      );
 
-      const availabilityPayload = availabilityEvents.map(ev => {
+      const oneTimePayload = availabilityEvents.map(ev => {
         const startIso = ev.start ? ev.start.toISOString() : null;
         const endIso = ev.end ? ev.end.toISOString() : null;
         if (!startIso || !endIso) return null;
@@ -1043,7 +1249,7 @@
         const dateKey = getLocalDateKeyFromUtcIso(startIso);
         const length = Math.max(0, Math.round((Date.parse(endIso) - Date.parse(startIso)) / 60000));
 
-        return {
+        const item = {
           id: ev.id,
           type: 'availability_slot',
           date: dateKey,
@@ -1051,11 +1257,37 @@
           end_iso: endIso,
           length: length
         };
+
+        // If this event is a conversion from recurring -> one-time, include recurring_slot_id
+        if (ev.extendedProps?.recurringSlotId) {
+          item.recurring_slot_id = ev.extendedProps.recurringSlotId;
+        }
+        return item;
       }).filter(Boolean);
+
+      // Recurring rules payload (one item per rule)
+      const recurringPayload = Array.from(recurringAvailabilityRules.values()).map((rule) => {
+        if (!rule || !rule.id || !rule.type) return null;
+        const anchor = rule.anchor_date || computeAnchorDateForRecurringRule(rule) || getLocalDateKeyFromUtcIso(new Date().toISOString());
+        return {
+          // Backend uses recurring_slot_id as the source-of-truth ID
+          recurring_slot_id: rule.id,
+          is_recurring: true,
+          recurrence_rule: rule.type, // daily|weekly|monthly
+          slot_type: rule.slot_type || 'availability_slot',
+          date: anchor,
+          start: rule.start_time,
+          end: rule.end_time,
+          skip_dates: Array.isArray(rule.skip_dates) ? rule.skip_dates : [],
+          booked_dates: Array.isArray(rule.booked_dates) ? rule.booked_dates : []
+        };
+      }).filter(Boolean);
+
+      const availabilityPayload = oneTimePayload.concat(recurringPayload);
 
       // edited_dates must include previous dates too, for deletion behavior
       const editedDates = new Set(originalAvailabilityDates);
-      availabilityPayload.forEach(item => editedDates.add(item.date));
+      oneTimePayload.forEach(item => editedDates.add(item.date));
 
       const editedDatesArr = Array.from(editedDates);
       const selectedDate = editedDatesArr[0] || getLocalDateKeyFromUtcIso(new Date().toISOString());
@@ -1083,7 +1315,10 @@
         return;
       }
 
-      console.log('[MentorCalendar] saved availability slots:', availabilityPayload.length);
+      console.log('[MentorCalendar] saved availability:', {
+        oneTime: oneTimePayload.length,
+        recurring: recurringPayload.length
+      });
       await loadSavedAvailability();
       if (typeof showNotification === 'function') {
         showNotification('Saved successfully.', 'success');
@@ -1315,9 +1550,16 @@
         updateDateTitle(info.view.title);
         updateActiveViewButton(info.view.type);
         styleGridLines();
+        renderRecurringInstancesForCurrentView();
       },
       eventDrop: function(info) {
         const mode = info.event.extendedProps?.slotMode;
+        // Recurring instances are rendered projections; edit via settings instead of dragging.
+        if (mode === 'availability' && info.event.extendedProps?.isRecurringInstance && isAvailabilityMode) {
+          info.revert();
+          openAvailabilitySettingsForEvent(info.event);
+          return;
+        }
         // Dragging availability in Sessions mode: revert and prompt to switch
         if (mode === 'availability' && !isAvailabilityMode) {
           info.revert();
@@ -1413,6 +1655,8 @@
           isAvailabilityMode,
           timezone: timezone_variable,
           eventId: arg.event.id,
+          recurringId: arg.event.extendedProps?.recurringId || null,
+          instanceDate: arg.event.extendedProps?.instanceDate || null,
           startIso: arg.event.start ? arg.event.start.toISOString() : null,
           endIso: arg.event.end ? arg.event.end.toISOString() : null
         };
@@ -1443,6 +1687,115 @@
 
   // Internal API for slot components (client-only changes; DB persistence happens on Save)
   window.MentorCalendarInternal = window.MentorCalendarInternal || {};
+
+  // Called by AvailabilitySlot recurrence dropdown
+  window.MentorCalendarInternal.setRecurrenceForEvent = function(payload) {
+    if (!calendar) return;
+    const eventId = payload?.eventId || '';
+    const recurringId = payload?.recurringId || '';
+    const value = payload?.value || 'none';
+
+    // Existing recurring instance: update recurring rule type
+    if (recurringId && recurringAvailabilityRules.has(recurringId)) {
+      const rule = recurringAvailabilityRules.get(recurringId);
+      if (!rule) return;
+
+      if (value === 'none') {
+        // Convert series -> one-time slot for the clicked instance
+        const instanceEv = calendar.getEventById(eventId);
+        if (instanceEv && instanceEv.start && instanceEv.end) {
+          const startIso = instanceEv.start.toISOString();
+          const endIso = instanceEv.end.toISOString();
+          const newId = recurringId; // preserve ID across conversion
+          recurringAvailabilityRules.delete(recurringId);
+          clearRecurringInstanceEvents();
+          calendar.addEvent({
+            id: newId,
+            start: startIso,
+            end: endIso,
+            allDay: false,
+            backgroundColor: '#3b82f6',
+            borderColor: '#2563eb',
+            textColor: '#ffffff',
+            classNames: ['event-type-availability'],
+            editable: true,
+            // Tell backend this is a conversion from recurring -> one-time
+            extendedProps: { slotMode: 'availability', type: 'availability_slot', recurringSlotId: recurringId }
+          });
+          markDirty('availability');
+          renderRecurringInstancesForCurrentView();
+        }
+        return;
+      }
+
+      // Switch recurring pattern (keep times)
+      rule.type = value;
+      // Update weekday/day_of_month anchor based on the instance date (best UX)
+      const instanceDate = payload?.instanceDate || rule.anchor_date || getLocalDateKeyFromUtcIso(new Date().toISOString());
+      rule.anchor_date = instanceDate;
+      if (value === 'weekly') {
+        const wd = weekdayNameFromIsoDate(instanceDate);
+        rule.weekdays = wd ? [wd] : (rule.weekdays || []);
+        rule.day_of_month = null;
+      } else if (value === 'monthly') {
+        try {
+          if (window.luxon && window.luxon.DateTime) {
+            const dt = window.luxon.DateTime.fromISO(instanceDate, { zone: timezone_variable });
+            rule.day_of_month = dt.isValid ? dt.day : rule.day_of_month;
+            rule.weekdays = [];
+          }
+        } catch (e) {}
+      } else if (value === 'daily') {
+        rule.weekdays = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
+        rule.day_of_month = null;
+      }
+      recurringAvailabilityRules.set(recurringId, rule);
+      markDirty('availability');
+      renderRecurringInstancesForCurrentView();
+      return;
+    }
+
+    // One-time availability event: if recurrence != none, turn it into a recurring rule
+    if (eventId && value !== 'none') {
+      const ev = calendar.getEventById(eventId);
+      if (!ev || !ev.start || !ev.end) return;
+      const dateStr = getLocalDateKeyFromJsDate(ev.start);
+      const startTime = getLocalTimeHHmmFromJsDate(ev.start);
+      const endTime = getLocalTimeHHmmFromJsDate(ev.end);
+      if (!dateStr || !startTime || !endTime) return;
+
+      const rule = {
+        id: eventId,
+        type: value,
+        slot_type: 'availability_slot',
+        start_time: startTime,
+        end_time: endTime,
+        skip_dates: [],
+        booked_dates: [],
+        anchor_date: dateStr
+      };
+      if (value === 'weekly') {
+        const wd = weekdayNameFromIsoDate(dateStr);
+        rule.weekdays = wd ? [wd] : [];
+      } else if (value === 'monthly') {
+        try {
+          if (window.luxon && window.luxon.DateTime) {
+            const dt = window.luxon.DateTime.fromJSDate(ev.start).setZone(timezone_variable);
+            rule.day_of_month = dt.day;
+          }
+        } catch (e) {}
+      } else if (value === 'daily') {
+        rule.weekdays = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
+      }
+
+      recurringAvailabilityRules.set(eventId, rule);
+      // Remove the one-time event to avoid duplicates (series will render occurrences)
+      ev.remove();
+      markDirty('availability');
+      renderRecurringInstancesForCurrentView();
+    }
+  };
+
   window.MentorCalendarInternal.removeEventById = function(eventId) {
     if (!calendar || !eventId) return;
     const ev = calendar.getEventById(eventId);
@@ -1453,6 +1806,23 @@
       slotMode: slotMode
     });
     
+    // Recurring availability instance: delete only this occurrence by adding it to skip_dates
+    if (slotMode === 'availability' && ev.extendedProps?.isRecurringInstance && ev.extendedProps?.recurringId) {
+      const recurringId = ev.extendedProps.recurringId;
+      const instanceDate = ev.extendedProps.instanceDate || getLocalDateKeyFromJsDate(ev.start);
+      const rule = recurringAvailabilityRules.get(recurringId);
+      if (rule && instanceDate) {
+        rule.skip_dates = Array.isArray(rule.skip_dates) ? rule.skip_dates : [];
+        if (!rule.skip_dates.includes(instanceDate)) rule.skip_dates.push(instanceDate);
+        recurringAvailabilityRules.set(recurringId, rule);
+      }
+      if (typeof showNotification === 'function') showNotification("Don't forget to save the changes.", 'note');
+      markDirty('availability');
+      ev.remove();
+      recomputeCollisions();
+      return;
+    }
+
     // Reminder: removing availability is client-only until user clicks Save
     if (slotMode === 'availability' && typeof showNotification === 'function') {
       showNotification("Don't forget to save the changes.", 'note');
