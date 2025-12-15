@@ -2449,12 +2449,18 @@
     if (!newStart.isValid || !newEnd.isValid || newEnd <= newStart) return cancelRecurringMove();
 
     // Change all future slots:
-    // - Materialize occurrences from TODAY (mentor timezone) up to the new start date (exclusive) into one-time slots
+    // - Materialize occurrences from TODAY (mentor timezone) up to the split point (exclusive) into one-time slots
+    //   Split point:
+    //   - if moving the occurrence later into the future: use the OLD occurrence date (instanceDate) (so we don't fill the gap)
+    //   - otherwise: use the NEW start date (drag target)
     // - Update the recurring rule to start at the new date/time
     // - Reset skip_dates (and we ignore booked_dates per your direction)
     const todayLocal = window.luxon.DateTime.now().setZone(timezone_variable).startOf('day');
     const newStartDate = newStart.toISODate(); // local date of the dragged occurrence
     const newStartDay = window.luxon.DateTime.fromISO(newStartDate, { zone: timezone_variable }).startOf('day');
+    const oldInstanceDay = p.instanceDate
+      ? window.luxon.DateTime.fromISO(String(p.instanceDate), { zone: timezone_variable }).startOf('day')
+      : null;
 
     // Helper: does rule match a given date?
     const matchesRuleOnDate = (ruleObj, dateStr) => {
@@ -2485,7 +2491,12 @@
       const rs = window.luxon.DateTime.fromISO(String(rule.start_date), { zone: timezone_variable }).startOf('day');
       if (rs.isValid && cursor < rs) cursor = rs;
     }
-    const endExclusive = newStartDay;
+    // If moved later (newStartDay > oldInstanceDay), end at oldInstanceDay (exclusive).
+    // Otherwise end at newStartDay (exclusive).
+    let endExclusive = newStartDay;
+    if (oldInstanceDay && oldInstanceDay.isValid && newStartDay.isValid && newStartDay > oldInstanceDay) {
+      endExclusive = oldInstanceDay;
+    }
 
     while (cursor < endExclusive) {
       const dStr = cursor.toISODate();
