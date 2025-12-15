@@ -2350,9 +2350,20 @@
         try {
           if (hasAvailabilityCollisionsInHorizon() && typeof window.openCollisionResolutionPopup === 'function') {
             window.openCollisionResolutionPopup(true);
+          } else {
+            // No collisions anymore; exit locked mode.
+            openedFromSessionLengthChange = false;
           }
         } catch (e) {}
       }, 1200);
+
+      // Prevent repeatedly re-triggering the auto-open flow on refresh.
+      try {
+        params.delete('open_calendar');
+        const next = params.toString();
+        const newUrl = window.location.pathname + (next ? ('?' + next) : '') + window.location.hash;
+        window.history.replaceState({}, '', newUrl);
+      } catch (e) {}
     }
   } catch (e) {}
 

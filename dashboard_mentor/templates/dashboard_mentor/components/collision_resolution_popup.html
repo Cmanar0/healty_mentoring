@@ -426,6 +426,16 @@
   function openCollisionPopup(sessionLengthChangeMode = false) {
     isSessionLengthChangeMode = sessionLengthChangeMode;
     renderCollisions();
+    // If we're in session-length-change mode but collisions are already resolved,
+    // don't keep a locked popup open showing "0 collisions".
+    if (isSessionLengthChangeMode && (!collisions || collisions.length === 0)) {
+      closeCollisionPopup();
+      // Allow calendar to exit locked mode if it wants to.
+      if (typeof window.setOpenedFromSessionLengthChange === 'function') {
+        try { window.setOpenedFromSessionLengthChange(false); } catch (e) {}
+      }
+      return;
+    }
     popup.classList.add('is-visible');
     
     // Start polling for collision updates

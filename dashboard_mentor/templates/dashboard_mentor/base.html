@@ -1303,8 +1303,20 @@ document.addEventListener('DOMContentLoaded', function() {
                   if (trigger && trigger.dataset) trigger.dataset.mentorCalendarInitialMode = 'availability';
                   window.MentorCalendar.open(trigger);
 
-                  // After calendar opens, open collision popup in locked mode
+                  // After calendar opens, open collision popup in locked mode (only if collisions still exist)
                   setTimeout(() => {
+                    try {
+                      if (typeof window.getCalendarCollisions === 'function') {
+                        const collisions = window.getCalendarCollisions() || [];
+                        if (Array.isArray(collisions) && collisions.length === 0) {
+                          if (typeof window.setOpenedFromSessionLengthChange === 'function') {
+                            window.setOpenedFromSessionLengthChange(false);
+                          }
+                          return;
+                        }
+                      }
+                    } catch (e) {}
+
                     if (typeof window.openCollisionResolutionPopup === 'function') {
                       window.openCollisionResolutionPopup(true);
                     }

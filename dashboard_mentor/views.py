@@ -1479,23 +1479,10 @@ def check_availability_collisions(request):
     
     try:
         mentor_profile = request.user.mentor_profile
-        
-        # Get one-time slots
-        try:
-            one_time_slots = list(mentor_profile.one_time_slots or [])
-        except AttributeError:
-            one_time_slots = list(mentor_profile.availability_slots or [])
-        
-        # Get recurring slots
-        try:
-            recurring_slots = list(mentor_profile.recurring_slots or [])
-        except AttributeError:
-            recurring_slots = list(mentor_profile.recurring_availability_slots or [])
-        
-        # Check for collisions if session_length exists
-        has_collisions = False
-        if mentor_profile.session_length:
-            has_collisions = check_slot_collisions(one_time_slots, recurring_slots, mentor_profile.session_length)
+
+        # Use persisted collision state as the source of truth.
+        # This is set when session length increases create collisions, and cleared after calendar saves.
+        has_collisions = bool(getattr(mentor_profile, 'collisions', False))
         
         return JsonResponse({
             'success': True,
