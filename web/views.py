@@ -12,7 +12,7 @@ def landing(request):
     from dashboard_mentor.constants import PREDEFINED_CATEGORIES, PREDEFINED_LANGUAGES
     
     # Get min and max prices for slider
-    all_mentors = MentorProfile.objects.filter(user__is_active=True, user__is_email_verified=True)
+    all_mentors = MentorProfile.objects.filter(user__is_active=True, user__is_email_verified=True, collisions=False)
     price_stats = all_mentors.aggregate(
         min_price=Min('price_per_hour'),
         max_price=Max('price_per_hour')
@@ -41,7 +41,7 @@ def mentors(request):
     per_page = 12  # Number of mentors per page
     
     # Start with all active mentor profiles
-    mentors = MentorProfile.objects.filter(user__is_active=True, user__is_email_verified=True)
+    mentors = MentorProfile.objects.filter(user__is_active=True, user__is_email_verified=True, collisions=False)
     
     # Filter by search query (name)
     if search_query:
@@ -106,7 +106,7 @@ def mentors(request):
     mentors_page = mentors[start:end]
     
     # Get min and max prices for slider (from all active mentors, not just filtered)
-    all_mentors = MentorProfile.objects.filter(user__is_active=True, user__is_email_verified=True)
+    all_mentors = MentorProfile.objects.filter(user__is_active=True, user__is_email_verified=True, collisions=False)
     price_stats = all_mentors.aggregate(
         min_price=Min('price_per_hour'),
         max_price=Max('price_per_hour')
@@ -164,14 +164,14 @@ def mentor_search_suggestions(request):
             Q(first_name__icontains=query) |
             Q(last_name__icontains=query) |
             Q(user__email__icontains=query)
-        ).filter(user__is_active=True, user__is_email_verified=True)[:10]
+        ).filter(user__is_active=True, user__is_email_verified=True, collisions=False)[:10]
     else:
         # Single word - search in both first and last name
         mentors = MentorProfile.objects.filter(
             Q(first_name__icontains=query) |
             Q(last_name__icontains=query) |
             Q(user__email__icontains=query)
-        ).filter(user__is_active=True, user__is_email_verified=True)[:10]
+        ).filter(user__is_active=True, user__is_email_verified=True, collisions=False)[:10]
     
     suggestions = []
     for mentor in mentors:
@@ -203,7 +203,7 @@ def mentors_load_more(request):
     per_page = 12
     
     # Start with all active mentor profiles
-    mentors = MentorProfile.objects.filter(user__is_active=True, user__is_email_verified=True)
+    mentors = MentorProfile.objects.filter(user__is_active=True, user__is_email_verified=True, collisions=False)
     
     # Apply same filters as mentors view
     if search_query:

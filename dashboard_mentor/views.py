@@ -630,6 +630,11 @@ def profile(request):
                 has_collisions = update_slots_for_session_length(
                     profile, old_session_length, new_session_length
                 )
+                # Persist collision state for search/filtering and recovery UX
+                profile.collisions = bool(has_collisions)
+            elif new_session_length is None:
+                # If session length is cleared, treat as no collision requirement
+                profile.collisions = False
             
             # Handle first session free (boolean checkbox)
             profile.first_session_free = request.POST.get("first_session_free") == "on"
@@ -1391,6 +1396,22 @@ def save_availability(request):
         mentor_profile.one_time_slots = deduplicated_one_time_slots
         mentor_profile.recurring_slots = final_recurring_slots
         mentor_profile.save()
+
+        # If we're able to save, update collision flag based on current DB state.
+        try:
+            if mentor_profile.session_length:
+                has_collisions_now = check_slot_collisions(
+                    list(mentor_profile.one_time_slots or []),
+                    list(mentor_profile.recurring_slots or []),
+                    mentor_profile.session_length
+                )
+                mentor_profile.collisions = bool(has_collisions_now)
+            else:
+                mentor_profile.collisions = False
+            mentor_profile.save(update_fields=['collisions'])
+        except Exception:
+            # Non-fatal: saving availability should still succeed even if collision recompute fails
+            pass
         
         # Debug logging
         import logging
