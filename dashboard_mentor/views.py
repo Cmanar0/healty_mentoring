@@ -1398,6 +1398,9 @@ def save_availability(request):
         mentor_profile.save()
 
         # If we're able to save, update collision flag based on current DB state.
+        # Important: the UI is only allowed to save when collisions are resolved.
+        # So we always clear the flag on successful save, then (optionally) recompute it.
+        mentor_profile.collisions = False
         try:
             if mentor_profile.session_length:
                 has_collisions_now = check_slot_collisions(
@@ -1406,12 +1409,10 @@ def save_availability(request):
                     mentor_profile.session_length
                 )
                 mentor_profile.collisions = bool(has_collisions_now)
-            else:
-                mentor_profile.collisions = False
-            mentor_profile.save(update_fields=['collisions'])
         except Exception:
-            # Non-fatal: saving availability should still succeed even if collision recompute fails
-            pass
+            # Non-fatal: if collision recompute fails for any reason, keep collisions=False
+            mentor_profile.collisions = False
+        mentor_profile.save(update_fields=['collisions'])
         
         # Debug logging
         import logging
