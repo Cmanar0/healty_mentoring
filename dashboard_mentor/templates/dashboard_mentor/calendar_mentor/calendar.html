@@ -70,6 +70,7 @@
 {% include "dashboard_mentor/calendar_mentor/unsaved_changes_popup.html" %}
 {% include "dashboard_mentor/calendar_mentor/recurring_delete_popup.html" %}
 {% include "dashboard_mentor/calendar_mentor/recurring_move_popup.html" %}
+{% include "dashboard_mentor/components/collision_resolution_popup.html" %}
 
 <style>
   /* --- Overlay --- */
@@ -1289,8 +1290,288 @@
     }
   }
 
+  // --- Collision detection (availability only) ---
+  const COLLISION_HORIZON_DAYS = 90;
+  let openedFromSessionLengthChange = false;
+
+  window.setOpenedFromSessionLengthChange = function(value) {
+    openedFromSessionLengthChange = !!value;
+  };
+  window.getOpenedFromSessionLengthChange = function() {
+    return !!openedFromSessionLengthChange;
+  };
+
+  function computeAvailabilityCollisionsInHorizon() {
+    if (!(window.luxon && window.luxon.DateTime) || !calendar) return [];
+
+    const DateTime = window.luxon.DateTime;
+    const todayLocal = DateTime.now().setZone(timezone_variable).startOf('day');
+    const endLocal = todayLocal.plus({ days: COLLISION_HORIZON_DAYS }).startOf('day'); // exclusive
+
+    const occurrencesByDate = new Map(); // dateStr -> occurrence[]
+    const ensureBucket = (dateStr) => {
+      if (!occurrencesByDate.has(dateStr)) occurrencesByDate.set(dateStr, []);
+      return occurrencesByDate.get(dateStr);
+    };
+
+    // One-time availability events already in the calendar (exclude rendered recurring instances)
+    calendar.getEvents().forEach((ev) => {
+      if (ev.extendedProps?.slotMode !== 'availability') return;
+      if (ev.extendedProps?.isRecurringInstance) return;
+      if (!ev.start || !ev.end) return;
+
+      const startDt = DateTime.fromJSDate(ev.start).setZone(timezone_variable);
+      const endDt = DateTime.fromJSDate(ev.end).setZone(timezone_variable);
+      if (!startDt.isValid || !endDt.isValid || endDt <= startDt) return;
+
+      const day = startDt.startOf('day');
+      if (day < todayLocal || day >= endLocal) return;
+
+      const dateStr = day.toISODate();
+      ensureBucket(dateStr).push({
+        kind: 'one_time',
+        id: String(ev.id || ''),
+        startDt,
+        endDt
+      });
+    });
+
+    // Recurring rules expanded in-horizon (do not render)
+    const matchesRuleOnDate = (ruleObj, dateStr, dayDt) => {
+      if (!ruleObj || !ruleObj.type) return false;
+      if (ruleObj.start_date && dateStr < ruleObj.start_date) return false;
+      if (Array.isArray(ruleObj.skip_dates) && ruleObj.skip_dates.includes(dateStr)) return false;
+
+      if (ruleObj.type === 'daily') return true;
+      if (ruleObj.type === 'weekly') {
+        const wd = weekdayNameFromIsoDate(dateStr);
+        return Array.isArray(ruleObj.weekdays) ? ruleObj.weekdays.includes(wd) : false;
+      }
+      if (ruleObj.type === 'monthly') {
+        const dom = Number(ruleObj.day_of_month);
+        if (!Number.isFinite(dom) || dom < 1) return false;
+        const daysInMonth = dayDt.daysInMonth;
+        const targetDay = dom > daysInMonth ? daysInMonth : dom;
+        return dayDt.day === targetDay;
+      }
+      return false;
+    };
+
+    recurringAvailabilityRules.forEach((rule) => {
+      if (!rule || !rule.id || !rule.type) return;
+      const startTime = String(rule.start_time || '');
+      const endTime = String(rule.end_time || '');
+      if (!startTime || !endTime) return;
+
+      let cursor = todayLocal;
+      if (rule.start_date) {
+        const rs = DateTime.fromISO(String(rule.start_date), { zone: timezone_variable }).startOf('day');
+        if (rs.isValid && cursor < rs) cursor = rs;
+      }
+
+      while (cursor < endLocal) {
+        const dateStr = cursor.toISODate();
+        if (matchesRuleOnDate(rule, dateStr, cursor)) {
+          const startDt = DateTime.fromISO(`${dateStr}T${startTime}`, { zone: timezone_variable });
+          const endDt = DateTime.fromISO(`${dateStr}T${endTime}`, { zone: timezone_variable });
+          if (startDt.isValid && endDt.isValid && endDt > startDt) {
+            ensureBucket(dateStr).push({
+              kind: 'rec_occ',
+              recurringId: String(rule.id),
+              instanceDate: dateStr,
+              startDt,
+              endDt
+            });
+          }
+        }
+        cursor = cursor.plus({ days: 1 });
+      }
+    });
+
+    const overlaps = (a, b) => a.startDt < b.endDt && b.startDt < a.endDt;
+
+    const oneOne = [];
+    const oneRec = [];
+    const recRecMap = new Map(); // pairKey -> collision
+
+    occurrencesByDate.forEach((list, dateStr) => {
+      if (!Array.isArray(list) || list.length < 2) return;
+      const sorted = list.slice().sort((x, y) => x.startDt.toMillis() - y.startDt.toMillis());
+
+      for (let i = 0; i < sorted.length; i++) {
+        for (let j = i + 1; j < sorted.length; j++) {
+          const a = sorted[i];
+          const b = sorted[j];
+          if (!overlaps(a, b)) continue;
+
+          // one-time vs one-time
+          if (a.kind === 'one_time' && b.kind === 'one_time') {
+            const ids = [a.id, b.id].sort();
+            oneOne.push({
+              type: 'one_one',
+              key: `one_one|${dateStr}|${ids[0]}|${ids[1]}`,
+              slot1: { id: a.id, start: a.startDt.toISO(), end: a.endDt.toISO(), kind: 'one_time' },
+              slot2: { id: b.id, start: b.startDt.toISO(), end: b.endDt.toISO(), kind: 'one_time' }
+            });
+            continue;
+          }
+
+          // one-time vs recurring occurrence
+          if ((a.kind === 'one_time' && b.kind === 'rec_occ') || (a.kind === 'rec_occ' && b.kind === 'one_time')) {
+            const one = (a.kind === 'one_time') ? a : b;
+            const rec = (a.kind === 'rec_occ') ? a : b;
+            oneRec.push({
+              type: 'one_rec',
+              key: `one_rec|${dateStr}|${one.id}|${rec.recurringId}`,
+              slot1: { id: one.id, start: one.startDt.toISO(), end: one.endDt.toISO(), kind: 'one_time' },
+              slot2: { id: rec.recurringId, start: rec.startDt.toISO(), end: rec.endDt.toISO(), kind: 'rec_occ', recurringId: rec.recurringId, instanceDate: rec.instanceDate }
+            });
+            continue;
+          }
+
+          // recurring occurrence vs recurring occurrence (aggregate)
+          if (a.kind === 'rec_occ' && b.kind === 'rec_occ') {
+            const ridA = String(a.recurringId);
+            const ridB = String(b.recurringId);
+            if (!ridA || !ridB || ridA === ridB) continue;
+            const pair = [ridA, ridB].sort();
+            const pairKey = `rec_rec|${pair[0]}|${pair[1]}`;
+            const existing = recRecMap.get(pairKey);
+            const candidateStart = (a.startDt < b.startDt ? a.startDt : b.startDt);
+            if (!existing || candidateStart.toMillis() < Date.parse(existing.slot1.start || existing.slot2.start || '')) {
+              recRecMap.set(pairKey, {
+                type: 'rec_rec',
+                key: pairKey,
+                slot1: { id: pair[0], start: a.startDt.toISO(), end: a.endDt.toISO(), kind: 'rec_occ', recurringId: pair[0], instanceDate: dateStr },
+                slot2: { id: pair[1], start: b.startDt.toISO(), end: b.endDt.toISO(), kind: 'rec_occ', recurringId: pair[1], instanceDate: dateStr }
+              });
+            }
+          }
+        }
+      }
+    });
+
+    const recRec = Array.from(recRecMap.values());
+    const all = oneOne.concat(oneRec, recRec);
+    all.sort((x, y) => {
+      const xs = Date.parse(x?.slot1?.start || '') || 0;
+      const ys = Date.parse(y?.slot1?.start || '') || 0;
+      return xs - ys;
+    });
+    return all;
+  }
+
+  function hasAvailabilityCollisionsInHorizon() {
+    return computeAvailabilityCollisionsInHorizon().length > 0;
+  }
+
+  window.getCalendarCollisions = function() {
+    return computeAvailabilityCollisionsInHorizon();
+  };
+
+  window.navigateToCollisionInCalendarByCollision = function(collision) {
+    if (!calendar || !(window.luxon && window.luxon.DateTime)) return;
+    try {
+      // Ensure Availability mode for resolution UX
+      setMode(true);
+      const startIso = collision?.slot1?.start || collision?.slot2?.start;
+      if (!startIso) return;
+      const dt = window.luxon.DateTime.fromISO(String(startIso)).setZone(timezone_variable);
+      if (!dt.isValid) return;
+
+      calendar.changeView('timeGridDay');
+      calendar.gotoDate(dt.toJSDate());
+      setTimeout(() => {
+        try {
+          calendar.scrollToTime(dt.toFormat('HH:mm:ss'));
+        } catch (e) {}
+        // Blink involved series to make recurrence obvious
+        if (collision?.type === 'rec_rec') {
+          if (collision?.slot1?.id) blinkRecurringSeries(String(collision.slot1.id));
+          if (collision?.slot2?.id) blinkRecurringSeries(String(collision.slot2.id));
+        } else if (collision?.type === 'one_rec') {
+          const rid = collision?.slot2?.recurringId || collision?.slot2?.id;
+          if (rid) blinkRecurringSeries(String(rid));
+        }
+      }, 150);
+    } catch (e) {
+      console.warn('[MentorCalendar] navigateToCollisionInCalendarByCollision failed:', e);
+    }
+  };
+
+  window.deleteAllCollidingAvailabilitySlots = async function(collisionList, opts) {
+    if (!calendar) return;
+    const collisions = Array.isArray(collisionList) ? collisionList : [];
+    const oneTimeIdsToDelete = new Set();
+    const recurringIdsToDelete = new Set();
+
+    collisions.forEach((c) => {
+      const type = c?.type;
+      const a = c?.slot1 || {};
+      const b = c?.slot2 || {};
+
+      if (type === 'one_one') {
+        if (a.id) oneTimeIdsToDelete.add(String(a.id));
+        if (b.id) oneTimeIdsToDelete.add(String(b.id));
+      } else if (type === 'one_rec') {
+        // delete only the one-time slot
+        if (a.kind === 'one_time' && a.id) oneTimeIdsToDelete.add(String(a.id));
+        else if (b.kind === 'one_time' && b.id) oneTimeIdsToDelete.add(String(b.id));
+      } else if (type === 'rec_rec') {
+        if (a.id) recurringIdsToDelete.add(String(a.id));
+        if (b.id) recurringIdsToDelete.add(String(b.id));
+      }
+    });
+
+    // Delete one-time slots (events)
+    oneTimeIdsToDelete.forEach((id) => {
+      const ev = calendar.getEventById(id);
+      if (ev) ev.remove();
+      try {
+        if (window.MentorCalendarRecurrenceSelections) delete window.MentorCalendarRecurrenceSelections[id];
+      } catch (e) {}
+    });
+
+    // Delete recurring series completely (both rules, plus rendered instances)
+    recurringIdsToDelete.forEach((rid) => {
+      const existing = recurringAvailabilityRules.get(rid);
+      if (existing) deletedRecurringRules.set(rid, existing);
+      recurringAvailabilityRules.delete(rid);
+      try {
+        if (window.MentorCalendarRecurrenceSelections) delete window.MentorCalendarRecurrenceSelections[rid];
+      } catch (e) {}
+      // Remove any rendered instances in current view
+      calendar.getEvents().forEach((ev) => {
+        if (ev.extendedProps?.recurringId === rid || String(ev.id || '').startsWith(rid + '__')) {
+          ev.remove();
+        }
+      });
+    });
+
+    if (oneTimeIdsToDelete.size > 0 || recurringIdsToDelete.size > 0) {
+      markDirty('availability');
+      renderRecurringInstancesForCurrentView();
+      recomputeCollisions();
+      // Persist immediately (matches old "delete all" behavior)
+      await saveAvailabilityToBackend();
+    }
+  };
+
   async function saveAvailabilityToBackend() {
     if (!calendar) return;
+
+    // Block save if there are availability collisions in horizon
+    const collisions = computeAvailabilityCollisionsInHorizon();
+    if (collisions.length > 0) {
+      if (typeof window.openCollisionResolutionPopup === 'function') {
+        window.openCollisionResolutionPopup(false);
+      }
+      if (typeof showNotification === 'function') {
+        showNotification('Please resolve collisions before saving.', 'warning');
+      }
+      return;
+    }
+
     setSaveButtonLoading(true);
 
     try {
@@ -2055,6 +2336,26 @@
     }, 50);
   }
 
+  // Auto-open (used for session-length-change collision recovery flow)
+  try {
+    const params = new URLSearchParams(window.location.search || '');
+    if (params.get('open_calendar') === 'true') {
+      openedFromSessionLengthChange = true;
+      // Ensure Availability mode when opening for collision resolution
+      const trigger = document.querySelector('[data-open-mentor-calendar]') || null;
+      if (trigger && trigger.dataset) trigger.dataset.mentorCalendarInitialMode = 'availability';
+      open(trigger);
+      // Once events load, show collision popup if collisions exist
+      setTimeout(() => {
+        try {
+          if (hasAvailabilityCollisionsInHorizon() && typeof window.openCollisionResolutionPopup === 'function') {
+            window.openCollisionResolutionPopup(true);
+          }
+        } catch (e) {}
+      }, 1200);
+    }
+  } catch (e) {}
+
   function setUnsavedChangesVisible(isVisible) {
     if (!unsavedChangesOverlay) return;
     unsavedChangesOverlay.classList.toggle('is-visible', !!isVisible);
@@ -2106,6 +2407,15 @@
   }
 
   function attemptClose() {
+    // If session length increased and DB now contains collisions, we should not allow closing
+    // without addressing collisions (user can still choose "Delete all colliding slots").
+    if (openedFromSessionLengthChange && hasAvailabilityCollisionsInHorizon()) {
+      if (typeof window.openCollisionResolutionPopup === 'function') {
+        window.openCollisionResolutionPopup(true); // locked popup behavior handled by the popup itself
+      }
+      return;
+    }
+
     // If there are unsaved changes, ask for confirmation first
     if (hasUnsavedCalendarChanges()) {
       setUnsavedChangesVisible(true);

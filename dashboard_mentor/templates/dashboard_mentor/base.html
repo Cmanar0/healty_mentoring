@@ -1291,31 +1291,24 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(data => {
           if (data.success && data.has_collisions) {
             if (isOnMySessionsPage) {
-              // We're already on my_sessions page - open calendar and collision popups directly
-              // Wait for calendar popup to be available
+              // We're already on my_sessions page - open new calendar and collision popups directly
               setTimeout(() => {
-                // Check if calendar popup functions are available
-                if (typeof window.openOverlay === 'function') {
-                  // Mark as opened from session length change to prevent closing
-                  if (typeof window.setOpenedFromSessionLengthChange === 'function') {
-                    window.setOpenedFromSessionLengthChange(true);
-                  }
-                  
-                  // Switch to availability mode first
-                  const toggleBtn = document.getElementById('availabilityCalendarToggle');
-                  if (toggleBtn) {
-                    toggleBtn.classList.add('active');
-                  }
-                  
-                  // Open the calendar overlay
-                  window.openOverlay();
-                  
-                  // After calendar opens, check for collisions and open collision popup
+                if (typeof window.setOpenedFromSessionLengthChange === 'function') {
+                  window.setOpenedFromSessionLengthChange(true);
+                }
+
+                if (window.MentorCalendar && typeof window.MentorCalendar.open === 'function') {
+                  // Open in Availability mode
+                  const trigger = document.querySelector('[data-open-mentor-calendar]') || null;
+                  if (trigger && trigger.dataset) trigger.dataset.mentorCalendarInitialMode = 'availability';
+                  window.MentorCalendar.open(trigger);
+
+                  // After calendar opens, open collision popup in locked mode
                   setTimeout(() => {
                     if (typeof window.openCollisionResolutionPopup === 'function') {
-                      window.openCollisionResolutionPopup(true); // true = from session length change
+                      window.openCollisionResolutionPopup(true);
                     }
-                  }, 1500); // Give calendar time to load slots
+                  }, 1500);
                 } else {
                   // Calendar not loaded yet, use URL parameter approach
                   if (!window.location.search.includes('open_calendar=true')) {

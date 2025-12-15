@@ -46,7 +46,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 4000;
+  /* Must be above mentor calendar overlay (z-index: 9999) */
+  z-index: 30000;
   opacity: 0;
   visibility: hidden;
   transition: opacity 0.3s ease, visibility 0.3s ease;
@@ -81,7 +82,7 @@
   flex-direction: column;
   transform: scale(0.95);
   transition: transform 0.3s ease;
-  z-index: 4001;
+  z-index: 30001;
 }
 
 .collision-resolution-popup.is-visible .collision-resolution-content {
@@ -296,6 +297,7 @@
   let collisions = [];
   let isSessionLengthChangeMode = false;
   let onResolveCallback = null;
+  let lastCollisionFingerprint = '';
   
   // Function to get all collisions from calendar
   function getAllCollisions() {
@@ -346,6 +348,18 @@
   // Render collisions
   function renderCollisions() {
     collisions = getAllCollisions();
+
+    // Fingerprint collisions to detect changes even when count stays same
+    try {
+      lastCollisionFingerprint = JSON.stringify(collisions.map((c) => {
+        const a = c?.slot1 || {};
+        const b = c?.slot2 || {};
+        const key = c?.key || c?.type || '';
+        return [key, a.id || '', a.start || '', b.id || '', b.start || ''].join('|');
+      }));
+    } catch (e) {
+      lastCollisionFingerprint = String(collisions.length);
+    }
     
     if (collisions.length === 0) {
       collisionItems.innerHTML = '<div class="collision-items-empty">No collisions found.</div>';
@@ -360,7 +374,7 @@
     collisionItems.innerHTML = collisions.map((collision, index) => {
       const formatted = formatCollision(collision, index);
       return `
-        <div class="collision-item" data-slot1-id="${formatted.slot1Id}" data-slot2-id="${formatted.slot2Id}">
+        <div class="collision-item" data-collision-index="${index}" data-slot1-id="${formatted.slot1Id}" data-slot2-id="${formatted.slot2Id}">
           <span class="collision-item-number">${formatted.index}.</span>
           <div class="collision-item-content">
             <div class="collision-slot-info">
@@ -380,6 +394,17 @@
     // Add click handlers to collision items
     collisionItems.querySelectorAll('.collision-item').forEach(item => {
       item.addEventListener('click', function() {
+        const idxStr = this.dataset.collisionIndex;
+        const idx = idxStr ? Number(idxStr) : NaN;
+        const collision = Number.isFinite(idx) ? (collisions[idx] || null) : null;
+        // Prefer richer navigation (supports recurring/recurring summary rows)
+        if (collision && typeof window.navigateToCollisionInCalendarByCollision === 'function') {
+          closeCollisionPopup();
+          window.navigateToCollisionInCalendarByCollision(collision);
+          return;
+        }
+
+        // Backwards-compatible fallback: navigate by ids only
         const slot1Id = this.dataset.slot1Id;
         const slot2Id = this.dataset.slot2Id;
         navigateToCollision(slot1Id, slot2Id);
@@ -425,12 +450,25 @@
     
     collisionPollInterval = setInterval(() => {
       const newCollisions = getAllCollisions();
-      if (newCollisions.length !== collisions.length) {
+      let nextFingerprint = '';
+      try {
+        nextFingerprint = JSON.stringify(newCollisions.map((c) => {
+          const a = c?.slot1 || {};
+          const b = c?.slot2 || {};
+          const key = c?.key || c?.type || '';
+          return [key, a.id || '', a.start || '', b.id || '', b.start || ''].join('|');
+        }));
+      } catch (e) {
+        nextFingerprint = String(newCollisions.length);
+      }
+
+      if (nextFingerprint !== lastCollisionFingerprint) {
         renderCollisions();
-        // If all collisions resolved, close popup
-        if (newCollisions.length === 0 && !isSessionLengthChangeMode) {
-          closeCollisionPopup();
-        }
+      }
+
+      // If all collisions resolved, close popup (only in normal editing mode)
+      if (newCollisions.length === 0 && !isSessionLengthChangeMode) {
+        closeCollisionPopup();
       }
     }, 500);
   }
@@ -446,21 +484,26 @@
   async function deleteAllCollidingSlots() {
     if (collisions.length === 0) return;
     
-    // Collect all unique slot IDs
-    const slotIdsToDelete = new Set();
-    collisions.forEach(collision => {
-      slotIdsToDelete.add(collision.slot1.id);
-      slotIdsToDelete.add(collision.slot2.id);
-    });
-    
-    // Delete slots via calendar API
-    if (typeof window.deleteSlotsByIds === 'function') {
-      await window.deleteSlotsByIds(Array.from(slotIdsToDelete));
-    }
-    
-    // Save changes
-    if (typeof window.saveCalendarChanges === 'function') {
-      await window.saveCalendarChanges();
+    // New calendar hook (preferred): lets the calendar decide what "delete all" means.
+    if (typeof window.deleteAllCollidingAvailabilitySlots === 'function') {
+      await window.deleteAllCollidingAvailabilitySlots(collisions, { sessionLengthChangeMode: isSessionLengthChangeMode });
+    } else {
+      // Legacy behavior: Collect all unique slot IDs and delete them
+      const slotIdsToDelete = new Set();
+      collisions.forEach(collision => {
+        slotIdsToDelete.add(collision.slot1.id);
+        slotIdsToDelete.add(collision.slot2.id);
+      });
+      
+      // Delete slots via calendar API
+      if (typeof window.deleteSlotsByIds === 'function') {
+        await window.deleteSlotsByIds(Array.from(slotIdsToDelete));
+      }
+      
+      // Save changes
+      if (typeof window.saveCalendarChanges === 'function') {
+        await window.saveCalendarChanges();
+      }
     }
     
     // Close popup and calendar
