@@ -14,7 +14,7 @@
     
     <div class="collision-resolution-body">
       <p class="collision-resolution-description">
-        The following availability slots overlap. Please resolve these conflicts before continuing.
+        The following slots overlap (availability and/or sessions). Please resolve these conflicts before continuing.
       </p>
       
       <div class="collision-list-container" id="collisionListContainer">
@@ -32,7 +32,7 @@
         Cancel
       </button>
       <button class="collision-btn collision-btn-danger" id="collisionDeleteAllBtn">
-        Delete All Colliding Slots
+        Delete all colliding availability slots
       </button>
     </div>
   </div>
@@ -232,11 +232,12 @@
   padding: 20px 24px;
   border-top: 1px solid #e5e7eb;
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
   gap: 12px;
 }
 
 .collision-btn {
+  flex: 1 1 0%;
   padding: 10px 20px;
   border: none;
   border-radius: 8px;
@@ -244,6 +245,14 @@
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
+}
+
+/* Footer button proportions: Cancel = 1/3, Delete = 2/3 */
+#collisionCancelBtn {
+  flex: 1 1 0%;
+}
+#collisionDeleteAllBtn {
+  flex: 2 1 0%;
 }
 
 .collision-btn-secondary {
@@ -367,8 +376,10 @@
       deleteAllBtn.disabled = true;
       return;
     }
-    
-    deleteAllBtn.disabled = false;
+
+    // Delete button should only be enabled when there is at least one collision that includes availability.
+    const canDeleteAvailability = collisions.some((c) => !!c && c.deletableAvailability !== false && c.type !== 'sess_sess');
+    deleteAllBtn.disabled = !canDeleteAvailability;
     collisionCount.textContent = `${collisions.length} collision${collisions.length !== 1 ? 's' : ''}`;
     
     collisionItems.innerHTML = collisions.map((collision, index) => {

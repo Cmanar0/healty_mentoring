@@ -607,6 +607,7 @@
   const sessionSettingsApplyBtn = document.getElementById('sessionSettingsApplyBtn');
   const scheduleSessionOverlay = document.getElementById('mentorScheduleSessionOverlay');
   const scheduleSessionEmailInput = document.getElementById('scheduleSessionEmailInput');
+  const scheduleSessionEmailSuggestionsEl = document.getElementById('scheduleSessionEmailSuggestions');
   const scheduleSessionSendBtn = document.getElementById('scheduleSessionSendBtn');
   const unsavedChangesOverlay = document.getElementById('mentorCalendarUnsavedChangesOverlay');
   const unsavedChangesDiscardBtn = document.getElementById('unsavedChangesDiscardBtn');
@@ -947,6 +948,11 @@
   let __sessionSettingsOriginal = null;
   let __clientSuggestions = [];
 
+  function isValidEmail(email) {
+    const v = String(email || '').trim();
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+  }
+
   function setSessionSettingsApplyEnabled(isEnabled) {
     if (!sessionSettingsApplyBtn) return;
     sessionSettingsApplyBtn.disabled = !isEnabled;
@@ -1044,6 +1050,7 @@
         e.stopPropagation();
         const email = el.getAttribute('data-email') || '';
         if (sessionSettingsClientEmailInput) sessionSettingsClientEmailInput.value = email;
+        if (sessionSettingsInviteBtn) sessionSettingsInviteBtn.disabled = !isValidEmail(email);
         sessionSettingsClientSuggestionsEl.hidden = true;
         sessionSettingsClientSuggestionsEl.innerHTML = '';
       });
@@ -1072,6 +1079,9 @@
       }
       if (sessionSettingsClientEmailInput) {
         sessionSettingsClientEmailInput.value = fcEvent.extendedProps?.clientEmail ? String(fcEvent.extendedProps.clientEmail) : '';
+      }
+      if (sessionSettingsInviteBtn) {
+        sessionSettingsInviteBtn.disabled = !isValidEmail(sessionSettingsClientEmailInput?.value || '');
       }
       // Let derived UI decide whether to show mismatch/override messages
     } catch (e) {
@@ -1108,7 +1118,9 @@
     if (sessionSettingsClientEmailInput && sessionSettingsClientSuggestionsEl && !sessionSettingsClientEmailInput.__mentorBound) {
       sessionSettingsClientEmailInput.__mentorBound = true;
       sessionSettingsClientEmailInput.addEventListener('input', async () => {
-        const q = String(sessionSettingsClientEmailInput.value || '').toLowerCase().trim();
+        const raw = String(sessionSettingsClientEmailInput.value || '');
+        const q = raw.toLowerCase().trim();
+        if (sessionSettingsInviteBtn) sessionSettingsInviteBtn.disabled = !isValidEmail(raw);
         if (!q) return renderClientSuggestionsList([]);
         const all = await ensureClientSuggestionsLoaded();
         const filtered = all.filter(c => (`${c.first_name} ${c.last_name} ${c.email}`.toLowerCase()).includes(q));
@@ -1129,7 +1141,7 @@
       sessionSettingsInviteBtn.addEventListener('click', async (e) => {
         e.preventDefault();
         const email = (sessionSettingsClientEmailInput?.value || '').trim();
-        if (!email) return;
+        if (!isValidEmail(email)) return;
         const csrf = getCookie('csrftoken');
         try {
           const res = await fetch(INVITE_CLIENT_URL, {
@@ -1220,6 +1232,11 @@
   function closeScheduleSessionPopup() {
     scheduleSessionEventId = null;
     if (scheduleSessionEmailInput) scheduleSessionEmailInput.value = '';
+    if (scheduleSessionEmailSuggestionsEl) {
+      scheduleSessionEmailSuggestionsEl.hidden = true;
+      scheduleSessionEmailSuggestionsEl.innerHTML = '';
+    }
+    if (scheduleSessionSendBtn) scheduleSessionSendBtn.disabled = true;
     setScheduleSessionVisible(false);
   }
 
@@ -1231,11 +1248,62 @@
       scheduleSessionEmailInput.focus();
       scheduleSessionEmailInput.select?.();
     }
+    if (scheduleSessionSendBtn) scheduleSessionSendBtn.disabled = !isValidEmail(scheduleSessionEmailInput?.value || '');
+
+    // Suggestions + validation
+    if (scheduleSessionEmailInput && scheduleSessionEmailSuggestionsEl && !scheduleSessionEmailInput.__mentorBound) {
+      scheduleSessionEmailInput.__mentorBound = true;
+      scheduleSessionEmailInput.addEventListener('input', async () => {
+        const raw = String(scheduleSessionEmailInput.value || '');
+        const q = raw.toLowerCase().trim();
+        if (scheduleSessionSendBtn) scheduleSessionSendBtn.disabled = !isValidEmail(raw);
+
+        if (!q) {
+          scheduleSessionEmailSuggestionsEl.hidden = true;
+          scheduleSessionEmailSuggestionsEl.innerHTML = '';
+          return;
+        }
+
+        const all = await ensureClientSuggestionsLoaded();
+        const filtered = all.filter(c => (`${c.first_name} ${c.last_name} ${c.email}`.toLowerCase()).includes(q));
+
+        scheduleSessionEmailSuggestionsEl.hidden = filtered.length === 0;
+        scheduleSessionEmailSuggestionsEl.innerHTML = filtered.slice(0, 8).map((c) => {
+          const name = `${c.first_name} ${c.last_name}`.trim() || c.email;
+          return `
+            <div class="schedule-session-suggestion-item" data-email="${c.email}">
+              <div class="schedule-session-suggestion-name">${name}</div>
+              <div class="schedule-session-suggestion-email">${c.email}</div>
+            </div>
+          `;
+        }).join('');
+
+        scheduleSessionEmailSuggestionsEl.querySelectorAll('[data-email]').forEach(el => {
+          el.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const email = el.getAttribute('data-email') || '';
+            scheduleSessionEmailInput.value = email;
+            scheduleSessionEmailSuggestionsEl.hidden = true;
+            scheduleSessionEmailSuggestionsEl.innerHTML = '';
+            if (scheduleSessionSendBtn) scheduleSessionSendBtn.disabled = !isValidEmail(email);
+          });
+        });
+      });
+
+      document.addEventListener('click', (e) => {
+        const target = e.target;
+        if (!(target instanceof Element)) return;
+        if (target.closest('#scheduleSessionEmailSuggestions')) return;
+        if (target.closest('#scheduleSessionEmailInput')) return;
+        if (scheduleSessionEmailSuggestionsEl) scheduleSessionEmailSuggestionsEl.hidden = true;
+      }, { capture: true });
+    }
   }
 
   function sendScheduleSessionEmail() {
     const email = (scheduleSessionEmailInput?.value || '').trim();
-    if (!email) {
+    if (!isValidEmail(email)) {
       if (typeof showNotification === 'function') showNotification('Please enter an email.', 'error');
       else alert('Please enter an email.');
       return;
@@ -1667,7 +1735,7 @@
     }
   }
 
-  // --- Collision detection (availability only) ---
+  // --- Collision detection (availability + sessions) ---
   const COLLISION_HORIZON_DAYS = 90;
   let openedFromSessionLengthChange = false;
 
@@ -1678,7 +1746,7 @@
     return !!openedFromSessionLengthChange;
   };
 
-  function computeAvailabilityCollisionsInHorizon() {
+  function computeCalendarCollisionsInHorizon() {
     if (!(window.luxon && window.luxon.DateTime) || !calendar) return [];
 
     const DateTime = window.luxon.DateTime;
@@ -1707,6 +1775,26 @@
       const dateStr = day.toISODate();
       ensureBucket(dateStr).push({
         kind: 'one_time',
+        id: String(ev.id || ''),
+        startDt,
+        endDt
+      });
+    });
+
+    // Session events (one-time) already in the calendar
+    calendar.getEvents().forEach((ev) => {
+      if (ev.extendedProps?.slotMode !== 'session') return;
+      if (!ev.start || !ev.end) return;
+
+      const startDt = DateTime.fromJSDate(ev.start).setZone(timezone_variable);
+      const endDt = DateTime.fromJSDate(ev.end).setZone(timezone_variable);
+      if (!startDt.isValid || !endDt.isValid || endDt <= startDt) return;
+
+      const day = startDt.startOf('day');
+      if (day < todayLocal || day >= endLocal) return;
+      const dateStr = day.toISODate();
+      ensureBucket(dateStr).push({
+        kind: 'session',
         id: String(ev.id || ''),
         startDt,
         endDt
@@ -1769,6 +1857,9 @@
 
     const oneOne = [];
     const oneRec = [];
+    const sessSess = [];
+    const sessOne = [];
+    const sessRec = [];
     const recRecMap = new Map(); // pairKey -> collision
 
     occurrencesByDate.forEach((list, dateStr) => {
@@ -1781,11 +1872,49 @@
           const b = sorted[j];
           if (!overlaps(a, b)) continue;
 
+          // session vs session
+          if (a.kind === 'session' && b.kind === 'session') {
+            const ids = [a.id, b.id].sort();
+            sessSess.push({
+              type: 'sess_sess',
+              deletableAvailability: false,
+              key: `sess_sess|${dateStr}|${ids[0]}|${ids[1]}`,
+              slot1: { id: a.id, start: a.startDt.toISO(), end: a.endDt.toISO(), kind: 'session' },
+              slot2: { id: b.id, start: b.startDt.toISO(), end: b.endDt.toISO(), kind: 'session' }
+            });
+            continue;
+          }
+
+          // session vs availability (one-time or recurring occurrence)
+          if ((a.kind === 'session' && (b.kind === 'one_time' || b.kind === 'rec_occ')) || (b.kind === 'session' && (a.kind === 'one_time' || a.kind === 'rec_occ'))) {
+            const sess = (a.kind === 'session') ? a : b;
+            const avail = (a.kind === 'session') ? b : a;
+            if (avail.kind === 'one_time') {
+              sessOne.push({
+                type: 'sess_one',
+                deletableAvailability: true,
+                key: `sess_one|${dateStr}|${sess.id}|${avail.id}`,
+                slot1: { id: sess.id, start: sess.startDt.toISO(), end: sess.endDt.toISO(), kind: 'session' },
+                slot2: { id: avail.id, start: avail.startDt.toISO(), end: avail.endDt.toISO(), kind: 'one_time' }
+              });
+            } else if (avail.kind === 'rec_occ') {
+              sessRec.push({
+                type: 'sess_rec',
+                deletableAvailability: true,
+                key: `sess_rec|${dateStr}|${sess.id}|${avail.recurringId}`,
+                slot1: { id: sess.id, start: sess.startDt.toISO(), end: sess.endDt.toISO(), kind: 'session' },
+                slot2: { id: String(avail.recurringId), start: avail.startDt.toISO(), end: avail.endDt.toISO(), kind: 'rec_occ', recurringId: String(avail.recurringId), instanceDate: avail.instanceDate }
+              });
+            }
+            continue;
+          }
+
           // one-time vs one-time
           if (a.kind === 'one_time' && b.kind === 'one_time') {
             const ids = [a.id, b.id].sort();
             oneOne.push({
               type: 'one_one',
+              deletableAvailability: true,
               key: `one_one|${dateStr}|${ids[0]}|${ids[1]}`,
               slot1: { id: a.id, start: a.startDt.toISO(), end: a.endDt.toISO(), kind: 'one_time' },
               slot2: { id: b.id, start: b.startDt.toISO(), end: b.endDt.toISO(), kind: 'one_time' }
@@ -1799,6 +1928,7 @@
             const rec = (a.kind === 'rec_occ') ? a : b;
             oneRec.push({
               type: 'one_rec',
+              deletableAvailability: true,
               key: `one_rec|${dateStr}|${one.id}|${rec.recurringId}`,
               slot1: { id: one.id, start: one.startDt.toISO(), end: one.endDt.toISO(), kind: 'one_time' },
               slot2: { id: rec.recurringId, start: rec.startDt.toISO(), end: rec.endDt.toISO(), kind: 'rec_occ', recurringId: rec.recurringId, instanceDate: rec.instanceDate }
@@ -1818,6 +1948,7 @@
             if (!existing || candidateStart.toMillis() < Date.parse(existing.slot1.start || existing.slot2.start || '')) {
               recRecMap.set(pairKey, {
                 type: 'rec_rec',
+                deletableAvailability: true,
                 key: pairKey,
                 slot1: { id: pair[0], start: a.startDt.toISO(), end: a.endDt.toISO(), kind: 'rec_occ', recurringId: pair[0], instanceDate: dateStr },
                 slot2: { id: pair[1], start: b.startDt.toISO(), end: b.endDt.toISO(), kind: 'rec_occ', recurringId: pair[1], instanceDate: dateStr }
@@ -1829,7 +1960,7 @@
     });
 
     const recRec = Array.from(recRecMap.values());
-    const all = oneOne.concat(oneRec, recRec);
+    const all = oneOne.concat(oneRec, recRec, sessOne, sessRec, sessSess);
     all.sort((x, y) => {
       const xs = Date.parse(x?.slot1?.start || '') || 0;
       const ys = Date.parse(y?.slot1?.start || '') || 0;
@@ -1838,19 +1969,20 @@
     return all;
   }
 
-  function hasAvailabilityCollisionsInHorizon() {
-    return computeAvailabilityCollisionsInHorizon().length > 0;
+  function hasCalendarCollisionsInHorizon() {
+    return computeCalendarCollisionsInHorizon().length > 0;
   }
 
   window.getCalendarCollisions = function() {
-    return computeAvailabilityCollisionsInHorizon();
+    return computeCalendarCollisionsInHorizon();
   };
 
   window.navigateToCollisionInCalendarByCollision = function(collision) {
     if (!calendar || !(window.luxon && window.luxon.DateTime)) return;
     try {
-      // Ensure Availability mode for resolution UX
-      setMode(true);
+      // Prefer Sessions mode if any collision involves a session
+      const involvesSession = (collision?.slot1?.kind === 'session') || (collision?.slot2?.kind === 'session');
+      setMode(!involvesSession);
       const startIso = collision?.slot1?.start || collision?.slot2?.start;
       if (!startIso) return;
       const dt = window.luxon.DateTime.fromISO(String(startIso)).setZone(timezone_variable);
@@ -1897,6 +2029,16 @@
       } else if (type === 'rec_rec') {
         if (a.id) recurringIdsToDelete.add(String(a.id));
         if (b.id) recurringIdsToDelete.add(String(b.id));
+      } else if (type === 'sess_one') {
+        // delete the availability one-time slot (never delete sessions)
+        if (a.kind === 'one_time' && a.id) oneTimeIdsToDelete.add(String(a.id));
+        if (b.kind === 'one_time' && b.id) oneTimeIdsToDelete.add(String(b.id));
+      } else if (type === 'sess_rec') {
+        // delete the availability recurring series (never delete sessions)
+        const rid = a.kind === 'rec_occ' ? (a.recurringId || a.id) : (b.recurringId || b.id);
+        if (rid) recurringIdsToDelete.add(String(rid));
+      } else if (type === 'sess_sess') {
+        // no-op (sessions must be resolved manually)
       }
     });
 
@@ -1935,13 +2077,14 @@
   async function saveAvailabilityToBackend() {
     if (!calendar) return;
 
-    // Block save if there are availability collisions in horizon
-    const collisions = computeAvailabilityCollisionsInHorizon();
+    // Block save if there are any collisions (availability and/or sessions) in horizon
+    const collisions = computeCalendarCollisionsInHorizon();
     if (collisions.length > 0) {
-      if (typeof window.openCollisionResolutionPopup === 'function') {
+      const canOpenPopup = (typeof window.openCollisionResolutionPopup === 'function');
+      if (canOpenPopup) {
         window.openCollisionResolutionPopup(false);
-      }
-      if (typeof showNotification === 'function') {
+        // Don't show a toast here—it's noisy and can linger even after user resolves collisions via the popup.
+      } else if (typeof showNotification === 'function') {
         showNotification('Please resolve collisions before saving.', 'warning');
       }
       return;
@@ -2784,7 +2927,7 @@
       // Once events load, show collision popup if collisions exist
       setTimeout(() => {
         try {
-          if (hasAvailabilityCollisionsInHorizon() && typeof window.openCollisionResolutionPopup === 'function') {
+          if (hasCalendarCollisionsInHorizon() && typeof window.openCollisionResolutionPopup === 'function') {
             window.openCollisionResolutionPopup(true);
           } else {
             // No collisions anymore; exit locked mode.
@@ -2856,7 +2999,7 @@
   function attemptClose() {
     // If session length increased and DB now contains collisions, we should not allow closing
     // without addressing collisions (user can still choose "Delete all colliding slots").
-    if (openedFromSessionLengthChange && hasAvailabilityCollisionsInHorizon()) {
+    if (openedFromSessionLengthChange && hasCalendarCollisionsInHorizon()) {
       if (typeof window.openCollisionResolutionPopup === 'function') {
         window.openCollisionResolutionPopup(true); // locked popup behavior handled by the popup itself
       }

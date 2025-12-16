@@ -272,9 +272,10 @@ def expand_recurring_slot_to_dates(recurring_slot, start_date, end_date):
     
     return expanded
 
-def check_slot_collisions(one_time_slots, recurring_slots, new_session_length, mentor_timezone_str: str = None):
+def check_slot_collisions(one_time_slots, recurring_slots, new_session_length, mentor_timezone_str: str = None, sessions=None):
     """
-    Check if updating slot lengths to new_session_length would create collisions.
+    Check if updating availability slot lengths to new_session_length would create collisions
+    against other availability slots and existing sessions, and also detect session-session collisions.
     Returns True if collisions exist, False otherwise.
     """
     from datetime import datetime as dt
@@ -321,7 +322,7 @@ def check_slot_collisions(one_time_slots, recurring_slots, new_session_length, m
     # Build a map of date -> list of time ranges for that date
     date_slots = {}
     
-    # Add one-time slots
+    # Add one-time availability slots (with updated length)
     for slot in one_time_slots:
         try:
             start_dt = datetime.fromisoformat(slot['start'].replace('Z', '+00:00'))
@@ -353,7 +354,7 @@ def check_slot_collisions(one_time_slots, recurring_slots, new_session_length, m
             logger.warning(f'Error processing one-time slot: {e}')
             continue
     
-    # Expand and add recurring slots
+    # Expand and add recurring availability slots (with updated length)
     for recurring_slot in recurring_slots:
         expanded = expand_recurring_slot_to_dates(recurring_slot, min_date_obj, max_date_obj)
         for date_str, start_time_str, end_time_str in expanded:
@@ -383,6 +384,50 @@ def check_slot_collisions(one_time_slots, recurring_slots, new_session_length, m
                 logger = logging.getLogger(__name__)
                 logger.warning(f'Error processing expanded recurring slot: {e}')
                 continue
+
+    # Add sessions as fixed time ranges (do not change length)
+    try:
+        if sessions:
+            for s in sessions:
+                try:
+                    start_dt = getattr(s, 'start_datetime', None) or s.get('start_datetime')
+                    end_dt = getattr(s, 'end_datetime', None) or s.get('end_datetime')
+                    if not start_dt or not end_dt:
+                        continue
+                    # Parse ISO strings if needed
+                    if isinstance(start_dt, str):
+                        start_dt = datetime.fromisoformat(start_dt.replace('Z', '+00:00'))
+                    if isinstance(end_dt, str):
+                        end_dt = datetime.fromisoformat(end_dt.replace('Z', '+00:00'))
+                    if start_dt.tzinfo is None:
+                        start_dt = start_dt.replace(tzinfo=dt_timezone.utc)
+                    if end_dt.tzinfo is None:
+                        end_dt = end_dt.replace(tzinfo=dt_timezone.utc)
+                    if tzinfo:
+                        start_dt = start_dt.astimezone(tzinfo)
+                        end_dt = end_dt.astimezone(tzinfo)
+                    if end_dt <= start_dt:
+                        continue
+                    date_str = start_dt.date().isoformat()
+                    # Only consider sessions in the same window as availability checks
+                    try:
+                        date_obj = datetime.strptime(date_str, '%Y-%m-%d').date()
+                        if date_obj < min_date_obj or date_obj > max_date_obj:
+                            continue
+                    except Exception:
+                        pass
+                    if date_str not in date_slots:
+                        date_slots[date_str] = []
+                    date_slots[date_str].append({
+                        'start': start_dt.time(),
+                        'end': end_dt.time(),
+                        'type': 'session',
+                        'id': getattr(s, 'id', None) or s.get('id')
+                    })
+                except Exception:
+                    continue
+    except Exception:
+        pass
     
     # Check for collisions within each date
     for date_str, slots in date_slots.items():
@@ -451,7 +496,13 @@ def update_slots_for_session_length(mentor_profile, old_length, new_length):
     # If lengthening, check for collisions first
     elif new_length > old_length:
         mentor_tz = mentor_profile.selected_timezone or mentor_profile.time_zone or 'UTC'
-        has_collisions = check_slot_collisions(one_time_slots, recurring_slots, new_length, mentor_timezone_str=mentor_tz)
+        has_collisions = check_slot_collisions(
+            one_time_slots,
+            recurring_slots,
+            new_length,
+            mentor_timezone_str=mentor_tz,
+            sessions=list(mentor_profile.sessions.all())
+        )
         
         if not has_collisions:
             # No collisions, update safely
@@ -816,7 +867,13 @@ def profile(request):
             recurring_slots = list(profile.recurring_availability_slots or [])
         
         mentor_tz = profile.selected_timezone or profile.time_zone or 'UTC'
-        has_collisions_now = check_slot_collisions(one_time_slots, recurring_slots, profile.session_length, mentor_timezone_str=mentor_tz)
+        has_collisions_now = check_slot_collisions(
+            one_time_slots,
+            recurring_slots,
+            profile.session_length,
+            mentor_timezone_str=mentor_tz,
+            sessions=list(profile.sessions.all())
+        )
     
     return render(request, 'dashboard_mentor/profile.html', {
         'user': user,
@@ -1556,7 +1613,8 @@ def save_availability(request):
                     list(mentor_profile.one_time_slots or []),
                     list(mentor_profile.recurring_slots or []),
                     mentor_profile.session_length,
-                    mentor_timezone_str=mentor_tz
+                    mentor_timezone_str=mentor_tz,
+                    sessions=list(mentor_profile.sessions.all())
                 )
                 mentor_profile.collisions = bool(has_collisions_now)
         except Exception:
@@ -1707,7 +1765,8 @@ def check_availability_collisions(request):
                     list(mentor_profile.one_time_slots or []),
                     list(mentor_profile.recurring_slots or []),
                     mentor_profile.session_length,
-                    mentor_timezone_str=mentor_tz
+                    mentor_timezone_str=mentor_tz,
+                    sessions=list(mentor_profile.sessions.all())
                 )
                 if bool(recomputed) != bool(has_collisions):
                     mentor_profile.collisions = bool(recomputed)

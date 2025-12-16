@@ -11,15 +11,29 @@
 
     <div class="schedule-session-body">
       <label class="schedule-session-label" for="scheduleSessionEmailInput">Client email</label>
-      <input id="scheduleSessionEmailInput" class="schedule-session-input" type="email" placeholder="name@example.com" autocomplete="email" />
+      <div class="schedule-session-input-wrap">
+        <input
+          id="scheduleSessionEmailInput"
+          class="schedule-session-input"
+          type="text"
+          placeholder="Search client by name or email"
+          name="schedule_session_client_email"
+          autocomplete="new-password"
+          autocapitalize="off"
+          autocorrect="off"
+          spellcheck="false"
+          inputmode="email"
+        />
+        <div id="scheduleSessionEmailSuggestions" class="schedule-session-suggestions" hidden></div>
+      </div>
     </div>
 
     <footer class="schedule-session-footer">
       <button type="button" class="schedule-session-btn schedule-session-btn--secondary" data-schedule-session-close>
         Close
       </button>
-      <button type="button" class="schedule-session-btn schedule-session-btn--primary" id="scheduleSessionSendBtn">
-        Send
+      <button type="button" class="schedule-session-btn schedule-session-btn--success" id="scheduleSessionSendBtn" disabled>
+        Send Invitation
       </button>
     </footer>
   </div>
@@ -134,6 +148,10 @@
     font-weight: 700;
     cursor: pointer;
   }
+  .schedule-session-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
   .schedule-session-btn--secondary {
     background: #ffffff;
     color: #0f172a;
@@ -141,13 +159,51 @@
   .schedule-session-btn--secondary:hover {
     background: #f8fafc;
   }
-  .schedule-session-btn--primary {
-    background: #334156;
+  .schedule-session-btn--success {
+    background: #10b981;
     color: #ffffff;
-    border-color: #334156;
+    border-color: #10b981;
   }
-  .schedule-session-btn--primary:hover {
-    background: #25324a;
-    border-color: #25324a;
+  .schedule-session-btn--success:hover {
+    background: #059669;
+    border-color: #059669;
+  }
+
+  .schedule-session-input-wrap {
+    position: relative;
+  }
+  .schedule-session-suggestions {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: calc(100% + 6px);
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    box-shadow: 0 12px 30px rgba(0,0,0,0.12);
+    overflow: hidden;
+    z-index: 2;
+    max-height: 240px;
+    overflow-y: auto;
+  }
+  .schedule-session-suggestion-item {
+    padding: 10px 12px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .schedule-session-suggestion-item:hover {
+    background: #f8fafc;
+  }
+  .schedule-session-suggestion-name {
+    font-weight: 800;
+    color: #0f172a;
+    font-size: 0.9rem;
+  }
+  .schedule-session-suggestion-email {
+    color: #64748b;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-size: 0.82rem;
   }
 </style>

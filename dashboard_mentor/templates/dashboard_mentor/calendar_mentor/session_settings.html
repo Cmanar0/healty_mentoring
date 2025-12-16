@@ -57,11 +57,22 @@
       <section class="session-settings-section session-settings-section--assign" aria-label="Assign client">
         <div class="session-settings-assign-label">Invite a Client</div>
         <div class="session-settings-assign-field">
-          <input id="sessionSettingsClientEmail" class="session-settings-input" type="email" placeholder="Search client by name or email" autocomplete="off" />
+          <input
+            id="sessionSettingsClientEmail"
+            class="session-settings-input"
+            type="text"
+            placeholder="Search client by name or email"
+            name="client_search_email"
+            autocomplete="new-password"
+            autocapitalize="off"
+            autocorrect="off"
+            spellcheck="false"
+            inputmode="email"
+          />
           <div id="sessionSettingsClientSuggestions" class="session-settings-suggestions" hidden></div>
         </div>
-        <button type="button" class="session-settings-btn session-settings-btn--primary session-settings-invite-btn" id="sessionSettingsInviteBtn">
-          Invite Client
+        <button type="button" class="session-settings-btn session-settings-btn--success session-settings-invite-btn" id="sessionSettingsInviteBtn" disabled>
+          Send Invitation
         </button>
       </section>
     </div>
@@ -226,6 +237,15 @@
   .session-settings-btn--primary:hover {
     background: #25324a; /* darker hover */
     border-color: #25324a;
+  }
+  .session-settings-btn--success {
+    background: #10b981;
+    color: #ffffff;
+    border-color: #10b981;
+  }
+  .session-settings-btn--success:hover {
+    background: #059669;
+    border-color: #059669;
   }
   .session-settings-btn:disabled {
     opacity: 0.5;
