@@ -1,37 +1,86 @@
 {# Template used by the mentor calendar popup for rendering a "Session" slot #}
 <template id="mentorCalendarSessionSlotTemplate">
-  <div class="mentor-calendar-slot mentor-calendar-slot--session" data-slot-root>
-    <div class="mentor-calendar-slot-title">
-      Session
+  <div class="mentor-calendar-session-slot" data-slot-root>
+    <button type="button" class="mentor-calendar-session-slot-delete" aria-label="Delete session slot" data-slot-delete>
+      ×
+    </button>
+    <div class="mentor-calendar-session-slot-content">
+      <div class="mentor-calendar-session-slot-title">
+        Session
+      </div>
+      <div class="mentor-calendar-session-slot-time" data-slot-time></div>
     </div>
-    <div class="mentor-calendar-slot-time" data-slot-time></div>
   </div>
 </template>
 
 <style>
-  /* Session slot styles (kept with the template for separation of concerns) */
-  .mentor-calendar-slot {
+  /* Session slot styles (scoped to avoid affecting availability slot CSS) */
+  .mentor-calendar-session-slot {
+    position: relative;
     display: flex;
     flex-direction: column;
     gap: 2px;
-    padding: 6px 8px;
     border-radius: var(--mentor-calendar-slot-radius, 10px);
     color: #ffffff;
     overflow: hidden;
     box-sizing: border-box;
   }
-  .mentor-calendar-slot-title {
+
+  .mentor-calendar-session-slot-content {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
+    gap: 2px;
+    padding: 6px 8px;
+  }
+
+  .mentor-calendar-session-slot-title {
     font-weight: 700;
     font-size: 0.85rem;
     line-height: 1.1;
   }
-  .mentor-calendar-slot-time {
+  .mentor-calendar-session-slot-time {
     font-weight: 600;
     font-size: 0.8rem;
     opacity: 0.95;
   }
-  .mentor-calendar-slot--session {
-    background: rgba(16, 185, 129, 0); /* green */
+
+  .mentor-calendar-session-slot-delete {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 20px;
+    height: 20px;
+    border: none;
+    border-radius: 6px;
+    background: rgba(15, 23, 42, 0.2);
+    color: inherit;
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .mentor-calendar-session-slot-delete:hover {
+    background: rgba(15, 23, 42, 0.35);
+  }
+
+  /* When in Availability mode, session slots should not be deletable */
+  .mentor-calendar-root.is-mode-availability .mentor-calendar-session-slot-delete {
+    display: none;
+  }
+
+  /* When in Availability mode, session text should not be white */
+  .mentor-calendar-root.is-mode-availability .mentor-calendar-session-slot {
+    color: #94a3b8 !important;
+  }
+
+  /* Cancelled sessions: white background with dark text */
+  .mentor-calendar-session-slot[data-session-status="cancelled"] {
+    color: #0f172a;
   }
 </style>
 
@@ -45,6 +94,25 @@ window.MentorCalendarSlotComponents.SessionSlot = {
     el.dataset.isAvailabilityMode = String(!!props?.isAvailabilityMode);
     el.dataset.timezone = props?.timezone || '';
     el.dataset.eventId = props?.eventId || '';
+    el.dataset.sessionStatus = props?.status || 'draft';
+
+    const deleteBtn = el.querySelector('[data-slot-delete]');
+    if (deleteBtn) {
+      deleteBtn.addEventListener('pointerdown', (e) => e.stopPropagation());
+      deleteBtn.addEventListener('mousedown', (e) => e.stopPropagation());
+      deleteBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        // Do not allow deleting session slots while in Availability mode
+        try {
+          const root = document.getElementById('mentorCalendarRoot');
+          if (root && root.classList.contains('is-mode-availability')) return;
+        } catch (err) {}
+        const eventId = props?.eventId;
+        if (!eventId) return;
+        window.MentorCalendarInternal?.removeEventById?.(eventId);
+      });
+    }
     // Keep this log for now (per your request)
     console.log('[SessionSlot] mount props:', props);
   }

@@ -588,6 +588,7 @@
   const availabilitySettingsDateInput = document.getElementById('availabilitySettingsDate');
   const availabilitySettingsTimeInput = document.getElementById('availabilitySettingsTime');
   const availabilitySettingsDurationMinutesEl = document.getElementById('availabilitySettingsDurationMinutes');
+  const availabilitySettingsRecurrenceSelect = document.getElementById('availabilitySettingsRecurrence');
   const availabilitySettingsSaveBtn = document.getElementById('availabilitySettingsSaveBtn');
   const availabilitySwitchOverlay = document.getElementById('mentorAvailabilitySwitchModeOverlay');
   const availabilitySwitchToAvailabilityBtn = document.getElementById('availabilitySwitchToAvailabilityBtn');
@@ -694,6 +695,24 @@
       console.warn('[MentorCalendar] Could not prefill availability settings:', e);
     }
 
+    // Prefill recurrence
+    try {
+      if (availabilitySettingsRecurrenceSelect) {
+        let value = 'none';
+        if (fcEvent.extendedProps?.isRecurringInstance && fcEvent.extendedProps?.recurringId) {
+          const rid = String(fcEvent.extendedProps.recurringId);
+          const rule = recurringAvailabilityRules.get(rid);
+          if (rule && rule.type) value = String(rule.type);
+        } else {
+          const key = String(fcEvent.id || '');
+          value = (window.MentorCalendarRecurrenceSelections && window.MentorCalendarRecurrenceSelections[key])
+            ? String(window.MentorCalendarRecurrenceSelections[key])
+            : 'none';
+        }
+        availabilitySettingsRecurrenceSelect.value = value;
+      }
+    } catch (e) {}
+
     setAvailabilitySettingsVisible(true);
   }
 
@@ -735,11 +754,47 @@
       return;
     }
 
+    const selectedRecurrence = availabilitySettingsRecurrenceSelect
+      ? String(availabilitySettingsRecurrenceSelect.value || 'none')
+      : 'none';
+
     // If this is a recurring instance, update the recurring rule (not just this single rendered instance)
     if (ev.extendedProps?.isRecurringInstance && ev.extendedProps?.recurringId) {
       const recurringId = ev.extendedProps.recurringId;
       const rule = recurringAvailabilityRules.get(recurringId);
       if (rule) {
+        // Recurrence change (including converting to one-time)
+        const nextType = (selectedRecurrence === 'daily' || selectedRecurrence === 'weekly' || selectedRecurrence === 'monthly')
+          ? selectedRecurrence
+          : 'none';
+
+        if (nextType === 'none') {
+          // Convert series -> one-time for this (edited) occurrence and remove series
+          const startIso = dt.toJSDate().toISOString();
+          const endIso = dt.plus({ minutes: durationMinutes }).toJSDate().toISOString();
+          const newId = String(recurringId); // preserve id across conversion (matches dropdown behavior)
+          recurringAvailabilityRules.delete(recurringId);
+          clearRecurringInstanceEvents();
+          calendar.addEvent({
+            id: newId,
+            start: startIso,
+            end: endIso,
+            allDay: false,
+            backgroundColor: '#3b82f6',
+            borderColor: '#2563eb',
+            textColor: '#ffffff',
+            classNames: ['event-type-availability'],
+            editable: true,
+            extendedProps: { slotMode: 'availability', type: 'availability_slot', recurringSlotId: recurringId }
+          });
+          markDirty('availability');
+          renderRecurringInstancesForCurrentView();
+          recomputeCollisions();
+          closeAvailabilitySettings();
+          return;
+        }
+
+        rule.type = nextType;
         rule.start_date = dateStr;
         rule.start_time = timeStr;
         rule.end_time = dt.plus({ minutes: durationMinutes }).toFormat('HH:mm');
@@ -751,8 +806,12 @@
         } else if (rule.type === 'monthly') {
           rule.day_of_month = dt.day;
           rule.weekdays = [];
+        } else if (rule.type === 'daily') {
+          rule.weekdays = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
+          rule.day_of_month = null;
         }
         recurringAvailabilityRules.set(recurringId, rule);
+        if (window.MentorCalendarRecurrenceSelections) window.MentorCalendarRecurrenceSelections[recurringId] = rule.type;
         markDirty('availability');
         renderRecurringInstancesForCurrentView();
         recomputeCollisions();
@@ -765,8 +824,47 @@
     const startJs = dt.toJSDate();
     const endJs = dt.plus({ minutes: durationMinutes }).toJSDate();
 
+    // If recurrence changed from one-time -> recurring, convert using the same rules as the dropdown.
+    if (selectedRecurrence !== 'none') {
+      const nextType = (selectedRecurrence === 'daily' || selectedRecurrence === 'weekly' || selectedRecurrence === 'monthly')
+        ? selectedRecurrence
+        : 'none';
+      if (nextType !== 'none') {
+        const startTime = timeStr;
+        const endTime = dt.plus({ minutes: durationMinutes }).toFormat('HH:mm');
+        const rule = {
+          id: String(ev.id),
+          type: nextType,
+          slot_type: 'availability_slot',
+          start_date: dateStr,
+          start_time: startTime,
+          end_time: endTime,
+          skip_dates: [],
+          booked_dates: [],
+          anchor_date: dateStr
+        };
+        if (nextType === 'weekly') {
+          const wd = weekdayNameFromIsoDate(dateStr);
+          rule.weekdays = wd ? [wd] : [];
+        } else if (nextType === 'monthly') {
+          rule.day_of_month = dt.day;
+        } else if (nextType === 'daily') {
+          rule.weekdays = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
+        }
+        recurringAvailabilityRules.set(rule.id, rule);
+        if (window.MentorCalendarRecurrenceSelections) window.MentorCalendarRecurrenceSelections[rule.id] = rule.type;
+        ev.remove();
+        markDirty('availability');
+        renderRecurringInstancesForCurrentView();
+        recomputeCollisions();
+        closeAvailabilitySettings();
+        return;
+      }
+    }
+
     ev.setStart(startJs);
     ev.setEnd(endJs);
+    if (window.MentorCalendarRecurrenceSelections) window.MentorCalendarRecurrenceSelections[String(ev.id)] = 'none';
 
     markDirty('availability');
     recomputeCollisions();
@@ -1152,9 +1250,10 @@
 
   // Save button enablement:
   // - availability changes: persisted by Save
-  // - session changes: not persisted yet, but should still enable Save (per your rule)
+  // - session changes: persisted by Save
   let dirtyAvailability = false;
   let dirtySession = false;
+  let deletedSessionDbIds = new Set(); // Session ids deleted client-side, persisted on Save
 
   function updateSaveButtonState() {
     if (!saveBtn) return;
@@ -1180,6 +1279,26 @@
   function clearDirtyAvailability() {
     dirtyAvailability = false;
     updateSaveButtonState();
+  }
+
+  function clearDirtySession() {
+    dirtySession = false;
+    updateSaveButtonState();
+  }
+
+  function normalizeSessionStatus(value) {
+    const s = String(value || 'draft').toLowerCase().trim();
+    if (s === 'draft' || s === 'invited' || s === 'confirmed' || s === 'cancelled') return s;
+    return 'draft';
+  }
+
+  function sessionColorsForStatus(status) {
+    const s = normalizeSessionStatus(status);
+    if (s === 'draft') return { bg: '#f97316', border: '#ea580c', text: '#ffffff' };     // orange
+    if (s === 'invited') return { bg: '#fbbf24', border: '#f59e0b', text: '#ffffff' };   // yellow
+    if (s === 'confirmed') return { bg: '#22c55e', border: '#16a34a', text: '#ffffff' }; // green
+    // cancelled
+    return { bg: '#ffffff', border: '#e2e8f0', text: '#0f172a' };
   }
 
   function getCookie(name) {
@@ -1211,10 +1330,12 @@
         return;
       }
 
-      // Remove only availability events; keep session events created client-side (ignored for save)
+      // Rebuild from DB snapshot (availability + sessions)
       calendar.getEvents().forEach(ev => {
-        if (ev.extendedProps?.slotMode === 'availability') ev.remove();
+        const m = ev.extendedProps?.slotMode;
+        if (m === 'availability' || m === 'session') ev.remove();
       });
+      deletedSessionDbIds = new Set();
 
       originalAvailabilityDates = new Set();
       recurringAvailabilityRules = new Map();
@@ -1281,10 +1402,38 @@
       });
       renderRecurringInstancesForCurrentView();
 
+      // Load Sessions from DB and render as session slots (status-colored)
+      const sessions = Array.isArray(data.sessions) ? data.sessions : [];
+      sessions.forEach((s) => {
+        if (!s || !s.id || !s.start || !s.end) return;
+        const status = normalizeSessionStatus(s.status || 'draft');
+        const colors = sessionColorsForStatus(status);
+        calendar.addEvent({
+          id: `session_${s.id}`,
+          start: s.start,
+          end: s.end,
+          allDay: false,
+          backgroundColor: colors.bg,
+          borderColor: colors.border,
+          textColor: colors.text,
+          classNames: ['event-type-session'],
+          editable: true,
+          extendedProps: {
+            slotMode: 'session',
+            type: 'session',
+            status: status,
+            sessionDbId: s.id,
+            expiresAt: s.expires_at || null,
+            sessionType: s.session_type || 'individual'
+          }
+        });
+      });
+
       console.log('[MentorCalendar] loaded availability slots:', slots.length);
       recomputeCollisions();
       // Loaded state matches DB for availability
       clearDirtyAvailability();
+      clearDirtySession();
     } catch (e) {
       console.error('[MentorCalendar] error loading availability:', e);
     }
@@ -1577,6 +1726,10 @@
         ev.extendedProps?.slotMode === 'availability' && !ev.extendedProps?.isRecurringInstance
       );
 
+      const sessionEvents = calendar.getEvents().filter(ev =>
+        ev.extendedProps?.slotMode === 'session'
+      );
+
       const oneTimePayload = availabilityEvents.map(ev => {
         const startIso = ev.start ? ev.start.toISOString() : null;
         const endIso = ev.end ? ev.end.toISOString() : null;
@@ -1638,6 +1791,20 @@
 
       const availabilityPayload = oneTimePayload.concat(recurringPayload, deleteSeriesPayload);
 
+      const sessionsPayload = sessionEvents.map(ev => {
+        const startIso = ev.start ? ev.start.toISOString() : null;
+        const endIso = ev.end ? ev.end.toISOString() : null;
+        if (!startIso || !endIso) return null;
+        return {
+          client_id: String(ev.id || ''),
+          session_id: ev.extendedProps?.sessionDbId || null,
+          start_iso: startIso,
+          end_iso: endIso,
+          status: normalizeSessionStatus(ev.extendedProps?.status || 'draft'),
+          session_type: String(ev.extendedProps?.sessionType || 'individual')
+        };
+      }).filter(Boolean);
+
       // edited_dates must include previous dates too, for deletion behavior
       const editedDates = new Set(originalAvailabilityDates);
       oneTimePayload.forEach(item => editedDates.add(item.date));
@@ -1658,6 +1825,8 @@
         },
         body: JSON.stringify({
           availability: availabilityPayload,
+          sessions: sessionsPayload,
+          deleted_sessions: Array.from(deletedSessionDbIds || []),
           selected_date: selectedDate,
           edited_dates: editedDatesArr
         })
@@ -1674,6 +1843,7 @@
         deletedRecurring: deleteSeriesPayload.length
       });
       await loadSavedAvailability();
+      deletedSessionDbIds = new Set();
       if (typeof showNotification === 'function') {
         showNotification('Saved successfully.', 'success');
       }
@@ -2058,18 +2228,35 @@
         const startIso = info.date.toISOString();
         const endIso = new Date(info.date.getTime() + durationMinutes * 60 * 1000).toISOString();
 
-        calendar.addEvent({
-          id: mode + '_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
-          start: startIso,
-          end: endIso,
-          allDay: false,
-          backgroundColor: mode === 'availability' ? '#3b82f6' : '#10b981',
-          borderColor: mode === 'availability' ? '#2563eb' : '#059669',
-          textColor: '#ffffff',
-          classNames: [mode === 'availability' ? 'event-type-availability' : 'event-type-session'], // Added class
-          editable: true, // Always editable on creation (since it matches current mode)
-          extendedProps: { slotMode: mode }
-        });
+        if (mode === 'session') {
+          const status = 'draft';
+          const colors = sessionColorsForStatus(status);
+          calendar.addEvent({
+            id: 'session_tmp_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
+            start: startIso,
+            end: endIso,
+            allDay: false,
+            backgroundColor: colors.bg,
+            borderColor: colors.border,
+            textColor: colors.text,
+            classNames: ['event-type-session'],
+            editable: true,
+            extendedProps: { slotMode: 'session', type: 'session', status: status, sessionDbId: null }
+          });
+        } else {
+          calendar.addEvent({
+            id: 'availability_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
+            start: startIso,
+            end: endIso,
+            allDay: false,
+            backgroundColor: '#3b82f6',
+            borderColor: '#2563eb',
+            textColor: '#ffffff',
+            classNames: ['event-type-availability'],
+            editable: true,
+            extendedProps: { slotMode: 'availability', type: 'availability_slot' }
+          });
+        }
 
         console.log('[MentorCalendar] created slot', { mode, startIso, endIso, isAvailabilityMode });
         markDirty(mode);
@@ -2093,6 +2280,7 @@
           isAvailabilityMode,
           timezone: timezone_variable,
           eventId: arg.event.id,
+          status: arg.event.extendedProps?.status || null,
           recurringId: arg.event.extendedProps?.recurringId || null,
           instanceDate: arg.event.extendedProps?.instanceDate || null,
           startIso: arg.event.start ? arg.event.start.toISOString() : null,
@@ -2246,6 +2434,20 @@
       slotMode: slotMode
     });
     
+    // Session slot: mark for deletion (DB) if persisted
+    if (slotMode === 'session') {
+      const dbId = ev.extendedProps?.sessionDbId;
+      if (dbId) {
+        try {
+          deletedSessionDbIds.add(String(dbId));
+        } catch (e) {}
+      }
+      markDirty('session');
+      ev.remove();
+      recomputeCollisions();
+      return;
+    }
+
     // Recurring availability instance: ask whether to delete one vs all
     if (slotMode === 'availability' && ev.extendedProps?.isRecurringInstance && ev.extendedProps?.recurringId) {
       const recurringId = ev.extendedProps.recurringId;
@@ -2476,7 +2678,7 @@
   // Save availability button
   if (saveBtn) {
     saveBtn.addEventListener('click', () => {
-      console.log('[MentorCalendar] Save clicked. Saving availability only (sessions ignored).');
+      console.log('[MentorCalendar] Save clicked. Saving availability + sessions.');
       saveAvailabilityToBackend();
     });
   }

@@ -980,6 +980,10 @@ def save_availability(request):
         availability_list = data.get('availability', [])
         selected_date_str = data.get('selected_date')
         explicit_edited_dates = data.get('edited_dates', [])  # Dates that originally had slots
+
+        # Sessions (client-side slots) to be persisted on Save
+        sessions_payload = data.get('sessions', []) or []
+        deleted_sessions_payload = data.get('deleted_sessions', []) or data.get('deleted_session_ids', []) or []
         
         # Get existing slots - use new field names with fallback to old for backward compatibility
         try:
@@ -1424,6 +1428,86 @@ def save_availability(request):
         mentor_profile.recurring_slots = final_recurring_slots
         mentor_profile.save()
 
+        # --- Persist Session records (create/update/delete) ---
+        sessions_created = 0
+        sessions_updated = 0
+        sessions_deleted = 0
+        try:
+            from general.models import Session
+
+            # Delete sessions that were removed client-side (only those linked to this mentor)
+            to_delete_ids = []
+            for raw in deleted_sessions_payload:
+                try:
+                    to_delete_ids.append(int(raw))
+                except Exception:
+                    continue
+            if to_delete_ids:
+                qs = mentor_profile.sessions.filter(id__in=to_delete_ids)
+                sessions_deleted = qs.count()
+                qs.delete()
+
+            # Create or update sessions from payload
+            allowed_statuses = {'draft', 'invited', 'confirmed', 'cancelled'}
+            for item in sessions_payload:
+                try:
+                    start_iso = item.get('start_iso') or item.get('start')
+                    end_iso = item.get('end_iso') or item.get('end')
+                    if not start_iso or not end_iso:
+                        continue
+                    start_dt = datetime.fromisoformat(str(start_iso).replace('Z', '+00:00'))
+                    end_dt = datetime.fromisoformat(str(end_iso).replace('Z', '+00:00'))
+                    if start_dt.tzinfo is None:
+                        start_dt = timezone.make_aware(start_dt)
+                    if end_dt.tzinfo is None:
+                        end_dt = timezone.make_aware(end_dt)
+                    if end_dt <= start_dt:
+                        continue
+
+                    status = str(item.get('status') or 'draft').lower().strip()
+                    if status not in allowed_statuses:
+                        status = 'draft'
+
+                    session_type = str(item.get('session_type') or 'individual').lower().strip() or 'individual'
+
+                    db_id = item.get('session_id') or item.get('id')
+                    if db_id:
+                        try:
+                            db_id_int = int(db_id)
+                        except Exception:
+                            db_id_int = None
+                        if db_id_int:
+                            existing = mentor_profile.sessions.filter(id=db_id_int).first()
+                            if existing:
+                                existing.start_datetime = start_dt
+                                existing.end_datetime = end_dt
+                                existing.status = status
+                                # expires_at left as-is for now
+                                if hasattr(existing, 'session_type'):
+                                    existing.session_type = session_type
+                                existing.save()
+                                sessions_updated += 1
+                                continue
+
+                    # Create new
+                    s = Session.objects.create(
+                        start_datetime=start_dt,
+                        end_datetime=end_dt,
+                        created_by=request.user,
+                        note='',
+                        session_type=session_type,
+                        tasks=[],
+                        status=status,
+                        expires_at=None
+                    )
+                    mentor_profile.sessions.add(s)
+                    sessions_created += 1
+                except Exception:
+                    continue
+        except Exception:
+            # Non-fatal: availability saving should still succeed if sessions can't be saved
+            pass
+
         # If we're able to save, update collision flag based on current DB state.
         # Important: the UI is only allowed to save when collisions are resolved.
         # So we always clear the flag on successful save, then (optionally) recompute it.
@@ -1456,6 +1540,9 @@ def save_availability(request):
             'one_time_count': len(new_one_time_slots),
             'recurring_count': len(new_recurring_slots),
             'total_one_time_slots': len(deduplicated_one_time_slots),
+            'sessions_created': sessions_created,
+            'sessions_updated': sessions_updated,
+            'sessions_deleted': sessions_deleted,
             'dates': sorted(list(edited_dates)) if edited_dates else []
         })
         
@@ -1490,11 +1577,39 @@ def get_availability(request):
             recurring_slots = list(mentor_profile.recurring_slots or [])
         except AttributeError:
             recurring_slots = list(mentor_profile.recurring_availability_slots or [])
+
+        # Sessions linked to this mentor (stored as real Session records)
+        sessions = []
+        try:
+            from django.utils import timezone as dj_timezone
+            from general.models import Session
+            for s in mentor_profile.sessions.all():
+                start_dt = s.start_datetime
+                end_dt = s.end_datetime
+                # Ensure ISO strings are timezone-aware
+                if start_dt and start_dt.tzinfo is None:
+                    start_dt = dj_timezone.make_aware(start_dt)
+                if end_dt and end_dt.tzinfo is None:
+                    end_dt = dj_timezone.make_aware(end_dt)
+                exp_dt = s.expires_at
+                if exp_dt and exp_dt.tzinfo is None:
+                    exp_dt = dj_timezone.make_aware(exp_dt)
+                sessions.append({
+                    'id': s.id,
+                    'start': start_dt.isoformat() if start_dt else None,
+                    'end': end_dt.isoformat() if end_dt else None,
+                    'status': getattr(s, 'status', 'draft') or 'draft',
+                    'expires_at': exp_dt.isoformat() if exp_dt else None,
+                    'session_type': getattr(s, 'session_type', 'individual') or 'individual',
+                })
+        except Exception:
+            sessions = []
         
         return JsonResponse({
             'success': True,
             'one_time_slots': one_time_slots,
-            'recurring_slots': recurring_slots
+            'recurring_slots': recurring_slots,
+            'sessions': sessions
         })
         
     except Exception as e:

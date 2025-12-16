@@ -25,12 +25,21 @@
       <div class="availability-settings-row availability-settings-row--duration">
         <div class="availability-settings-label">Duration</div>
         <div class="availability-settings-duration">
-          <span id="availabilitySettingsDurationMinutes">--</span> minutes
-          <span class="availability-settings-duration-hint">
-            You can change the length of your slots in
-            <a class="availability-settings-profile-link" href="/dashboard/mentor/profile/#session-configuration">profile</a>.
-          </span>
+          <div class="availability-settings-duration-row">
+            <span id="availabilitySettingsDurationMinutes">--</span> <span>minutes</span>
+            <a class="availability-settings-profile-link" href="/dashboard/mentor/profile/#session-configuration">Change in Profile</a>
+          </div>
         </div>
+      </div>
+
+      <div class="availability-settings-row">
+        <label class="availability-settings-label" for="availabilitySettingsRecurrence">Recurrence</label>
+        <select id="availabilitySettingsRecurrence" class="availability-settings-input">
+          <option value="none">No repeat</option>
+          <option value="daily">Daily</option>
+          <option value="weekly">Weekly</option>
+          <option value="monthly">Monthly</option>
+        </select>
       </div>
     </div>
 
@@ -153,9 +162,11 @@
     font-size: 0.95rem;
     color: #0f172a;
   }
-  .availability-settings-duration-hint {
-    font-size: 0.85rem;
-    color: #64748b;
+  .availability-settings-duration-row {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 8px; /* space between number, minutes, and link */
+    flex-wrap: wrap;
   }
   .availability-settings-profile-link {
     color: #334156;
