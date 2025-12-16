@@ -13,6 +13,7 @@ urlpatterns = [
     path('my-sessions/get-availability/', views.get_availability, name='get_availability'),
     path('my-sessions/check-collisions/', views.check_availability_collisions, name='check_availability_collisions'),
     path('my-sessions/save-availability/', views.save_availability, name='save_availability'),
+    path('my-sessions/client-suggestions/', views.client_suggestions, name='client_suggestions'),
     path('my-sessions/delete-availability-slot/', views.delete_availability_slot, name='delete_availability_slot'),
     path('clients/', views.clients_list, name='clients_list'),
     path('invite-client/', views.invite_client, name='invite_client'),

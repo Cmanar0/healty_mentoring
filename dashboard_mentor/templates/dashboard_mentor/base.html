@@ -236,21 +236,24 @@
     "detected_timezone": "{{ user.mentor_profile.detected_timezone|default_if_none:'' }}",
     "selected_timezone": "{{ user.mentor_profile.selected_timezone|default_if_none:'' }}",
     "confirmed_timezone_mismatch": {{ user.mentor_profile.confirmed_timezone_mismatch|yesno:"true,false" }},
-    "session_length": {{ user.mentor_profile.session_length|default:60 }}
+    "session_length": {{ user.mentor_profile.session_length|default:60 }},
+    "price_per_hour": {{ user.mentor_profile.price_per_hour|default_if_none:"null" }}
 }
 {% elif user.profile %}
 {
     "detected_timezone": "{{ user.profile.detected_timezone|default_if_none:'' }}",
     "selected_timezone": "{{ user.profile.selected_timezone|default_if_none:'' }}",
     "confirmed_timezone_mismatch": {{ user.profile.confirmed_timezone_mismatch|yesno:"true,false" }},
-    "session_length": 60
+    "session_length": 60,
+    "price_per_hour": null
 }
 {% else %}
 {
     "detected_timezone": "",
     "selected_timezone": "",
     "confirmed_timezone_mismatch": false,
-    "session_length": 60
+    "session_length": 60,
+    "price_per_hour": null
 }
 {% endif %}
 </script>

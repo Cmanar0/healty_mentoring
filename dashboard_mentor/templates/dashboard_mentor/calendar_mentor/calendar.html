@@ -597,6 +597,13 @@
   const sessionSettingsOverlay = document.getElementById('mentorSessionSettingsOverlay');
   const sessionSettingsDateInput = document.getElementById('sessionSettingsDate');
   const sessionSettingsTimeInput = document.getElementById('sessionSettingsTime');
+  const sessionSettingsEndTimeInput = document.getElementById('sessionSettingsEndTime');
+  const sessionSettingsMinutesValueEl = document.getElementById('sessionSettingsMinutesValue');
+  const sessionSettingsPriceInput = document.getElementById('sessionSettingsPrice');
+  const sessionSettingsPriceWarningEl = document.getElementById('sessionSettingsPriceWarning');
+  const sessionSettingsClientEmailInput = document.getElementById('sessionSettingsClientEmail');
+  const sessionSettingsClientSuggestionsEl = document.getElementById('sessionSettingsClientSuggestions');
+  const sessionSettingsInviteBtn = document.getElementById('sessionSettingsInviteBtn');
   const sessionSettingsApplyBtn = document.getElementById('sessionSettingsApplyBtn');
   const scheduleSessionOverlay = document.getElementById('mentorScheduleSessionOverlay');
   const scheduleSessionEmailInput = document.getElementById('scheduleSessionEmailInput');
@@ -655,6 +662,28 @@
       console.warn('[MentorCalendar] Could not parse userProfileData for session_length:', e);
     }
     return 60;
+  }
+
+  function resolveMentorPricePerHour() {
+    try {
+      const dataEl = document.getElementById('userProfileData');
+      if (dataEl && dataEl.textContent) {
+        const data = JSON.parse(dataEl.textContent);
+        const raw = data?.price_per_hour;
+        const n = Number(raw);
+        if (Number.isFinite(n) && n >= 0) return n;
+      }
+    } catch (e) {}
+    return null;
+  }
+
+  function computeDefaultSessionPrice(minutes) {
+    const pph = resolveMentorPricePerHour();
+    const m = Number(minutes);
+    if (!Number.isFinite(m) || m <= 0) return null;
+    if (!Number.isFinite(pph) || pph === null) return null;
+    const val = (pph * (m / 60));
+    return Math.round(val);
   }
 
   // Calendar timezone variable (used by FullCalendar init + save grouping)
@@ -911,7 +940,114 @@
 
   function closeSessionSettings() {
     sessionSettingsEventId = null;
+    __sessionSettingsOriginal = null;
     setSessionSettingsVisible(false);
+  }
+
+  let __sessionSettingsOriginal = null;
+  let __clientSuggestions = [];
+
+  function setSessionSettingsApplyEnabled(isEnabled) {
+    if (!sessionSettingsApplyBtn) return;
+    sessionSettingsApplyBtn.disabled = !isEnabled;
+  }
+
+  function updateSessionSettingsDerivedUI() {
+    if (!sessionSettingsDateInput || !sessionSettingsTimeInput || !sessionSettingsEndTimeInput) return;
+    if (!(window.luxon && window.luxon.DateTime)) return;
+    const dateStr = (sessionSettingsDateInput.value || '').trim();
+    const startStr = (sessionSettingsTimeInput.value || '').trim();
+    const endStr = (sessionSettingsEndTimeInput.value || '').trim();
+    if (!dateStr || !startStr || !endStr) return;
+
+    const startDt = window.luxon.DateTime.fromISO(`${dateStr}T${startStr}`, { zone: timezone_variable });
+    const endDt = window.luxon.DateTime.fromISO(`${dateStr}T${endStr}`, { zone: timezone_variable });
+    if (!startDt.isValid || !endDt.isValid || endDt <= startDt) return;
+
+    const minutes = Math.max(0, Math.round(endDt.diff(startDt, 'minutes').minutes));
+    if (sessionSettingsMinutesValueEl) sessionSettingsMinutesValueEl.textContent = String(minutes);
+
+    const standardMinutes = resolveMentorSessionLengthMinutes();
+    const mismatch = Number.isFinite(standardMinutes) && minutes !== standardMinutes;
+
+    // highlight minutes row + price input when mismatch
+    try {
+      const minutesRow = sessionSettingsMinutesValueEl ? sessionSettingsMinutesValueEl.closest('.session-settings-row') : null;
+      if (minutesRow) minutesRow.classList.toggle('session-settings-row--mismatch', !!mismatch);
+      if (sessionSettingsPriceInput) {
+        sessionSettingsPriceInput.classList.toggle('session-settings-input--mismatch', !!mismatch);
+      }
+      const defaultPrice = computeDefaultSessionPrice(standardMinutes);
+      const rawPrice = sessionSettingsPriceInput ? String(sessionSettingsPriceInput.value || '').trim() : '';
+      const priceVal = rawPrice ? Number(rawPrice) : null;
+      const hasOverride = (priceVal !== null) && Number.isFinite(priceVal) && (defaultPrice !== null) && (Number(priceVal) !== Number(defaultPrice));
+
+      if (sessionSettingsPriceWarningEl) {
+        if (hasOverride) {
+          sessionSettingsPriceWarningEl.hidden = false;
+          sessionSettingsPriceWarningEl.classList.add('session-settings-warning--info');
+          sessionSettingsPriceWarningEl.textContent = 'You set different price to this session';
+        } else if (mismatch) {
+          sessionSettingsPriceWarningEl.hidden = false;
+          sessionSettingsPriceWarningEl.classList.remove('session-settings-warning--info');
+          sessionSettingsPriceWarningEl.textContent = "The time of this session doesn't match your standard session length. Do you want to set a different price?";
+        } else {
+          sessionSettingsPriceWarningEl.hidden = true;
+          sessionSettingsPriceWarningEl.classList.remove('session-settings-warning--info');
+        }
+      }
+    } catch (e) {}
+
+    // Prepopulate price if empty, based on standard session length
+    if (sessionSettingsPriceInput && (!sessionSettingsPriceInput.value || String(sessionSettingsPriceInput.value).trim() === '')) {
+      const defaultPrice = computeDefaultSessionPrice(standardMinutes);
+      if (defaultPrice !== null) sessionSettingsPriceInput.value = String(defaultPrice);
+    }
+  }
+
+  async function ensureClientSuggestionsLoaded() {
+    if (__clientSuggestions && __clientSuggestions.length > 0) return __clientSuggestions;
+    try {
+      const res = await fetch(CLIENT_SUGGESTIONS_URL, { headers: { 'Accept': 'application/json' } });
+      const data = await res.json();
+      if (data && data.success && Array.isArray(data.clients)) {
+        __clientSuggestions = data.clients.map(c => ({
+          first_name: String(c.first_name || ''),
+          last_name: String(c.last_name || ''),
+          email: String(c.email || '')
+        })).filter(c => c.email);
+      }
+    } catch (e) {}
+    return __clientSuggestions;
+  }
+
+  function renderClientSuggestionsList(items) {
+    if (!sessionSettingsClientSuggestionsEl) return;
+    if (!items || items.length === 0) {
+      sessionSettingsClientSuggestionsEl.hidden = true;
+      sessionSettingsClientSuggestionsEl.innerHTML = '';
+      return;
+    }
+    sessionSettingsClientSuggestionsEl.hidden = false;
+    sessionSettingsClientSuggestionsEl.innerHTML = items.slice(0, 8).map((c) => {
+      const name = `${c.first_name} ${c.last_name}`.trim() || c.email;
+      return `
+        <div class="session-settings-suggestion-item" data-email="${c.email}">
+          <div class="session-settings-suggestion-name">${name}</div>
+          <div class="session-settings-suggestion-email">${c.email}</div>
+        </div>
+      `;
+    }).join('');
+    sessionSettingsClientSuggestionsEl.querySelectorAll('[data-email]').forEach(el => {
+      el.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const email = el.getAttribute('data-email') || '';
+        if (sessionSettingsClientEmailInput) sessionSettingsClientEmailInput.value = email;
+        sessionSettingsClientSuggestionsEl.hidden = true;
+        sessionSettingsClientSuggestionsEl.innerHTML = '';
+      });
+    });
   }
 
   function openSessionSettingsForEvent(fcEvent) {
@@ -926,8 +1062,91 @@
         sessionSettingsDateInput.value = dt.toISODate();
         sessionSettingsTimeInput.value = dt.toFormat('HH:mm');
       }
+      if (window.luxon && window.luxon.DateTime && fcEvent.end && sessionSettingsEndTimeInput) {
+        const dtEnd = window.luxon.DateTime.fromJSDate(fcEvent.end).setZone(timezone_variable);
+        sessionSettingsEndTimeInput.value = dtEnd.toFormat('HH:mm');
+      }
+      if (sessionSettingsPriceInput) {
+        const p = fcEvent.extendedProps?.sessionPrice;
+        sessionSettingsPriceInput.value = (p !== undefined && p !== null) ? String(p) : '';
+      }
+      if (sessionSettingsClientEmailInput) {
+        sessionSettingsClientEmailInput.value = fcEvent.extendedProps?.clientEmail ? String(fcEvent.extendedProps.clientEmail) : '';
+      }
+      // Let derived UI decide whether to show mismatch/override messages
     } catch (e) {
       console.warn('[MentorCalendar] Could not prefill session settings:', e);
+    }
+
+    __sessionSettingsOriginal = {
+      date: sessionSettingsDateInput.value || '',
+      start: sessionSettingsTimeInput.value || '',
+      end: sessionSettingsEndTimeInput ? (sessionSettingsEndTimeInput.value || '') : '',
+      price: sessionSettingsPriceInput ? (sessionSettingsPriceInput.value || '') : ''
+    };
+    setSessionSettingsApplyEnabled(false);
+    updateSessionSettingsDerivedUI();
+
+    // Bind form change listeners once
+    [sessionSettingsDateInput, sessionSettingsTimeInput, sessionSettingsEndTimeInput, sessionSettingsPriceInput].forEach((el) => {
+      if (!el || el.__mentorBound) return;
+      el.__mentorBound = true;
+      el.addEventListener('input', () => {
+        updateSessionSettingsDerivedUI();
+        if (!__sessionSettingsOriginal) return;
+        const cur = {
+          date: sessionSettingsDateInput.value || '',
+          start: sessionSettingsTimeInput.value || '',
+          end: sessionSettingsEndTimeInput ? (sessionSettingsEndTimeInput.value || '') : '',
+          price: sessionSettingsPriceInput ? (sessionSettingsPriceInput.value || '') : ''
+        };
+        setSessionSettingsApplyEnabled(JSON.stringify(cur) !== JSON.stringify(__sessionSettingsOriginal));
+      });
+    });
+
+    // Client suggestions filter
+    if (sessionSettingsClientEmailInput && sessionSettingsClientSuggestionsEl && !sessionSettingsClientEmailInput.__mentorBound) {
+      sessionSettingsClientEmailInput.__mentorBound = true;
+      sessionSettingsClientEmailInput.addEventListener('input', async () => {
+        const q = String(sessionSettingsClientEmailInput.value || '').toLowerCase().trim();
+        if (!q) return renderClientSuggestionsList([]);
+        const all = await ensureClientSuggestionsLoaded();
+        const filtered = all.filter(c => (`${c.first_name} ${c.last_name} ${c.email}`.toLowerCase()).includes(q));
+        renderClientSuggestionsList(filtered);
+      });
+      document.addEventListener('click', (e) => {
+        const target = e.target;
+        if (!(target instanceof Element)) return;
+        if (target.closest('#sessionSettingsClientSuggestions')) return;
+        if (target.closest('#sessionSettingsClientEmail')) return;
+        if (sessionSettingsClientSuggestionsEl) sessionSettingsClientSuggestionsEl.hidden = true;
+      }, { capture: true });
+    }
+
+    // Invite button
+    if (sessionSettingsInviteBtn && !sessionSettingsInviteBtn.__mentorBound) {
+      sessionSettingsInviteBtn.__mentorBound = true;
+      sessionSettingsInviteBtn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        const email = (sessionSettingsClientEmailInput?.value || '').trim();
+        if (!email) return;
+        const csrf = getCookie('csrftoken');
+        try {
+          const res = await fetch(INVITE_CLIENT_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf || '' },
+            body: JSON.stringify({ email })
+          });
+          const data = await res.json();
+          if (data && data.success) {
+            if (typeof showNotification === 'function') showNotification('Invitation sent.', 'success');
+          } else {
+            if (typeof showNotification === 'function') showNotification(data?.error || 'Could not invite client.', 'error');
+          }
+        } catch (err) {
+          if (typeof showNotification === 'function') showNotification('Could not invite client.', 'error');
+        }
+      });
     }
 
     setSessionSettingsVisible(true);
@@ -946,11 +1165,12 @@
 
     const dateStr = (sessionSettingsDateInput.value || '').trim();
     const timeStr = (sessionSettingsTimeInput.value || '').trim();
-    if (!dateStr || !timeStr) {
+    const endStr = (sessionSettingsEndTimeInput?.value || '').trim();
+    if (!dateStr || !timeStr || !endStr) {
       if (typeof showNotification === 'function') {
-        showNotification('Please choose a date and time.', 'error');
+        showNotification('Please choose a date, start time, and end time.', 'error');
       } else {
-        alert('Please choose a date and time.');
+        alert('Please choose a date, start time, and end time.');
       }
       return;
     }
@@ -960,8 +1180,9 @@
       return;
     }
 
-    const dt = window.luxon.DateTime.fromISO(`${dateStr}T${timeStr}`, { zone: timezone_variable });
-    if (!dt.isValid) {
+    const startDt = window.luxon.DateTime.fromISO(`${dateStr}T${timeStr}`, { zone: timezone_variable });
+    const endDt = window.luxon.DateTime.fromISO(`${dateStr}T${endStr}`, { zone: timezone_variable });
+    if (!startDt.isValid || !endDt.isValid || endDt <= startDt) {
       if (typeof showNotification === 'function') {
         showNotification('Invalid date/time.', 'error');
       } else {
@@ -970,19 +1191,22 @@
       return;
     }
 
-    // Keep existing duration
-    const prevStart = ev.start;
-    const prevEnd = ev.end;
-    const durationMs = (prevStart && prevEnd) ? (prevEnd.getTime() - prevStart.getTime()) : (resolveMentorSessionLengthMinutes() * 60 * 1000);
+    ev.setStart(startDt.toJSDate());
+    ev.setEnd(endDt.toJSDate());
 
-    const startJs = dt.toJSDate();
-    const endJs = new Date(startJs.getTime() + Math.max(0, durationMs));
-
-    ev.setStart(startJs);
-    ev.setEnd(endJs);
+    // Persist overrides on the event (saved to DB on Save)
+    if (sessionSettingsPriceInput) {
+      const v = String(sessionSettingsPriceInput.value || '').trim();
+      ev.setExtendedProp('sessionPrice', v === '' ? null : v);
+    }
+    if (sessionSettingsClientEmailInput) {
+      const email = String(sessionSettingsClientEmailInput.value || '').trim();
+      ev.setExtendedProp('clientEmail', email || null);
+    }
 
     markDirty('session');
     recomputeCollisions();
+    setSessionSettingsApplyEnabled(false);
     closeSessionSettings();
   }
 
@@ -1247,6 +1471,8 @@
 
   const GET_AVAILABILITY_URL = "{% url 'general:dashboard_mentor:get_availability' %}";
   const SAVE_AVAILABILITY_URL = "{% url 'general:dashboard_mentor:save_availability' %}";
+  const CLIENT_SUGGESTIONS_URL = "{% url 'general:dashboard_mentor:client_suggestions' %}";
+  const INVITE_CLIENT_URL = "{% url 'general:dashboard_mentor:invite_client' %}";
 
   // Save button enablement:
   // - availability changes: persisted by Save
@@ -1423,6 +1649,8 @@
             type: 'session',
             status: status,
             sessionDbId: s.id,
+            sessionPrice: s.session_price || null,
+            clientEmail: s.client_email || null,
             expiresAt: s.expires_at || null,
             sessionType: s.session_type || 'individual'
           }
@@ -1801,7 +2029,9 @@
           start_iso: startIso,
           end_iso: endIso,
           status: normalizeSessionStatus(ev.extendedProps?.status || 'draft'),
-          session_type: String(ev.extendedProps?.sessionType || 'individual')
+          session_type: String(ev.extendedProps?.sessionType || 'individual'),
+          session_price: (ev.extendedProps?.sessionPrice ?? null),
+          client_email: ev.extendedProps?.clientEmail || null
         };
       }).filter(Boolean);
 
@@ -2067,7 +2297,8 @@
               __availabilityClickTimer = window.setTimeout(() => {
                 __availabilityClickTimer = null;
                 __availabilityClickEventId = null;
-                openScheduleSessionPopupForEvent(info.event);
+                const latestEv = calendar?.getEventById?.(info.event.id) || info.event;
+                openScheduleSessionPopupForEvent(latestEv);
               }, 220);
 
               e.preventDefault();
@@ -2090,7 +2321,8 @@
                 openAvailabilitySwitchPopupForEventId(info.event.id, true);
                 return;
               }
-              openAvailabilitySettingsForEvent(info.event);
+              const latestEv = calendar?.getEventById?.(info.event.id) || info.event;
+              openAvailabilitySettingsForEvent(latestEv);
               return;
             }
 
@@ -2099,7 +2331,8 @@
                 openSessionSwitchPopupForEventId(info.event.id, true);
                 return;
               }
-              openSessionSettingsForEvent(info.event);
+              const latestEv = calendar?.getEventById?.(info.event.id) || info.event;
+              openSessionSettingsForEvent(latestEv);
             }
           });
         } catch (e) {
@@ -2231,6 +2464,7 @@
         if (mode === 'session') {
           const status = 'draft';
           const colors = sessionColorsForStatus(status);
+          const defaultPrice = computeDefaultSessionPrice(durationMinutes);
           calendar.addEvent({
             id: 'session_tmp_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
             start: startIso,
@@ -2241,7 +2475,7 @@
             textColor: colors.text,
             classNames: ['event-type-session'],
             editable: true,
-            extendedProps: { slotMode: 'session', type: 'session', status: status, sessionDbId: null }
+            extendedProps: { slotMode: 'session', type: 'session', status: status, sessionDbId: null, sessionPrice: defaultPrice }
           });
         } else {
           calendar.addEvent({

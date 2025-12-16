@@ -10,16 +10,21 @@
       </div>
       <div class="mentor-calendar-session-slot-time" data-slot-time></div>
     </div>
+    <div class="mentor-calendar-session-slot-footer">
+     -- Add a Client --
+    </div>
   </div>
 </template>
 
 <style>
   /* Session slot styles (scoped to avoid affecting availability slot CSS) */
   .mentor-calendar-session-slot {
+    height: 100%;
     position: relative;
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    justify-content: space-between;
+    gap: 6px;
     border-radius: var(--mentor-calendar-slot-radius, 10px);
     color: #ffffff;
     overflow: hidden;
@@ -44,6 +49,16 @@
     font-weight: 600;
     font-size: 0.8rem;
     opacity: 0.95;
+  }
+
+  .mentor-calendar-session-slot-footer {
+    padding: 6px 8px 3px;
+    font-weight: 700;
+    font-size: 0.75rem;
+    opacity: 0.95;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .mentor-calendar-session-slot-delete {

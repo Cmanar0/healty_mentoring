@@ -1434,6 +1434,7 @@ def save_availability(request):
         sessions_deleted = 0
         try:
             from general.models import Session
+            from decimal import Decimal, InvalidOperation
 
             # Delete sessions that were removed client-side (only those linked to this mentor)
             to_delete_ids = []
@@ -1470,6 +1471,25 @@ def save_availability(request):
 
                     session_type = str(item.get('session_type') or 'individual').lower().strip() or 'individual'
 
+                    # Session price: default from mentor price_per_hour * (session_length/60)
+                    raw_price = item.get('session_price')
+                    price_val = None
+                    if raw_price not in (None, ''):
+                        try:
+                            price_val = Decimal(str(raw_price))
+                        except (InvalidOperation, ValueError):
+                            price_val = None
+                    if price_val is None:
+                        try:
+                            if mentor_profile.price_per_hour and mentor_profile.session_length:
+                                price_val = (Decimal(str(mentor_profile.price_per_hour)) * Decimal(str(mentor_profile.session_length))) / Decimal('60')
+                                # Whole USD for now (no decimals in UI)
+                                price_val = price_val.quantize(Decimal('1'))
+                        except Exception:
+                            price_val = None
+
+                    client_email = (item.get('client_email') or '').strip().lower()
+
                     db_id = item.get('session_id') or item.get('id')
                     if db_id:
                         try:
@@ -1482,10 +1502,19 @@ def save_availability(request):
                                 existing.start_datetime = start_dt
                                 existing.end_datetime = end_dt
                                 existing.status = status
+                                existing.session_price = price_val
                                 # expires_at left as-is for now
                                 if hasattr(existing, 'session_type'):
                                     existing.session_type = session_type
                                 existing.save()
+                                # Assign attendee if email provided and user exists
+                                if client_email:
+                                    try:
+                                        client_user = CustomUser.objects.filter(email=client_email).first()
+                                        if client_user:
+                                            existing.attendees.set([client_user])
+                                    except Exception:
+                                        pass
                                 sessions_updated += 1
                                 continue
 
@@ -1498,9 +1527,17 @@ def save_availability(request):
                         session_type=session_type,
                         tasks=[],
                         status=status,
+                        session_price=price_val,
                         expires_at=None
                     )
                     mentor_profile.sessions.add(s)
+                    if client_email:
+                        try:
+                            client_user = CustomUser.objects.filter(email=client_email).first()
+                            if client_user:
+                                s.attendees.add(client_user)
+                        except Exception:
+                            pass
                     sessions_created += 1
                 except Exception:
                     continue
@@ -1599,8 +1636,10 @@ def get_availability(request):
                     'start': start_dt.isoformat() if start_dt else None,
                     'end': end_dt.isoformat() if end_dt else None,
                     'status': getattr(s, 'status', 'draft') or 'draft',
+                    'session_price': str(s.session_price) if getattr(s, 'session_price', None) is not None else None,
                     'expires_at': exp_dt.isoformat() if exp_dt else None,
                     'session_type': getattr(s, 'session_type', 'individual') or 'individual',
+                    'client_email': (s.attendees.first().email if s.attendees.exists() else None),
                 })
         except Exception:
             sessions = []
@@ -1614,6 +1653,37 @@ def get_availability(request):
         
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+def client_suggestions(request):
+    """Return mentor client suggestions for session assignment (name/email)."""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        return JsonResponse({'success': False, 'clients': []}, status=403)
+
+    try:
+        mentor_profile = request.user.mentor_profile
+        relationships = MentorClientRelationship.objects.filter(
+            mentor=mentor_profile,
+            confirmed=True
+        ).select_related('client', 'client__user').order_by('client__first_name', 'client__last_name')
+
+        clients = []
+        for rel in relationships:
+            try:
+                up = rel.client
+                email = up.user.email if up and up.user else ''
+                clients.append({
+                    'first_name': up.first_name if up else '',
+                    'last_name': up.last_name if up else '',
+                    'email': email,
+                })
+            except Exception:
+                continue
+
+        return JsonResponse({'success': True, 'clients': clients})
+    except Exception as e:
+        return JsonResponse({'success': False, 'clients': [], 'error': str(e)}, status=500)
 
 
 @login_required

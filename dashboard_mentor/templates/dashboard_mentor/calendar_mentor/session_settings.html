@@ -10,25 +10,61 @@
     </header>
 
     <div class="session-settings-body">
-      <div class="session-settings-row">
-        <label class="session-settings-label" for="sessionSettingsDate">Start date</label>
-        <input id="sessionSettingsDate" class="session-settings-input" type="date" />
-      </div>
+      <!-- Part 1: time + price -->
+      <section class="session-settings-section" aria-label="Session details">
+        <div class="session-settings-row">
+          <label class="session-settings-label" for="sessionSettingsDate">Start date</label>
+          <input id="sessionSettingsDate" class="session-settings-input" type="date" />
+        </div>
 
-      <div class="session-settings-row">
-        <label class="session-settings-label" for="sessionSettingsTime">Start time</label>
-        <input id="sessionSettingsTime" class="session-settings-input" type="time" step="60" />
-      </div>
+        <div class="session-settings-row">
+          <label class="session-settings-label" for="sessionSettingsTime">Start time</label>
+          <input id="sessionSettingsTime" class="session-settings-input" type="time" step="60" />
+        </div>
+
+        <div class="session-settings-row">
+          <label class="session-settings-label" for="sessionSettingsEndTime">End time</label>
+          <input id="sessionSettingsEndTime" class="session-settings-input" type="time" step="60" />
+        </div>
+
+        <div class="session-settings-row session-settings-row--summary">
+          <div class="session-settings-label">Minutes</div>
+          <div class="session-settings-summary">
+            <span id="sessionSettingsMinutesValue">--</span> minutes
+          </div>
+        </div>
+
+        <div class="session-settings-row session-settings-row--price">
+          <label class="session-settings-label" for="sessionSettingsPrice">Session Price</label>
+          <input id="sessionSettingsPrice" class="session-settings-input" type="number" step="1" min="0" placeholder="0" />
+        </div>
+
+        <div id="sessionSettingsPriceWarning" class="session-settings-warning" aria-live="polite" hidden>
+          The time of this session doesn't match your standard session length. Do you want to set a different price?
+        </div>
+
+        <div class="session-settings-footer">
+          <button type="button" class="session-settings-btn session-settings-btn--secondary" data-session-settings-cancel>
+            Cancel
+          </button>
+          <button type="button" class="session-settings-btn session-settings-btn--primary" id="sessionSettingsApplyBtn" disabled>
+            Apply
+          </button>
+        </div>
+      </section>
+
+      <!-- Part 2: assign/invite client -->
+      <section class="session-settings-section session-settings-section--assign" aria-label="Assign client">
+        <div class="session-settings-assign-label">Invite a Client</div>
+        <div class="session-settings-assign-field">
+          <input id="sessionSettingsClientEmail" class="session-settings-input" type="email" placeholder="Search client by name or email" autocomplete="off" />
+          <div id="sessionSettingsClientSuggestions" class="session-settings-suggestions" hidden></div>
+        </div>
+        <button type="button" class="session-settings-btn session-settings-btn--primary session-settings-invite-btn" id="sessionSettingsInviteBtn">
+          Invite Client
+        </button>
+      </section>
     </div>
-
-    <footer class="session-settings-footer">
-      <button type="button" class="session-settings-btn session-settings-btn--secondary" data-session-settings-cancel>
-        Cancel
-      </button>
-      <button type="button" class="session-settings-btn session-settings-btn--primary" id="sessionSettingsApplyBtn">
-        Apply
-      </button>
-    </footer>
   </div>
 </div>
 
@@ -58,7 +94,8 @@
 
   .session-settings-modal {
     position: relative;
-    width: min(520px, calc(100vw - 24px));
+    width: auto;
+    max-width: 920px !important;
     background: #ffffff;
     border-radius: 14px;
     box-shadow: 0 18px 60px rgba(0,0,0,0.25);
@@ -102,6 +139,17 @@
     padding: 14px 16px;
     display: grid;
     gap: 12px;
+    grid-template-columns: 1fr 1fr; /* two cards side-by-side on desktop */
+    align-items: start;
+  }
+  .session-settings-section {
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    overflow: hidden;
+    background: #ffffff;
+  }
+  .session-settings-section--assign {
+    padding: 14px 16px 16px;
   }
 
   .session-settings-row {
@@ -109,6 +157,23 @@
     grid-template-columns: 140px 1fr;
     gap: 10px;
     align-items: center;
+    padding: 10px 16px;
+  }
+  .session-settings-row:last-child {
+    border-bottom: none;
+  }
+  .session-settings-row--summary .session-settings-summary {
+    font-weight: 700;
+    color: #0f172a;
+  }
+
+  .session-settings-row--mismatch .session-settings-summary,
+  .session-settings-row--mismatch .session-settings-input {
+    border-color: #fb923c !important;
+    background: #fff3eb !important;
+    border-radius: 6px !important;
+    padding: 6px 12px !important;
+    box-shadow: 0 0 0 3px rgba(251, 146, 60, 0.25) !important;
   }
 
   .session-settings-label {
@@ -133,8 +198,6 @@
   }
 
   .session-settings-footer {
-    padding: 12px 16px 16px;
-    border-top: 1px solid #e2e8f0;
     display: flex;
     justify-content: flex-end;
     gap: 10px;
@@ -164,11 +227,77 @@
     background: #25324a; /* darker hover */
     border-color: #25324a;
   }
+  .session-settings-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .session-settings-warning {
+    padding: 0 16px 12px;
+    color: #9a3412;
+    font-weight: 700;
+    font-size: 0.85rem;
+  }
+  .session-settings-warning--info {
+    color: #2563eb;
+  }
+
+  .session-settings-assign-label {
+    font-weight: 800;
+    color: #0f172a;
+    margin-bottom: 10px;
+  }
+  .session-settings-assign-field {
+    position: relative;
+  }
+  .session-settings-suggestions {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: calc(100% + 6px);
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    box-shadow: 0 12px 30px rgba(0,0,0,0.12);
+    overflow: hidden;
+    z-index: 2;
+    max-height: 240px;
+    overflow-y: auto;
+  }
+  .session-settings-suggestion-item {
+    padding: 10px 12px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .session-settings-suggestion-item:hover {
+    background: #f8fafc;
+  }
+  .session-settings-suggestion-name {
+    font-weight: 800;
+    color: #0f172a;
+    font-size: 0.9rem;
+  }
+  .session-settings-suggestion-email {
+    color: #64748b;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-size: 0.82rem;
+  }
+
+  .session-settings-invite-btn {
+    width: 100%;
+    justify-content: center;
+    margin-top: 12px;
+  }
 
   @media (max-width: 520px) {
     .session-settings-row {
       grid-template-columns: 1fr;
       gap: 6px;
+    }
+    .session-settings-body {
+      grid-template-columns: 1fr;
     }
   }
 </style>
