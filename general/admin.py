@@ -7,8 +7,8 @@ from accounts.models import CustomUser, UserProfile, MentorProfile
 import uuid
 
 class SessionAdmin(admin.ModelAdmin):
-    list_display = ('start_datetime', 'end_datetime', 'created_by', 'session_type')
-    list_filter = ('session_type', 'start_datetime')
+    list_display = ('start_datetime', 'end_datetime', 'created_by', 'session_type', 'status', 'expires_at')
+    list_filter = ('session_type', 'status', 'start_datetime')
     search_fields = ('created_by__email', 'note')
     filter_horizontal = ('attendees',)
 

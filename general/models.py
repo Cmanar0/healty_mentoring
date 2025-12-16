@@ -9,6 +9,13 @@ class Session(models.Model):
         ('group', 'Group'),
         ('workshop', 'Workshop'),
     ]
+
+    STATUS_CHOICES = [
+        ('draft', 'Draft'),
+        ('invited', 'Invited'),
+        ('confirmed', 'Confirmed'),
+        ('cancelled', 'Cancelled'),
+    ]
     
     start_datetime = models.DateTimeField()
     end_datetime = models.DateTimeField()
@@ -16,6 +23,8 @@ class Session(models.Model):
     attendees = models.ManyToManyField("accounts.CustomUser", related_name="attended_sessions", blank=True)
     note = models.TextField(blank=True)
     session_type = models.CharField(max_length=20, choices=SESSION_TYPES, default='individual')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft')
+    expires_at = models.DateTimeField(blank=True, null=True)
     tasks = models.JSONField(default=list, blank=True)  # Array of tasks
 
     class Meta:
