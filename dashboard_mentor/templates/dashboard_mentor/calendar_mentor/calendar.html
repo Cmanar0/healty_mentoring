@@ -609,6 +609,9 @@
   const sessionSettingsInviteSentSubtitle = document.getElementById('sessionSettingsInviteSentSubtitle');
   const sessionSettingsReminderBtn = document.getElementById('sessionSettingsReminderBtn');
   const sessionSettingsReminderHelp = document.getElementById('sessionSettingsReminderHelp');
+  const sessionSettingsApplyFirstNote = document.getElementById('sessionSettingsApplyFirstNote');
+  const sessionSettingsSessionDetailLink = document.getElementById('sessionSettingsSessionDetailLink');
+  const sessionSettingsSessionDetailSubtitle = document.getElementById('sessionSettingsSessionDetailSubtitle');
   const sessionSettingsApplyBtn = document.getElementById('sessionSettingsApplyBtn');
   const scheduleSessionOverlay = document.getElementById('mentorScheduleSessionOverlay');
   const scheduleSessionEmailInput = document.getElementById('scheduleSessionEmailInput');
@@ -1102,11 +1105,20 @@
 
       const isInvited = status === 'invited';
       const isConfirmed = status === 'confirmed';
-      const showSent = (!!email) && (invitationSent || isInvited || isConfirmed);
+      const isDraft = status === 'draft' || !status;
+      // Never show "sent" UI for draft sessions
+      const showSent = (!!email) && (isInvited || isConfirmed);
+      const sessionDbId = ev?.extendedProps?.sessionDbId;
+      // Show the card as soon as the session exists in DB, but disable until invited/confirmed.
+      const showSessionDetail = !!sessionDbId;
+      const enableSessionDetail = !!sessionDbId && (isInvited || isConfirmed);
+
+      // If Apply is enabled, there are unapplied edits (disable invite/reminder until applied).
+      const applyEnabled = !!(sessionSettingsApplyBtn && !sessionSettingsApplyBtn.disabled);
       if (sessionSettingsInviteCardTitle) {
         sessionSettingsInviteCardTitle.textContent = isConfirmed ? 'Session confirmed' : (showSent ? 'Invitation sent' : 'Invite a Client');
       }
-      if (sessionSettingsInviteSentState) sessionSettingsInviteSentState.hidden = !showSent;
+      if (sessionSettingsInviteSentState) sessionSettingsInviteSentState.hidden = isDraft || !showSent;
       if (sessionSettingsInviteSentSubtitle) {
         if (isConfirmed) sessionSettingsInviteSentSubtitle.textContent = `Session confirmed by ${email}.`;
         else sessionSettingsInviteSentSubtitle.textContent = showSent ? `Invitation sent to ${email}.` : '';
@@ -1122,7 +1134,7 @@
       if (sessionSettingsReminderBtn) {
         // Reminders only make sense while invited (not confirmed)
         sessionSettingsReminderBtn.hidden = !showSent || isConfirmed;
-        sessionSettingsReminderBtn.disabled = (!showSent || !canRemind || isConfirmed);
+        sessionSettingsReminderBtn.disabled = (applyEnabled || !showSent || !canRemind || isConfirmed);
       }
       if (sessionSettingsReminderHelp) {
         if (!showSent) sessionSettingsReminderHelp.textContent = '';
@@ -1133,13 +1145,63 @@
 
       // Color styling to match session status in calendar
       if (sessionSettingsInviteSentState) {
-        sessionSettingsInviteSentState.classList.toggle('session-settings-sent--invited', isInvited && !isConfirmed);
-        sessionSettingsInviteSentState.classList.toggle('session-settings-sent--confirmed', isConfirmed);
+        sessionSettingsInviteSentState.classList.toggle('session-settings-invite-state--invited', isInvited && !isConfirmed);
+        sessionSettingsInviteSentState.classList.toggle('session-settings-invite-state--confirmed', isConfirmed);
+      }
+
+      // Apply-first note + disable send invitation when there are unapplied changes
+      if (sessionSettingsInviteBtn && !sessionSettingsInviteBtn.hidden) {
+        const emailVal = String(sessionSettingsClientEmailInput?.value || '').trim();
+        sessionSettingsInviteBtn.disabled = applyEnabled || !isValidEmail(emailVal) || !sessionDbId;
+      }
+      if (sessionSettingsApplyFirstNote) {
+        const showNote = applyEnabled && (
+          (!!sessionSettingsInviteBtn && !sessionSettingsInviteBtn.hidden) ||
+          (!!sessionSettingsReminderBtn && !sessionSettingsReminderBtn.hidden)
+        );
+        sessionSettingsApplyFirstNote.hidden = !showNote;
+      }
+
+      // Session detail page link
+      if (sessionSettingsSessionDetailLink) {
+        sessionSettingsSessionDetailLink.hidden = !showSessionDetail;
+        sessionSettingsSessionDetailLink.classList.toggle('is-disabled', !enableSessionDetail);
+        sessionSettingsSessionDetailLink.setAttribute('aria-disabled', enableSessionDetail ? 'false' : 'true');
+        if (showSessionDetail) {
+          try {
+            sessionSettingsSessionDetailLink.href = enableSessionDetail
+              ? SESSION_DETAIL_URL_TEMPLATE.replace('0', String(sessionDbId))
+              : '#';
+          } catch (e) {}
+        }
+        if (sessionSettingsSessionDetailSubtitle) {
+          if (!showSessionDetail) sessionSettingsSessionDetailSubtitle.textContent = 'Open the dedicated session page';
+          else if (!enableSessionDetail) sessionSettingsSessionDetailSubtitle.textContent = 'Send the invitation to a client to unlock this page';
+          else sessionSettingsSessionDetailSubtitle.textContent = 'Open the dedicated session page';
+        }
       }
     }
 
     // Initial render of invite/reminder UI state
     try { setInviteUiForEvent(fcEvent); } catch (e) {}
+
+    // Prevent clicking disabled session detail link (show message instead)
+    if (sessionSettingsSessionDetailLink && !sessionSettingsSessionDetailLink.__mentorBound) {
+      sessionSettingsSessionDetailLink.__mentorBound = true;
+      sessionSettingsSessionDetailLink.addEventListener('click', (e) => {
+        try {
+          const aria = sessionSettingsSessionDetailLink.getAttribute('aria-disabled');
+          const isDisabled = aria === 'true' || sessionSettingsSessionDetailLink.classList.contains('is-disabled');
+          if (isDisabled) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (typeof showNotification === 'function') {
+              showNotification('Send the invitation to a client first to open the session page.', 'error');
+            }
+          }
+        } catch (err) {}
+      });
+    }
 
     __sessionSettingsOriginal = {
       date: sessionSettingsDateInput.value || '',
@@ -1164,6 +1226,10 @@
           price: sessionSettingsPriceInput ? (sessionSettingsPriceInput.value || '') : ''
         };
         setSessionSettingsApplyEnabled(JSON.stringify(cur) !== JSON.stringify(__sessionSettingsOriginal));
+        try {
+          const latestEv = calendar?.getEventById?.(sessionSettingsEventId) || fcEvent;
+          if (latestEv) setInviteUiForEvent(latestEv);
+        } catch (e) {}
       });
     });
 
@@ -1690,6 +1756,7 @@
   const INVITE_SESSION_URL = "{% url 'general:dashboard_mentor:invite_session' %}";
   const SCHEDULE_SESSION_URL = "{% url 'general:dashboard_mentor:schedule_session' %}";
   const REMIND_SESSION_URL = "{% url 'general:dashboard_mentor:remind_session' %}";
+  const SESSION_DETAIL_URL_TEMPLATE = "{% url 'general:dashboard_mentor:session_detail' 0 %}";
 
   // Save button enablement:
   // - availability changes: persisted by Save

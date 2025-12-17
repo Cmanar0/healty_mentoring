@@ -10,8 +10,9 @@
     </header>
 
     <div class="session-settings-body">
-      <!-- Part 1: time + price -->
-      <section class="session-settings-section" aria-label="Session details">
+      <div class="session-settings-col session-settings-col--left">
+        <!-- Left column: time + price -->
+        <section class="session-settings-section" aria-label="Session details">
         <div class="session-settings-row">
           <label class="session-settings-label" for="sessionSettingsDate">Start date</label>
           <input id="sessionSettingsDate" class="session-settings-input" type="date" />
@@ -51,41 +52,68 @@
             Apply
           </button>
         </div>
-      </section>
+        </section>
+      </div>
 
-      <!-- Part 2: assign/invite client -->
-      <section class="session-settings-section session-settings-section--assign" aria-label="Assign client">
-        <div class="session-settings-assign-label" id="sessionSettingsInviteCardTitle">Invite a Client</div>
-        <div class="session-settings-assign-field">
-          <input
-            id="sessionSettingsClientEmail"
-            class="session-settings-input"
-            type="text"
-            placeholder="Search client by name or email"
-            name="client_search_email"
-            autocomplete="new-password"
-            autocapitalize="off"
-            autocorrect="off"
-            spellcheck="false"
-            inputmode="email"
-          />
-          <div id="sessionSettingsClientSuggestions" class="session-settings-suggestions" hidden></div>
-        </div>
-        <button type="button" class="session-settings-btn session-settings-btn--success session-settings-invite-btn" id="sessionSettingsInviteBtn" disabled>
-          Send Invitation
-        </button>
-
-        <!-- Sent state (shown after an invite was sent for this session) -->
-        <div id="sessionSettingsInviteSentState" class="session-settings-sent" hidden>
-          <div class="session-settings-sent-subtitle" id="sessionSettingsInviteSentSubtitle">We emailed the client.</div>
-          <button type="button" class="session-settings-btn session-settings-btn--secondary" id="sessionSettingsReminderBtn">
-            Send reminder
-          </button>
-          <div class="session-settings-sent-help" id="sessionSettingsReminderHelp">
-            You can send one reminder per day.
+      <div class="session-settings-col session-settings-col--right" aria-label="Assign client and session detail">
+        <!-- Right column: assign/invite client -->
+        <section class="session-settings-section session-settings-section--assign" aria-label="Assign client">
+          <div class="session-settings-assign-label" id="sessionSettingsInviteCardTitle">Invite a Client</div>
+          <div class="session-settings-assign-field">
+            <input
+              id="sessionSettingsClientEmail"
+              class="session-settings-input"
+              type="text"
+              placeholder="Search client by name or email"
+              name="client_search_email"
+              autocomplete="new-password"
+              autocapitalize="off"
+              autocorrect="off"
+              spellcheck="false"
+              inputmode="email"
+            />
+            <div id="sessionSettingsClientSuggestions" class="session-settings-suggestions" hidden></div>
           </div>
-        </div>
-      </section>
+          <button type="button" class="session-settings-btn session-settings-btn--success session-settings-invite-btn" id="sessionSettingsInviteBtn" disabled>
+            Send Invitation
+          </button>
+
+          <!-- Sent state (shown after an invite was sent for this session) -->
+          <div id="sessionSettingsInviteSentState" class="session-settings-invite-state" hidden>
+            <div class="session-settings-sent-subtitle" id="sessionSettingsInviteSentSubtitle">We emailed the client.</div>
+            <button type="button" class="session-settings-btn session-settings-btn--secondary" id="sessionSettingsReminderBtn">
+              Send reminder
+            </button>
+            <div class="session-settings-sent-help" id="sessionSettingsReminderHelp">
+              You can send one reminder per day.
+            </div>
+          </div>
+
+          <!-- Apply-first note (shown when there are unapplied edits in the left column) -->
+          <div id="sessionSettingsApplyFirstNote" class="session-settings-apply-first-note" hidden>
+            <i class="fas fa-circle-info" style="margin-right: 6px;"></i>
+            Apply your changes first before sending or resending the invitation.
+          </div>
+        </section>
+
+        <!-- Dedicated session page button (still in right column) -->
+        <section class="session-settings-section session-settings-section--session-detail" aria-label="Session detail page">
+          <a
+            id="sessionSettingsSessionDetailLink"
+            href="#"
+            target="_blank"
+            rel="noopener"
+            class="session-settings-session-detail-btn"
+            hidden
+          >
+            <span class="session-settings-session-detail-icon"><i class="fas fa-up-right-from-square"></i></span>
+            <span class="session-settings-session-detail-text">
+              <span class="session-settings-session-detail-title">Session Detail page</span>
+              <span class="session-settings-session-detail-subtitle" id="sessionSettingsSessionDetailSubtitle">Open the dedicated session page</span>
+            </span>
+          </a>
+        </section>
+      </div>
     </div>
   </div>
 </div>
@@ -159,10 +187,18 @@
 
   .session-settings-body {
     padding: 14px 16px;
+    display: flex;
+    gap: 12px;
+    align-items: start;
+  }
+  .session-settings-col {
+    flex: 1;
+    min-width: 0;
+  }
+  .session-settings-col--right {
     display: grid;
     gap: 12px;
-    grid-template-columns: 1fr 1fr; /* two cards side-by-side on desktop */
-    align-items: start;
+    align-content: start;
   }
   .session-settings-section {
     border: 1px solid #e2e8f0;
@@ -322,31 +358,38 @@
     margin-top: 12px;
   }
 
-  .session-settings-sent {
+  /* Invite status box (must respect the `hidden` attribute).
+     Do NOT set `display` here, otherwise it can override [hidden]{display:none}. */
+  .session-settings-invite-state {
     margin-top: 12px;
     padding: 12px;
     border-radius: 12px;
     background: #f8fafc;
     border: 1px solid #e2e8f0;
-    display: grid;
-    gap: 8px;
+  }
+  .session-settings-invite-state[hidden] {
+    display: none !important;
+  }
+  /* Spacing between children without relying on display:grid/flex */
+  .session-settings-invite-state > * + * {
+    margin-top: 8px;
   }
   /* Status-specific styling (matches calendar slot colors) */
-  .session-settings-sent.session-settings-sent--invited {
-    background: #fef3c7; /* amber-100 */
-    border-color: #f59e0b; /* amber-500 */
+  .session-settings-invite-state.session-settings-invite-state--invited {
+    background: #fef3c7 !important; /* amber-100 */
+    border-color: #f59e0b !important; /* amber-500 */
   }
-  .session-settings-sent.session-settings-sent--invited .session-settings-sent-subtitle,
-  .session-settings-sent.session-settings-sent--invited .session-settings-sent-help {
+  .session-settings-invite-state.session-settings-invite-state--invited .session-settings-sent-subtitle,
+  .session-settings-invite-state.session-settings-invite-state--invited .session-settings-sent-help {
     color: #92400e; /* amber-800 */
   }
 
-  .session-settings-sent.session-settings-sent--confirmed {
-    background: #dcfce7; /* green-100 */
-    border-color: #16a34a; /* green-600 */
+  .session-settings-invite-state.session-settings-invite-state--confirmed {
+    background: #dcfce7 !important; /* green-100 */
+    border-color: #16a34a !important; /* green-600 */
   }
-  .session-settings-sent.session-settings-sent--confirmed .session-settings-sent-subtitle,
-  .session-settings-sent.session-settings-sent--confirmed .session-settings-sent-help {
+  .session-settings-invite-state.session-settings-invite-state--confirmed .session-settings-sent-subtitle,
+  .session-settings-invite-state.session-settings-invite-state--confirmed .session-settings-sent-help {
     color: #166534; /* green-800 */
   }
   .session-settings-sent-subtitle {
@@ -360,13 +403,95 @@
     font-weight: 600;
   }
 
+  .session-settings-apply-first-note {
+    margin-top: 10px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    border: 1px solid #f59e0b; /* amber-500 */
+    background: #fffbeb;       /* amber-50 */
+    color: #92400e;            /* amber-800 */
+    font-weight: 700;
+    font-size: 0.9rem;
+  }
+  .session-settings-apply-first-note[hidden] {
+    display: none !important;
+  }
+  .session-settings-apply-first-note:not([hidden]) {
+    display: flex;
+    align-items: center;
+  }
+
+  .session-settings-session-detail-btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 14px;
+    border-radius: 14px;
+    border: 1px solid #e2e8f0;
+    background: #ffffff;
+    text-decoration: none;
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  }
+  .session-settings-session-detail-btn.is-disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    pointer-events: none; /* hard-block clicks */
+  }
+  .session-settings-session-detail-btn:hover {
+    transform: translateY(-1px);
+    border-color: #94a3b8;
+    box-shadow: 0 12px 26px rgba(15, 23, 42, 0.12);
+  }
+  .session-settings-session-detail-btn.is-disabled:hover {
+    transform: none;
+    border-color: #e2e8f0;
+    box-shadow: none;
+  }
+  .session-settings-session-detail-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #eff6ff; /* blue-50 */
+    color: #10b981;      /* blue-600 */
+    flex-shrink: 0;
+    font-size: 1.05rem;
+  }
+  .session-settings-session-detail-btn.is-disabled .session-settings-session-detail-icon {
+    background: #f1f5f9; /* slate-100 */
+    color: #94a3b8;      /* slate-400 */
+  }
+  .session-settings-session-detail-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+  .session-settings-session-detail-title {
+    font-weight: 900;
+    color: #0f172a;
+  }
+  .session-settings-session-detail-subtitle {
+    color: #64748b;
+    font-weight: 600;
+    font-size: 0.9rem;
+  }
+
+  .session-settings-section--session-detail {
+    padding: 14px 16px 16px;
+  }
+
   @media (max-width: 520px) {
     .session-settings-row {
       grid-template-columns: 1fr;
       gap: 6px;
     }
     .session-settings-body {
-      grid-template-columns: 1fr;
+      flex-direction: column;
     }
   }
 </style>

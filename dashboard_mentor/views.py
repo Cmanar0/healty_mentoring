@@ -2571,6 +2571,49 @@ def remind_session(request):
 
 
 @login_required
+def session_detail(request, session_id: int):
+    """Mentor-only dedicated session detail page."""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        return redirect('general:index')
+
+    mentor_profile = request.user.mentor_profile
+    from general.models import Session
+
+    s = mentor_profile.sessions.filter(id=session_id).first()
+    if not s:
+        messages.error(request, 'Session not found.')
+        return redirect('general:dashboard_mentor:my_sessions')
+
+    client_email = None
+    try:
+        client_email = s.attendees.first().email if s.attendees.exists() else None
+    except Exception:
+        client_email = None
+
+    # Render times in mentor timezone (best effort)
+    tz_name = mentor_profile.selected_timezone or mentor_profile.detected_timezone or mentor_profile.time_zone or 'UTC'
+    start_local = None
+    end_local = None
+    try:
+        from zoneinfo import ZoneInfo
+        tzinfo = ZoneInfo(str(tz_name))
+        start_local = s.start_datetime.astimezone(tzinfo) if s.start_datetime else None
+        end_local = s.end_datetime.astimezone(tzinfo) if s.end_datetime else None
+    except Exception:
+        start_local = s.start_datetime
+        end_local = s.end_datetime
+
+    return render(request, 'dashboard_mentor/session_detail.html', {
+        'debug': settings.DEBUG,
+        'session': s,
+        'client_email': client_email,
+        'mentor_timezone': tz_name,
+        'start_local': start_local,
+        'end_local': end_local,
+    })
+
+
+@login_required
 def clients_list(request):
     """Display list of all clients for the logged-in mentor"""
     if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
