@@ -564,6 +564,118 @@
     50% { filter: brightness(1.35) saturate(0.95); }
   }
 
+  /* --- High Contrast Month View --- */
+  .mentor-calendar-root .fc-daygrid-day {
+     background-color: #ffffff;
+     transition: background-color 0.2s ease;
+  }
+  .mentor-calendar-root .fc-day-other {
+    background-color: #f1f5f9 !important; /* Distinct grey for other month days */
+    background-image: repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(0,0,0,0.02) 10px, rgba(0,0,0,0.02) 20px);
+  }
+
+  /* --- Square on Right Summary UI (Large Full Height) --- */
+  .mentor-calendar-root .fc-daygrid-day-frame {
+    position: relative;
+  }
+
+  .mentor-calendar-root .mentor-month-square {
+    position: absolute;
+    top: 6px;
+    bottom: 6px;
+    right: 6px;
+    
+    /* "Height same as day box" (minus padding) */
+    /* height: auto; (implied by top/bottom) */
+    aspect-ratio: 1 / 1;
+    max-width: 50%; /* Safeguard */
+    
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: white; /* Text color for colored backgrounds */
+    
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    
+    border-radius: 12px; /* Round corners */
+    
+    opacity: 0.5; /* "Slightly transparent" */
+    z-index: 1; /* Behind content generally, but clickable */
+  }
+
+  /* Hover state: full opacity and color */
+  .mentor-calendar-root .mentor-month-square:hover {
+    opacity: 1;
+    /* Remove shadow or scale if it fills height? 
+       Maybe just opacity change is cleanest for a "block" interface. 
+       Or subtle shadow. */
+    box-shadow: -4px 0 10px rgba(0,0,0,0.1);
+  }
+
+  /* Status Colors - with transparency in base state handled by opacity: 0.5 above, 
+     but user asked for colors to be transparent?
+     Actually opacity affects text too (making count hard to read).
+     Better: Use rgba backgrounds?
+     User: "All colors should be slightly transparent and with full color on hover"
+     "blue or red ... slightly transparent ... full color on hover"
+  */
+  
+  /* Reset opacity from .mentor-month-square and handle via background-color */
+  .mentor-calendar-root .mentor-month-square {
+    opacity: 1; /* logic handled below */
+  }
+
+  /* Availability Mode */
+  .mentor-calendar-root .mentor-month-square.status-availability {
+    background-color: rgba(59, 130, 246, 0.5); /* Blue-500 50% */
+  }
+  .mentor-calendar-root .mentor-month-square.status-availability:hover {
+    background-color: rgba(59, 130, 246, 1);
+  }
+
+  /* Session Mode Priorities */
+  .mentor-calendar-root .mentor-month-square.status-confirmed {
+    background-color: rgba(34, 197, 94, 0.5); /* Green-500 50% */
+  }
+  .mentor-calendar-root .mentor-month-square.status-confirmed:hover {
+    background-color: rgba(34, 197, 94, 1);
+  }
+
+  .mentor-calendar-root .mentor-month-square.status-invited {
+    background-color: rgba(234, 179, 8, 0.5); /* Yellow-500 50% */
+  }
+  .mentor-calendar-root .mentor-month-square.status-invited:hover {
+    background-color: rgba(234, 179, 8, 1);
+  }
+
+  .mentor-calendar-root .mentor-month-square.status-draft {
+    background-color: rgba(249, 115, 22, 0.5); /* Orange-500 50% */
+  }
+  .mentor-calendar-root .mentor-month-square.status-draft:hover {
+    background-color: rgba(249, 115, 22, 1);
+  }
+
+  /* Global Collision */
+  .mentor-calendar-root .mentor-month-square.status-collision {
+    background-color: rgba(239, 68, 68, 0.6); /* Red-500 60% */
+  }
+  .mentor-calendar-root .mentor-month-square.status-collision:hover {
+    background-color: rgba(239, 68, 68, 1);
+  }
+
+  /* Move Date Number to Left to avoid covering */
+  .mentor-calendar-root .fc-daygrid-day-top {
+    justify-content: flex-start; /* Push number to LEFT */
+    flex-direction: row;
+    padding-left: 6px;
+    padding-top: 4px;
+    z-index: 5;
+  }
+
 </style>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.css">
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
@@ -629,6 +741,8 @@
   if (!overlay || !root) return;
 
   let calendar = null;
+  // Used to avoid creating a slot right after we programmatically switch to day view (e.g. from month summary click)
+  let suppressNextDateClickUntilMs = 0;
   let availabilitySettingsEventId = null;
   let availabilitySwitchEventId = null;
   let availabilitySwitchOpenSettingsAfterSwitch = false;
@@ -1669,9 +1783,198 @@
     });
   }
 
+  function clearMonthSummary() {
+    try {
+      root?.querySelectorAll?.('.mentor-month-summary')?.forEach?.(el => el.remove());
+    } catch (e) {}
+  }
+
+  function recurringRuleMatchesDate(rule, dateStr) {
+    try {
+      if (!rule || !rule.type) return false;
+      const startDate = String(rule.start_date || '');
+      if (startDate && dateStr < startDate) return false;
+      const skip = new Set(rule.skip_dates || []);
+      const booked = new Set(rule.booked_dates || []);
+      if (skip.has(dateStr) || booked.has(dateStr)) return false;
+
+      if (rule.type === 'daily') return true;
+      if (rule.type === 'weekly') {
+        const wd = weekdayNameFromIsoDate(dateStr);
+        return Array.isArray(rule.weekdays) ? rule.weekdays.includes(wd) : false;
+      }
+      if (rule.type === 'monthly') {
+        if (!(window.luxon && window.luxon.DateTime)) return false;
+        const dom = Number(rule.day_of_month);
+        if (!Number.isFinite(dom) || dom < 1) return false;
+        const d = window.luxon.DateTime.fromISO(dateStr, { zone: timezone_variable });
+        if (!d.isValid) return false;
+        const daysInMonth = d.daysInMonth;
+        const targetDay = dom > daysInMonth ? daysInMonth : dom;
+        return d.day === targetDay;
+      }
+    } catch (e) {}
+    return false;
+  }
+
+  function computeMonthCountsForDate(dateStr) {
+    let sessionsCount = 0;
+    let availabilityCount = 0;
+
+    // One-time availability + sessions from existing events (reflects unsaved edits).
+    try {
+      if (calendar) {
+        calendar.getEvents().forEach((ev) => {
+          const mode = ev?.extendedProps?.slotMode;
+          if (!mode || !ev.start) return;
+          // Ignore rendered recurring instances (we count rules directly)
+          if (ev.extendedProps?.isRecurringInstance) return;
+          const d = getLocalDateKeyFromJsDate(ev.start);
+          if (d !== dateStr) return;
+          if (mode === 'session') sessionsCount += 1;
+          else if (mode === 'availability') availabilityCount += 1;
+        });
+      }
+    } catch (e) {}
+
+    // Recurring availability rules (fast match, no rendering)
+    try {
+      recurringAvailabilityRules.forEach((rule) => {
+        if (recurringRuleMatchesDate(rule, dateStr)) availabilityCount += 1;
+      });
+    } catch (e) {}
+
+    return { sessionsCount, availabilityCount };
+  }
+
+  // Determine the single aggregate status for a day based on Mode + Priority
+  function computeMonthStatus(dateStr) {
+    // 1. Check Collisions (Highest Priority in both modes)
+    // We already have collision detection computed globally.
+    // However, our global `hasCalendarCollisionsInHorizon` uses *rendered events*.
+    // In Month view they are hidden, but they exist in memory (Calendar internals).
+    // Better strategy for robustness: iterate events for this day and check .hasCollision prop
+    
+    let hasCollision = false;
+    let hasAvailability = false;
+    
+    let sessionStatuses = new Set(); // draft, invited, confirmed
+    let hasSession = false;
+
+    if (calendar) {
+      const modeToCheck = isAvailabilityMode ? 'availability' : 'session';
+      const evs = calendar.getEvents();
+      
+      // Filter for this day
+      for (let ev of evs) {
+        if (!ev.start) continue;
+        const d = getLocalDateKeyFromJsDate(ev.start);
+        if (d !== dateStr) continue;
+
+        const m = ev.extendedProps?.slotMode;
+        if (!m) continue;
+        
+        // Only consider events relevant to the CURRENT view mode?
+        // User asked: "left side... show sessions or availability based on the selected mode"
+        if (m !== modeToCheck) continue;
+
+        // Check collision (computed by recomputeCollisions)
+        if (ev.extendedProps?.hasCollision) hasCollision = true;
+
+        if (m === 'availability') {
+          hasAvailability = true;
+        } else if (m === 'session') {
+          hasSession = true;
+          const s = normalizeSessionStatus(ev.extendedProps?.status);
+          sessionStatuses.add(s);
+        }
+      }
+      
+      // Also check recurring availability rules if in Availability mode (they might not be rendered as events in Month view)
+      if (isAvailabilityMode && !hasAvailability) {
+        recurringAvailabilityRules.forEach(rule => {
+           if (recurringRuleMatchesDate(rule, dateStr)) hasAvailability = true;
+           // We can't easily check collisions for unrendered recurring slots in month view cheaply without re-running the full collision engine for every cell.
+           // However, `computeCalendarCollisionsInHorizon` handles unrendered recurring slots too.
+           // Let's rely on the explicit event scan above for collisions (if unrendered, we might miss visual red, but the "Collision" status requires existing overlap).
+           // If the user *created* a collision, it typically involves a session which IS an event.
+           // For simpler logic: if we just detect the rule, we mark it available.
+        });
+        
+        // To be safe on collisions in Month view for Recurring vs Session (which might be in view):
+        // We can check if ANY collision exists for this dateRec
+        // But let's stick to the rendered/memory event props for now, improving if needed.
+      }
+    }
+
+    // Determine Result Color Class AND Count
+    let resultClass = null;
+    let count = 0;
+
+    if (isAvailabilityMode) {
+      // Re-count availability if needed? 
+      // We have availabilityCount from helper but helper counts ALL rules, 
+      // we need to know if we really have them.
+      // Let's just use `computeMonthCountsForDate` for the count, but `computeMonthStatus` for color logic.
+      // But we can simplify: just return the object.
+      // For now, let's keep it simple: return class. We will get count in render loop.
+      if (hasCollision) return 'status-collision';
+      if (hasAvailability) return 'status-availability';
+      return null;
+    } else {
+      // Session Mode
+      if (hasCollision) return 'status-collision';
+      if (!hasSession) return null;
+      
+      if (sessionStatuses.has('draft')) return 'status-draft';
+      if (sessionStatuses.has('invited')) return 'status-invited';
+      if (sessionStatuses.has('confirmed')) return 'status-confirmed';
+      return 'status-draft';
+    }
+  }
+
+  function renderMonthSummary() {
+    if (!calendar || !root) return;
+    const viewType = calendar.view?.type;
+    if (viewType !== 'dayGridMonth') {
+      try {
+        root.querySelectorAll('.mentor-month-square').forEach(el => el.remove());
+      } catch(e) {}
+      return;
+    }
+    
+    // Cleanup old squares
+    root.querySelectorAll('.mentor-month-square').forEach(el => el.remove());
+
+    clearRecurringInstanceEvents(); // standard cleanup
+
+    const dayEls = root.querySelectorAll('.fc-daygrid-day[data-date]');
+    dayEls.forEach((dayEl) => {
+      const dateStr = dayEl.getAttribute('data-date') || '';
+      if (!dateStr) return;
+      
+      const statusClass = computeMonthStatus(dateStr);
+      if (!statusClass) return; // Show nothing if no relevant events
+
+      // Get count
+      const counts = computeMonthCountsForDate(dateStr);
+      const count = isAvailabilityMode ? counts.availabilityCount : counts.sessionsCount;
+
+      const sq = document.createElement('div');
+      sq.className = `mentor-month-square ${statusClass}`;
+      sq.textContent = count > 99 ? '99+' : count;
+      sq.setAttribute('data-date', dateStr);
+      sq.setAttribute('title', `${count} ${isAvailabilityMode ? 'slots' : 'sessions'}. Double-click cell to view.`);
+
+      const frame = dayEl.querySelector('.fc-daygrid-day-frame') || dayEl;
+      frame.appendChild(sq);
+    });
+  }
+
   function renderRecurringInstancesForCurrentView() {
     if (!calendar) return;
     if (!(window.luxon && window.luxon.DateTime)) return;
+    if (calendar.view?.type === 'dayGridMonth') return; // Month view uses summary chips instead
     clearRecurringInstanceEvents();
 
     const view = calendar.view;
@@ -2545,6 +2848,13 @@
       } else {
         root.classList.remove('is-mode-availability');
       }
+      
+      // Refresh Month View summary (it depends on mode)
+      try {
+        if (calendar && calendar.view?.type === 'dayGridMonth') {
+          renderMonthSummary();
+        }
+      } catch (e) {}
     }
 
     // Update editability of all existing events
@@ -2631,6 +2941,16 @@
       eventDidMount: function(info) {
         // Double-click slots -> open settings (or prompt to switch modes)
         try {
+          // Month view: do not render individual slots (we render a per-day summary instead)
+          try {
+            const viewType = calendar?.view?.type;
+            const m = info.event?.extendedProps?.slotMode;
+            if (viewType === 'dayGridMonth' && (m === 'availability' || m === 'session')) {
+              if (info.el) info.el.style.display = 'none';
+              return;
+            }
+          } catch (e) {}
+
           const mode = info.event?.extendedProps?.slotMode;
           if (!info.el) return;
           // Used by collision DOM updates (some builds don't rerender classes reliably)
@@ -2727,7 +3047,12 @@
         updateDateTitle(info.view.title);
         updateActiveViewButton(info.view.type);
         styleGridLines();
-        renderRecurringInstancesForCurrentView();
+        if (info?.view?.type === 'dayGridMonth') {
+          renderMonthSummary();
+        } else {
+          clearMonthSummary();
+          renderRecurringInstancesForCurrentView();
+        }
       },
       eventDrop: function(info) {
         const mode = info.event.extendedProps?.slotMode;
@@ -2815,6 +3140,8 @@
         // One-click slot creation only in Day/Week timeGrid views
         const viewType = info.view?.type;
         if (viewType !== 'timeGridDay' && viewType !== 'timeGridWeek') return;
+        // Prevent accidental slot creation immediately after clicking month summary chips
+        if (suppressNextDateClickUntilMs && Date.now() < suppressNextDateClickUntilMs) return;
 
         const mode = isAvailabilityMode ? 'availability' : 'session';
         // Use mentor profile session_length (minutes) for slot length
@@ -3099,6 +3426,66 @@
     timeSlots.forEach((slot, i) => {
        // Assuming 15min slots per tr, index 0 is first. 
        // We can simply trust the label checking above for now.
+    });
+  }
+
+  // Month summary click handling (event delegation) - SQUARE CLICK
+  if (root && !root.__mentorMonthSummaryBound) {
+    root.__mentorMonthSummaryBound = true;
+    root.addEventListener('click', (e) => {
+      try {
+        const target = e.target;
+        if (!(target instanceof Element)) return;
+        
+        // Updated to target the new "mentor-month-square"
+        const sq = target.closest('.mentor-month-square');
+        if (!sq) return;
+        
+        const dateStr = sq.getAttribute('data-date') || '';
+        if (!dateStr || !calendar) return;
+        
+        e.preventDefault();
+        e.stopPropagation();
+        
+        // Avoid creating a slot due to the same click after switching views.
+        suppressNextDateClickUntilMs = Date.now() + 600;
+        
+        // Switch view but maintain current mode
+        window.setTimeout(() => {
+          try {
+            calendar.changeView('timeGridDay', dateStr);
+          } catch (e2) {}
+        }, 0);
+      } catch (err) {}
+    }, { capture: true });
+  }
+
+  // Double-click on day cell handling
+  if (root && !root.__mentorMonthDblClickBound) {
+    root.__mentorMonthDblClickBound = true;
+    root.addEventListener('dblclick', (e) => {
+      try {
+        const viewType = calendar?.view?.type;
+        if (viewType !== 'dayGridMonth') return;
+        
+        const target = e.target;
+        if (!(target instanceof Element)) return;
+        
+        const dayEl = target.closest('.fc-daygrid-day');
+        if (!dayEl) return;
+        
+        const dateStr = dayEl.getAttribute('data-date');
+        if (!dateStr) return;
+         
+        e.preventDefault();
+        e.stopPropagation();
+        
+        window.setTimeout(() => {
+          try {
+             calendar.changeView('timeGridDay', dateStr);
+          } catch(e2) {}
+        }, 0);
+      } catch (err) {}
     });
   }
 
