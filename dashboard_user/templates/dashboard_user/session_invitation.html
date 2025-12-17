@@ -1,0 +1,46 @@
+{% extends "dashboard_user/base.html" %}
+{% load static %}
+
+{% block dashboard_content %}
+<div style="max-width: 820px; margin: 24px auto; padding: 0 16px;">
+  <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08); overflow: hidden;">
+    <div style="padding: 18px 18px 12px; border-bottom: 1px solid #e2e8f0;">
+      <h2 style="margin: 0; font-size: 1.15rem; font-weight: 800; color: #0f172a;">Session Invitation</h2>
+      <p style="margin: 6px 0 0; color: #64748b;">Invited by <strong>{{ mentor_name }}</strong></p>
+    </div>
+
+    <div style="padding: 16px 18px; display: grid; gap: 10px;">
+      <div style="display: grid; grid-template-columns: 160px 1fr; gap: 10px;">
+        <div style="color: #64748b; font-weight: 700;">Starts</div>
+        <div style="color: #0f172a; font-weight: 700;">{{ session.start_datetime }}</div>
+      </div>
+      <div style="display: grid; grid-template-columns: 160px 1fr; gap: 10px;">
+        <div style="color: #64748b; font-weight: 700;">Ends</div>
+        <div style="color: #0f172a; font-weight: 700;">{{ session.end_datetime }}</div>
+      </div>
+      <div style="display: grid; grid-template-columns: 160px 1fr; gap: 10px;">
+        <div style="color: #64748b; font-weight: 700;">Price</div>
+        <div style="color: #0f172a; font-weight: 700;">
+          {% if session.session_price %}${{ session.session_price }}{% else %}—{% endif %}
+        </div>
+      </div>
+      <div style="display: grid; grid-template-columns: 160px 1fr; gap: 10px;">
+        <div style="color: #64748b; font-weight: 700;">Status</div>
+        <div style="color: #0f172a; font-weight: 700; text-transform: capitalize;">{{ session.status }}</div>
+      </div>
+
+      <div style="margin-top: 10px; padding-top: 12px; border-top: 1px solid #e2e8f0; display: flex; gap: 10px; justify-content: flex-end;">
+        <a href="/dashboard/user/" style="height: 40px; display: inline-flex; align-items: center; padding: 0 14px; border-radius: 10px; border: 1px solid #e2e8f0; text-decoration: none; color: #0f172a; font-weight: 800; background: #ffffff;">Cancel</a>
+        <form method="post" style="margin: 0;">
+          {% csrf_token %}
+          <button type="submit" style="height: 40px; padding: 0 14px; border-radius: 10px; border: 1px solid #10b981; background: #10b981; color: #ffffff; font-weight: 900; cursor: pointer;">Confirm and pay</button>
+        </form>
+      </div>
+
+      <p style="margin: 8px 0 0; font-size: 0.9rem; color: #64748b;">
+        Payment is not implemented yet. Confirming will mark the session as <strong>confirmed</strong>.
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}

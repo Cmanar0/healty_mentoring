@@ -55,7 +55,7 @@
 
       <!-- Part 2: assign/invite client -->
       <section class="session-settings-section session-settings-section--assign" aria-label="Assign client">
-        <div class="session-settings-assign-label">Invite a Client</div>
+        <div class="session-settings-assign-label" id="sessionSettingsInviteCardTitle">Invite a Client</div>
         <div class="session-settings-assign-field">
           <input
             id="sessionSettingsClientEmail"
@@ -74,6 +74,17 @@
         <button type="button" class="session-settings-btn session-settings-btn--success session-settings-invite-btn" id="sessionSettingsInviteBtn" disabled>
           Send Invitation
         </button>
+
+        <!-- Sent state (shown after an invite was sent for this session) -->
+        <div id="sessionSettingsInviteSentState" class="session-settings-sent" hidden>
+          <div class="session-settings-sent-subtitle" id="sessionSettingsInviteSentSubtitle">We emailed the client.</div>
+          <button type="button" class="session-settings-btn session-settings-btn--secondary" id="sessionSettingsReminderBtn">
+            Send reminder
+          </button>
+          <div class="session-settings-sent-help" id="sessionSettingsReminderHelp">
+            You can send one reminder per day.
+          </div>
+        </div>
       </section>
     </div>
   </div>
@@ -309,6 +320,44 @@
     width: 100%;
     justify-content: center;
     margin-top: 12px;
+  }
+
+  .session-settings-sent {
+    margin-top: 12px;
+    padding: 12px;
+    border-radius: 12px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    display: grid;
+    gap: 8px;
+  }
+  /* Status-specific styling (matches calendar slot colors) */
+  .session-settings-sent.session-settings-sent--invited {
+    background: #fef3c7; /* amber-100 */
+    border-color: #f59e0b; /* amber-500 */
+  }
+  .session-settings-sent.session-settings-sent--invited .session-settings-sent-subtitle,
+  .session-settings-sent.session-settings-sent--invited .session-settings-sent-help {
+    color: #92400e; /* amber-800 */
+  }
+
+  .session-settings-sent.session-settings-sent--confirmed {
+    background: #dcfce7; /* green-100 */
+    border-color: #16a34a; /* green-600 */
+  }
+  .session-settings-sent.session-settings-sent--confirmed .session-settings-sent-subtitle,
+  .session-settings-sent.session-settings-sent--confirmed .session-settings-sent-help {
+    color: #166534; /* green-800 */
+  }
+  .session-settings-sent-subtitle {
+    color: #64748b;
+    font-weight: 600;
+    font-size: 0.92rem;
+  }
+  .session-settings-sent-help {
+    color: #94a3b8;
+    font-size: 0.85rem;
+    font-weight: 600;
   }
 
   @media (max-width: 520px) {

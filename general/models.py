@@ -1,6 +1,9 @@
 from django.db import models
 from django.utils import timezone
+from django.conf import settings
+from django.utils.crypto import get_random_string
 import uuid
+from datetime import timedelta
 
 class Session(models.Model):
     """Session model for mentor sessions"""
@@ -35,6 +38,55 @@ class Session(models.Model):
 
     def __str__(self):
         return f"Session on {self.start_datetime.strftime('%Y-%m-%d %H:%M')}"
+
+
+class SessionInvitation(models.Model):
+    """
+    Tokenized invitation for a user to confirm a Session.
+
+    - For existing verified users: email links directly to the confirm page (auth required).
+    - For new/unverified users: email links to complete-invitation, then redirects to confirm page.
+    """
+    token = models.CharField(max_length=64, unique=True, db_index=True, editable=False)
+    session = models.ForeignKey("general.Session", on_delete=models.CASCADE, related_name="invitations")
+    mentor = models.ForeignKey("accounts.MentorProfile", on_delete=models.CASCADE, related_name="session_invitations")
+    invited_email = models.EmailField()
+    invited_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="session_invitations",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_sent_at = models.DateTimeField(default=timezone.now)
+    expires_at = models.DateTimeField(blank=True, null=True)
+    accepted_at = models.DateTimeField(blank=True, null=True)
+    cancelled_at = models.DateTimeField(blank=True, null=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["invited_email"]),
+            models.Index(fields=["expires_at"]),
+        ]
+
+    def save(self, *args, **kwargs):
+        if not self.token:
+            self.token = get_random_string(64)
+        if not self.expires_at:
+            self.expires_at = timezone.now() + timedelta(days=7)
+        if not self.last_sent_at:
+            self.last_sent_at = timezone.now()
+        super().save(*args, **kwargs)
+
+    def is_expired(self) -> bool:
+        if not self.expires_at:
+            return False
+        return timezone.now() > self.expires_at
+
+    def __str__(self):
+        return f"SessionInvitation({self.invited_email} -> session {self.session_id})"
 
 
 class Notification(models.Model):

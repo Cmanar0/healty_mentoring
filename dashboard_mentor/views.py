@@ -1678,6 +1678,21 @@ def get_availability(request):
         try:
             from django.utils import timezone as dj_timezone
             from general.models import Session
+            from general.models import SessionInvitation
+
+            # Prefetch latest invitation per session (best-effort; used for reminder gating + UI)
+            invitation_by_session_id = {}
+            try:
+                inv_qs = SessionInvitation.objects.filter(
+                    session__in=mentor_profile.sessions.all(),
+                    cancelled_at__isnull=True
+                ).order_by('-created_at')
+                for inv in inv_qs:
+                    if inv.session_id not in invitation_by_session_id:
+                        invitation_by_session_id[inv.session_id] = inv
+            except Exception:
+                invitation_by_session_id = {}
+
             for s in mentor_profile.sessions.all():
                 start_dt = s.start_datetime
                 end_dt = s.end_datetime
@@ -1689,6 +1704,22 @@ def get_availability(request):
                 exp_dt = s.expires_at
                 if exp_dt and exp_dt.tzinfo is None:
                     exp_dt = dj_timezone.make_aware(exp_dt)
+                client_email = (s.attendees.first().email if s.attendees.exists() else None)
+
+                inv = invitation_by_session_id.get(s.id)
+                invitation_sent = bool(inv) and bool(client_email)
+                can_remind = False
+                last_sent_at = None
+                try:
+                    if inv and inv.last_sent_at:
+                        last_sent_at = inv.last_sent_at
+                    elif inv and inv.created_at:
+                        last_sent_at = inv.created_at
+                    if last_sent_at:
+                        can_remind = (dj_timezone.localdate(last_sent_at) != dj_timezone.localdate())
+                except Exception:
+                    can_remind = False
+
                 sessions.append({
                     'id': s.id,
                     'start': start_dt.isoformat() if start_dt else None,
@@ -1697,7 +1728,10 @@ def get_availability(request):
                     'session_price': str(s.session_price) if getattr(s, 'session_price', None) is not None else None,
                     'expires_at': exp_dt.isoformat() if exp_dt else None,
                     'session_type': getattr(s, 'session_type', 'individual') or 'individual',
-                    'client_email': (s.attendees.first().email if s.attendees.exists() else None),
+                    'client_email': client_email,
+                    'invitation_sent': invitation_sent,
+                    'can_remind': can_remind,
+                    'last_invite_sent_at': last_sent_at.isoformat() if last_sent_at else None,
                 })
         except Exception:
             sessions = []
@@ -1845,7 +1879,15 @@ def invite_client(request):
         return JsonResponse({'success': False, 'error': 'Only mentors can invite clients'}, status=403)
     
     mentor_profile = request.user.mentor_profile
-    email = request.POST.get('email', '').strip().lower()
+    email = (request.POST.get('email', '') or '').strip().lower()
+    if not email:
+        # Support JSON payloads (used by some calendar popups)
+        try:
+            import json as _json
+            data = _json.loads((request.body or b'{}').decode('utf-8') or '{}')
+            email = (data.get('email', '') or '').strip().lower()
+        except Exception:
+            email = ''
     
     if not email:
         return JsonResponse({'success': False, 'error': 'Email is required'}, status=400)
@@ -1955,6 +1997,577 @@ def invite_client(request):
         
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+@require_POST
+def invite_session(request):
+    """
+    Send a session invitation email to a client (existing Session already saved in DB).
+    If the user is unverified/new, the email links to complete-invitation then redirects back.
+    """
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        return JsonResponse({'success': False, 'error': 'Only mentors can invite clients'}, status=403)
+
+    mentor_profile = request.user.mentor_profile
+    try:
+        import json as _json
+        payload = _json.loads((request.body or b'{}').decode('utf-8') or '{}')
+    except Exception:
+        payload = {}
+
+    email = (payload.get('email') or request.POST.get('email') or '').strip().lower()
+    session_id = payload.get('session_id') or request.POST.get('session_id')
+
+    if not email:
+        return JsonResponse({'success': False, 'error': 'Email is required'}, status=400)
+    try:
+        session_id = int(session_id)
+    except Exception:
+        return JsonResponse({'success': False, 'error': 'Session id is required'}, status=400)
+
+    # Ensure session belongs to this mentor
+    from general.models import Session, SessionInvitation
+    s = mentor_profile.sessions.filter(id=session_id).first()
+    if not s:
+        return JsonResponse({'success': False, 'error': 'Session not found'}, status=404)
+
+    # Resolve/create invited user + relationship token if needed
+    try:
+        existing_user = CustomUser.objects.filter(email=email).first()
+    except Exception:
+        existing_user = None
+
+    relationship = None
+    invited_user = None
+
+    if existing_user:
+        # Disallow inviting mentors via this flow
+        try:
+            if hasattr(existing_user, 'mentor_profile'):
+                return JsonResponse({'success': False, 'error': 'This email belongs to a mentor account. Please use a different email.'}, status=400)
+        except Exception:
+            pass
+        invited_user = existing_user
+        try:
+            user_profile = existing_user.user_profile
+        except Exception:
+            user_profile = None
+        if user_profile:
+            relationship = MentorClientRelationship.objects.filter(mentor=mentor_profile, client=user_profile).first()
+            if not relationship:
+                relationship = MentorClientRelationship.objects.create(
+                    mentor=mentor_profile,
+                    client=user_profile,
+                    status='inactive',
+                    confirmed=False,
+                )
+            # If user hasn't completed registration yet, ensure an invitation_token exists
+            try:
+                if not invited_user.is_email_verified and not relationship.invitation_token:
+                    relationship.invitation_token = get_random_string(64)
+                    relationship.save(update_fields=['invitation_token'])
+            except Exception:
+                pass
+    else:
+        # Create new unverified user (no separate client invite email; session email will take them through registration)
+        temp_password = get_random_string(32)
+        invited_user = CustomUser.objects.create_user(
+            email=email,
+            password=temp_password,
+            is_email_verified=False,
+            is_active=True
+        )
+        user_profile = UserProfile.objects.create(
+            user=invited_user,
+            first_name='',
+            last_name='',
+            role='user'
+        )
+        invitation_token = get_random_string(64)
+        relationship = MentorClientRelationship.objects.create(
+            mentor=mentor_profile,
+            client=user_profile,
+            status='inactive',
+            confirmed=False,
+            invitation_token=invitation_token
+        )
+
+    # Attach attendee and set session status to invited
+    try:
+        if invited_user:
+            s.attendees.set([invited_user])
+        if getattr(s, 'status', None) != 'invited':
+            s.status = 'invited'
+        s.save(update_fields=['status'])
+    except Exception:
+        pass
+
+    inv = SessionInvitation.objects.create(
+        session=s,
+        mentor=mentor_profile,
+        invited_email=email,
+        invited_user=invited_user if invited_user else None,
+    )
+
+    site_domain = EmailService.get_site_domain()
+    from django.urls import reverse
+    # Stable email link that always works (routes through login/registration as needed)
+    action_url = f"{site_domain}{reverse('accounts:session_invitation_link', kwargs={'token': inv.token})}"
+
+    # Format datetimes in invitee timezone for email display
+    session_date_local = None
+    session_start_time_local = None
+    session_end_time_local = None
+    invitee_timezone = None
+    try:
+        tz_name = None
+        if invited_user and hasattr(invited_user, 'profile') and invited_user.profile:
+            tz_name = (getattr(invited_user.profile, 'selected_timezone', None) or getattr(invited_user.profile, 'detected_timezone', None) or getattr(invited_user.profile, 'time_zone', None))
+        tz_name = (tz_name or 'UTC')
+        invitee_timezone = tz_name
+        try:
+            from zoneinfo import ZoneInfo
+            tzinfo = ZoneInfo(str(tz_name))
+        except Exception:
+            tzinfo = timezone.utc
+        if s.start_datetime and s.end_datetime:
+            start_local = s.start_datetime.astimezone(tzinfo)
+            end_local = s.end_datetime.astimezone(tzinfo)
+            session_date_local = start_local.strftime('%a, %b %d, %Y')
+            session_start_time_local = start_local.strftime('%I:%M %p').lstrip('0')
+            session_end_time_local = end_local.strftime('%I:%M %p').lstrip('0')
+    except Exception:
+        pass
+
+    mentor_profile_url = None
+    try:
+        from django.urls import reverse
+        mentor_profile_url = f"{site_domain}{reverse('web:mentor_profile_detail', kwargs={'user_id': mentor_profile.user_id})}"
+    except Exception:
+        mentor_profile_url = None
+
+    # Email
+    try:
+        inv.last_sent_at = timezone.now()
+        inv.save(update_fields=['last_sent_at'])
+        EmailService.send_email(
+            subject=f"Session invitation from {mentor_profile.first_name} {mentor_profile.last_name}",
+            recipient_email=email,
+            template_name='session_invitation',
+            context={
+                'mentor_name': f"{mentor_profile.first_name} {mentor_profile.last_name}",
+                'mentor_profile_url': mentor_profile_url,
+                'action_url': action_url,
+                'session_start': s.start_datetime,
+                'session_end': s.end_datetime,
+                'session_date_local': session_date_local,
+                'session_start_time_local': session_start_time_local,
+                'session_end_time_local': session_end_time_local,
+                'invitee_timezone': invitee_timezone,
+                'session_price': getattr(s, 'session_price', None),
+            }
+        )
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': f'Failed to send email: {e}'}, status=500)
+
+    # Compute reminder gating
+    can_remind = False
+    try:
+        can_remind = timezone.localdate(inv.last_sent_at) != timezone.localdate()
+    except Exception:
+        can_remind = False
+
+    return JsonResponse({
+        'success': True,
+        'message': 'Session invitation sent.',
+        'can_remind': can_remind,
+        'last_sent_at': inv.last_sent_at.isoformat() if inv.last_sent_at else None,
+    })
+
+
+@login_required
+@require_POST
+def schedule_session(request):
+    """
+    Schedule a Session from an availability slot (one-time slot id or recurring rule+date),
+    persist it immediately, remove/mark-booked the availability, and send a session invitation email.
+    """
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        return JsonResponse({'success': False, 'error': 'Only mentors can schedule sessions'}, status=403)
+
+    mentor_profile = request.user.mentor_profile
+    try:
+        import json as _json
+        payload = _json.loads((request.body or b'{}').decode('utf-8') or '{}')
+    except Exception:
+        payload = {}
+
+    email = (payload.get('email') or '').strip().lower()
+    start_iso = (payload.get('start_iso') or '').strip()
+    end_iso = (payload.get('end_iso') or '').strip()
+    availability_slot_id = (payload.get('availability_slot_id') or '').strip()
+    recurring_id = (payload.get('recurring_id') or '').strip()
+    instance_date = (payload.get('instance_date') or '').strip()
+
+    if not email or not start_iso or not end_iso:
+        return JsonResponse({'success': False, 'error': 'email, start_iso and end_iso are required'}, status=400)
+
+    # Parse datetimes
+    try:
+        start_dt = datetime.fromisoformat(str(start_iso).replace('Z', '+00:00'))
+        end_dt = datetime.fromisoformat(str(end_iso).replace('Z', '+00:00'))
+        if start_dt.tzinfo is None:
+            start_dt = timezone.make_aware(start_dt)
+        if end_dt.tzinfo is None:
+            end_dt = timezone.make_aware(end_dt)
+        if end_dt <= start_dt:
+            raise ValueError("end <= start")
+    except Exception:
+        return JsonResponse({'success': False, 'error': 'Invalid start/end time'}, status=400)
+
+    # Remove/mark-booked the availability source (so it doesn't collide with the new session)
+    try:
+        if recurring_id and instance_date:
+            updated = False
+            rules = list(getattr(mentor_profile, 'recurring_slots', []) or [])
+            for r in rules:
+                if str(r.get('id', '')) == recurring_id:
+                    booked = r.get('booked_dates') or []
+                    if not isinstance(booked, list):
+                        booked = []
+                    if instance_date not in booked:
+                        booked.append(instance_date)
+                    r['booked_dates'] = booked
+                    updated = True
+                    break
+            if not updated:
+                return JsonResponse({'success': False, 'error': 'This availability series was not found. Please refresh and try again.'}, status=400)
+            mentor_profile.recurring_slots = rules
+            mentor_profile.save(update_fields=['recurring_slots'])
+        elif availability_slot_id:
+            slots = list(getattr(mentor_profile, 'one_time_slots', []) or [])
+            before_len = len(slots)
+            slots = [s for s in slots if str(s.get('id', '')) != availability_slot_id]
+            if len(slots) == before_len:
+                return JsonResponse({'success': False, 'error': 'This availability slot is not saved yet. Please click Save, then try again.'}, status=400)
+            mentor_profile.one_time_slots = slots
+            mentor_profile.save(update_fields=['one_time_slots'])
+        else:
+            return JsonResponse({'success': False, 'error': 'availability_slot_id or (recurring_id + instance_date) is required'}, status=400)
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': f'Could not update availability: {e}'}, status=500)
+
+    # Create the session
+    from general.models import Session, SessionInvitation
+    from decimal import Decimal
+    duration_minutes = int((end_dt - start_dt).total_seconds() / 60)
+    price_val = None
+    try:
+        if mentor_profile.price_per_hour:
+            price_val = (Decimal(str(mentor_profile.price_per_hour)) * Decimal(str(duration_minutes))) / Decimal('60')
+            price_val = price_val.quantize(Decimal('1'))
+    except Exception:
+        price_val = None
+
+    s = Session.objects.create(
+        start_datetime=start_dt,
+        end_datetime=end_dt,
+        created_by=request.user,
+        note='',
+        session_type='individual',
+        status='invited',
+        expires_at=None,
+        session_price=price_val,
+        tasks=[],
+    )
+    mentor_profile.sessions.add(s)
+
+    # Reuse invite_session logic for creating/locating user + relationship + sending email.
+    # We'll inline the minimal parts so we can return session_id.
+    try:
+        existing_user = CustomUser.objects.filter(email=email).first()
+    except Exception:
+        existing_user = None
+
+    relationship = None
+    invited_user = None
+
+    if existing_user:
+        try:
+            if hasattr(existing_user, 'mentor_profile'):
+                return JsonResponse({'success': False, 'error': 'This email belongs to a mentor account. Please use a different email.'}, status=400)
+        except Exception:
+            pass
+        invited_user = existing_user
+        try:
+            user_profile = existing_user.user_profile
+        except Exception:
+            user_profile = None
+        if user_profile:
+            relationship = MentorClientRelationship.objects.filter(mentor=mentor_profile, client=user_profile).first()
+            if not relationship:
+                relationship = MentorClientRelationship.objects.create(
+                    mentor=mentor_profile,
+                    client=user_profile,
+                    status='inactive',
+                    confirmed=False,
+                )
+            # If user hasn't completed registration yet, ensure an invitation_token exists
+            try:
+                if not invited_user.is_email_verified and not relationship.invitation_token:
+                    relationship.invitation_token = get_random_string(64)
+                    relationship.save(update_fields=['invitation_token'])
+            except Exception:
+                pass
+    else:
+        temp_password = get_random_string(32)
+        invited_user = CustomUser.objects.create_user(
+            email=email,
+            password=temp_password,
+            is_email_verified=False,
+            is_active=True
+        )
+        user_profile = UserProfile.objects.create(
+            user=invited_user,
+            first_name='',
+            last_name='',
+            role='user'
+        )
+        invitation_token = get_random_string(64)
+        relationship = MentorClientRelationship.objects.create(
+            mentor=mentor_profile,
+            client=user_profile,
+            status='inactive',
+            confirmed=False,
+            invitation_token=invitation_token
+        )
+
+    try:
+        if invited_user:
+            s.attendees.set([invited_user])
+    except Exception:
+        pass
+
+    inv = SessionInvitation.objects.create(
+        session=s,
+        mentor=mentor_profile,
+        invited_email=email,
+        invited_user=invited_user if invited_user else None,
+    )
+
+    site_domain = EmailService.get_site_domain()
+    from django.urls import reverse
+    # Stable email link that always works (routes through login/registration as needed)
+    action_url = f"{site_domain}{reverse('accounts:session_invitation_link', kwargs={'token': inv.token})}"
+
+    # Format datetimes in invitee timezone for email display
+    session_date_local = None
+    session_start_time_local = None
+    session_end_time_local = None
+    invitee_timezone = None
+    try:
+        tz_name = None
+        if invited_user and hasattr(invited_user, 'profile') and invited_user.profile:
+            tz_name = (getattr(invited_user.profile, 'selected_timezone', None) or getattr(invited_user.profile, 'detected_timezone', None) or getattr(invited_user.profile, 'time_zone', None))
+        tz_name = (tz_name or 'UTC')
+        invitee_timezone = tz_name
+        try:
+            from zoneinfo import ZoneInfo
+            tzinfo = ZoneInfo(str(tz_name))
+        except Exception:
+            tzinfo = timezone.utc
+        if s.start_datetime and s.end_datetime:
+            start_local = s.start_datetime.astimezone(tzinfo)
+            end_local = s.end_datetime.astimezone(tzinfo)
+            session_date_local = start_local.strftime('%a, %b %d, %Y')
+            session_start_time_local = start_local.strftime('%I:%M %p').lstrip('0')
+            session_end_time_local = end_local.strftime('%I:%M %p').lstrip('0')
+    except Exception:
+        pass
+
+    mentor_profile_url = None
+    try:
+        from django.urls import reverse
+        mentor_profile_url = f"{site_domain}{reverse('web:mentor_profile_detail', kwargs={'user_id': mentor_profile.user_id})}"
+    except Exception:
+        mentor_profile_url = None
+
+    try:
+        inv.last_sent_at = timezone.now()
+        inv.save(update_fields=['last_sent_at'])
+        EmailService.send_email(
+            subject=f"Session invitation from {mentor_profile.first_name} {mentor_profile.last_name}",
+            recipient_email=email,
+            template_name='session_invitation',
+            context={
+                'mentor_name': f"{mentor_profile.first_name} {mentor_profile.last_name}",
+                'mentor_profile_url': mentor_profile_url,
+                'action_url': action_url,
+                'session_start': s.start_datetime,
+                'session_end': s.end_datetime,
+                'session_date_local': session_date_local,
+                'session_start_time_local': session_start_time_local,
+                'session_end_time_local': session_end_time_local,
+                'invitee_timezone': invitee_timezone,
+                'session_price': getattr(s, 'session_price', None),
+            }
+        )
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': f'Failed to send email: {e}'}, status=500)
+
+    can_remind = False
+    try:
+        can_remind = timezone.localdate(inv.last_sent_at) != timezone.localdate()
+    except Exception:
+        can_remind = False
+
+    return JsonResponse({
+        'success': True,
+        'message': 'Session scheduled and invitation sent.',
+        'session_id': s.id,
+        'can_remind': can_remind,
+        'last_sent_at': inv.last_sent_at.isoformat() if inv.last_sent_at else None,
+    })
+
+
+@login_required
+@require_POST
+def remind_session(request):
+    """Resend session invitation email. Limited to once per day per session invitation."""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        return JsonResponse({'success': False, 'error': 'Only mentors can send reminders'}, status=403)
+
+    mentor_profile = request.user.mentor_profile
+    try:
+        import json as _json
+        payload = _json.loads((request.body or b'{}').decode('utf-8') or '{}')
+    except Exception:
+        payload = {}
+
+    session_id = payload.get('session_id') or request.POST.get('session_id')
+    try:
+        session_id = int(session_id)
+    except Exception:
+        return JsonResponse({'success': False, 'error': 'Session id is required'}, status=400)
+
+    from general.models import SessionInvitation
+    s = mentor_profile.sessions.filter(id=session_id).first()
+    if not s:
+        return JsonResponse({'success': False, 'error': 'Session not found'}, status=404)
+
+    invited_email = ''
+    try:
+        invited_email = (s.attendees.first().email if s.attendees.exists() else '').strip().lower()
+    except Exception:
+        invited_email = ''
+    if not invited_email:
+        return JsonResponse({'success': False, 'error': 'No invited client on this session'}, status=400)
+
+    inv = SessionInvitation.objects.filter(
+        session=s,
+        mentor=mentor_profile,
+        invited_email=invited_email,
+        cancelled_at__isnull=True
+    ).order_by('-created_at').first()
+    if not inv:
+        return JsonResponse({'success': False, 'error': 'No invitation found for this session'}, status=404)
+
+    if inv.is_expired():
+        return JsonResponse({'success': False, 'error': 'Invitation expired. Please send a new invitation.'}, status=400)
+
+    # Once per day (including the day it was sent)
+    try:
+        if timezone.localdate(inv.last_sent_at) == timezone.localdate():
+            return JsonResponse({'success': False, 'error': 'You can only send one reminder per day.'}, status=400)
+    except Exception:
+        return JsonResponse({'success': False, 'error': 'You can only send one reminder per day.'}, status=400)
+
+    # Ensure invitation_token exists for unverified users (so landing can route correctly)
+    try:
+        invited_user = CustomUser.objects.filter(email=invited_email).first()
+        if invited_user and not invited_user.is_email_verified:
+            try:
+                user_profile = invited_user.user_profile
+                rel = MentorClientRelationship.objects.filter(mentor=mentor_profile, client=user_profile).first()
+                if rel and not rel.invitation_token:
+                    rel.invitation_token = get_random_string(64)
+                    rel.save(update_fields=['invitation_token'])
+            except Exception:
+                pass
+    except Exception:
+        pass
+
+    site_domain = EmailService.get_site_domain()
+    from django.urls import reverse
+    action_url = f"{site_domain}{reverse('accounts:session_invitation_link', kwargs={'token': inv.token})}"
+
+    # Format datetimes in invitee timezone for email display
+    session_date_local = None
+    session_start_time_local = None
+    session_end_time_local = None
+    invitee_timezone = None
+    try:
+        tz_name = None
+        invited_user_obj = None
+        try:
+            invited_user_obj = CustomUser.objects.filter(email=invited_email).first()
+        except Exception:
+            invited_user_obj = None
+        if invited_user_obj and hasattr(invited_user_obj, 'profile') and invited_user_obj.profile:
+            tz_name = (getattr(invited_user_obj.profile, 'selected_timezone', None) or getattr(invited_user_obj.profile, 'detected_timezone', None) or getattr(invited_user_obj.profile, 'time_zone', None))
+        tz_name = (tz_name or 'UTC')
+        invitee_timezone = tz_name
+        try:
+            from zoneinfo import ZoneInfo
+            tzinfo = ZoneInfo(str(tz_name))
+        except Exception:
+            tzinfo = timezone.utc
+        if s.start_datetime and s.end_datetime:
+            start_local = s.start_datetime.astimezone(tzinfo)
+            end_local = s.end_datetime.astimezone(tzinfo)
+            session_date_local = start_local.strftime('%a, %b %d, %Y')
+            session_start_time_local = start_local.strftime('%I:%M %p').lstrip('0')
+            session_end_time_local = end_local.strftime('%I:%M %p').lstrip('0')
+    except Exception:
+        pass
+
+    mentor_profile_url = None
+    try:
+        from django.urls import reverse
+        mentor_profile_url = f"{site_domain}{reverse('web:mentor_profile_detail', kwargs={'user_id': mentor_profile.user_id})}"
+    except Exception:
+        mentor_profile_url = None
+
+    try:
+        inv.last_sent_at = timezone.now()
+        inv.save(update_fields=['last_sent_at'])
+        EmailService.send_email(
+            subject=f"Session reminder from {mentor_profile.first_name} {mentor_profile.last_name}",
+            recipient_email=invited_email,
+            template_name='session_invitation',
+            context={
+                'mentor_name': f"{mentor_profile.first_name} {mentor_profile.last_name}",
+                'mentor_profile_url': mentor_profile_url,
+                'action_url': action_url,
+                'session_start': s.start_datetime,
+                'session_end': s.end_datetime,
+                'session_date_local': session_date_local,
+                'session_start_time_local': session_start_time_local,
+                'session_end_time_local': session_end_time_local,
+                'invitee_timezone': invitee_timezone,
+                'session_price': getattr(s, 'session_price', None),
+            }
+        )
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': f'Failed to send reminder: {e}'}, status=500)
+
+    return JsonResponse({
+        'success': True,
+        'message': 'Reminder sent.',
+        'last_sent_at': inv.last_sent_at.isoformat() if inv.last_sent_at else None,
+        'can_remind': False,
+    })
 
 
 @login_required

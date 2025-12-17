@@ -479,8 +479,19 @@ def complete_invitation(request, token):
             if relationship.client not in relationship.mentor.clients.all():
                 relationship.mentor.clients.add(relationship.client)
             
-            messages.success(request, 'Registration completed successfully! Your email has been verified and you can now log in.')
-            return redirect('accounts:login')
+            # Auto-login for smoother invitation UX, then redirect to next if provided.
+            try:
+                login(request, user)
+            except Exception:
+                # Fallback: still allow user to log in manually
+                pass
+
+            next_url = (request.GET.get('next') or '').strip()
+            if next_url:
+                return redirect(next_url)
+
+            messages.success(request, 'Registration completed successfully! Your email has been verified.')
+            return redirect('general:index')
     
     return render(request, 'accounts/complete_invitation.html', {
         'relationship': relationship,
@@ -609,6 +620,102 @@ def welcome_redirect(request, uidb64, token):
     
     # Fallback to general index
     return redirect('general:index')
+
+
+def session_invitation_link(request, token: str):
+    """
+    Stable email link for session invitations.
+
+    This URL is safe to click multiple times. It routes the user to:
+    - complete-invitation (if the invited user is unverified/new) and then to the confirm page
+    - login (if verified but not logged in) and then to the confirm page
+    - the confirm page directly (if already logged in as the invited user)
+
+    The confirm page itself remains authenticated (dashboard_user).
+    """
+    from general.models import SessionInvitation
+    from django.urls import reverse
+    from django.utils.crypto import get_random_string
+    from urllib.parse import quote
+
+    inv = SessionInvitation.objects.select_related('mentor', 'session').filter(token=token).first()
+    if not inv:
+        messages.error(request, 'Invalid or expired session invitation link.')
+        return redirect('accounts:login')
+
+    if inv.cancelled_at:
+        messages.error(request, 'This session invitation is no longer valid.')
+        return redirect('accounts:login')
+
+    if inv.is_expired():
+        messages.error(request, 'This session invitation has expired. Please ask your mentor to resend it.')
+        return redirect('accounts:login')
+
+    invited_email = (inv.invited_email or '').strip().lower()
+    if not invited_email:
+        messages.error(request, 'This session invitation link is missing an email.')
+        return redirect('accounts:login')
+
+    target_confirm_path = reverse('general:dashboard_user:session_invitation', kwargs={'token': token})
+
+    # If logged in, ensure it is the invited user
+    if request.user.is_authenticated:
+        current_email = (request.user.email or '').strip().lower()
+        if current_email != invited_email:
+            logout(request)
+            messages.warning(request, f'This invitation is for {invited_email}. Please log in with that account.')
+            return redirect(reverse('accounts:login') + f'?next={quote(request.path)}')
+        return redirect(target_confirm_path)
+
+    # Not logged in: find or create the invited user.
+    user = CustomUser.objects.filter(email=invited_email).first()
+    if user:
+        # If this email belongs to a mentor account, block.
+        try:
+            if hasattr(user, 'mentor_profile'):
+                messages.error(request, 'This invitation was sent to a mentor account email. Please contact support.')
+                return redirect('accounts:login')
+        except Exception:
+            pass
+    else:
+        # Very defensive: create user if missing (shouldn't normally happen because invite creates it).
+        temp_password = get_random_string(32)
+        user = CustomUser.objects.create_user(
+            email=invited_email,
+            password=temp_password,
+            is_email_verified=False,
+            is_active=True
+        )
+        UserProfile.objects.create(user=user, first_name='', last_name='', role='user')
+
+    # Verified users: go to login with next -> confirm page.
+    if getattr(user, 'is_email_verified', False):
+        return redirect(reverse('accounts:login') + f'?next={quote(target_confirm_path)}')
+
+    # Unverified: ensure mentor-client relationship + invitation_token exists, then go to complete_invitation with next -> confirm page.
+    try:
+        user_profile = user.user_profile
+    except Exception:
+        user_profile = None
+
+    if not user_profile:
+        messages.error(request, 'This invitation cannot be completed for this account.')
+        return redirect('accounts:login')
+
+    relationship = MentorClientRelationship.objects.filter(mentor=inv.mentor, client=user_profile).first()
+    if not relationship:
+        relationship = MentorClientRelationship.objects.create(
+            mentor=inv.mentor,
+            client=user_profile,
+            status='inactive',
+            confirmed=False,
+        )
+    if not relationship.invitation_token:
+        relationship.invitation_token = get_random_string(64)
+        relationship.save(update_fields=['invitation_token'])
+
+    complete_path = reverse('accounts:complete_invitation', kwargs={'token': relationship.invitation_token})
+    return redirect(f"{complete_path}?next={quote(target_confirm_path)}")
 
 
 @login_required

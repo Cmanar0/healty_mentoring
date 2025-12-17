@@ -601,9 +601,14 @@
   const sessionSettingsMinutesValueEl = document.getElementById('sessionSettingsMinutesValue');
   const sessionSettingsPriceInput = document.getElementById('sessionSettingsPrice');
   const sessionSettingsPriceWarningEl = document.getElementById('sessionSettingsPriceWarning');
+  const sessionSettingsInviteCardTitle = document.getElementById('sessionSettingsInviteCardTitle');
   const sessionSettingsClientEmailInput = document.getElementById('sessionSettingsClientEmail');
   const sessionSettingsClientSuggestionsEl = document.getElementById('sessionSettingsClientSuggestions');
   const sessionSettingsInviteBtn = document.getElementById('sessionSettingsInviteBtn');
+  const sessionSettingsInviteSentState = document.getElementById('sessionSettingsInviteSentState');
+  const sessionSettingsInviteSentSubtitle = document.getElementById('sessionSettingsInviteSentSubtitle');
+  const sessionSettingsReminderBtn = document.getElementById('sessionSettingsReminderBtn');
+  const sessionSettingsReminderHelp = document.getElementById('sessionSettingsReminderHelp');
   const sessionSettingsApplyBtn = document.getElementById('sessionSettingsApplyBtn');
   const scheduleSessionOverlay = document.getElementById('mentorScheduleSessionOverlay');
   const scheduleSessionEmailInput = document.getElementById('scheduleSessionEmailInput');
@@ -1088,6 +1093,54 @@
       console.warn('[MentorCalendar] Could not prefill session settings:', e);
     }
 
+    function setInviteUiForEvent(ev) {
+      const status = String(ev?.extendedProps?.status || '').toLowerCase();
+      const email = String(ev?.extendedProps?.clientEmail || '').trim();
+      const invitationSent = !!ev?.extendedProps?.invitationSent || (status === 'invited' && !!email);
+      const canRemind = !!ev?.extendedProps?.canRemind;
+      const lastSentAt = String(ev?.extendedProps?.lastInviteSentAt || '').trim();
+
+      const isInvited = status === 'invited';
+      const isConfirmed = status === 'confirmed';
+      const showSent = (!!email) && (invitationSent || isInvited || isConfirmed);
+      if (sessionSettingsInviteCardTitle) {
+        sessionSettingsInviteCardTitle.textContent = isConfirmed ? 'Session confirmed' : (showSent ? 'Invitation sent' : 'Invite a Client');
+      }
+      if (sessionSettingsInviteSentState) sessionSettingsInviteSentState.hidden = !showSent;
+      if (sessionSettingsInviteSentSubtitle) {
+        if (isConfirmed) sessionSettingsInviteSentSubtitle.textContent = `Session confirmed by ${email}.`;
+        else sessionSettingsInviteSentSubtitle.textContent = showSent ? `Invitation sent to ${email}.` : '';
+      }
+
+      if (sessionSettingsClientEmailInput) sessionSettingsClientEmailInput.hidden = showSent;
+      if (sessionSettingsInviteBtn) sessionSettingsInviteBtn.hidden = showSent;
+      if (sessionSettingsClientSuggestionsEl) {
+        sessionSettingsClientSuggestionsEl.hidden = true;
+        sessionSettingsClientSuggestionsEl.innerHTML = '';
+      }
+
+      if (sessionSettingsReminderBtn) {
+        // Reminders only make sense while invited (not confirmed)
+        sessionSettingsReminderBtn.hidden = !showSent || isConfirmed;
+        sessionSettingsReminderBtn.disabled = (!showSent || !canRemind || isConfirmed);
+      }
+      if (sessionSettingsReminderHelp) {
+        if (!showSent) sessionSettingsReminderHelp.textContent = '';
+        else if (isConfirmed) sessionSettingsReminderHelp.textContent = 'This session is confirmed.';
+        else if (canRemind) sessionSettingsReminderHelp.textContent = 'You can send one reminder per day.';
+        else sessionSettingsReminderHelp.textContent = lastSentAt ? 'Reminder already sent today.' : 'Invitation already sent today.';
+      }
+
+      // Color styling to match session status in calendar
+      if (sessionSettingsInviteSentState) {
+        sessionSettingsInviteSentState.classList.toggle('session-settings-sent--invited', isInvited && !isConfirmed);
+        sessionSettingsInviteSentState.classList.toggle('session-settings-sent--confirmed', isConfirmed);
+      }
+    }
+
+    // Initial render of invite/reminder UI state
+    try { setInviteUiForEvent(fcEvent); } catch (e) {}
+
     __sessionSettingsOriginal = {
       date: sessionSettingsDateInput.value || '',
       start: sessionSettingsTimeInput.value || '',
@@ -1142,21 +1195,77 @@
         e.preventDefault();
         const email = (sessionSettingsClientEmailInput?.value || '').trim();
         if (!isValidEmail(email)) return;
+        const ev = calendar && sessionSettingsEventId ? calendar.getEventById(sessionSettingsEventId) : null;
+        const sessionId = ev?.extendedProps?.sessionDbId;
+        if (!sessionId) {
+          if (typeof showNotification === 'function') showNotification('Please save this session first before sending an invitation.', 'error');
+          return;
+        }
         const csrf = getCookie('csrftoken');
         try {
-          const res = await fetch(INVITE_CLIENT_URL, {
+          const res = await fetch(INVITE_SESSION_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf || '' },
-            body: JSON.stringify({ email })
+            body: JSON.stringify({ email, session_id: sessionId })
           });
           const data = await res.json();
           if (data && data.success) {
-            if (typeof showNotification === 'function') showNotification('Invitation sent.', 'success');
+            if (typeof showNotification === 'function') showNotification('Session invitation sent.', 'success');
+            // Update UI state immediately and refresh from DB
+            try {
+              ev.setExtendedProp('clientEmail', email);
+              ev.setExtendedProp('status', 'invited');
+              ev.setExtendedProp('invitationSent', true);
+              ev.setExtendedProp('canRemind', !!data?.can_remind);
+              ev.setExtendedProp('lastInviteSentAt', data?.last_sent_at || null);
+              const colors = sessionColorsForStatus('invited');
+              ev.setProp('backgroundColor', colors.bg);
+              ev.setProp('borderColor', colors.border);
+              ev.setProp('textColor', colors.text);
+            } catch (e) {}
+            try { setInviteUiForEvent(ev); } catch (e) {}
+            try { await loadSavedAvailability(); } catch (e) {}
           } else {
-            if (typeof showNotification === 'function') showNotification(data?.error || 'Could not invite client.', 'error');
+            if (typeof showNotification === 'function') showNotification(data?.error || 'Could not send session invitation.', 'error');
           }
         } catch (err) {
-          if (typeof showNotification === 'function') showNotification('Could not invite client.', 'error');
+          if (typeof showNotification === 'function') showNotification('Could not send session invitation.', 'error');
+        }
+      });
+    }
+
+    // Reminder button
+    if (sessionSettingsReminderBtn && !sessionSettingsReminderBtn.__mentorBound) {
+      sessionSettingsReminderBtn.__mentorBound = true;
+      sessionSettingsReminderBtn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        const ev = calendar && sessionSettingsEventId ? calendar.getEventById(sessionSettingsEventId) : null;
+        const sessionId = ev?.extendedProps?.sessionDbId;
+        const email = String(ev?.extendedProps?.clientEmail || '').trim();
+        if (!sessionId || !email) return;
+        const csrf = getCookie('csrftoken');
+        try {
+          sessionSettingsReminderBtn.disabled = true;
+          const res = await fetch(REMIND_SESSION_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf || '' },
+            body: JSON.stringify({ session_id: sessionId })
+          });
+          const data = await res.json();
+          if (data && data.success) {
+            if (typeof showNotification === 'function') showNotification('Reminder sent.', 'success');
+            try {
+              ev.setExtendedProp('canRemind', !!data?.can_remind);
+              ev.setExtendedProp('lastInviteSentAt', data?.last_sent_at || null);
+            } catch (e) {}
+            try { setInviteUiForEvent(ev); } catch (e) {}
+          } else {
+            if (typeof showNotification === 'function') showNotification(data?.error || 'Could not send reminder.', 'error');
+            try { setInviteUiForEvent(ev); } catch (e) {}
+          }
+        } catch (e2) {
+          if (typeof showNotification === 'function') showNotification('Could not send reminder.', 'error');
+          try { setInviteUiForEvent(ev); } catch (e3) {}
         }
       });
     }
@@ -1309,13 +1418,50 @@
       return;
     }
     const ev = calendar && scheduleSessionEventId ? calendar.getEventById(scheduleSessionEventId) : null;
-    console.log('[MentorCalendar] schedule session send', {
+    if (!ev || !ev.start || !ev.end) {
+      if (typeof showNotification === 'function') showNotification('Could not schedule this slot.', 'error');
+      closeScheduleSessionPopup();
+      return;
+    }
+
+    const csrf = getCookie('csrftoken');
+    const payload = {
       email,
-      eventId: scheduleSessionEventId,
-      startIso: ev?.start ? ev.start.toISOString() : null,
-      endIso: ev?.end ? ev.end.toISOString() : null
-    });
-    closeScheduleSessionPopup();
+      start_iso: ev.start.toISOString(),
+      end_iso: ev.end.toISOString(),
+      availability_slot_id: null,
+      recurring_id: null,
+      instance_date: null
+    };
+    try {
+      if (ev.extendedProps?.isRecurringInstance && ev.extendedProps?.recurringId && ev.extendedProps?.instanceDate) {
+        payload.recurring_id = String(ev.extendedProps.recurringId);
+        payload.instance_date = String(ev.extendedProps.instanceDate);
+      } else {
+        payload.availability_slot_id = String(ev.id || '');
+      }
+    } catch (e) {}
+
+    (async () => {
+      try {
+        const res = await fetch(SCHEDULE_SESSION_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf || '' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (data && data.success) {
+          if (typeof showNotification === 'function') showNotification('Session scheduled and invitation sent.', 'success');
+          try { await loadSavedAvailability(); } catch (e) {}
+        } else {
+          if (typeof showNotification === 'function') showNotification(data?.error || 'Could not schedule session.', 'error');
+        }
+      } catch (e) {
+        if (typeof showNotification === 'function') showNotification('Could not schedule session.', 'error');
+      } finally {
+        closeScheduleSessionPopup();
+      }
+    })();
   }
 
   // --- Switch-to-sessions-mode popup helpers ---
@@ -1541,6 +1687,9 @@
   const SAVE_AVAILABILITY_URL = "{% url 'general:dashboard_mentor:save_availability' %}";
   const CLIENT_SUGGESTIONS_URL = "{% url 'general:dashboard_mentor:client_suggestions' %}";
   const INVITE_CLIENT_URL = "{% url 'general:dashboard_mentor:invite_client' %}";
+  const INVITE_SESSION_URL = "{% url 'general:dashboard_mentor:invite_session' %}";
+  const SCHEDULE_SESSION_URL = "{% url 'general:dashboard_mentor:schedule_session' %}";
+  const REMIND_SESSION_URL = "{% url 'general:dashboard_mentor:remind_session' %}";
 
   // Save button enablement:
   // - availability changes: persisted by Save
@@ -1720,7 +1869,10 @@
             sessionPrice: s.session_price || null,
             clientEmail: s.client_email || null,
             expiresAt: s.expires_at || null,
-            sessionType: s.session_type || 'individual'
+            sessionType: s.session_type || 'individual',
+            invitationSent: !!s.invitation_sent,
+            canRemind: !!s.can_remind,
+            lastInviteSentAt: s.last_invite_sent_at || null
           }
         });
       });

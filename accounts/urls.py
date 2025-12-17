@@ -27,6 +27,8 @@ urlpatterns = [
     path("resend-verification/", resend_verification_email, name="resend_verification_email"),
     # Complete Invitation
     path("complete-invitation/<str:token>/", views.complete_invitation, name="complete_invitation"),
+    # Session invitation landing (stable link for emails)
+    path("session-invitation/<str:token>/", views.session_invitation_link, name="session_invitation_link"),
     # Confirm Mentor Invitation (for existing users)
     path("confirm-mentor-invitation/<str:token>/", views.confirm_mentor_invitation, name="confirm_mentor_invitation"),
     # Respond to Invitation (accept/deny)

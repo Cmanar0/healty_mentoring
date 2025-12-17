@@ -1,0 +1,37 @@
+{% extends "emails/base.html" %}
+
+{% block content %}
+<h1>Session Invitation</h1>
+
+<p class="content-text">
+  {% if mentor_profile_url %}
+    <a href="{{ mentor_profile_url }}" class="highlight" style="text-decoration: none;">{{ mentor_name }}</a>
+  {% else %}
+    <span class="highlight">{{ mentor_name }}</span>
+  {% endif %}
+  invited you to a session on Healthy Mentoring.
+</p>
+
+{% if session_date_local and session_start_time_local and session_end_time_local %}
+<p class="content-text" style="font-size: 14px; color: #6b7280;">
+  <strong>When:</strong> {{ session_date_local }}<br>
+  <strong>Time:</strong> {{ session_start_time_local }} – {{ session_end_time_local }}
+  {% if invitee_timezone %} ({{ invitee_timezone }}){% endif %}
+  {% if session_price %}<br><strong>Price:</strong> ${{ session_price }}{% endif %}
+</p>
+{% elif session_start and session_end %}
+<p class="content-text" style="font-size: 14px; color: #6b7280;">
+  <strong>Starts:</strong> {{ session_start }}<br>
+  <strong>Ends:</strong> {{ session_end }}
+  {% if session_price %}<br><strong>Price:</strong> ${{ session_price }}{% endif %}
+</p>
+{% endif %}
+
+<div class="btn-container">
+  <a href="{{ action_url }}" class="btn">View session &amp; confirm</a>
+</div>
+
+<p class="content-text" style="font-size: 13px; color: #9ca3af; margin-top: 24px;">
+  If you weren’t expecting this invitation, you can safely ignore this email.
+</p>
+{% endblock %}
