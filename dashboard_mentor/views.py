@@ -15,7 +15,7 @@ from dashboard_mentor.constants import (
 from general.email_service import EmailService
 import json
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone as dt_timezone
 
 @login_required
 def dashboard(request):
@@ -1126,10 +1126,9 @@ def save_availability(request):
                         if slot_start_dt_utc.tzinfo != pytz.UTC:
                             slot_start_dt_utc = slot_start_dt_utc.astimezone(pytz.UTC)
                     else:
-                        # If pytz not available, use Django's timezone.utc
-                        if slot_start_dt_utc.tzinfo != timezone.utc:
-                            # Convert to UTC using Django's timezone
-                            slot_start_dt_utc = timezone.make_aware(slot_start_dt_utc.replace(tzinfo=None))
+                        # If pytz not available, use stdlib UTC.
+                        # (Django 5 removed django.utils.timezone.utc)
+                        slot_start_dt_utc = slot_start_dt_utc.astimezone(dt_timezone.utc)
                 
                 # Convert UTC datetime to mentor's local timezone to get the correct date
                 if mentor_tz:
@@ -2130,7 +2129,7 @@ def invite_session(request):
             from zoneinfo import ZoneInfo
             tzinfo = ZoneInfo(str(tz_name))
         except Exception:
-            tzinfo = timezone.utc
+            tzinfo = dt_timezone.utc
         if s.start_datetime and s.end_datetime:
             start_local = s.start_datetime.astimezone(tzinfo)
             end_local = s.end_datetime.astimezone(tzinfo)
@@ -2376,7 +2375,7 @@ def schedule_session(request):
             from zoneinfo import ZoneInfo
             tzinfo = ZoneInfo(str(tz_name))
         except Exception:
-            tzinfo = timezone.utc
+            tzinfo = dt_timezone.utc
         if s.start_datetime and s.end_datetime:
             start_local = s.start_datetime.astimezone(tzinfo)
             end_local = s.end_datetime.astimezone(tzinfo)
@@ -2522,7 +2521,7 @@ def remind_session(request):
             from zoneinfo import ZoneInfo
             tzinfo = ZoneInfo(str(tz_name))
         except Exception:
-            tzinfo = timezone.utc
+            tzinfo = dt_timezone.utc
         if s.start_datetime and s.end_datetime:
             start_local = s.start_datetime.astimezone(tzinfo)
             end_local = s.end_datetime.astimezone(tzinfo)

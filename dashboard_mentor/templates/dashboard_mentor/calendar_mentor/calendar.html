@@ -70,7 +70,7 @@
 {% include "dashboard_mentor/calendar_mentor/unsaved_changes_popup.html" %}
 {% include "dashboard_mentor/calendar_mentor/recurring_delete_popup.html" %}
 {% include "dashboard_mentor/calendar_mentor/recurring_move_popup.html" %}
-{% include "dashboard_mentor/components/collision_resolution_popup.html" %}
+{% include "dashboard_mentor/calendar_mentor/collision_resolution_popup.html" %}
 
 <style>
   /* --- Overlay --- */
@@ -2258,7 +2258,10 @@
   }
 
   // --- Collision detection (availability + sessions) ---
-  const COLLISION_HORIZON_DAYS = 90;
+  // IMPORTANT:
+  // We must block saves when collisions exist in the CURRENTLY VISIBLE range (user can see them),
+  // and also for a forward-looking booking horizon to keep the persisted "collisions" flag accurate.
+  const COLLISION_HORIZON_DAYS = 365;
   let openedFromSessionLengthChange = false;
 
   window.setOpenedFromSessionLengthChange = function(value) {
@@ -2273,7 +2276,23 @@
 
     const DateTime = window.luxon.DateTime;
     const todayLocal = DateTime.now().setZone(timezone_variable).startOf('day');
-    const endLocal = todayLocal.plus({ days: COLLISION_HORIZON_DAYS }).startOf('day'); // exclusive
+    const bookingEndLocal = todayLocal.plus({ days: COLLISION_HORIZON_DAYS }).startOf('day'); // exclusive
+
+    // Visible range (what the user is looking at). This may be far in the future; we must include it.
+    const viewStartLocal = DateTime.fromJSDate(calendar.view?.activeStart || calendar.getDate()).setZone(timezone_variable).startOf('day');
+    const viewEndLocal = DateTime.fromJSDate(calendar.view?.activeEnd || calendar.getDate()).setZone(timezone_variable).startOf('day'); // exclusive
+
+    // Union-of-ranges window:
+    // - Visible calendar range (prevents "I can see collisions but can still save")
+    // - Booking horizon from today (keeps collision flag meaningful)
+    const ranges = [
+      { start: viewStartLocal, end: viewEndLocal },
+      { start: todayLocal, end: bookingEndLocal }
+    ].filter((r) => r && r.start && r.end && r.end > r.start);
+
+    const inAnyRange = (dayStart) => {
+      return ranges.some((r) => dayStart >= r.start && dayStart < r.end);
+    };
 
     const occurrencesByDate = new Map(); // dateStr -> occurrence[]
     const ensureBucket = (dateStr) => {
@@ -2292,7 +2311,7 @@
       if (!startDt.isValid || !endDt.isValid || endDt <= startDt) return;
 
       const day = startDt.startOf('day');
-      if (day < todayLocal || day >= endLocal) return;
+      if (!inAnyRange(day)) return;
 
       const dateStr = day.toISODate();
       ensureBucket(dateStr).push({
@@ -2313,7 +2332,7 @@
       if (!startDt.isValid || !endDt.isValid || endDt <= startDt) return;
 
       const day = startDt.startOf('day');
-      if (day < todayLocal || day >= endLocal) return;
+      if (!inAnyRange(day)) return;
       const dateStr = day.toISODate();
       ensureBucket(dateStr).push({
         kind: 'session',
@@ -2344,35 +2363,44 @@
       return false;
     };
 
+    const emittedRecOcc = new Set(); // avoid duplicates across overlapping ranges (recurringId|dateStr)
+
     recurringAvailabilityRules.forEach((rule) => {
       if (!rule || !rule.id || !rule.type) return;
       const startTime = String(rule.start_time || '');
       const endTime = String(rule.end_time || '');
       if (!startTime || !endTime) return;
 
-      let cursor = todayLocal;
-      if (rule.start_date) {
-        const rs = DateTime.fromISO(String(rule.start_date), { zone: timezone_variable }).startOf('day');
-        if (rs.isValid && cursor < rs) cursor = rs;
-      }
-
-      while (cursor < endLocal) {
-        const dateStr = cursor.toISODate();
-        if (matchesRuleOnDate(rule, dateStr, cursor)) {
-          const startDt = DateTime.fromISO(`${dateStr}T${startTime}`, { zone: timezone_variable });
-          const endDt = DateTime.fromISO(`${dateStr}T${endTime}`, { zone: timezone_variable });
-          if (startDt.isValid && endDt.isValid && endDt > startDt) {
-            ensureBucket(dateStr).push({
-              kind: 'rec_occ',
-              recurringId: String(rule.id),
-              instanceDate: dateStr,
-              startDt,
-              endDt
-            });
-          }
+      // Expand per range (keeps runtime bounded even if user browses far future)
+      ranges.forEach((rng) => {
+        let cursor = rng.start;
+        if (rule.start_date) {
+          const rs = DateTime.fromISO(String(rule.start_date), { zone: timezone_variable }).startOf('day');
+          if (rs.isValid && cursor < rs) cursor = rs;
         }
-        cursor = cursor.plus({ days: 1 });
-      }
+
+        while (cursor < rng.end) {
+          const dateStr = cursor.toISODate();
+          if (matchesRuleOnDate(rule, dateStr, cursor)) {
+            const startDt = DateTime.fromISO(`${dateStr}T${startTime}`, { zone: timezone_variable });
+            const endDt = DateTime.fromISO(`${dateStr}T${endTime}`, { zone: timezone_variable });
+            if (startDt.isValid && endDt.isValid && endDt > startDt) {
+              const k = `${String(rule.id)}|${dateStr}`;
+              if (!emittedRecOcc.has(k)) {
+                emittedRecOcc.add(k);
+                ensureBucket(dateStr).push({
+                  kind: 'rec_occ',
+                  recurringId: String(rule.id),
+                  instanceDate: dateStr,
+                  startDt,
+                  endDt
+                });
+              }
+            }
+          }
+          cursor = cursor.plus({ days: 1 });
+        }
+      });
     });
 
     const overlaps = (a, b) => a.startDt < b.endDt && b.startDt < a.endDt;
