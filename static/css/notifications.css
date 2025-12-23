@@ -5,14 +5,16 @@
 
 /* Container for all notifications to ensure proper stacking */
 #notification-container {
-  position: fixed;
+  position: fixed !important;
   top: 90px;
   right: 20px;
-  z-index: 10000;
-  display: flex;
+  z-index: 99999 !important; /* above all popups - highest priority */
+  display: flex !important;
   flex-direction: column;
   gap: 10px;
   pointer-events: none; /* Allow clicking through the container area */
+  /* Don't use isolation here - we want to be in the same stacking context as body */
+  /* This ensures we're above backdrop-filter elements */
 }
 
 .app-notification, .app-message {
@@ -51,6 +53,7 @@
   pointer-events: auto; /* Re-enable pointer events for the notification itself */
   position: relative;
   margin-bottom: 10px; /* Spacing between stacked notifications */
+  z-index: 99999 !important; /* Ensure notifications appear above all popups */
 }
 
 /* Animation State: Active/Visible */

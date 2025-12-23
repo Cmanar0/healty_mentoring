@@ -1204,6 +1204,12 @@
       }
       if (sessionSettingsInviteBtn) {
         sessionSettingsInviteBtn.disabled = !isValidEmail(sessionSettingsClientEmailInput?.value || '');
+        // Reset invitation sent flag and loading state when opening a new session
+        const status = String(fcEvent?.extendedProps?.status || '').toLowerCase();
+        const email = String(fcEvent?.extendedProps?.clientEmail || '').trim();
+        const invitationSent = !!fcEvent?.extendedProps?.invitationSent || (status === 'invited' && !!email);
+        sessionSettingsInviteBtn.__invitationSent = invitationSent;
+        sessionSettingsInviteBtn.classList.remove('is-loading');
       }
       // Let derived UI decide whether to show mismatch/override messages
     } catch (e) {
@@ -1266,7 +1272,12 @@
       // Apply-first note + disable send invitation when there are unapplied changes
       if (sessionSettingsInviteBtn && !sessionSettingsInviteBtn.hidden) {
         const emailVal = String(sessionSettingsClientEmailInput?.value || '').trim();
-        sessionSettingsInviteBtn.disabled = applyEnabled || !isValidEmail(emailVal) || !sessionDbId;
+        // Sync invitation sent flag with event state
+        if (sessionSettingsInviteBtn.__invitationSent !== undefined) {
+          sessionSettingsInviteBtn.__invitationSent = invitationSent;
+        }
+        sessionSettingsInviteBtn.disabled = applyEnabled || !isValidEmail(emailVal) || !sessionDbId || invitationSent;
+        sessionSettingsInviteBtn.classList.remove('is-loading');
       }
       if (sessionSettingsApplyFirstNote) {
         const showNote = applyEnabled && (
@@ -1371,16 +1382,161 @@
     // Invite button
     if (sessionSettingsInviteBtn && !sessionSettingsInviteBtn.__mentorBound) {
       sessionSettingsInviteBtn.__mentorBound = true;
+      sessionSettingsInviteBtn.__invitationSent = false; // Track if invitation has been sent
       sessionSettingsInviteBtn.addEventListener('click', async (e) => {
         e.preventDefault();
-        const email = (sessionSettingsClientEmailInput?.value || '').trim();
-        if (!isValidEmail(email)) return;
-        const ev = calendar && sessionSettingsEventId ? calendar.getEventById(sessionSettingsEventId) : null;
-        const sessionId = ev?.extendedProps?.sessionDbId;
-        if (!sessionId) {
-          if (typeof showNotification === 'function') showNotification('Please save this session first before sending an invitation.', 'error');
+        
+        // Prevent sending if already sent
+        if (sessionSettingsInviteBtn.__invitationSent) {
           return;
         }
+        
+        const email = (sessionSettingsClientEmailInput?.value || '').trim();
+        if (!isValidEmail(email)) return;
+        let ev = calendar && sessionSettingsEventId ? calendar.getEventById(sessionSettingsEventId) : null;
+        if (!ev) return;
+        
+        // Show loading spinner and disable button
+        sessionSettingsInviteBtn.classList.add('is-loading');
+        sessionSettingsInviteBtn.disabled = true;
+        
+        let sessionId = ev?.extendedProps?.sessionDbId;
+        
+        // If session hasn't been saved yet, auto-save it first
+        if (!sessionId) {
+          try {
+            // Apply session settings locally first
+            const dateStr = (sessionSettingsDateInput?.value || '').trim();
+            const timeStr = (sessionSettingsTimeInput?.value || '').trim();
+            const endStr = (sessionSettingsEndTimeInput?.value || '').trim();
+            
+            if (!dateStr || !timeStr || !endStr) {
+              sessionSettingsInviteBtn.classList.remove('is-loading');
+              sessionSettingsInviteBtn.disabled = false;
+              if (typeof showNotification === 'function') {
+                showNotification('Please choose a date, start time, and end time.', 'error');
+              }
+              return;
+            }
+            
+            if (window.luxon && window.luxon.DateTime) {
+              const startDt = window.luxon.DateTime.fromISO(`${dateStr}T${timeStr}`, { zone: timezone_variable });
+              const endDt = window.luxon.DateTime.fromISO(`${dateStr}T${endStr}`, { zone: timezone_variable });
+              
+              if (startDt.isValid && endDt.isValid && endDt > startDt) {
+                ev.setStart(startDt.toJSDate());
+                ev.setEnd(endDt.toJSDate());
+                
+                // Persist overrides on the event
+                if (sessionSettingsPriceInput) {
+                  const v = String(sessionSettingsPriceInput.value || '').trim();
+                  ev.setExtendedProp('sessionPrice', v === '' ? null : v);
+                }
+                ev.setExtendedProp('clientEmail', email || null);
+                
+                markDirty('session');
+                recomputeCollisions();
+                
+                // Check for collisions before saving
+                const collisions = computeCalendarCollisionsInHorizon();
+                if (collisions.length > 0) {
+                  const canOpenPopup = (typeof window.openCollisionResolutionPopup === 'function');
+                  if (canOpenPopup) {
+                    sessionSettingsInviteBtn.classList.remove('is-loading');
+                    sessionSettingsInviteBtn.disabled = false;
+                    window.openCollisionResolutionPopup(false);
+                    return;
+                  } else if (typeof showNotification === 'function') {
+                    sessionSettingsInviteBtn.classList.remove('is-loading');
+                    sessionSettingsInviteBtn.disabled = false;
+                    showNotification('Please resolve collisions before sending invitation.', 'warning');
+                    return;
+                  }
+                }
+                
+                // Save to backend (this will also call loadSavedAvailability which reloads events)
+                await saveAvailabilityToBackend();
+                
+                // If save was blocked due to collisions, it returns early
+                // Check if save actually completed by checking if collisions still exist
+                const collisionsAfterSave = computeCalendarCollisionsInHorizon();
+                if (collisionsAfterSave.length > 0) {
+                  // Save was blocked, collision popup should be open
+                  sessionSettingsInviteBtn.classList.remove('is-loading');
+                  sessionSettingsInviteBtn.disabled = false;
+                  return;
+                }
+                
+                // After save, events are reloaded so we need to find the session by matching start/end time and email
+                // The event ID might have changed, so we match by time and client email
+                const allSessionEvents = calendar.getEvents().filter(ev => 
+                  ev.extendedProps?.slotMode === 'session'
+                );
+                
+                // Find the session that matches our start/end time and client email
+                const matchingEv = allSessionEvents.find(ev => {
+                  if (!ev.start || !ev.end) return false;
+                  const evStartTime = ev.start.getTime();
+                  const evEndTime = ev.end.getTime();
+                  const targetStartTime = startDt.toJSDate().getTime();
+                  const targetEndTime = endDt.toJSDate().getTime();
+                  
+                  // Match within 1 second tolerance (in case of timezone rounding)
+                  const timeMatches = Math.abs(evStartTime - targetStartTime) < 1000 && 
+                                     Math.abs(evEndTime - targetEndTime) < 1000;
+                  const emailMatches = (ev.extendedProps?.clientEmail || '').trim().toLowerCase() === email.toLowerCase();
+                  
+                  return timeMatches && emailMatches;
+                });
+                
+                if (matchingEv) {
+                  // Extract sessionDbId from event ID (format: session_${dbId}) or extendedProps
+                  const evId = String(matchingEv.id || '');
+                  if (evId.startsWith('session_')) {
+                    const dbIdStr = evId.replace('session_', '');
+                    sessionId = dbIdStr ? parseInt(dbIdStr, 10) : null;
+                  } else {
+                    sessionId = matchingEv.extendedProps?.sessionDbId || null;
+                  }
+                  
+                  // Update sessionSettingsEventId to the new event ID so UI stays in sync
+                  sessionSettingsEventId = matchingEv.id;
+                }
+                
+                if (!sessionId) {
+                  sessionSettingsInviteBtn.classList.remove('is-loading');
+                  sessionSettingsInviteBtn.disabled = false;
+                  if (typeof showNotification === 'function') {
+                    showNotification('Session was saved but could not be found. Please try sending the invitation again.', 'error');
+                  }
+                  return;
+                }
+                
+                // Update the event reference to the matched event for later use
+                if (matchingEv) {
+                  ev = matchingEv;
+                }
+              } else {
+                sessionSettingsInviteBtn.classList.remove('is-loading');
+                sessionSettingsInviteBtn.disabled = false;
+                if (typeof showNotification === 'function') {
+                  showNotification('Invalid date/time.', 'error');
+                }
+                return;
+              }
+            }
+          } catch (saveErr) {
+            console.error('[MentorCalendar] Error auto-saving session:', saveErr);
+            sessionSettingsInviteBtn.classList.remove('is-loading');
+            sessionSettingsInviteBtn.disabled = false;
+            if (typeof showNotification === 'function') {
+              showNotification('Failed to save session. Please try again.', 'error');
+            }
+            return;
+          }
+        }
+        
+        // Now send the invitation
         const csrf = getCookie('csrftoken');
         try {
           const res = await fetch(INVITE_SESSION_URL, {
@@ -1390,6 +1546,11 @@
           });
           const data = await res.json();
           if (data && data.success) {
+            // Mark as sent and keep button disabled
+            sessionSettingsInviteBtn.__invitationSent = true;
+            sessionSettingsInviteBtn.classList.remove('is-loading');
+            sessionSettingsInviteBtn.disabled = true;
+            
             if (typeof showNotification === 'function') showNotification('Session invitation sent.', 'success');
             // Update UI state immediately and refresh from DB
             try {
@@ -1406,9 +1567,19 @@
             try { setInviteUiForEvent(ev); } catch (e) {}
             try { await loadSavedAvailability(); } catch (e) {}
           } else {
+            // On error, remove loading state but keep disabled if already sent
+            sessionSettingsInviteBtn.classList.remove('is-loading');
+            if (!sessionSettingsInviteBtn.__invitationSent) {
+              sessionSettingsInviteBtn.disabled = false;
+            }
             if (typeof showNotification === 'function') showNotification(data?.error || 'Could not send session invitation.', 'error');
           }
         } catch (err) {
+          // On error, remove loading state but keep disabled if already sent
+          sessionSettingsInviteBtn.classList.remove('is-loading');
+          if (!sessionSettingsInviteBtn.__invitationSent) {
+            sessionSettingsInviteBtn.disabled = false;
+          }
           if (typeof showNotification === 'function') showNotification('Could not send session invitation.', 'error');
         }
       });

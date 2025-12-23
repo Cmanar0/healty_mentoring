@@ -75,7 +75,8 @@
             <div id="sessionSettingsClientSuggestions" class="session-settings-suggestions" hidden></div>
           </div>
           <button type="button" class="session-settings-btn session-settings-btn--success session-settings-invite-btn" id="sessionSettingsInviteBtn" disabled>
-            Send Invitation
+            <span class="session-settings-invite-btn-label">Send Invitation</span>
+            <span class="session-settings-invite-btn-spinner" aria-hidden="true"></span>
           </button>
 
           <!-- Sent state (shown after an invite was sent for this session) -->
@@ -128,10 +129,12 @@
     background: rgba(15, 23, 42, 0.25);
     backdrop-filter: blur(2px);
     -webkit-backdrop-filter: blur(2px);
-    z-index: 10060; /* above switch popups */
+    z-index: 10060; /* above switch popups, but below notifications (99999) */
     opacity: 0;
     visibility: hidden;
     transition: opacity 0.2s ease, visibility 0.2s ease;
+    /* Ensure this doesn't create a stacking context that traps notifications */
+    isolation: auto;
   }
   .session-settings-overlay.is-visible {
     opacity: 1;
@@ -356,6 +359,36 @@
     width: 100%;
     justify-content: center;
     margin-top: 12px;
+    position: relative;
+    min-width: 120px; /* prevent width shift when loading spinner shows */
+  }
+  .session-settings-invite-btn-label {
+    display: inline-block;
+  }
+  .session-settings-invite-btn-spinner {
+    display: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 999px;
+    border: 2px solid rgba(255, 255, 255, 0.35);
+    border-top-color: currentColor;
+    animation: session-invite-spin 0.8s linear infinite;
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+  }
+  .session-settings-invite-btn.is-loading {
+    cursor: wait;
+  }
+  .session-settings-invite-btn.is-loading .session-settings-invite-btn-label {
+    visibility: hidden;
+  }
+  .session-settings-invite-btn.is-loading .session-settings-invite-btn-spinner {
+    display: inline-block;
+  }
+  @keyframes session-invite-spin {
+    to { transform: translate(-50%, -50%) rotate(360deg); }
   }
 
   /* Invite status box (must respect the `hidden` attribute).
@@ -423,16 +456,19 @@
 
   .session-settings-session-detail-btn {
     width: 100%;
+    height: 100%;
+    min-height: 120px;
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 12px;
     padding: 14px 14px;
-    border-radius: 14px;
-    border: 1px solid #e2e8f0;
-    background: #ffffff;
+    border-radius: 12px;
+    border: none;
+    background: #f59e0b; /* yellow/amber - same as marketing button */
     text-decoration: none;
     cursor: pointer;
-    transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+    transition: background 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
   }
   .session-settings-session-detail-btn.is-disabled {
     opacity: 0.6;
@@ -440,13 +476,13 @@
     pointer-events: none; /* hard-block clicks */
   }
   .session-settings-session-detail-btn:hover {
+    background: #d97706; /* slightly darker orange - same as marketing button hover */
     transform: translateY(-1px);
-    border-color: #94a3b8;
-    box-shadow: 0 12px 26px rgba(15, 23, 42, 0.12);
+    box-shadow: 0 12px 26px rgba(245, 158, 11, 0.25);
   }
   .session-settings-session-detail-btn.is-disabled:hover {
     transform: none;
-    border-color: #e2e8f0;
+    background: #f59e0b;
     box-shadow: none;
   }
   .session-settings-session-detail-icon {
@@ -456,14 +492,14 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    background: #eff6ff; /* blue-50 */
-    color: #10b981;      /* blue-600 */
+    background: rgba(255, 255, 255, 0.2); /* white with transparency */
+    color: #ffffff;
     flex-shrink: 0;
     font-size: 1.05rem;
   }
   .session-settings-session-detail-btn.is-disabled .session-settings-session-detail-icon {
-    background: #f1f5f9; /* slate-100 */
-    color: #94a3b8;      /* slate-400 */
+    background: rgba(255, 255, 255, 0.15);
+    color: rgba(255, 255, 255, 0.7);
   }
   .session-settings-session-detail-text {
     display: flex;
@@ -473,16 +509,17 @@
   }
   .session-settings-session-detail-title {
     font-weight: 900;
-    color: #0f172a;
+    color: #ffffff;
   }
   .session-settings-session-detail-subtitle {
-    color: #64748b;
+    color: rgba(255, 255, 255, 0.9);
     font-weight: 600;
     font-size: 0.9rem;
   }
 
   .session-settings-section--session-detail {
-    padding: 14px 16px 16px;
+    padding: 0;
+    display: flex;
   }
 
   @media (max-width: 520px) {

@@ -10,7 +10,18 @@ function showNotification(message, type = 'note') {
     if (!container) {
         container = document.createElement('div');
         container.id = 'notification-container';
+        // Force z-index via inline style to override any CSS specificity issues
+        container.style.zIndex = '99999';
+        container.style.position = 'fixed';
+        // Append at the very end of body to ensure it's above all other elements
+        // This ensures it's rendered after any overlays/modals
         document.body.appendChild(container);
+    } else {
+        // If container exists, move it to the end of body to ensure proper stacking
+        // This handles cases where overlays are added after notifications
+        if (container.parentNode !== document.body || container.nextSibling !== null) {
+            document.body.appendChild(container);
+        }
     }
     
     // Create notification element
@@ -40,6 +51,19 @@ function showNotification(message, type = 'note') {
     // Prepend to show newest at top, or append for bottom. 
     // Given the fixed position top-right, appending usually stacks them downwards which is standard.
     container.appendChild(notification);
+    
+    // CRITICAL: Always ensure container is the last child of body
+    // This ensures it's above all overlays/modals, even those with backdrop-filter
+    // backdrop-filter creates a stacking context, but DOM order + z-index ensures proper stacking
+    // Move immediately and also in next frame to catch any late DOM changes
+    if (container.parentNode === document.body) {
+        document.body.appendChild(container);
+    }
+    requestAnimationFrame(() => {
+        if (container.parentNode === document.body) {
+            document.body.appendChild(container);
+        }
+    });
     
     // Show notification
     // Small delay to allow DOM insertion before adding active class for transition
