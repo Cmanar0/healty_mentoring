@@ -2494,9 +2494,16 @@
     });
 
     // Session events (one-time) already in the calendar
+    // Deduplicate by event ID to prevent same session from being added multiple times
+    const seenSessionIds = new Set();
     calendar.getEvents().forEach((ev) => {
       if (ev.extendedProps?.slotMode !== 'session') return;
       if (!ev.start || !ev.end) return;
+
+      const sessionId = String(ev.id || '');
+      // Skip if we've already processed this session ID (prevents duplicates)
+      if (seenSessionIds.has(sessionId)) return;
+      seenSessionIds.add(sessionId);
 
       const startDt = DateTime.fromJSDate(ev.start).setZone(timezone_variable);
       const endDt = DateTime.fromJSDate(ev.end).setZone(timezone_variable);
@@ -2507,7 +2514,7 @@
       const dateStr = day.toISODate();
       ensureBucket(dateStr).push({
         kind: 'session',
-        id: String(ev.id || ''),
+        id: sessionId,
         startDt,
         endDt
       });
@@ -2578,14 +2585,26 @@
 
     const oneOne = [];
     const oneRec = [];
-    const sessSess = [];
+    const sessSessMap = new Map(); // key -> collision (deduplicate session-session collisions)
     const sessOne = [];
     const sessRec = [];
     const recRecMap = new Map(); // pairKey -> collision
 
     occurrencesByDate.forEach((list, dateStr) => {
       if (!Array.isArray(list) || list.length < 2) return;
-      const sorted = list.slice().sort((x, y) => x.startDt.toMillis() - y.startDt.toMillis());
+      
+      // Deduplicate sessions within this date bucket by ID (in case same session appears multiple times)
+      const seenInBucket = new Set();
+      const deduplicatedList = list.filter((item) => {
+        if (item.kind === 'session') {
+          if (seenInBucket.has(item.id)) return false;
+          seenInBucket.add(item.id);
+        }
+        return true;
+      });
+      
+      if (deduplicatedList.length < 2) return;
+      const sorted = deduplicatedList.slice().sort((x, y) => x.startDt.toMillis() - y.startDt.toMillis());
 
       for (let i = 0; i < sorted.length; i++) {
         for (let j = i + 1; j < sorted.length; j++) {
@@ -2596,13 +2615,17 @@
           // session vs session
           if (a.kind === 'session' && b.kind === 'session') {
             const ids = [a.id, b.id].sort();
-            sessSess.push({
-              type: 'sess_sess',
-              deletableAvailability: false,
-              key: `sess_sess|${dateStr}|${ids[0]}|${ids[1]}`,
-              slot1: { id: a.id, start: a.startDt.toISO(), end: a.endDt.toISO(), kind: 'session' },
-              slot2: { id: b.id, start: b.startDt.toISO(), end: b.endDt.toISO(), kind: 'session' }
-            });
+            const key = `sess_sess|${dateStr}|${ids[0]}|${ids[1]}`;
+            // Deduplicate: only add if we haven't seen this collision pair before
+            if (!sessSessMap.has(key)) {
+              sessSessMap.set(key, {
+                type: 'sess_sess',
+                deletableAvailability: false,
+                key: key,
+                slot1: { id: a.id, start: a.startDt.toISO(), end: a.endDt.toISO(), kind: 'session' },
+                slot2: { id: b.id, start: b.startDt.toISO(), end: b.endDt.toISO(), kind: 'session' }
+              });
+            }
             continue;
           }
 
@@ -2681,6 +2704,7 @@
     });
 
     const recRec = Array.from(recRecMap.values());
+    const sessSess = Array.from(sessSessMap.values());
     const all = oneOne.concat(oneRec, recRec, sessOne, sessRec, sessSess);
     all.sort((x, y) => {
       const xs = Date.parse(x?.slot1?.start || '') || 0;
@@ -3308,6 +3332,10 @@
         });
         markDirty(mode);
         recomputeCollisions();
+        // Force collision popup to refresh immediately if it's open
+        if (typeof window.refreshCollisionResolutionPopup === 'function') {
+          window.refreshCollisionResolutionPopup();
+        }
       },
       // eventClick is intentionally unused for availability slots because we debounce
       // single-click vs double-click inside eventDidMount.
@@ -3334,6 +3362,10 @@
         });
         markDirty('session');
         recomputeCollisions();
+        // Force collision popup to refresh immediately if it's open
+        if (typeof window.refreshCollisionResolutionPopup === 'function') {
+          window.refreshCollisionResolutionPopup();
+        }
       },
       dateClick: function(info) {
         // One-click slot creation only in Day/Week timeGrid views

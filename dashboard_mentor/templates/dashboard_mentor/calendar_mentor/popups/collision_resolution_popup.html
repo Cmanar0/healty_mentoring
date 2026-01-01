@@ -359,13 +359,14 @@
     collisions = getAllCollisions();
 
     // Fingerprint collisions to detect changes even when count stays same
+    // Include both start and end times to detect when sessions are moved or resized
     try {
       lastCollisionFingerprint = JSON.stringify(collisions.map((c) => {
         const a = c?.slot1 || {};
         const b = c?.slot2 || {};
         const key = c?.key || c?.type || '';
-        return [key, a.id || '', a.start || '', b.id || '', b.start || ''].join('|');
-      }));
+        return [key, a.id || '', a.start || '', a.end || '', b.id || '', b.start || '', b.end || ''].join('|');
+      }).sort());
     } catch (e) {
       lastCollisionFingerprint = String(collisions.length);
     }
@@ -469,7 +470,7 @@
   function startCollisionPolling() {
     if (collisionPollInterval) return;
     
-    collisionPollInterval = setInterval(() => {
+      collisionPollInterval = setInterval(() => {
       const newCollisions = getAllCollisions();
       let nextFingerprint = '';
       try {
@@ -477,8 +478,8 @@
           const a = c?.slot1 || {};
           const b = c?.slot2 || {};
           const key = c?.key || c?.type || '';
-          return [key, a.id || '', a.start || '', b.id || '', b.start || ''].join('|');
-        }));
+          return [key, a.id || '', a.start || '', a.end || '', b.id || '', b.start || '', b.end || ''].join('|');
+        }).sort());
       } catch (e) {
         nextFingerprint = String(newCollisions.length);
       }
@@ -563,6 +564,13 @@
       }
     }
   });
+  
+  // Force immediate refresh of collision popup (called after moves/resizes)
+  window.refreshCollisionResolutionPopup = function() {
+    if (popup && popup.classList.contains('is-visible')) {
+      renderCollisions();
+    }
+  };
   
   // Expose functions globally
   window.openCollisionResolutionPopup = openCollisionPopup;
