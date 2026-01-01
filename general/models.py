@@ -6,7 +6,161 @@ import uuid
 from datetime import timedelta
 
 class Session(models.Model):
-    """Session model for mentor sessions"""
+    """
+    Session model for mentor sessions.
+    
+    ============================================================================
+    SESSION STATE MACHINE AND LIFECYCLE DOCUMENTATION
+    ============================================================================
+    
+    SESSION STATUS DEFINITIONS
+    ---------------------------
+    
+    • draft
+      - Session exists only in mentor calendar
+      - No client is notified
+      - Changes are ignored completely by the change-tracking system
+      - Mentor can freely modify without triggering confirmation workflow
+    
+    • invited
+      - Session has been sent to client
+      - Client has not yet confirmed
+      - May represent:
+        * A new invitation (first time sent to client)
+        * A changed session awaiting confirmation (mentor modified after initial invitation)
+      - Client must take action: confirm or decline
+    
+    • confirmed
+      - Client has accepted the session
+      - Session is finalized unless changed again
+      - If mentor changes a confirmed session, it transitions back to 'invited'
+        and requires client re-confirmation
+    
+    • cancelled
+      - Session was explicitly declined by client
+      - Terminal state (no transitions out)
+      - Once cancelled, session cannot be reactivated
+    
+    
+    ALLOWED STATUS TRANSITIONS
+    ---------------------------
+    
+    The following transitions are the ONLY valid state changes:
+    
+    1. draft → invited
+       - Trigger: Mentor sends invitation
+       - Action: Client receives notification and must respond
+    
+    2. invited → confirmed
+       - Trigger: Client confirms invitation
+       - Action: Session is finalized and scheduled
+    
+    3. confirmed → invited
+       - Trigger: Mentor changes a confirmed session
+       - Action: Client must re-confirm the changes
+       - Note: This creates a pending change (previous_data is populated)
+    
+    4. invited → cancelled
+       - Trigger: Client declines invitation or change
+       - Action: Session is permanently cancelled
+    
+    5. confirmed → cancelled
+       - Trigger: Client declines after a change to a confirmed session
+       - Action: Session is permanently cancelled
+    
+    Invalid transitions (not allowed):
+    - draft → confirmed (must go through invited first)
+    - confirmed → draft (cannot revert to draft)
+    - cancelled → any state (cancelled is terminal)
+    - draft → cancelled (draft sessions are not sent to clients)
+    
+    
+    PENDING CHANGE DEFINITION (CRITICAL)
+    ------------------------------------
+    
+    A session is considered "pending change" if and only if:
+    
+    • previous_data IS NOT NULL
+    
+    When a session has a pending change:
+    
+    • Client must confirm or decline the change
+    • Session must appear on the client confirmation page
+    • The current session data represents the proposed changes
+    • The previous_data field contains the complete original snapshot
+    
+    previous_data must be cleared (set to NULL) only when:
+    
+    • Client confirms the change
+      - Session status may change (e.g., confirmed → invited → confirmed)
+      - previous_data is cleared
+      - changes_requested_by is cleared
+    
+    • Session is cancelled
+      - Session status becomes 'cancelled'
+      - previous_data is cleared
+      - changes_requested_by is cleared
+    
+    While pending:
+    
+    • previous_data must remain populated
+    • changes_requested_by must remain populated
+    • Session cannot be modified further until pending change is resolved
+    
+    
+    CHANGE ORIGIN TRACKING
+    ----------------------
+    
+    The changes_requested_by field indicates who initiated the pending change.
+    
+    Allowed values:
+    
+    • "mentor"
+      - Mentor modified the session
+      - Currently the only value in use
+      - Client must confirm or decline mentor's changes
+    
+    • "client"
+      - Client proposed a change (future functionality)
+      - Reserved for future client-initiated change requests
+      - Mentor would need to confirm client's proposed changes
+    
+    • NULL
+      - No pending change exists
+      - Session is in normal state (no confirmation required)
+    
+    For now:
+    
+    • Only "mentor" is used in practice
+    • "client" exists to support future functionality
+    • This field works in conjunction with previous_data to track pending
+      changes through the confirmation workflow
+    
+    
+    EXPLICIT NON-GOALS
+    ------------------
+    
+    The following behaviors are explicitly NOT implemented:
+    
+    • No automatic timeouts
+      - Sessions do not expire or cancel automatically
+      - No background jobs check for stale pending changes
+    
+    • No background cancellation
+      - Sessions are not cancelled by system processes
+      - Only explicit user action (client decline) cancels sessions
+    
+    • No auto-confirmation
+      - Sessions are not automatically confirmed
+      - Client must explicitly confirm each invitation or change
+    
+    • Sessions remain pending until user action
+      - A session with previous_data populated will remain in that state
+        indefinitely until the client takes action
+      - No automatic cleanup or expiration
+    
+    ============================================================================
+    """
     SESSION_TYPES = [
         ('individual', 'Individual'),
         ('group', 'Group'),
@@ -30,6 +184,46 @@ class Session(models.Model):
     expires_at = models.DateTimeField(blank=True, null=True)
     session_price = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
     tasks = models.JSONField(default=list, blank=True)  # Array of tasks
+
+    # ============================================================================
+    # PENDING SESSION CHANGES SUPPORT
+    # ============================================================================
+    # These fields support the session-change confirmation workflow where
+    # mentors can modify sessions that are already invited or confirmed.
+    #
+    # previous_data:
+    #   - Stores the FULL original session snapshot before a change is made
+    #   - The snapshot is a complete representation of the session at the moment
+    #     before the change, with JSON structure mirroring session model fields
+    #     exactly (same keys as current fields)
+    #   - This field is only populated while waiting for client confirmation
+    #   - Once the client confirms the change, this field will be cleared (NULL)
+    #   - If the client declines, the session will be canceled
+    #   - NULL means no pending change exists
+    #
+    # changes_requested_by:
+    #   - Indicates who initiated the pending change: "mentor" or "client"
+    #   - For now, only "mentor" will be used (mentor-initiated changes)
+    #   - "client" is reserved for future functionality (client-initiated changes)
+    #   - NULL means no pending change exists
+    #   - This field works in conjunction with previous_data to track pending
+    #     changes through the confirmation workflow
+    # ============================================================================
+    previous_data = models.JSONField(
+        blank=True,
+        null=True,
+        help_text="Full original snapshot of session data before changes. JSON structure mirrors current session fields exactly. Populated while waiting for client confirmation, cleared on confirmation or cancellation."
+    )
+    changes_requested_by = models.CharField(
+        max_length=20,
+        choices=[
+            ('mentor', 'Mentor'),
+            ('client', 'Client'),
+        ],
+        blank=True,
+        null=True,
+        help_text="Indicates who requested the pending changes: mentor or client. NULL means no pending change exists."
+    )
 
     class Meta:
         verbose_name = "Session"
