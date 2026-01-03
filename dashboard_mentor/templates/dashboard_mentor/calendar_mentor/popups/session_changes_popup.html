@@ -1,0 +1,502 @@
+{# Popup shown before saving when there are tracked session changes #}
+
+<div id="mentorSessionChangesOverlay" class="session-changes-overlay" aria-hidden="true">
+  <div class="session-changes-backdrop" data-session-changes-close></div>
+
+  <div class="session-changes-modal" role="dialog" aria-modal="true" aria-label="Session changes">
+    <header class="session-changes-header">
+      <div class="session-changes-header-content">
+        <div class="session-changes-icon-wrapper">
+          <svg class="session-changes-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" fill="currentColor"/>
+          </svg>
+        </div>
+        <div>
+          <h3 class="session-changes-title">Review Session Changes</h3>
+          <p class="session-changes-subtitle">Review the modifications before saving</p>
+        </div>
+      </div>
+      <button type="button" class="session-changes-close" data-session-changes-close aria-label="Close">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M15 5L5 15M5 5l10 10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </button>
+    </header>
+
+    <div class="session-changes-body">
+      <div id="sessionChangesList" class="session-changes-list">
+        <!-- Changes will be populated here by JavaScript -->
+      </div>
+    </div>
+
+    <footer class="session-changes-footer">
+      <div class="session-changes-footer-info">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M8 0C3.58 0 0 3.58 0 8s3.58 8 8 8 8-3.58 8-8-3.58-8-8-8zm1 12H7V7h2v5zm0-6H7V4h2v2z" fill="currentColor"/>
+        </svg>
+        <span>All changes weill be sent to respective clients for confirmation</span>
+      </div>
+      <div class="session-changes-footer-buttons">
+        <button type="button" class="session-changes-btn session-changes-btn--secondary" data-session-changes-cancel>
+          Cancel
+        </button>
+        <button type="button" class="session-changes-btn session-changes-btn--primary" id="sessionChangesConfirmBtn">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style="margin-right: 6px;">
+            <path d="M13.5 4.5L6 12l-3.5-3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          Save Changes
+        </button>
+      </div>
+    </footer>
+  </div>
+</div>
+
+<style>
+  .session-changes-overlay {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    z-index: 10080;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .session-changes-overlay.is-visible {
+    opacity: 1;
+    visibility: visible;
+  }
+  .session-changes-backdrop {
+    position: absolute;
+    inset: 0;
+  }
+
+  .session-changes-modal {
+    position: relative;
+    width: 90%;
+    max-width: 800px;
+    max-height: 90vh;
+    background: #ffffff;
+    border-radius: 16px;
+    box-shadow: 
+      0 25px 50px -12px rgba(0, 0, 0, 0.25),
+      0 0 0 1px rgba(0, 0, 0, 0.05);
+    overflow: hidden;
+    border: 1px solid #e2e8f0;
+    display: flex;
+    flex-direction: column;
+    transform: scale(0.96) translateY(10px);
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .session-changes-overlay.is-visible .session-changes-modal {
+    transform: scale(1) translateY(0);
+  }
+
+  .session-changes-header {
+    padding: 24px 28px;
+    border-bottom: 1px solid #e5e7eb;
+    flex-shrink: 0;
+    background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);
+  }
+  .session-changes-header-content {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+  }
+  .session-changes-icon-wrapper {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  }
+  .session-changes-icon {
+    width: 24px;
+    height: 24px;
+    color: #ffffff;
+  }
+  .session-changes-title {
+    margin: 0 0 4px 0;
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #0f172a;
+    letter-spacing: -0.02em;
+  }
+  .session-changes-subtitle {
+    margin: 0;
+    font-size: 0.875rem;
+    color: #64748b;
+    line-height: 1.4;
+  }
+  .session-changes-close {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    color: #64748b;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+  }
+  .session-changes-close:hover {
+    background: #f1f5f9;
+    color: #0f172a;
+  }
+
+  .session-changes-body {
+    padding: 24px 28px;
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
+    background: #fafbfc;
+  }
+  
+  .session-changes-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .session-changes-item {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    transition: all 0.2s ease;
+  }
+  .session-changes-item:hover {
+    border-color: #cbd5e1;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  }
+  
+  .session-changes-item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #f1f5f9;
+  }
+  
+  .session-changes-item-id {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-size: 0.75rem;
+    color: #94a3b8;
+    background: #f8fafc;
+    padding: 4px 8px;
+    border-radius: 6px;
+    display: inline-block;
+  }
+  
+  .session-changes-status-badges {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  
+  .session-changes-status-arrow {
+    width: 16px;
+    height: 16px;
+    color: #94a3b8;
+    flex-shrink: 0;
+  }
+  
+  .session-changes-status-badge {
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+  }
+  .session-changes-status-badge--invited {
+    background: #fef3c7;
+    color: #92400e;
+  }
+  .session-changes-status-badge--confirmed {
+    background: #dcfce7;
+    color: #166534;
+  }
+  .session-changes-status-badge--draft {
+    background: #f1f5f9;
+    color: #475569;
+  }
+  
+  .session-changes-item-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  
+  .session-changes-field {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .session-changes-field-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .session-changes-field-label svg {
+    width: 14px;
+    height: 14px;
+    color: #94a3b8;
+  }
+  
+  .session-changes-field-value {
+    font-size: 0.95rem;
+    color: #0f172a;
+    font-weight: 600;
+    padding: 10px 14px;
+    background: #f8fafc;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+  }
+  
+  .session-changes-field-changed {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .session-changes-field-old {
+    padding: 10px 14px;
+    background: #fee2e2;
+    border-left: 3px solid #ef4444;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    color: #991b1b;
+    position: relative;
+  }
+  .session-changes-field-old-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #dc2626;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .session-changes-field-old-label::before {
+    content: '−';
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #ef4444;
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 800;
+    line-height: 16px;
+    text-align: center;
+  }
+  
+  .session-changes-field-new {
+    padding: 10px 14px;
+    background: #dcfce7;
+    border-left: 3px solid #10b981;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    color: #166534;
+    font-weight: 600;
+  }
+  .session-changes-field-new-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #059669;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .session-changes-field-new-label::before {
+    content: '+';
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #10b981;
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 800;
+    line-height: 16px;
+    text-align: center;
+  }
+  
+  .session-changes-empty {
+    text-align: center;
+    padding: 60px 20px;
+    color: #94a3b8;
+  }
+  .session-changes-empty-icon {
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 16px;
+    color: #cbd5e1;
+  }
+  .session-changes-empty-text {
+    font-size: 0.95rem;
+    font-weight: 600;
+  }
+
+  .session-changes-footer {
+    padding: 20px 28px;
+    border-top: 1px solid #e5e7eb;
+    flex-shrink: 0;
+    background: #ffffff;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+  }
+  
+  .session-changes-footer-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+    color: #64748b;
+  }
+  .session-changes-footer-info svg {
+    flex-shrink: 0;
+    color: #94a3b8;
+  }
+  
+  .session-changes-footer-buttons {
+    display: flex;
+    gap: 12px;
+  }
+  
+  .session-changes-btn {
+    height: 44px;
+    border-radius: 10px;
+    padding: 0 24px;
+    border: 1px solid #e2e8f0;
+    font-weight: 700;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+  }
+  
+  .session-changes-btn--primary {
+    min-width: 160px;
+    padding: 0 28px;
+  }
+  
+  .session-changes-btn--secondary {
+    background: #ffffff;
+    color: #0f172a;
+  }
+  .session-changes-btn--secondary:hover {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  }
+  .session-changes-btn--secondary:active {
+    transform: translateY(0);
+  }
+  
+  .session-changes-btn--primary {
+    background: linear-gradient(135deg, #334156 0%, #1e293b 100%);
+    color: #ffffff;
+    border-color: #334156;
+    box-shadow: 0 4px 12px rgba(51, 65, 86, 0.3);
+  }
+  .session-changes-btn--primary:hover {
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    border-color: #1e293b;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(51, 65, 86, 0.4);
+  }
+  .session-changes-btn--primary:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(51, 65, 86, 0.3);
+  }
+  
+  .session-changes-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none !important;
+  }
+
+  @media (max-width: 640px) {
+    .session-changes-modal {
+      width: 95%;
+      max-height: 95vh;
+      border-radius: 12px;
+    }
+    .session-changes-header {
+      padding: 20px;
+    }
+    .session-changes-header-content {
+      gap: 12px;
+    }
+    .session-changes-icon-wrapper {
+      width: 40px;
+      height: 40px;
+    }
+    .session-changes-icon {
+      width: 20px;
+      height: 20px;
+    }
+    .session-changes-title {
+      font-size: 1.25rem;
+    }
+    .session-changes-subtitle {
+      font-size: 0.8rem;
+    }
+    .session-changes-body {
+      padding: 20px;
+    }
+    .session-changes-item {
+      padding: 16px;
+    }
+    .session-changes-footer {
+      flex-direction: column;
+      align-items: stretch;
+      padding: 16px 20px;
+    }
+    .session-changes-footer-info {
+      justify-content: center;
+      text-align: center;
+    }
+    .session-changes-footer-buttons {
+      flex-direction: column;
+    }
+    .session-changes-btn {
+      width: 100%;
+    }
+  }
+</style>

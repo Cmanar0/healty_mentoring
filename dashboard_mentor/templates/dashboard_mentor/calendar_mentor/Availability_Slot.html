@@ -267,8 +267,6 @@ window.MentorCalendarSlotComponents.AvailabilitySlot = {
     el.dataset.isAvailabilityMode = String(!!props?.isAvailabilityMode);
     el.dataset.timezone = props?.timezone || '';
     el.dataset.eventId = props?.eventId || '';
-    // Keep this log for now (per your request)
-    console.log('[AvailabilitySlot] mount props:', props);
 
     // Duration (minutes)
     try {
@@ -438,7 +436,6 @@ window.MentorCalendarSlotComponents.AvailabilitySlot = {
 
             el.dataset.recurrence = value;
             if (recurrenceKey) window.MentorCalendarRecurrenceSelections[recurrenceKey] = value;
-            console.log('[AvailabilitySlot] recurrence selected:', { eventId, recurringId, recurrenceKey, value });
 
             // Notify calendar logic so it can render/persist recurring rules.
             if (typeof window.MentorCalendarInternal?.setRecurrenceForEvent === 'function') {

@@ -71,6 +71,7 @@
 {% include "dashboard_mentor/calendar_mentor/popups/recurring_delete_popup.html" %}
 {% include "dashboard_mentor/calendar_mentor/popups/recurring_move_popup.html" %}
 {% include "dashboard_mentor/calendar_mentor/popups/collision_resolution_popup.html" %}
+{% include "dashboard_mentor/calendar_mentor/popups/session_changes_popup.html" %}
 
 <style>
   /* --- Overlay --- */
@@ -737,6 +738,9 @@
   const recurringMoveOverlay = document.getElementById('mentorRecurringMoveOverlay');
   const recurringMoveOneBtn = document.getElementById('recurringMoveOneBtn');
   const recurringMoveAllBtn = document.getElementById('recurringMoveAllBtn');
+  const sessionChangesOverlay = document.getElementById('mentorSessionChangesOverlay');
+  const sessionChangesList = document.getElementById('sessionChangesList');
+  const sessionChangesConfirmBtn = document.getElementById('sessionChangesConfirmBtn');
   
   if (!overlay || !root) return;
 
@@ -752,6 +756,11 @@
   let scheduleSessionEventId = null;
   let pendingRecurringDelete = null; // { eventId, recurringId, instanceDate }
   let pendingRecurringMove = null;   // { recurringId, instanceDate, newStartIso, newEndIso }
+
+  // Session change tracking
+  let originalSessionsById = new Map(); // Map<sessionId, sessionData> - original data from backend
+  let changedSessionsById = new Map(); // Map<sessionId, snapshot> - tracked changes
+  let sessionsInitialized = false; // Flag to ensure originalSessionsById is populated only once per calendar open
 
   // Timezone source of truth: mentorprofile.selected_timezone (fallback: detected_timezone)
   function resolveMentorTimezone() {
@@ -1624,6 +1633,118 @@
     setSessionSettingsVisible(true);
   }
 
+  /**
+   * Track session mutations (drag & drop, resize, settings popup save)
+   * This is the ONLY function allowed to track changes to changedSessionsById
+   */
+  function onSessionMutated(ev) {
+    if (!ev) return;
+    const slotMode = ev.extendedProps?.slotMode;
+    if (slotMode !== 'session') return;
+    
+    const sessionDbId = ev.extendedProps?.sessionDbId;
+    if (!sessionDbId) return; // New sessions (not saved yet) don't have sessionDbId
+    
+    const status = ev.extendedProps?.status || 'draft';
+    // If session.status is draft, return immediately
+    if (status === 'draft') return;
+    
+    // Create full session snapshot
+    const fullSessionSnapshot = {
+      id: sessionDbId,
+      start: ev.start ? ev.start.toISOString() : null,
+      end: ev.end ? ev.end.toISOString() : null,
+      status: status,
+      session_price: ev.extendedProps?.sessionPrice ?? null,
+      client_email: ev.extendedProps?.clientEmail || null,
+      expires_at: ev.extendedProps?.expiresAt || null,
+      session_type: ev.extendedProps?.sessionType || 'individual',
+      invitation_sent: !!ev.extendedProps?.invitationSent,
+      can_remind: !!ev.extendedProps?.canRemind,
+      last_invite_sent_at: ev.extendedProps?.lastInviteSentAt || null
+    };
+    
+    // Check if snapshot already exists in changedSessionsById
+    if (changedSessionsById.has(sessionDbId)) {
+      // Get original session data
+      const original = originalSessionsById.get(sessionDbId);
+      if (original) {
+        // Normalize ISO strings for comparison (handle format differences)
+        const normalizeIso = (iso) => {
+          if (!iso) return null;
+          try {
+            // Parse and re-stringify to normalize format
+            return new Date(iso).toISOString();
+          } catch (e) {
+            return String(iso);
+          }
+        };
+        
+        const normalizedStart = normalizeIso(fullSessionSnapshot.start);
+        const normalizedEnd = normalizeIso(fullSessionSnapshot.end);
+        const normalizedExpiresAt = normalizeIso(fullSessionSnapshot.expires_at);
+        const normalizedLastInviteSentAt = normalizeIso(fullSessionSnapshot.last_invite_sent_at);
+        
+        const originalNormalizedStart = normalizeIso(original.start);
+        const originalNormalizedEnd = normalizeIso(original.end);
+        const originalNormalizedExpiresAt = normalizeIso(original.expires_at);
+        const originalNormalizedLastInviteSentAt = normalizeIso(original.last_invite_sent_at);
+        
+        // Normalize session_price for comparison (handle string vs number)
+        const normalizePrice = (price) => {
+          if (price === null || price === undefined) return null;
+          return String(price);
+        };
+        
+        // Compare new snapshot with original
+        const isSame = 
+          fullSessionSnapshot.id === original.id &&
+          normalizedStart === originalNormalizedStart &&
+          normalizedEnd === originalNormalizedEnd &&
+          fullSessionSnapshot.status === original.status &&
+          normalizePrice(fullSessionSnapshot.session_price) === normalizePrice(original.session_price) &&
+          (fullSessionSnapshot.client_email === original.client_email || 
+           (fullSessionSnapshot.client_email === null && original.client_email === null)) &&
+          normalizedExpiresAt === originalNormalizedExpiresAt &&
+          fullSessionSnapshot.session_type === original.session_type &&
+          fullSessionSnapshot.invitation_sent === original.invitation_sent &&
+          fullSessionSnapshot.can_remind === original.can_remind &&
+          normalizedLastInviteSentAt === originalNormalizedLastInviteSentAt;
+        
+        // Debug logging for comparison
+        if (!isSame) {
+          console.log('[MentorCalendar] onSessionMutated - Comparison failed for session', sessionDbId, {
+            start: { snapshot: normalizedStart, original: originalNormalizedStart, match: normalizedStart === originalNormalizedStart },
+            end: { snapshot: normalizedEnd, original: originalNormalizedEnd, match: normalizedEnd === originalNormalizedEnd },
+            status: { snapshot: fullSessionSnapshot.status, original: original.status, match: fullSessionSnapshot.status === original.status },
+            price: { snapshot: normalizePrice(fullSessionSnapshot.session_price), original: normalizePrice(original.session_price), match: normalizePrice(fullSessionSnapshot.session_price) === normalizePrice(original.session_price) },
+            email: { snapshot: fullSessionSnapshot.client_email, original: original.client_email, match: fullSessionSnapshot.client_email === original.client_email }
+          });
+        }
+        
+        if (isSame) {
+          // If they are completely same, delete the snapshot
+          changedSessionsById.delete(sessionDbId);
+          console.log('[MentorCalendar] onSessionMutated - Session', sessionDbId, 'matches original, removed from changedSessionsById');
+        } else {
+          // If they are not the same, always REWRITE the snapshot
+          changedSessionsById.set(sessionDbId, fullSessionSnapshot);
+        }
+      } else {
+        // Original not found, but we have a change - keep it
+        console.warn('[MentorCalendar] onSessionMutated - Original not found for session', sessionDbId);
+        changedSessionsById.set(sessionDbId, fullSessionSnapshot);
+      }
+    } else {
+      // No snapshot exists, simply add it
+      changedSessionsById.set(sessionDbId, fullSessionSnapshot);
+    }
+    
+    // Log changedSessionsById after mutation (convert Map to object for better console readability)
+    const changedSessionsObj = Object.fromEntries(changedSessionsById);
+    console.log('[MentorCalendar] onSessionMutated - changedSessionsById:', changedSessionsObj, `(size: ${changedSessionsById.size})`);
+  }
+
   function applySessionSettings() {
     if (!calendar) return;
     if (!sessionSettingsEventId) return;
@@ -1678,6 +1799,10 @@
 
     markDirty('session');
     recomputeCollisions();
+    
+    // Track session mutation
+    onSessionMutated(ev);
+    
     setSessionSettingsApplyEnabled(false);
     closeSessionSettings();
   }
@@ -2388,6 +2513,33 @@
 
       // Load Sessions from DB and render as session slots (status-colored)
       const sessions = Array.isArray(data.sessions) ? data.sessions : [];
+      
+      // Populate originalSessionsById from fetched sessions (only once per calendar open)
+      if (!sessionsInitialized) {
+        sessions.forEach((s) => {
+          if (!s || !s.id) return;
+          // Create a deep copy of the session data for originalSessionsById
+          const sessionSnapshot = {
+            id: s.id,
+            start: s.start || null,
+            end: s.end || null,
+            status: normalizeSessionStatus(s.status || 'draft'),
+            session_price: s.session_price || null,
+            client_email: s.client_email || null,
+            expires_at: s.expires_at || null,
+            session_type: s.session_type || 'individual',
+            invitation_sent: !!s.invitation_sent,
+            can_remind: !!s.can_remind,
+            last_invite_sent_at: s.last_invite_sent_at || null
+          };
+          originalSessionsById.set(s.id, sessionSnapshot);
+        });
+        sessionsInitialized = true;
+      }
+      
+      // Clear changedSessionsById after successful load (repopulate original, clear changes)
+      changedSessionsById.clear();
+      
       sessions.forEach((s) => {
         if (!s || !s.id || !s.start || !s.end) return;
         const status = normalizeSessionStatus(s.status || 'draft');
@@ -2960,8 +3112,11 @@
         recurring: recurringPayload.length,
         deletedRecurring: deleteSeriesPayload.length
       });
+      // Reset sessionsInitialized so originalSessionsById gets repopulated with new data
+      sessionsInitialized = false;
       await loadSavedAvailability();
       deletedSessionDbIds = new Set();
+      // changedSessionsById is already cleared in loadSavedAvailability()
       if (typeof showNotification === 'function') {
         showNotification('Saved successfully.', 'success');
       }
@@ -3332,6 +3487,12 @@
         });
         markDirty(mode);
         recomputeCollisions();
+        
+        // Track session mutation (only for sessions)
+        if (mode === 'session') {
+          onSessionMutated(info.event);
+        }
+        
         // Force collision popup to refresh immediately if it's open
         if (typeof window.refreshCollisionResolutionPopup === 'function') {
           window.refreshCollisionResolutionPopup();
@@ -3362,6 +3523,10 @@
         });
         markDirty('session');
         recomputeCollisions();
+        
+        // Track session mutation
+        onSessionMutated(info.event);
+        
         // Force collision popup to refresh immediately if it's open
         if (typeof window.refreshCollisionResolutionPopup === 'function') {
           window.refreshCollisionResolutionPopup();
@@ -3735,6 +3900,11 @@
     overlay.classList.add('is-visible');
     overlay.setAttribute('aria-hidden', 'false');
     
+    // Initialize session tracking maps on calendar open
+    originalSessionsById.clear();
+    changedSessionsById.clear();
+    sessionsInitialized = false;
+    
     // Optional: allow opener to force initial mode.
     // Supported values: 'sessions' | 'availability'
     const requestedMode = (triggerEl && triggerEl.dataset && triggerEl.dataset.mentorCalendarInitialMode) ? String(triggerEl.dataset.mentorCalendarInitialMode) : '';
@@ -3800,6 +3970,11 @@
   }
 
   function closeNow() {
+    // Reset session tracking on close
+    sessionsInitialized = false;
+    originalSessionsById.clear();
+    changedSessionsById.clear();
+    
     // Always close the settings popup too (if open)
     if (availabilitySettingsOverlay && availabilitySettingsOverlay.classList.contains('is-visible')) {
       closeAvailabilitySettings();
@@ -3889,13 +4064,242 @@
     modeAvailabilityBtn.addEventListener('click', () => setMode(true));
   }
 
+  /**
+   * Show/hide session changes popup
+   */
+  function setSessionChangesVisible(isVisible) {
+    if (!sessionChangesOverlay) return;
+    sessionChangesOverlay.classList.toggle('is-visible', !!isVisible);
+    sessionChangesOverlay.setAttribute('aria-hidden', isVisible ? 'false' : 'true');
+    
+    if (isVisible) {
+      renderSessionChanges();
+    }
+  }
+
+  function closeSessionChanges() {
+    setSessionChangesVisible(false);
+  }
+
+  /**
+   * Render session changes list in the popup
+   */
+  function renderSessionChanges() {
+    if (!sessionChangesList) return;
+    
+    if (changedSessionsById.size === 0) {
+      sessionChangesList.innerHTML = `
+        <div class="session-changes-empty">
+          <svg class="session-changes-empty-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <div class="session-changes-empty-text">No changes found.</div>
+        </div>
+      `;
+      return;
+    }
+    
+    let html = '';
+    changedSessionsById.forEach((snapshot, sessionId) => {
+      const original = originalSessionsById.get(sessionId);
+      
+      // Helper to format dates
+      const formatDate = (iso) => {
+        if (!iso) return 'N/A';
+        if (window.luxon && window.luxon.DateTime) {
+          try {
+            const dt = window.luxon.DateTime.fromISO(iso).setZone(timezone_variable);
+            return dt.toFormat('MMM d, yyyy • h:mm a');
+          } catch (e) {
+            return iso;
+          }
+        }
+        return iso;
+      };
+      
+      const formatTime = (iso) => {
+        if (!iso) return 'N/A';
+        if (window.luxon && window.luxon.DateTime) {
+          try {
+            const dt = window.luxon.DateTime.fromISO(iso).setZone(timezone_variable);
+            return dt.toFormat('h:mm a');
+          } catch (e) {
+            return iso;
+          }
+        }
+        return iso;
+      };
+      
+      // Format dates
+      const snapshotStartFormatted = formatDate(snapshot.start);
+      const snapshotEndFormatted = formatTime(snapshot.end);
+      const originalStartFormatted = original ? formatDate(original.start) : null;
+      const originalEndFormatted = original ? formatTime(original.end) : null;
+      
+      // Check which fields changed
+      const dateTimeChanged = original && (snapshot.start !== original.start || snapshot.end !== original.end);
+      const priceChanged = original && (
+        (snapshot.session_price === null && original.session_price !== null) ||
+        (snapshot.session_price !== null && original.session_price === null) ||
+        (snapshot.session_price !== null && original.session_price !== null && String(snapshot.session_price) !== String(original.session_price))
+      );
+      const statusChanged = original && snapshot.status !== original.status;
+      
+      // Status badges - current and future
+      const currentStatus = snapshot.status || 'draft';
+      const currentStatusBadgeClass = `session-changes-status-badge--${currentStatus}`;
+      const currentStatusLabel = currentStatus.charAt(0).toUpperCase() + currentStatus.slice(1);
+      
+      // After save, status will change to 'invited' (per requirements)
+      const futureStatus = 'invited';
+      const futureStatusBadgeClass = `session-changes-status-badge--${futureStatus}`;
+      const futureStatusLabel = futureStatus.charAt(0).toUpperCase() + futureStatus.slice(1);
+      
+      html += `<div class="session-changes-item">`;
+      html += `<div class="session-changes-item-header">`;
+      html += `<span class="session-changes-item-id">Session #${sessionId}</span>`;
+      html += `<div class="session-changes-status-badges">`;
+      html += `<span class="session-changes-status-badge ${currentStatusBadgeClass}">${escapeHtml(currentStatusLabel)}</span>`;
+      html += `<svg class="session-changes-status-arrow" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" fill="currentColor"/></svg>`;
+      html += `<span class="session-changes-status-badge ${futureStatusBadgeClass}">${escapeHtml(futureStatusLabel)}</span>`;
+      html += `</div>`;
+      html += `</div>`;
+      html += `<div class="session-changes-item-fields">`;
+      
+      // Date & Time field
+      if (dateTimeChanged && original) {
+        html += `<div class="session-changes-field session-changes-field-changed">`;
+        html += `<div class="session-changes-field-label">`;
+        html += `<svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" fill="currentColor"/></svg>`;
+        html += `Date & Time</div>`;
+        html += `<div class="session-changes-field-old">`;
+        html += `<div class="session-changes-field-old-label">Previous</div>`;
+        html += `${escapeHtml(originalStartFormatted)} - ${escapeHtml(originalEndFormatted)}`;
+        html += `</div>`;
+        html += `<div class="session-changes-field-new">`;
+        html += `<div class="session-changes-field-new-label">Updated</div>`;
+        html += `${escapeHtml(snapshotStartFormatted)} - ${escapeHtml(snapshotEndFormatted)}`;
+        html += `</div>`;
+        html += `</div>`;
+      } else {
+        html += `<div class="session-changes-field">`;
+        html += `<div class="session-changes-field-label">`;
+        html += `<svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" fill="currentColor"/></svg>`;
+        html += `Date & Time</div>`;
+        html += `<div class="session-changes-field-value">${escapeHtml(snapshotStartFormatted)} - ${escapeHtml(snapshotEndFormatted)}</div>`;
+        html += `</div>`;
+      }
+      
+      // Price field - only show if changed
+      if (priceChanged && original) {
+        html += `<div class="session-changes-field session-changes-field-changed">`;
+        html += `<div class="session-changes-field-label">`;
+        html += `<svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8.433 7.418c.155-.103.346-.196.567-.267v1.698a2.305 2.305 0 01-.567-.267C8.07 8.34 8 8.114 8 8c0-.114.07-.34.433-.582zM11 12.849v-1.698c.22.071.412.164.567.267.364.243.433.468.433.582 0 .114-.07.34-.433.582a2.305 2.305 0 01-.567.267z" fill="currentColor"/><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-13a1 1 0 10-2 0v.092a4.535 4.535 0 00-1.676.662C6.602 6.234 6 7.009 6 8c0 .99.602 1.765 1.324 2.246.48.32 1.054.545 1.676.662v1.941c-.391-.127-.68-.317-.843-.504a1 1 0 10-1.314 1.531c.562.499 1.313.93 2.157 1.057V15a1 1 0 102 0v-.092a4.535 4.535 0 001.676-.662C13.398 13.766 14 12.991 14 12c0-.99-.602-1.765-1.324-2.246A4.535 4.535 0 0011 9.092V7.151c.391.127.68.317.843.504a1 1 0 101.314-1.531c-.562-.499-1.313-.93-2.157-1.057V5z" fill="currentColor"/></svg>`;
+        html += `Price</div>`;
+        html += `<div class="session-changes-field-old">`;
+        html += `<div class="session-changes-field-old-label">Previous</div>`;
+        html += `${escapeHtml(original.session_price !== null ? String(original.session_price) : 'Free')}`;
+        html += `</div>`;
+        html += `<div class="session-changes-field-new">`;
+        html += `<div class="session-changes-field-new-label">Updated</div>`;
+        html += `${escapeHtml(snapshot.session_price !== null ? String(snapshot.session_price) : 'Free')}`;
+        html += `</div>`;
+        html += `</div>`;
+      }
+      // If price didn't change, don't display it
+      
+      // Status field (only show if changed)
+      if (statusChanged && original) {
+        html += `<div class="session-changes-field session-changes-field-changed">`;
+        html += `<div class="session-changes-field-label">`;
+        html += `<svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" fill="currentColor"/></svg>`;
+        html += `Status</div>`;
+        html += `<div class="session-changes-field-old">`;
+        html += `<div class="session-changes-field-old-label">Previous</div>`;
+        html += `${escapeHtml((original.status || 'draft').charAt(0).toUpperCase() + (original.status || 'draft').slice(1))}`;
+        html += `</div>`;
+        html += `<div class="session-changes-field-new">`;
+        html += `<div class="session-changes-field-new-label">Updated</div>`;
+        html += `${escapeHtml(statusLabel)}`;
+        html += `</div>`;
+        html += `</div>`;
+      }
+      
+      html += `</div>`;
+      html += `</div>`;
+    });
+    
+    sessionChangesList.innerHTML = html;
+  }
+
+  /**
+   * Escape HTML to prevent XSS
+   */
+  function escapeHtml(text) {
+    if (text === null || text === undefined) return '';
+    const div = document.createElement('div');
+    div.textContent = String(text);
+    return div.innerHTML;
+  }
+
   // Save availability button
   if (saveBtn) {
     saveBtn.addEventListener('click', () => {
-      console.log('[MentorCalendar] Save clicked. Saving availability + sessions.');
-      saveAvailabilityToBackend();
+      console.log('[MentorCalendar] Save clicked. Checking for collisions and changes...');
+      
+      // First check for collisions
+      const collisions = computeCalendarCollisionsInHorizon();
+      if (collisions.length > 0) {
+        const canOpenPopup = (typeof window.openCollisionResolutionPopup === 'function');
+        if (canOpenPopup) {
+          window.openCollisionResolutionPopup(false);
+        } else if (typeof showNotification === 'function') {
+          showNotification('Please resolve collisions before saving.', 'warning');
+        }
+        return;
+      }
+      
+      // If no collisions, check for tracked session changes
+      if (changedSessionsById.size > 0) {
+        // Show changes popup
+        setSessionChangesVisible(true);
+      } else {
+        // No changes, proceed with normal save
+        saveAvailabilityToBackend();
+      }
     });
   }
+  
+  // Session changes popup handlers
+  if (sessionChangesOverlay) {
+    sessionChangesOverlay.querySelectorAll('[data-session-changes-close]').forEach(el => {
+      el.addEventListener('click', (e) => {
+        e.preventDefault();
+        closeSessionChanges();
+      });
+    });
+    sessionChangesOverlay.querySelectorAll('[data-session-changes-cancel]').forEach(el => {
+      el.addEventListener('click', (e) => {
+        e.preventDefault();
+        closeSessionChanges();
+      });
+    });
+  }
+  if (sessionChangesConfirmBtn) {
+    sessionChangesConfirmBtn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      closeSessionChanges();
+      // Proceed with save
+      await saveAvailabilityToBackend();
+    });
+  }
+  
+  // ESC key handler for session changes popup
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && sessionChangesOverlay && sessionChangesOverlay.classList.contains('is-visible')) {
+      closeSessionChanges();
+    }
+  });
 
   // Availability settings popup handlers
   if (availabilitySettingsOverlay) {
