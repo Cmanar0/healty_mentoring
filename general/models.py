@@ -224,6 +224,22 @@ class Session(models.Model):
         null=True,
         help_text="Indicates who requested the pending changes: mentor or client. NULL means no pending change exists."
     )
+    # New fields for session change tracking
+    original_data = models.JSONField(
+        blank=True,
+        null=True,
+        help_text="Original session data snapshot when mentor saves changes. Stores full session state before changes. Cleared when client confirms or declines."
+    )
+    changed_by = models.CharField(
+        max_length=20,
+        choices=[
+            ('mentor', 'Mentor'),
+            ('client', 'Client'),
+        ],
+        blank=True,
+        null=True,
+        help_text="Indicates who initiated the changes: mentor or client. Set to 'mentor' when mentor saves changes, cleared when client confirms or declines."
+    )
 
     class Meta:
         verbose_name = "Session"

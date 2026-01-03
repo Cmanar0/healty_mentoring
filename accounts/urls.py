@@ -29,6 +29,8 @@ urlpatterns = [
     path("complete-invitation/<str:token>/", views.complete_invitation, name="complete_invitation"),
     # Session invitation landing (stable link for emails)
     path("session-invitation/<str:token>/", views.session_invitation_link, name="session_invitation_link"),
+    # Session changes landing (stable link for emails)
+    path("session-changes/", views.session_changes_link, name="session_changes_link"),
     # Confirm Mentor Invitation (for existing users)
     path("confirm-mentor-invitation/<str:token>/", views.confirm_mentor_invitation, name="confirm_mentor_invitation"),
     # Respond to Invitation (accept/deny)

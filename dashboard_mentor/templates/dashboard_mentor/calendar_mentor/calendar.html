@@ -3087,6 +3087,31 @@
         console.warn('[MentorCalendar] Missing csrftoken cookie');
       }
 
+      // Prepare changed sessions data for backend
+      const changedSessionsData = [];
+      if (changedSessionsById && changedSessionsById.size > 0) {
+        changedSessionsById.forEach((snapshot, sessionId) => {
+          const original = originalSessionsById.get(sessionId);
+          if (original) {
+            // Create original_data snapshot from original session
+            // Ensure dates are ISO strings
+            const originalStart = original.start ? (typeof original.start === 'string' ? original.start : new Date(original.start).toISOString()) : null;
+            const originalEnd = original.end ? (typeof original.end === 'string' ? original.end : new Date(original.end).toISOString()) : null;
+            changedSessionsData.push({
+              session_id: sessionId,
+              original_data: {
+                start_datetime: originalStart,
+                end_datetime: originalEnd,
+                status: original.status,
+                session_price: original.session_price,
+                session_type: original.session_type || 'individual',
+                client_email: original.client_email
+              }
+            });
+          }
+        });
+      }
+
       const res = await fetch(SAVE_AVAILABILITY_URL, {
         method: 'POST',
         headers: {
@@ -3098,7 +3123,8 @@
           sessions: sessionsPayload,
           deleted_sessions: Array.from(deletedSessionDbIds || []),
           selected_date: selectedDate,
-          edited_dates: editedDatesArr
+          edited_dates: editedDatesArr,
+          changed_sessions: changedSessionsData  // New field for changed sessions
         })
       });
       const data = await res.json();

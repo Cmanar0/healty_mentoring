@@ -1,0 +1,145 @@
+{% extends "dashboard_user/base.html" %}
+{% load static %}
+
+{% block dashboard_content %}
+<div style="max-width: 900px; margin: 24px auto; padding: 0 16px;">
+  <h1 style="margin: 0 0 24px; font-size: 1.5rem; font-weight: 800; color: #0f172a;">Session Invitations & Changes</h1>
+  
+  {% if invitations or changed_sessions %}
+    {% if invitations %}
+    <div style="margin-bottom: 32px;">
+      <h2 style="margin: 0 0 16px; font-size: 1.25rem; font-weight: 700; color: #0f172a;">New Invitations</h2>
+      <div style="display: grid; gap: 16px;">
+        {% for inv in invitations %}
+        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05); overflow: hidden;">
+          <div style="padding: 18px; border-bottom: 1px solid #e2e8f0;">
+            <h3 style="margin: 0 0 8px; font-size: 1.1rem; font-weight: 700; color: #0f172a;">Session #{{ inv.session.id }}</h3>
+            <p style="margin: 0; color: #64748b; font-size: 0.9rem;">Invited by <strong>{{ inv.mentor.first_name }} {{ inv.mentor.last_name }}</strong></p>
+          </div>
+          
+          <div style="padding: 18px; display: grid; gap: 12px;">
+            <div style="display: grid; grid-template-columns: 140px 1fr; gap: 12px;">
+              <div style="color: #64748b; font-weight: 600; font-size: 0.9rem;">Starts</div>
+              <div style="color: #0f172a; font-weight: 600;">{{ inv.session.start_datetime|date:"M d, Y • g:i A" }}</div>
+            </div>
+            <div style="display: grid; grid-template-columns: 140px 1fr; gap: 12px;">
+              <div style="color: #64748b; font-weight: 600; font-size: 0.9rem;">Ends</div>
+              <div style="color: #0f172a; font-weight: 600;">{{ inv.session.end_datetime|date:"M d, Y • g:i A" }}</div>
+            </div>
+            <div style="display: grid; grid-template-columns: 140px 1fr; gap: 12px;">
+              <div style="color: #64748b; font-weight: 600; font-size: 0.9rem;">Price</div>
+              <div style="color: #0f172a; font-weight: 600;">
+                {% if inv.session.session_price %}${{ inv.session.session_price }}{% else %}—{% endif %}
+              </div>
+            </div>
+            
+            <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e2e8f0; display: flex; gap: 10px; justify-content: flex-end;">
+              <form method="post" style="margin: 0;">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="decline_invitation">
+                <input type="hidden" name="invitation_id" value="{{ inv.id }}">
+                <button type="submit" style="height: 40px; padding: 0 14px; border-radius: 10px; border: 1px solid #e2e8f0; background: #ffffff; color: #0f172a; font-weight: 700; cursor: pointer;">Decline</button>
+              </form>
+              <form method="post" style="margin: 0;">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="confirm_invitation">
+                <input type="hidden" name="invitation_id" value="{{ inv.id }}">
+                <button type="submit" style="height: 40px; padding: 0 14px; border-radius: 10px; border: 1px solid #10b981; background: #10b981; color: #ffffff; font-weight: 700; cursor: pointer;">Confirm</button>
+              </form>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+    
+    {% if changed_sessions %}
+    <div style="margin-bottom: 32px;">
+      <h2 style="margin: 0 0 16px; font-size: 1.25rem; font-weight: 700; color: #0f172a;">Session Changes</h2>
+      <div style="display: grid; gap: 16px;">
+        {% for session in changed_sessions %}
+        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05); overflow: hidden;">
+          <div style="padding: 18px; border-bottom: 1px solid #e2e8f0;">
+            <h3 style="margin: 0 0 8px; font-size: 1.1rem; font-weight: 700; color: #0f172a;">Session #{{ session.id }}</h3>
+            <p style="margin: 0; color: #64748b; font-size: 0.9rem;">Changes requested by your mentor</p>
+          </div>
+          
+          <div style="padding: 18px; display: grid; gap: 12px;">
+            {% if session.original_data %}
+            <div style="display: grid; gap: 8px;">
+              <div style="color: #64748b; font-weight: 700; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px;">Date & Time</div>
+              <div style="display: flex; gap: 12px;">
+                <div style="flex: 1; padding: 10px 14px; background: #fee2e2; border-left: 3px solid #ef4444; border-radius: 8px;">
+                  <div style="font-size: 0.7rem; font-weight: 700; margin-bottom: 4px; color: #dc2626; text-transform: uppercase;">Previous</div>
+                  <div style="font-size: 0.9rem; color: #991b1b;">
+                    {{ session.original_data.start_datetime|date:"M d, Y • g:i A" }} - {{ session.original_data.end_datetime|date:"g:i A" }}
+                  </div>
+                </div>
+                <div style="flex: 1; padding: 10px 14px; background: #dcfce7; border-left: 3px solid #10b981; border-radius: 8px;">
+                  <div style="font-size: 0.7rem; font-weight: 700; margin-bottom: 4px; color: #16a34a; text-transform: uppercase;">Updated</div>
+                  <div style="font-size: 0.9rem; color: #166534; font-weight: 600;">
+                    {{ session.start_datetime|date:"M d, Y • g:i A" }} - {{ session.end_datetime|date:"g:i A" }}
+                  </div>
+                </div>
+              </div>
+            </div>
+            {% endif %}
+            
+            {% if session.original_data.session_price != session.session_price %}
+            <div style="display: grid; gap: 8px;">
+              <div style="color: #64748b; font-weight: 700; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px;">Price</div>
+              <div style="display: flex; gap: 12px;">
+                <div style="flex: 1; padding: 10px 14px; background: #fee2e2; border-left: 3px solid #ef4444; border-radius: 8px;">
+                  <div style="font-size: 0.7rem; font-weight: 700; margin-bottom: 4px; color: #dc2626; text-transform: uppercase;">Previous</div>
+                  <div style="font-size: 0.9rem; color: #991b1b;">
+                    ${{ session.original_data.session_price|default:"Free" }}
+                  </div>
+                </div>
+                <div style="flex: 1; padding: 10px 14px; background: #dcfce7; border-left: 3px solid #10b981; border-radius: 8px;">
+                  <div style="font-size: 0.7rem; font-weight: 700; margin-bottom: 4px; color: #16a34a; text-transform: uppercase;">Updated</div>
+                  <div style="font-size: 0.9rem; color: #166534; font-weight: 600;">
+                    ${{ session.session_price|default:"Free" }}
+                  </div>
+                </div>
+              </div>
+            </div>
+            {% endif %}
+            
+            <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e2e8f0; display: flex; gap: 10px; justify-content: flex-end;">
+              <form method="post" style="margin: 0;">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="decline_change">
+                <input type="hidden" name="session_id" value="{{ session.id }}">
+                <button type="submit" style="height: 40px; padding: 0 14px; border-radius: 10px; border: 1px solid #e2e8f0; background: #ffffff; color: #0f172a; font-weight: 700; cursor: pointer;">Decline</button>
+              </form>
+              <form method="post" style="margin: 0;">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="confirm_change">
+                <input type="hidden" name="session_id" value="{{ session.id }}">
+                <button type="submit" style="height: 40px; padding: 0 14px; border-radius: 10px; border: 1px solid #10b981; background: #10b981; color: #ffffff; font-weight: 700; cursor: pointer;">Confirm</button>
+              </form>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+    
+    {% if invitations|length > 0 or changed_sessions|length > 0 %}
+    <div style="margin-top: 24px; padding: 20px; background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0;">
+      <form method="post" style="margin: 0;">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="confirm_all">
+        <button type="submit" style="width: 100%; height: 48px; border-radius: 10px; border: 1px solid #10b981; background: #10b981; color: #ffffff; font-weight: 800; font-size: 1rem; cursor: pointer;">Confirm All</button>
+      </form>
+    </div>
+    {% endif %}
+  {% else %}
+    <div style="padding: 40px; text-align: center; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px;">
+      <p style="margin: 0; color: #64748b; font-size: 1rem;">No pending invitations or changes.</p>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

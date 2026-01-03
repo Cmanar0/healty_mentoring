@@ -718,6 +718,41 @@ def session_invitation_link(request, token: str):
     return redirect(f"{complete_path}?next={quote(target_confirm_path)}")
 
 
+def session_changes_link(request):
+    """
+    Stable email link for session changes notification.
+    
+    This URL is safe to click multiple times. It routes the user to:
+    - login (if not logged in) and then to the session management page
+    - the session management page directly (if already logged in as the correct user)
+    - logout and login (if wrong user is logged in)
+    
+    The email parameter identifies which client's sessions to show.
+    """
+    from django.urls import reverse
+    from urllib.parse import quote
+    from django.contrib.auth import logout
+    
+    client_email = request.GET.get('email', '').strip().lower()
+    if not client_email:
+        messages.error(request, 'Invalid session changes link.')
+        return redirect('accounts:login')
+    
+    target_path = reverse('general:dashboard_user:session_management')
+    
+    # If logged in, ensure it is the correct user
+    if request.user.is_authenticated:
+        current_email = (request.user.email or '').strip().lower()
+        if current_email != client_email:
+            logout(request)
+            messages.warning(request, f'This link is for {client_email}. Please log in with that account.')
+            return redirect(reverse('accounts:login') + f'?next={quote(target_path)}')
+        return redirect(target_path)
+    
+    # Not logged in: redirect to login with next -> session management page
+    return redirect(reverse('accounts:login') + f'?next={quote(target_path)}')
+
+
 @login_required
 @require_POST
 def respond_to_invitation(request, relationship_id):

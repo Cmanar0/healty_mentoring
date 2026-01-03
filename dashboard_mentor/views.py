@@ -1488,6 +1488,7 @@ def save_availability(request):
         sessions_created = 0
         sessions_updated = 0
         sessions_deleted = 0
+        changed_sessions_info = []  # Track changed sessions for email sending
         try:
             from general.models import Session
             from decimal import Decimal, InvalidOperation
@@ -1503,6 +1504,17 @@ def save_availability(request):
                 qs = mentor_profile.sessions.filter(id__in=to_delete_ids)
                 sessions_deleted = qs.count()
                 qs.delete()
+
+            # Get changed sessions data from request
+            changed_sessions_payload = data.get('changed_sessions', [])
+            changed_sessions_map = {}
+            for changed_item in changed_sessions_payload:
+                session_id = changed_item.get('session_id')
+                if session_id:
+                    try:
+                        changed_sessions_map[int(session_id)] = changed_item.get('original_data', {})
+                    except Exception:
+                        continue
 
             # Create or update sessions from payload
             allowed_statuses = {'draft', 'invited', 'confirmed', 'cancelled'}
@@ -1555,6 +1567,28 @@ def save_availability(request):
                         if db_id_int:
                             existing = mentor_profile.sessions.filter(id=db_id_int).first()
                             if existing:
+                                # Check if this session was changed (has original_data in changed_sessions_map)
+                                is_changed = db_id_int in changed_sessions_map
+                                
+                                # If this is a changed session, save original_data and set changed_by
+                                if is_changed:
+                                    original_data = changed_sessions_map[db_id_int]
+                                    # Convert datetime objects to ISO strings for JSON storage
+                                    if isinstance(original_data, dict):
+                                        # Ensure start_datetime and end_datetime are ISO strings
+                                        if 'start_datetime' in original_data:
+                                            if hasattr(original_data['start_datetime'], 'isoformat'):
+                                                original_data['start_datetime'] = original_data['start_datetime'].isoformat()
+                                        if 'end_datetime' in original_data:
+                                            if hasattr(original_data['end_datetime'], 'isoformat'):
+                                                original_data['end_datetime'] = original_data['end_datetime'].isoformat()
+                                    # If original_data field is empty, add it; if not empty, rewrite it
+                                    existing.original_data = original_data
+                                    existing.changed_by = 'mentor'
+                                    # If status was 'confirmed', change to 'invited' for re-confirmation
+                                    if existing.status == 'confirmed':
+                                        status = 'invited'
+                                
                                 existing.start_datetime = start_dt
                                 existing.end_datetime = end_dt
                                 existing.status = status
@@ -1563,6 +1597,15 @@ def save_availability(request):
                                 if hasattr(existing, 'session_type'):
                                     existing.session_type = session_type
                                 existing.save()
+                                
+                                # Track changed session for email sending
+                                if is_changed and client_email:
+                                    changed_sessions_info.append({
+                                        'session': existing,
+                                        'client_email': client_email,
+                                        'original_data': original_data
+                                    })
+                                
                                 # Assign attendee if email provided and user exists
                                 if client_email:
                                     try:
@@ -1600,6 +1643,70 @@ def save_availability(request):
         except Exception:
             # Non-fatal: availability saving should still succeed if sessions can't be saved
             pass
+
+        # Send emails for changed sessions (grouped by client email)
+        if changed_sessions_info:
+            try:
+                from django.urls import reverse
+                from general.email_service import EmailService
+                
+                # Group changed sessions by client email
+                sessions_by_client = {}
+                for item in changed_sessions_info:
+                    client_email = item['client_email']
+                    if client_email not in sessions_by_client:
+                        sessions_by_client[client_email] = []
+                    sessions_by_client[client_email].append(item)
+                
+                # Send one email per client with all their changes
+                site_domain = EmailService.get_site_domain()
+                for client_email, client_sessions in sessions_by_client.items():
+                    try:
+                        # Create a stable link for session management
+                        from urllib.parse import quote
+                        session_management_url = f"{site_domain}{reverse('accounts:session_changes_link')}?email={quote(client_email)}"
+                        
+                        # Prepare session changes data for email
+                        session_changes = []
+                        for item in client_sessions:
+                            session = item['session']
+                            original_data = item['original_data']
+                            session_changes.append({
+                                'session': session,
+                                'original_data': original_data
+                            })
+                        
+                        # Get mentor name
+                        mentor_name = ''
+                        try:
+                            mentor_name = f"{mentor_profile.first_name} {mentor_profile.last_name}".strip()
+                        except Exception:
+                            mentor_name = 'your mentor'
+                        
+                        # Send email
+                        EmailService.send_email(
+                            subject=f'Session Changes - Action Required',
+                            recipient_email=client_email,
+                            template_name='session_changes_notification',
+                            context={
+                                'mentor_name': mentor_name,
+                                'session_changes': session_changes,
+                                'action_url': session_management_url,
+                                'client_email': client_email
+                            },
+                            fail_silently=True
+                        )
+                    except Exception as e:
+                        # Log error but don't fail the save
+                        import logging
+                        logger = logging.getLogger(__name__)
+                        logger.error(f'Error sending session changes email to {client_email}: {str(e)}')
+                        continue
+            except Exception as e:
+                # Non-fatal: log but don't fail the save
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f'Error processing session changes emails: {str(e)}')
 
         # If we're able to save, update collision flag based on current DB state.
         # Important: the UI is only allowed to save when collisions are resolved.
