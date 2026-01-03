@@ -4084,7 +4084,7 @@
   /**
    * Render session changes list in the popup
    */
-  function renderSessionChanges() {
+  async function renderSessionChanges() {
     if (!sessionChangesList) return;
     
     if (changedSessionsById.size === 0) {
@@ -4097,6 +4097,24 @@
         </div>
       `;
       return;
+    }
+    
+    // Fetch client names for all sessions
+    const clientNameMap = new Map(); // email -> {first_name, last_name}
+    try {
+      const clients = await ensureClientSuggestionsLoaded();
+      if (Array.isArray(clients)) {
+        clients.forEach(client => {
+          if (client.email) {
+            clientNameMap.set(client.email.toLowerCase(), {
+              first_name: client.first_name || '',
+              last_name: client.last_name || ''
+            });
+          }
+        });
+      }
+    } catch (e) {
+      console.warn('[MentorCalendar] Could not fetch client names:', e);
     }
     
     let html = '';
@@ -4130,14 +4148,32 @@
         return iso;
       };
       
+      // Normalize ISO strings for comparison (handle format differences)
+      const normalizeIso = (iso) => {
+        if (!iso) return null;
+        try {
+          // Parse and re-stringify to normalize format
+          return new Date(iso).toISOString();
+        } catch (e) {
+          return String(iso);
+        }
+      };
+      
       // Format dates
       const snapshotStartFormatted = formatDate(snapshot.start);
       const snapshotEndFormatted = formatTime(snapshot.end);
       const originalStartFormatted = original ? formatDate(original.start) : null;
       const originalEndFormatted = original ? formatTime(original.end) : null;
       
-      // Check which fields changed
-      const dateTimeChanged = original && (snapshot.start !== original.start || snapshot.end !== original.end);
+      // Check which fields changed (with normalized date comparison)
+      const normalizedSnapshotStart = normalizeIso(snapshot.start);
+      const normalizedSnapshotEnd = normalizeIso(snapshot.end);
+      const normalizedOriginalStart = original ? normalizeIso(original.start) : null;
+      const normalizedOriginalEnd = original ? normalizeIso(original.end) : null;
+      const dateTimeChanged = original && (
+        normalizedSnapshotStart !== normalizedOriginalStart || 
+        normalizedSnapshotEnd !== normalizedOriginalEnd
+      );
       const priceChanged = original && (
         (snapshot.session_price === null && original.session_price !== null) ||
         (snapshot.session_price !== null && original.session_price === null) ||
@@ -4155,9 +4191,23 @@
       const futureStatusBadgeClass = `session-changes-status-badge--${futureStatus}`;
       const futureStatusLabel = futureStatus.charAt(0).toUpperCase() + futureStatus.slice(1);
       
+      // Get client name from email
+      const clientEmail = (snapshot.client_email || '').toLowerCase();
+      const clientInfo = clientNameMap.get(clientEmail) || { first_name: '', last_name: '' };
+      const clientName = clientInfo.first_name || clientInfo.last_name 
+        ? `${clientInfo.first_name} ${clientInfo.last_name}`.trim()
+        : (snapshot.client_email || 'No client assigned');
+      
+      // Build session detail URL
+      const sessionDetailUrl = SESSION_DETAIL_URL_TEMPLATE.replace('0', String(sessionId));
+      
       html += `<div class="session-changes-item">`;
       html += `<div class="session-changes-item-header">`;
-      html += `<span class="session-changes-item-id">Session #${sessionId}</span>`;
+      html += `<div class="session-changes-item-id-wrapper">`;
+      html += `<a href="${escapeHtml(sessionDetailUrl)}" class="session-changes-item-id-link" target="_blank" rel="noopener noreferrer">Session #${sessionId}</a>`;
+      html += `<span class="session-changes-item-client-label">Client:</span>`;
+      html += `<span class="session-changes-item-client-name">${escapeHtml(clientName)}</span>`;
+      html += `</div>`;
       html += `<div class="session-changes-status-badges">`;
       html += `<span class="session-changes-status-badge ${currentStatusBadgeClass}">${escapeHtml(currentStatusLabel)}</span>`;
       html += `<svg class="session-changes-status-arrow" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" fill="currentColor"/></svg>`;
@@ -4166,22 +4216,27 @@
       html += `</div>`;
       html += `<div class="session-changes-item-fields">`;
       
-      // Date & Time field
+      // Date & Time field - always display
       if (dateTimeChanged && original) {
+        // Show comparison when changed
         html += `<div class="session-changes-field session-changes-field-changed">`;
         html += `<div class="session-changes-field-label">`;
         html += `<svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" fill="currentColor"/></svg>`;
         html += `Date & Time</div>`;
+        html += `<div class="session-changes-field-changed-content">`;
         html += `<div class="session-changes-field-old">`;
         html += `<div class="session-changes-field-old-label">Previous</div>`;
         html += `${escapeHtml(originalStartFormatted)} - ${escapeHtml(originalEndFormatted)}`;
         html += `</div>`;
+        html += `<svg class="session-changes-field-arrow" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" fill="currentColor"/></svg>`;
         html += `<div class="session-changes-field-new">`;
         html += `<div class="session-changes-field-new-label">Updated</div>`;
         html += `${escapeHtml(snapshotStartFormatted)} - ${escapeHtml(snapshotEndFormatted)}`;
         html += `</div>`;
         html += `</div>`;
+        html += `</div>`;
       } else {
+        // Show as normal informative data when unchanged
         html += `<div class="session-changes-field">`;
         html += `<div class="session-changes-field-label">`;
         html += `<svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" fill="currentColor"/></svg>`;
@@ -4196,13 +4251,16 @@
         html += `<div class="session-changes-field-label">`;
         html += `<svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8.433 7.418c.155-.103.346-.196.567-.267v1.698a2.305 2.305 0 01-.567-.267C8.07 8.34 8 8.114 8 8c0-.114.07-.34.433-.582zM11 12.849v-1.698c.22.071.412.164.567.267.364.243.433.468.433.582 0 .114-.07.34-.433.582a2.305 2.305 0 01-.567.267z" fill="currentColor"/><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-13a1 1 0 10-2 0v.092a4.535 4.535 0 00-1.676.662C6.602 6.234 6 7.009 6 8c0 .99.602 1.765 1.324 2.246.48.32 1.054.545 1.676.662v1.941c-.391-.127-.68-.317-.843-.504a1 1 0 10-1.314 1.531c.562.499 1.313.93 2.157 1.057V15a1 1 0 102 0v-.092a4.535 4.535 0 001.676-.662C13.398 13.766 14 12.991 14 12c0-.99-.602-1.765-1.324-2.246A4.535 4.535 0 0011 9.092V7.151c.391.127.68.317.843.504a1 1 0 101.314-1.531c-.562-.499-1.313-.93-2.157-1.057V5z" fill="currentColor"/></svg>`;
         html += `Price</div>`;
+        html += `<div class="session-changes-field-changed-content">`;
         html += `<div class="session-changes-field-old">`;
         html += `<div class="session-changes-field-old-label">Previous</div>`;
         html += `${escapeHtml(original.session_price !== null ? String(original.session_price) : 'Free')}`;
         html += `</div>`;
+        html += `<svg class="session-changes-field-arrow" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" fill="currentColor"/></svg>`;
         html += `<div class="session-changes-field-new">`;
         html += `<div class="session-changes-field-new-label">Updated</div>`;
         html += `${escapeHtml(snapshot.session_price !== null ? String(snapshot.session_price) : 'Free')}`;
+        html += `</div>`;
         html += `</div>`;
         html += `</div>`;
       }
@@ -4214,13 +4272,16 @@
         html += `<div class="session-changes-field-label">`;
         html += `<svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" fill="currentColor"/></svg>`;
         html += `Status</div>`;
+        html += `<div class="session-changes-field-changed-content">`;
         html += `<div class="session-changes-field-old">`;
         html += `<div class="session-changes-field-old-label">Previous</div>`;
         html += `${escapeHtml((original.status || 'draft').charAt(0).toUpperCase() + (original.status || 'draft').slice(1))}`;
         html += `</div>`;
+        html += `<svg class="session-changes-field-arrow" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" fill="currentColor"/></svg>`;
         html += `<div class="session-changes-field-new">`;
         html += `<div class="session-changes-field-new-label">Updated</div>`;
         html += `${escapeHtml(statusLabel)}`;
+        html += `</div>`;
         html += `</div>`;
         html += `</div>`;
       }

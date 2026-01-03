@@ -193,20 +193,60 @@
     border-bottom: 1px solid #f1f5f9;
   }
   
-  .session-changes-item-id {
+  .session-changes-item-id-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  
+  .session-changes-item-id-link {
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
     font-size: 0.75rem;
-    color: #94a3b8;
-    background: #f8fafc;
+    color: #3b82f6;
+    background: #eff6ff;
     padding: 4px 8px;
     border-radius: 6px;
     display: inline-block;
+    text-decoration: none;
+    font-weight: 600;
+    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+    border: 1px solid transparent;
+  }
+  .session-changes-item-id-link:hover {
+    background: #dbeafe;
+    color: #2563eb;
+    border-color: #3b82f6;
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.2);
+  }
+  
+  .session-changes-item-client-label {
+    font-size: 0.75rem;
+    color: #64748b;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  
+  .session-changes-item-client-name {
+    font-size: 0.875rem;
+    color: #334155;
+    font-weight: 600;
   }
   
   .session-changes-status-badges {
     display: flex;
     align-items: center;
     gap: 8px;
+    flex-wrap: wrap;
+  }
+  
+  .session-changes-status-label {
+    font-size: 0.75rem;
+    color: #64748b;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
   }
   
   .session-changes-status-arrow {
@@ -248,6 +288,7 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
+    width: 100%;
   }
   
   .session-changes-field-label {
@@ -282,7 +323,23 @@
     gap: 8px;
   }
   
+  .session-changes-field-changed-content {
+    display: flex;
+    flex-direction: row;
+    gap: 12px;
+    align-items: stretch;
+  }
+  
+  .session-changes-field-arrow {
+    width: 20px;
+    height: 20px;
+    color: #94a3b8;
+    flex-shrink: 0;
+    align-self: center;
+  }
+  
   .session-changes-field-old {
+    flex: 1;
     padding: 10px 14px;
     background: #fee2e2;
     border-left: 3px solid #ef4444;
@@ -317,6 +374,7 @@
   }
   
   .session-changes-field-new {
+    flex: 1;
     padding: 10px 14px;
     background: #dcfce7;
     border-left: 3px solid #10b981;
