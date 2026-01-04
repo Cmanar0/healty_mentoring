@@ -22,8 +22,58 @@ def dashboard(request):
     # Ensure only mentors can access
     if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
         return redirect('general:index')
+    
+    # Fetch upcoming sessions (invited and confirmed only, future dates, max 4)
+    upcoming_sessions = []
+    has_more_sessions = False
+    
+    try:
+        from general.models import Session
+        mentor_profile = request.user.mentor_profile if hasattr(request.user, 'mentor_profile') else None
+        
+        if mentor_profile:
+            now = timezone.now()
+            # Get all upcoming sessions (invited and confirmed)
+            all_upcoming = mentor_profile.sessions.filter(
+                status__in=['invited', 'confirmed'],
+                start_datetime__gte=now
+            ).order_by('start_datetime').select_related('created_by').prefetch_related('attendees')
+            
+            # Get total count to check if there are more than 4
+            total_count = all_upcoming.count()
+            has_more_sessions = total_count > 4
+            
+            # Get first 4 sessions
+            sessions_queryset = all_upcoming[:4]
+            
+            # Format sessions for template
+            for session in sessions_queryset:
+                # Get first attendee (client) if any
+                client = session.attendees.first() if session.attendees.exists() else None
+                client_name = None
+                if client and hasattr(client, 'profile'):
+                    client_name = f"{client.profile.first_name} {client.profile.last_name}".strip()
+                    if not client_name:
+                        client_name = client.email.split('@')[0]
+                
+                upcoming_sessions.append({
+                    'id': session.id,
+                    'start_datetime': session.start_datetime,
+                    'end_datetime': session.end_datetime,
+                    'status': session.status,
+                    'client_name': client_name or 'Client',
+                    'note': session.note,
+                })
+    except Exception as e:
+        # Log error but don't fail the request
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error fetching upcoming sessions: {str(e)}")
+    
     return render(request, 'dashboard_mentor/dashboard_mentor.html', {
         'debug': settings.DEBUG,
+        'upcoming_sessions': upcoming_sessions,
+        'has_more_sessions': has_more_sessions,
     })
 
 @login_required

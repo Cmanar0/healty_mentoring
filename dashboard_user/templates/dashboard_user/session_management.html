@@ -2,144 +2,763 @@
 {% load static %}
 
 {% block dashboard_content %}
-<div style="max-width: 900px; margin: 24px auto; padding: 0 16px;">
-  <h1 style="margin: 0 0 24px; font-size: 1.5rem; font-weight: 800; color: #0f172a;">Session Invitations & Changes</h1>
-  
-  {% if invitations or changed_sessions %}
-    {% if invitations %}
-    <div style="margin-bottom: 32px;">
-      <h2 style="margin: 0 0 16px; font-size: 1.25rem; font-weight: 700; color: #0f172a;">New Invitations</h2>
-      <div style="display: grid; gap: 16px;">
-        {% for inv in invitations %}
-        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05); overflow: hidden;">
-          <div style="padding: 18px; border-bottom: 1px solid #e2e8f0;">
-            <h3 style="margin: 0 0 8px; font-size: 1.1rem; font-weight: 700; color: #0f172a;">Session #{{ inv.session.id }}</h3>
-            <p style="margin: 0; color: #64748b; font-size: 0.9rem;">Invited by <strong>{{ inv.mentor.first_name }} {{ inv.mentor.last_name }}</strong></p>
-          </div>
-          
-          <div style="padding: 18px; display: grid; gap: 12px;">
-            <div style="display: grid; grid-template-columns: 140px 1fr; gap: 12px;">
-              <div style="color: #64748b; font-weight: 600; font-size: 0.9rem;">Starts</div>
-              <div style="color: #0f172a; font-weight: 600;">{{ inv.session.start_datetime|date:"M d, Y • g:i A" }}</div>
-            </div>
-            <div style="display: grid; grid-template-columns: 140px 1fr; gap: 12px;">
-              <div style="color: #64748b; font-weight: 600; font-size: 0.9rem;">Ends</div>
-              <div style="color: #0f172a; font-weight: 600;">{{ inv.session.end_datetime|date:"M d, Y • g:i A" }}</div>
-            </div>
-            <div style="display: grid; grid-template-columns: 140px 1fr; gap: 12px;">
-              <div style="color: #64748b; font-weight: 600; font-size: 0.9rem;">Price</div>
-              <div style="color: #0f172a; font-weight: 600;">
-                {% if inv.session.session_price %}${{ inv.session.session_price }}{% else %}—{% endif %}
-              </div>
-            </div>
-            
-            <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e2e8f0; display: flex; gap: 10px; justify-content: flex-end;">
-              <form method="post" style="margin: 0;">
-                {% csrf_token %}
-                <input type="hidden" name="action" value="decline_invitation">
-                <input type="hidden" name="invitation_id" value="{{ inv.id }}">
-                <button type="submit" style="height: 40px; padding: 0 14px; border-radius: 10px; border: 1px solid #e2e8f0; background: #ffffff; color: #0f172a; font-weight: 700; cursor: pointer;">Decline</button>
-              </form>
-              <form method="post" style="margin: 0;">
-                {% csrf_token %}
-                <input type="hidden" name="action" value="confirm_invitation">
-                <input type="hidden" name="invitation_id" value="{{ inv.id }}">
-                <button type="submit" style="height: 40px; padding: 0 14px; border-radius: 10px; border: 1px solid #10b981; background: #10b981; color: #ffffff; font-weight: 700; cursor: pointer;">Confirm</button>
-              </form>
-            </div>
-          </div>
-        </div>
-        {% endfor %}
-      </div>
-    </div>
-    {% endif %}
-    
-    {% if changed_sessions %}
-    <div style="margin-bottom: 32px;">
-      <h2 style="margin: 0 0 16px; font-size: 1.25rem; font-weight: 700; color: #0f172a;">Session Changes</h2>
-      <div style="display: grid; gap: 16px;">
-        {% for session in changed_sessions %}
-        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05); overflow: hidden;">
-          <div style="padding: 18px; border-bottom: 1px solid #e2e8f0;">
-            <h3 style="margin: 0 0 8px; font-size: 1.1rem; font-weight: 700; color: #0f172a;">Session #{{ session.id }}</h3>
-            <p style="margin: 0; color: #64748b; font-size: 0.9rem;">Changes requested by your mentor</p>
-          </div>
-          
-          <div style="padding: 18px; display: grid; gap: 12px;">
-            {% if session.original_data %}
-            <div style="display: grid; gap: 8px;">
-              <div style="color: #64748b; font-weight: 700; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px;">Date & Time</div>
-              <div style="display: flex; gap: 12px;">
-                <div style="flex: 1; padding: 10px 14px; background: #fee2e2; border-left: 3px solid #ef4444; border-radius: 8px;">
-                  <div style="font-size: 0.7rem; font-weight: 700; margin-bottom: 4px; color: #dc2626; text-transform: uppercase;">Previous</div>
-                  <div style="font-size: 0.9rem; color: #991b1b;">
-                    {{ session.original_data.start_datetime|date:"M d, Y • g:i A" }} - {{ session.original_data.end_datetime|date:"g:i A" }}
-                  </div>
-                </div>
-                <div style="flex: 1; padding: 10px 14px; background: #dcfce7; border-left: 3px solid #10b981; border-radius: 8px;">
-                  <div style="font-size: 0.7rem; font-weight: 700; margin-bottom: 4px; color: #16a34a; text-transform: uppercase;">Updated</div>
-                  <div style="font-size: 0.9rem; color: #166534; font-weight: 600;">
-                    {{ session.start_datetime|date:"M d, Y • g:i A" }} - {{ session.end_datetime|date:"g:i A" }}
-                  </div>
-                </div>
-              </div>
-            </div>
-            {% endif %}
-            
-            {% if session.original_data.session_price != session.session_price %}
-            <div style="display: grid; gap: 8px;">
-              <div style="color: #64748b; font-weight: 700; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px;">Price</div>
-              <div style="display: flex; gap: 12px;">
-                <div style="flex: 1; padding: 10px 14px; background: #fee2e2; border-left: 3px solid #ef4444; border-radius: 8px;">
-                  <div style="font-size: 0.7rem; font-weight: 700; margin-bottom: 4px; color: #dc2626; text-transform: uppercase;">Previous</div>
-                  <div style="font-size: 0.9rem; color: #991b1b;">
-                    ${{ session.original_data.session_price|default:"Free" }}
-                  </div>
-                </div>
-                <div style="flex: 1; padding: 10px 14px; background: #dcfce7; border-left: 3px solid #10b981; border-radius: 8px;">
-                  <div style="font-size: 0.7rem; font-weight: 700; margin-bottom: 4px; color: #16a34a; text-transform: uppercase;">Updated</div>
-                  <div style="font-size: 0.9rem; color: #166534; font-weight: 600;">
-                    ${{ session.session_price|default:"Free" }}
-                  </div>
-                </div>
-              </div>
-            </div>
-            {% endif %}
-            
-            <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e2e8f0; display: flex; gap: 10px; justify-content: flex-end;">
-              <form method="post" style="margin: 0;">
-                {% csrf_token %}
-                <input type="hidden" name="action" value="decline_change">
-                <input type="hidden" name="session_id" value="{{ session.id }}">
-                <button type="submit" style="height: 40px; padding: 0 14px; border-radius: 10px; border: 1px solid #e2e8f0; background: #ffffff; color: #0f172a; font-weight: 700; cursor: pointer;">Decline</button>
-              </form>
-              <form method="post" style="margin: 0;">
-                {% csrf_token %}
-                <input type="hidden" name="action" value="confirm_change">
-                <input type="hidden" name="session_id" value="{{ session.id }}">
-                <button type="submit" style="height: 40px; padding: 0 14px; border-radius: 10px; border: 1px solid #10b981; background: #10b981; color: #ffffff; font-weight: 700; cursor: pointer;">Confirm</button>
-              </form>
-            </div>
-          </div>
-        </div>
-        {% endfor %}
-      </div>
-    </div>
-    {% endif %}
-    
+<div class="session-management-container">
+  <!-- Header Row with Badge and Confirm All -->
+  <div class="session-management-header-row">
     {% if invitations|length > 0 or changed_sessions|length > 0 %}
-    <div style="margin-top: 24px; padding: 20px; background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0;">
-      <form method="post" style="margin: 0;">
+    <div class="session-count-badge">
+      <span class="count-number">{{ invitations|length|add:changed_sessions|length }}</span>
+      <span class="count-label">Pending</span>
+    </div>
+    {% endif %}
+    <div class="header-content">
+      <h1 class="session-management-title">Session Invitations & Changes</h1>
+      <p class="session-management-subtitle">Review and manage your pending session invitations and changes</p>
+    </div>
+    {% if invitations|length > 0 or changed_sessions|length > 0 %}
+    <div class="header-actions">
+      <form method="post" class="confirm-all-form">
         {% csrf_token %}
         <input type="hidden" name="action" value="confirm_all">
-        <button type="submit" style="width: 100%; height: 48px; border-radius: 10px; border: 1px solid #10b981; background: #10b981; color: #ffffff; font-weight: 800; font-size: 1rem; cursor: pointer;">Confirm All</button>
+        <button type="submit" class="btn btn-primary btn-large">
+          <i class="fas fa-check-double"></i>
+          <span>Confirm All</span>
+        </button>
       </form>
     </div>
     {% endif %}
+  </div>
+  
+  {% if invitations or changed_sessions %}
+    <!-- New Invitations Section -->
+    {% if invitations %}
+    <section class="session-section">
+      <div class="section-header">
+        <div class="section-header-left">
+          <div class="section-icon-wrapper invitation-icon">
+            <i class="fas fa-envelope-open-text"></i>
+          </div>
+          <div>
+            <h2 class="section-title">New Invitations</h2>
+            <p class="section-description">{{ invitations|length }} session{{ invitations|length|pluralize }} waiting for your response</p>
+          </div>
+        </div>
+      </div>
+      
+      <div class="session-table">
+        <div class="table-header">
+          <div class="col-session">Session</div>
+          <div class="col-mentor">Mentor</div>
+          <div class="col-datetime">Date & Time</div>
+          <div class="col-minutes">Minutes</div>
+          <div class="col-price">Price</div>
+          <div class="col-actions">Actions</div>
+        </div>
+        
+        <div class="table-body">
+          {% for inv in invitations %}
+          <div class="table-row invitation-row">
+            <div class="col-session">
+              <a href="/dashboard/mentor/session/{{ inv.session.id }}/" class="session-id-link">#{{ inv.session.id }}</a>
+            </div>
+            <div class="col-mentor">
+              <div class="mentor-info">
+                <i class="fas fa-user-tie"></i>
+                <span>{{ inv.mentor.first_name }} {{ inv.mentor.last_name }}</span>
+              </div>
+            </div>
+            <div class="col-datetime">
+              <div class="info-value">{{ inv.session.start_datetime|date:"M d, Y • g:i A" }} - {{ inv.session.end_datetime|date:"g:i A" }}</div>
+            </div>
+            <div class="col-minutes">
+              <div class="info-value">{{ inv.session.duration_minutes }} min</div>
+            </div>
+            <div class="col-price">
+              <div class="info-value">
+                {% if inv.session.session_price %}${{ inv.session.session_price }}{% else %}<span class="text-muted">Free</span>{% endif %}
+              </div>
+            </div>
+            <div class="col-actions">
+              <div class="action-buttons action-buttons-vertical action-buttons-invitation">
+                <form method="post" class="action-form">
+                  {% csrf_token %}
+                  <input type="hidden" name="action" value="confirm_invitation">
+                  <input type="hidden" name="invitation_id" value="{{ inv.id }}">
+                  <button type="submit" class="btn btn-primary btn-small">
+                    <i class="fas fa-check"></i>
+                    <span>Accept</span>
+                  </button>
+                </form>
+                <form method="post" class="action-form">
+                  {% csrf_token %}
+                  <input type="hidden" name="action" value="decline_invitation">
+                  <input type="hidden" name="invitation_id" value="{{ inv.id }}">
+                  <button type="submit" class="btn btn-secondary btn-small">
+                    <i class="fas fa-times"></i>
+                    <span>Decline</span>
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </section>
+    {% endif %}
+    
+    <!-- Session Changes Section -->
+    {% if changed_sessions %}
+    <section class="session-section">
+      <div class="section-header">
+        <div class="section-header-left">
+          <div class="section-icon-wrapper change-icon">
+            <i class="fas fa-edit"></i>
+          </div>
+          <div>
+            <h2 class="section-title">Session Changes</h2>
+            <p class="section-description">{{ changed_sessions|length }} session{{ changed_sessions|length|pluralize }} with pending changes</p>
+          </div>
+        </div>
+      </div>
+      
+      <div class="session-table">
+        <div class="table-header table-header-changes">
+          <div class="col-session">Session</div>
+          <div class="col-mentor">Mentor</div>
+          <div class="col-datetime">Date & Time</div>
+          <div class="col-minutes">Minutes</div>
+          <div class="col-price">Price</div>
+          <div class="col-actions">Actions</div>
+        </div>
+        
+        <div class="table-body">
+          {% for session in changed_sessions %}
+          {% with change_data=session.previous_data|default:session.original_data %}
+          {% with mentor=session.mentors.first %}
+          <div class="table-row change-row">
+            <div class="col-session">
+              <a href="/dashboard/mentor/session/{{ session.id }}/" class="session-id-link">#{{ session.id }}</a>
+            </div>
+            <div class="col-mentor">
+              {% if mentor %}
+              <div class="mentor-info">
+                <i class="fas fa-user-tie"></i>
+                <span>{{ mentor.first_name }} {{ mentor.last_name }}</span>
+              </div>
+              {% else %}
+              <div class="text-muted">—</div>
+              {% endif %}
+            </div>
+            <div class="col-datetime">
+              {% if change_data and session.date_changed %}
+              <div class="change-comparison-inline">
+                <div class="change-old">
+                  <div class="change-date">{{ change_data.start_datetime|date:"M d, Y" }}</div>
+                  <div class="change-time">{{ change_data.start_datetime|date:"g:i A" }} - {{ change_data.end_datetime|date:"g:i A" }}</div>
+                </div>
+                <i class="fas fa-arrow-right change-arrow"></i>
+                <div class="change-new">
+                  <div class="change-date">{{ session.start_datetime|date:"M d, Y" }}</div>
+                  <div class="change-time">{{ session.start_datetime|date:"g:i A" }} - {{ session.end_datetime|date:"g:i A" }}</div>
+                </div>
+              </div>
+              {% else %}
+              <div class="info-value">{{ session.start_datetime|date:"M d, Y • g:i A" }} - {{ session.end_datetime|date:"g:i A" }}</div>
+              {% endif %}
+            </div>
+            <div class="col-minutes">
+              <div class="info-value">{{ session.duration_minutes }} min</div>
+            </div>
+            <div class="col-price">
+              {% if change_data and session.price_changed %}
+              <div class="change-comparison-inline">
+                <div class="change-old">
+                  <div class="change-price">${{ change_data.session_price|default:"Free" }}</div>
+                </div>
+                <i class="fas fa-arrow-right change-arrow"></i>
+                <div class="change-new">
+                  <div class="change-price">${{ session.session_price|default:"Free" }}</div>
+                </div>
+              </div>
+              {% else %}
+              <div class="info-value">${{ session.session_price|default:"Free" }}</div>
+              {% endif %}
+            </div>
+            <div class="col-actions">
+              <div class="action-buttons action-buttons-vertical">
+                <form method="post" class="action-form">
+                  {% csrf_token %}
+                  <input type="hidden" name="action" value="confirm_change">
+                  <input type="hidden" name="session_id" value="{{ session.id }}">
+                  <button type="submit" class="btn btn-primary btn-small">
+                    <i class="fas fa-check"></i>
+                    <span>Accept</span>
+                  </button>
+                </form>
+                <form method="post" class="action-form">
+                  {% csrf_token %}
+                  <input type="hidden" name="action" value="decline_change">
+                  <input type="hidden" name="session_id" value="{{ session.id }}">
+                  <button type="submit" class="btn btn-secondary btn-small">
+                    <i class="fas fa-times"></i>
+                    <span>Decline</span>
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
+          {% endwith %}
+          {% endwith %}
+          {% endfor %}
+        </div>
+      </div>
+    </section>
+    {% endif %}
   {% else %}
-    <div style="padding: 40px; text-align: center; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px;">
-      <p style="margin: 0; color: #64748b; font-size: 1rem;">No pending invitations or changes.</p>
+    <!-- Empty State -->
+    <div class="empty-state">
+      <div class="empty-state-icon">
+        <i class="fas fa-inbox"></i>
+      </div>
+      <h2 class="empty-state-title">All caught up!</h2>
+      <p class="empty-state-description">You don't have any pending invitations or session changes at the moment.</p>
     </div>
   {% endif %}
 </div>
+
+<style>
+.session-management-container {
+  width: 100%;
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 32px 24px;
+}
+
+/* Header Row - Full Width */
+.session-management-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 32px;
+  gap: 24px;
+  padding-bottom: 24px;
+  border-bottom: 2px solid var(--dash-border, #e2e8f0);
+}
+
+.session-count-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--dash-primary, #10b981), var(--dash-accent, #3b82f6));
+  color: white;
+  padding: 12px 16px;
+  border-radius: 12px;
+  min-width: 70px;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+  flex-shrink: 0;
+}
+
+.count-number {
+  font-size: 1.75rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.count-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 4px;
+  opacity: 0.9;
+}
+
+.header-content {
+  flex: 1;
+}
+
+.session-management-title {
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--dash-text-main, #1e293b);
+  margin: 0 0 8px 0;
+  letter-spacing: -0.02em;
+}
+
+.session-management-subtitle {
+  font-size: 1rem;
+  color: var(--dash-text-muted, #64748b);
+  margin: 0;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-shrink: 0;
+}
+
+.confirm-all-form {
+  margin: 0;
+}
+
+/* Section Headers */
+.session-section {
+  margin-bottom: 40px;
+}
+
+.section-header {
+  margin-bottom: 20px;
+}
+
+.section-header-left {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.section-icon-wrapper {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.invitation-icon {
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  color: white;
+}
+
+.change-icon {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: white;
+}
+
+.section-title {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--dash-text-main, #1e293b);
+  margin: 0 0 4px 0;
+}
+
+.section-description {
+  font-size: 0.9rem;
+  color: var(--dash-text-muted, #64748b);
+  margin: 0;
+}
+
+/* Table Layout */
+.session-table {
+  background: var(--dash-card-bg, #ffffff);
+  border: 1px solid var(--dash-border, #e2e8f0);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.table-header {
+  display: grid;
+  grid-template-columns: 70px 120px 1.5fr 80px 220px 180px;
+  gap: 16px;
+  padding: 16px 20px;
+  background: linear-gradient(to bottom, rgba(248, 250, 252, 0.8), rgba(248, 250, 252, 0.4));
+  border-bottom: 2px solid var(--dash-border, #e2e8f0);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--dash-text-muted, #64748b);
+}
+
+.table-header-changes {
+  grid-template-columns: 70px 120px 1.5fr 80px 220px 180px;
+}
+
+.table-body {
+  display: flex;
+  flex-direction: column;
+}
+
+.table-row {
+  display: grid;
+  grid-template-columns: 70px 120px 1.5fr 80px 220px 180px;
+  gap: 16px;
+  padding: 20px;
+  border-bottom: 1px solid var(--dash-border, #e2e8f0);
+  align-items: center;
+  transition: background-color 0.2s ease;
+}
+
+.table-row:last-child {
+  border-bottom: none;
+}
+
+.table-row:hover {
+  background: rgba(248, 250, 252, 0.5);
+}
+
+.invitation-row {
+  border-left: 3px solid #fbbf24;
+}
+
+.change-row {
+  border-left: 3px solid #3b82f6;
+}
+
+/* Column Styles */
+.col-session {
+  display: flex;
+  align-items: center;
+}
+
+.col-mentor {
+  display: flex;
+  align-items: center;
+}
+
+.col-datetime {
+  display: flex;
+  align-items: center;
+}
+
+.col-minutes {
+  display: flex;
+  align-items: center;
+}
+
+.col-price {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.col-changes {
+  display: flex;
+  align-items: center;
+}
+
+.col-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+/* Session ID Link */
+.session-id-link {
+  font-size: 0.9rem;
+  color: var(--dash-primary, #10b981);
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+.session-id-link:hover {
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--dash-primary-hover, #059669);
+}
+
+.mentor-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  color: var(--dash-text-main, #1e293b);
+  font-weight: 500;
+}
+
+.mentor-info i {
+  color: var(--dash-primary, #10b981);
+  font-size: 0.85rem;
+}
+
+.info-value {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--dash-text-main, #1e293b);
+}
+
+.text-muted {
+  color: var(--dash-text-muted, #64748b);
+}
+
+/* Change Comparison Inline - Using same colors as session_changes_popup.html */
+.change-comparison-inline {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  flex-wrap: nowrap;
+}
+
+.change-old {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 12px;
+  background: #fee2e2;
+  border-left: 3px solid #ef4444;
+  border-radius: 8px;
+  min-width: 0;
+  flex: 1 1 0;
+}
+
+.change-new {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 12px;
+  background: #dcfce7;
+  border-left: 3px solid #10b981;
+  border-radius: 8px;
+  min-width: 0;
+  flex: 1 1 0;
+}
+
+.change-date {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #991b1b;
+  margin-bottom: 2px;
+}
+
+.change-time {
+  font-size: 0.75rem;
+  color: #991b1b;
+  font-weight: 500;
+}
+
+.change-new .change-date,
+.change-new .change-time {
+  color: #166534;
+}
+
+.change-price {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #991b1b;
+}
+
+.change-new .change-price {
+  color: #166534;
+}
+
+.change-arrow {
+  color: var(--dash-text-muted, #64748b);
+  font-size: 0.9rem;
+  flex-shrink: 0;
+}
+
+.change-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: var(--dash-text-muted, #64748b);
+  font-weight: 500;
+}
+
+/* Action Buttons */
+.action-buttons {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.action-buttons-vertical {
+  flex-direction: column;
+  align-items: stretch;
+  width: 100%;
+}
+
+.action-buttons-vertical .btn {
+  width: 100%;
+  justify-content: center;
+}
+
+.action-buttons-invitation {
+  max-width: 140px;
+}
+
+.action-form {
+  margin: 0;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.btn-small {
+  padding: 6px 12px;
+  font-size: 0.8rem;
+}
+
+.btn-primary {
+  background: var(--dash-primary, #10b981);
+  color: white;
+}
+
+.btn-primary:hover {
+  background: var(--dash-primary-hover, #059669);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.btn-secondary {
+  background: white;
+  color: var(--dash-text-main, #1e293b);
+  border: 1px solid var(--dash-border, #e2e8f0);
+}
+
+.btn-secondary:hover {
+  background: #f8fafc;
+  border-color: var(--dash-text-muted, #64748b);
+}
+
+.btn-large {
+  padding: 12px 24px;
+  font-size: 0.95rem;
+}
+
+/* Empty State */
+.empty-state {
+  text-align: center;
+  padding: 80px 24px;
+  background: var(--dash-card-bg, #ffffff);
+  border: 1px solid var(--dash-border, #e2e8f0);
+  border-radius: 16px;
+}
+
+.empty-state-icon {
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 24px;
+  border-radius: 50%;
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--dash-primary, #10b981);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.5rem;
+}
+
+.empty-state-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--dash-text-main, #1e293b);
+  margin: 0 0 12px 0;
+}
+
+.empty-state-description {
+  font-size: 1rem;
+  color: var(--dash-text-muted, #64748b);
+  margin: 0;
+  max-width: 400px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+  .table-header,
+  .table-row {
+    gap: 12px;
+    padding: 16px;
+  }
+  
+  .table-header {
+    grid-template-columns: 60px 150px 1.5fr 70px 100px 160px;
+  }
+  
+  .table-row {
+    grid-template-columns: 60px 150px 1.5fr 70px 100px 160px;
+  }
+  
+  .table-header-changes {
+    grid-template-columns: 60px 150px 1.5fr 70px 100px 160px;
+  }
+  
+  .change-row {
+    grid-template-columns: 60px 150px 1.5fr 70px 100px 160px;
+  }
+}
+
+@media (max-width: 968px) {
+  .session-management-header-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .header-actions {
+    justify-content: space-between;
+  }
+  
+  .table-header,
+  .table-row {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  
+  .table-header {
+    display: none;
+  }
+  
+  .table-row {
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+    border-left: 3px solid;
+  }
+  
+  .col-session,
+  .col-mentor,
+  .col-datetime,
+  .col-minutes,
+  .col-price,
+  .col-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(226, 232, 240, 0.5);
+  }
+  
+  .col-session::before,
+  .col-mentor::before,
+  .col-date::before,
+  .col-time::before,
+  .col-price::before,
+  .col-actions::before {
+    content: attr(data-label);
+    font-weight: 600;
+    color: var(--dash-text-muted, #64748b);
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  
+  .col-actions {
+    border-bottom: none;
+    padding-top: 12px;
+    justify-content: flex-end;
+  }
+}
+</style>
 {% endblock %}

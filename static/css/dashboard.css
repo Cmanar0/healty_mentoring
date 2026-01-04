@@ -256,8 +256,6 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 24px;
-  padding-top: 24px;
-  border-top: 1px solid var(--dash-border);
 }
 
 .section-title {
@@ -726,6 +724,14 @@
 }
 .session-item.status-missed .session-left::after {
   background: var(--status-red);
+}
+
+/* Session status colors matching calendar */
+.session-item.status-confirmed .session-left::after {
+  background: #22c55e; /* Green-500 - matches calendar confirmed color */
+}
+.session-item.status-invited .session-left::after {
+  background: #fbbf24; /* Yellow-400 - matches calendar invited color */
 }
 
 .session-date {

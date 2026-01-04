@@ -67,8 +67,8 @@ def my_sessions(request):
 @login_required
 def session_invitation(request, token: str):
     """
-    Auth-required page for a client to confirm a session invitation.
-    For now, "Confirm and pay" only sets Session.status='confirmed' and redirects to user dashboard.
+    Validates session invitation token and redirects to session management page
+    which shows all pending invitations and changes.
     """
     if not hasattr(request.user, 'profile') or request.user.profile.role != 'user':
         return redirect('general:index')
@@ -77,15 +77,15 @@ def session_invitation(request, token: str):
     inv = SessionInvitation.objects.select_related('session', 'mentor', 'mentor__user').filter(token=token).first()
     if not inv:
         messages.error(request, 'Invalid or expired session invitation link.')
-        return redirect('/dashboard/user/')
+        return redirect('general:dashboard_user:session_management')
 
     # Expired/cancelled
     if inv.cancelled_at:
         messages.error(request, 'This session invitation is no longer valid.')
-        return redirect('/dashboard/user/')
+        return redirect('general:dashboard_user:session_management')
     if inv.is_expired():
         messages.error(request, 'This session invitation has expired. Please ask your mentor to resend it.')
-        return redirect('/dashboard/user/')
+        return redirect('general:dashboard_user:session_management')
 
     # Ensure correct user is logged in
     user_email = (request.user.email or '').strip().lower()
@@ -95,36 +95,8 @@ def session_invitation(request, token: str):
         messages.warning(request, f'This invitation is for {inv.invited_email}. Please log in with that account.')
         return redirect(f"/accounts/login/?next=/dashboard/user/session-invitation/{token}/")
 
-    s = inv.session
-    mentor_name = ''
-    try:
-        mentor_name = f"{inv.mentor.first_name} {inv.mentor.last_name}".strip()
-    except Exception:
-        mentor_name = 'your mentor'
-
-    if request.method == 'POST':
-        # Confirm session
-        try:
-            # Ensure attendee includes the user
-            try:
-                s.attendees.add(request.user)
-            except Exception:
-                pass
-            if getattr(s, 'status', None) != 'confirmed':
-                s.status = 'confirmed'
-                s.save(update_fields=['status'])
-            inv.accepted_at = timezone.now()
-            inv.save(update_fields=['accepted_at'])
-            messages.success(request, 'Session confirmed. Payment will be added next.')
-        except Exception:
-            messages.error(request, 'Could not confirm this session. Please try again.')
-        return redirect('/dashboard/user/')
-
-    return render(request, 'dashboard_user/session_management.html', {
-        'invitation': inv,
-        'session': s,
-        'mentor_name': mentor_name,
-    })
+    # Valid token and user - redirect to session management to see all invitations and changes
+    return redirect('general:dashboard_user:session_management')
 
 
 @login_required
@@ -148,30 +120,118 @@ def session_management(request):
         accepted_at__isnull=True
     ).select_related('session', 'mentor', 'mentor__user').order_by('-created_at')
     
-    # Get all sessions with pending changes (original_data is not null and changed_by is 'mentor')
-    # Note: original_data is a JSONField, so we need to check it properly
+    # Calculate duration in minutes for each invitation
+    for inv in invitations:
+        if inv.session.start_datetime and inv.session.end_datetime:
+            duration = inv.session.end_datetime - inv.session.start_datetime
+            inv.session.duration_minutes = int(duration.total_seconds() / 60)
+        else:
+            inv.session.duration_minutes = 0
+    
+    # Get all sessions linked to this user (via attendees OR via invitations)
+    # First, get session IDs from invitations
+    invitation_session_ids = set(invitations.values_list('session_id', flat=True))
+    
+    # Get all sessions where user is an attendee
+    attendee_sessions = Session.objects.filter(attendees=request.user).select_related('created_by')
+    attendee_session_ids = set(attendee_sessions.values_list('id', flat=True))
+    
+    # Combine all session IDs (needed for both GET and POST)
+    all_user_session_ids = invitation_session_ids | attendee_session_ids
+    
+    # Get all sessions with pending changes
+    # Check both previous_data/changes_requested_by AND original_data/changed_by
     changed_sessions = []
-    all_user_sessions = Session.objects.filter(attendees=request.user).select_related('created_by')
-    for session in all_user_sessions:
-        if session.original_data and session.changed_by == 'mentor':
-            # Parse ISO datetime strings from original_data to timezone-aware datetime objects for template
-            if isinstance(session.original_data, dict):
-                from datetime import datetime
-                from django.utils import timezone as dj_timezone
-                try:
-                    if 'start_datetime' in session.original_data and isinstance(session.original_data['start_datetime'], str):
-                        dt = datetime.fromisoformat(session.original_data['start_datetime'].replace('Z', '+00:00'))
-                        if dt.tzinfo is None:
-                            dt = dj_timezone.make_aware(dt)
-                        session.original_data['start_datetime'] = dt
-                    if 'end_datetime' in session.original_data and isinstance(session.original_data['end_datetime'], str):
-                        dt = datetime.fromisoformat(session.original_data['end_datetime'].replace('Z', '+00:00'))
-                        if dt.tzinfo is None:
-                            dt = dj_timezone.make_aware(dt)
-                        session.original_data['end_datetime'] = dt
-                except Exception:
-                    pass
-            changed_sessions.append(session)
+    if all_user_session_ids:
+        all_user_sessions = Session.objects.filter(id__in=all_user_session_ids).select_related('created_by').prefetch_related('mentors')
+        
+        for session in all_user_sessions:
+            has_pending_change = False
+            change_data = None
+            
+            # Check for previous_data/changes_requested_by (primary fields)
+            if session.previous_data and session.changes_requested_by == 'mentor':
+                has_pending_change = True
+                change_data = session.previous_data
+            # Also check original_data/changed_by (alternative fields)
+            elif session.original_data and session.changed_by == 'mentor':
+                has_pending_change = True
+                change_data = session.original_data
+            
+            if has_pending_change and change_data:
+                # Parse ISO datetime strings from change_data to timezone-aware datetime objects for template
+                if isinstance(change_data, dict):
+                    from datetime import datetime
+                    from django.utils import timezone as dj_timezone
+                    try:
+                        if 'start_datetime' in change_data and isinstance(change_data['start_datetime'], str):
+                            dt = datetime.fromisoformat(change_data['start_datetime'].replace('Z', '+00:00'))
+                            if dt.tzinfo is None:
+                                dt = dj_timezone.make_aware(dt)
+                            change_data['start_datetime'] = dt
+                        if 'end_datetime' in change_data and isinstance(change_data['end_datetime'], str):
+                            dt = datetime.fromisoformat(change_data['end_datetime'].replace('Z', '+00:00'))
+                            if dt.tzinfo is None:
+                                dt = dj_timezone.make_aware(dt)
+                            change_data['end_datetime'] = dt
+                    except Exception:
+                        pass
+                # Store the change data in the appropriate field for template access
+                # Use previous_data if it exists, otherwise use original_data
+                if session.previous_data:
+                    session.previous_data = change_data
+                else:
+                    session.original_data = change_data
+                
+                # Check which fields actually changed
+                date_changed = False
+                price_changed = False
+                
+                if change_data:
+                    from django.utils import timezone as dj_timezone
+                    # Check if date/time changed
+                    if 'start_datetime' in change_data and change_data['start_datetime']:
+                        old_start = change_data['start_datetime']
+                        if isinstance(old_start, str):
+                            try:
+                                old_start = datetime.fromisoformat(old_start.replace('Z', '+00:00'))
+                                if old_start.tzinfo is None:
+                                    old_start = dj_timezone.make_aware(old_start)
+                            except:
+                                pass
+                        if old_start != session.start_datetime:
+                            date_changed = True
+                    if 'end_datetime' in change_data and change_data['end_datetime']:
+                        old_end = change_data['end_datetime']
+                        if isinstance(old_end, str):
+                            try:
+                                old_end = datetime.fromisoformat(old_end.replace('Z', '+00:00'))
+                                if old_end.tzinfo is None:
+                                    old_end = dj_timezone.make_aware(old_end)
+                            except:
+                                pass
+                        if old_end != session.end_datetime:
+                            date_changed = True
+                    
+                    # Check if price changed
+                    old_price = change_data.get('session_price')
+                    new_price = session.session_price
+                    if old_price != new_price:
+                        price_changed = True
+                
+                # Add flags to session object for template (no underscore for Django template access)
+                session.date_changed = date_changed
+                session.price_changed = price_changed
+                
+                # Calculate duration in minutes
+                if session.start_datetime and session.end_datetime:
+                    duration = session.end_datetime - session.start_datetime
+                    session.duration_minutes = int(duration.total_seconds() / 60)
+                else:
+                    session.duration_minutes = 0
+                
+                changed_sessions.append(session)
+    
     changed_sessions.sort(key=lambda s: s.start_datetime, reverse=True)
     
     # Handle POST requests for confirm/decline
@@ -182,24 +242,38 @@ def session_management(request):
         
         try:
             if action == 'confirm_change' and session_id:
-                session = changed_sessions.filter(id=session_id).first()
-                if session:
-                    # Clear original_data and changed_by, set status to confirmed
-                    session.original_data = None
-                    session.changed_by = None
-                    session.status = 'confirmed'
-                    session.save()
-                    messages.success(request, f'Session #{session_id} changes confirmed.')
+                if all_user_session_ids:
+                    try:
+                        session = Session.objects.get(id=session_id, id__in=all_user_session_ids)
+                        # Clear both sets of change tracking fields, set status to confirmed
+                        session.previous_data = None
+                        session.changes_requested_by = None
+                        session.original_data = None
+                        session.changed_by = None
+                        session.status = 'confirmed'
+                        session.save()
+                        messages.success(request, f'Session #{session_id} changes confirmed.')
+                    except Session.DoesNotExist:
+                        messages.error(request, 'Session not found.')
+                else:
+                    messages.error(request, 'Session not found.')
             
             elif action == 'decline_change' and session_id:
-                session = changed_sessions.filter(id=session_id).first()
-                if session:
-                    # Clear original_data and changed_by, set status to cancelled
-                    session.original_data = None
-                    session.changed_by = None
-                    session.status = 'cancelled'
-                    session.save()
-                    messages.success(request, f'Session #{session_id} changes declined.')
+                if all_user_session_ids:
+                    try:
+                        session = Session.objects.get(id=session_id, id__in=all_user_session_ids)
+                        # Clear both sets of change tracking fields, set status to cancelled
+                        session.previous_data = None
+                        session.changes_requested_by = None
+                        session.original_data = None
+                        session.changed_by = None
+                        session.status = 'cancelled'
+                        session.save()
+                        messages.success(request, f'Session #{session_id} changes declined.')
+                    except Session.DoesNotExist:
+                        messages.error(request, 'Session not found.')
+                else:
+                    messages.error(request, 'Session not found.')
             
             elif action == 'confirm_invitation' and invitation_id:
                 inv = invitations.filter(id=invitation_id).first()
@@ -242,6 +316,9 @@ def session_management(request):
                 
                 # Confirm all changes
                 for session in changed_sessions:
+                    # Clear both sets of change tracking fields
+                    session.previous_data = None
+                    session.changes_requested_by = None
                     session.original_data = None
                     session.changed_by = None
                     session.status = 'confirmed'
