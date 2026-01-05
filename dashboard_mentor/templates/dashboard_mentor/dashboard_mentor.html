@@ -107,7 +107,7 @@
                         </div>
                     </div>
                     
-                    <div class="session-timeline-container scrollable-content">
+                    <div class="session-timeline-container scrollable-content" id="dashboardUpcomingSessions">
                         {% if upcoming_sessions %}
                             {% for session in upcoming_sessions %}
                                 <div class="session-item status-{{ session.status }}">
@@ -543,4 +543,104 @@ document.addEventListener('keydown', function(e) {
 
 {# New mentor calendar popup (Sessions + Availability) #}
 {% include "dashboard_mentor/calendar_mentor/calendar.html" %}
+
+<script>
+(function() {
+  // Function to refresh dashboard upcoming sessions
+  window.refreshDashboardUpcomingSessions = async function() {
+    const container = document.getElementById('dashboardUpcomingSessions');
+    if (!container) return;
+    
+    try {
+      const response = await fetch('{% url "general:dashboard_mentor:get_dashboard_upcoming_sessions" %}', {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+        },
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        // Clear existing content
+        container.innerHTML = '';
+        
+        if (data.sessions && data.sessions.length > 0) {
+          // Render sessions
+          data.sessions.forEach(session => {
+            const startDate = new Date(session.start_datetime);
+            const endDate = new Date(session.end_datetime);
+            
+            const day = startDate.getDate();
+            const month = startDate.toLocaleDateString('en-US', { month: 'short' });
+            const startTime = startDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+            const endTime = endDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+            
+            const statusClass = session.status === 'confirmed' ? 'confirmed' : 'tbc';
+            const statusText = session.status === 'confirmed' ? 'Confirmed' : 'Invited';
+            const statusStyle = session.status === 'confirmed' 
+              ? 'background: rgba(34, 197, 94, 0.1); color: #16a34a;'
+              : 'background: rgba(251, 191, 36, 0.1); color: #f59e0b;';
+            
+            const sessionHTML = `
+              <div class="session-item status-${session.status}">
+                <div class="session-left">
+                  <div class="session-date">
+                    <span class="date-day">${day}</span>
+                    <span class="date-month">${month}</span>
+                  </div>
+                  <div class="session-info">
+                    <h4 class="session-title">Session with ${session.client_name}</h4>
+                    <div class="session-meta-row">
+                      <span class="session-time">
+                        <i class="far fa-clock"></i> ${startTime} - ${endTime}
+                      </span>
+                      <span class="conf-tag ${statusClass}" style="${statusStyle}">
+                        ${statusText}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="session-right">
+                  <div class="dropdown">
+                    <button class="session-action-btn" onclick="toggleDropdown(this)">
+                      <i class="fas fa-ellipsis-h"></i>
+                    </button>
+                    <div class="dropdown-menu">
+                      <button class="dropdown-item">View Details</button>
+                      <button class="dropdown-item">Edit Session</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            `;
+            
+            container.insertAdjacentHTML('beforeend', sessionHTML);
+          });
+          
+          // Add "View all" link if there are more sessions
+          if (data.has_more_sessions) {
+            const viewAllHTML = `
+              <div class="session-item session-item-view-all" style="border-left: none; padding: 16px; text-align: center;">
+                <a href="http://localhost:8000/dashboard/mentor/my-sessions/" class="btn-link" style="color: var(--dash-text-muted); font-weight: 500;">View all upcoming sessions</a>
+              </div>
+            `;
+            container.insertAdjacentHTML('beforeend', viewAllHTML);
+          }
+        } else {
+          // No sessions
+          container.innerHTML = `
+            <div class="session-item" style="border-left: none; padding: 16px; text-align: center; color: var(--dash-text-muted);">
+              <p>No upcoming sessions</p>
+            </div>
+          `;
+        }
+      }
+    } catch (error) {
+      console.error('Error refreshing dashboard upcoming sessions:', error);
+    }
+  };
+})();
+</script>
 {% endblock %}

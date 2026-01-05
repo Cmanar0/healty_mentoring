@@ -18,9 +18,59 @@
         </button>
     </div>
 
-    {% include "dashboard_mentor/components/upcoming_sessions_rows.html" %}
-                        </div>
-                    </div>
+    <div class="session-timeline-container scrollable-content" id="sessionsContainer" data-mentor-timezone="{{ mentor_timezone }}">
+      {% if initial_sessions %}
+        {% for session in initial_sessions %}
+          <div class="session-item status-{{ session.status }}">
+            <div class="session-left">
+              <div class="session-date">
+                <span class="date-day">{{ session.start_datetime|date:"d" }}</span>
+                <span class="date-month">{{ session.start_datetime|date:"M" }}</span>
+              </div>
+              <div class="session-info">
+                <h4 class="session-title">Session with {{ session.client_name }}</h4>
+                <div class="session-meta-row">
+                  <span class="session-time">
+                    <i class="far fa-clock"></i> {{ session.start_datetime|date:"g:i A" }} - {{ session.end_datetime|date:"g:i A" }}
+                  </span>
+                  <span class="conf-tag {% if session.status == 'confirmed' %}confirmed{% else %}tbc{% endif %}" style="{% if session.status == 'confirmed' %}background: rgba(34, 197, 94, 0.1); color: #16a34a;{% elif session.status == 'invited' %}background: rgba(251, 191, 36, 0.1); color: #f59e0b;{% endif %}">
+                    {% if session.status == 'confirmed' %}Confirmed{% else %}Invited{% endif %}
+                  </span>
+                </div>
+              </div>
+            </div>
+            
+            <div class="session-right">
+              <div class="dropdown">
+                <button class="session-action-btn" onclick="toggleDropdown(this)">
+                  <i class="fas fa-ellipsis-h"></i>
+                </button>
+                <div class="dropdown-menu">
+                  <a href="/dashboard/mentor/session/{{ session.id }}/" class="dropdown-item">View Details</a>
+                  <button class="dropdown-item">Edit Session</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      {% else %}
+        <div class="session-item" style="border-left: none; padding: 16px; text-align: center; color: var(--dash-text-muted);">
+          <p>No upcoming sessions</p>
+        </div>
+      {% endif %}
+      
+      <!-- Loading indicator for infinite scroll -->
+      <div id="sessionsLoading" style="display: none; padding: 20px; text-align: center; color: var(--dash-text-muted);">
+        <i class="fas fa-spinner fa-spin"></i> Loading more sessions...
+      </div>
+      
+      <!-- End of list indicator -->
+      <div id="sessionsEnd" style="display: none; padding: 20px; text-align: center; color: var(--dash-text-muted);">
+        <p>No more sessions to load</p>
+      </div>
+    </div>
+  </div>
+</div>
                     
 {% include "dashboard_mentor/calendar_mentor/calendar.html" %}
 
@@ -33,7 +83,238 @@
         cursor: pointer;
         font-weight: 500;
         max-width: 300px;
+        padding: 10px 16px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
     }
 </style>
+
+<script>
+(function() {
+  // Start at page 1 since initial load is page 1
+  let currentPage = 1;
+  let isLoading = false;
+  let hasMore = true;
+  const perPage = 10;
+  const sessionsContainer = document.getElementById('sessionsContainer');
+  const loadingIndicator = document.getElementById('sessionsLoading');
+  const endIndicator = document.getElementById('sessionsEnd');
+  
+  if (!sessionsContainer) return;
+  
+  // Function to refresh the entire my-sessions page
+  window.refreshMySessionsPage = async function() {
+    if (!sessionsContainer) return;
+    
+    // Reset state
+    currentPage = 1;
+    hasMore = true;
+    isLoading = false;
+    
+    // Clear existing sessions (keep loading and end indicators)
+    const existingSessions = sessionsContainer.querySelectorAll('.session-item:not(#sessionsLoading):not(#sessionsEnd)');
+    existingSessions.forEach(session => session.remove());
+    
+    // Hide indicators
+    if (loadingIndicator) loadingIndicator.style.display = 'none';
+    if (endIndicator) endIndicator.style.display = 'none';
+    
+    // Load page 1
+    try {
+      isLoading = true;
+      if (loadingIndicator) loadingIndicator.style.display = 'block';
+      
+      const response = await fetch(`{% url 'general:dashboard_mentor:get_sessions_paginated' %}?page=1&per_page=${perPage}`, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+        },
+      });
+      
+      const data = await response.json();
+      
+      if (data.success && data.sessions && data.sessions.length > 0) {
+        // Insert sessions before loading indicator
+        const fragment = document.createDocumentFragment();
+        data.sessions.forEach(session => {
+          const div = document.createElement('div');
+          div.innerHTML = formatSessionHTML(session);
+          fragment.appendChild(div.firstElementChild);
+        });
+        
+        if (loadingIndicator) {
+          sessionsContainer.insertBefore(fragment, loadingIndicator);
+        } else {
+          sessionsContainer.appendChild(fragment);
+        }
+        
+        hasMore = data.has_next;
+        
+        if (!hasMore && endIndicator) {
+          endIndicator.style.display = 'block';
+        }
+      } else {
+        // No sessions
+        hasMore = false;
+        if (endIndicator) endIndicator.style.display = 'block';
+      }
+    } catch (error) {
+      console.error('Error refreshing my-sessions page:', error);
+      hasMore = false;
+    } finally {
+      isLoading = false;
+      if (loadingIndicator) loadingIndicator.style.display = 'none';
+    }
+  };
+  
+  // Check if there are initial sessions to determine if we should load more
+  const initialSessions = sessionsContainer.querySelectorAll('.session-item:not(#sessionsLoading):not(#sessionsEnd)');
+  // If we have no initial sessions, there's nothing to load
+  if (initialSessions.length === 0) {
+    hasMore = false;
+    if (endIndicator) endIndicator.style.display = 'block';
+  } else if (initialSessions.length < perPage) {
+    // If we have fewer than perPage, likely no more pages
+    // But we'll still try to load page 2 to be sure
+    hasMore = true;
+  }
+  
+  // Make formatSessionHTML accessible to refreshMySessionsPage
+  function formatSessionHTML(session) {
+    const startDate = new Date(session.start_datetime);
+    const endDate = new Date(session.end_datetime);
+    
+    const day = startDate.getDate();
+    const month = startDate.toLocaleDateString('en-US', { month: 'short' });
+    const startTime = startDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+    const endTime = endDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+    
+    const statusClass = session.status === 'confirmed' ? 'confirmed' : 'tbc';
+    const statusText = session.status === 'confirmed' ? 'Confirmed' : 'Invited';
+    const statusStyle = session.status === 'confirmed' 
+      ? 'background: rgba(34, 197, 94, 0.1); color: #16a34a;'
+      : 'background: rgba(251, 191, 36, 0.1); color: #f59e0b;';
+    
+    return `
+      <div class="session-item status-${session.status}">
+        <div class="session-left">
+          <div class="session-date">
+            <span class="date-day">${day}</span>
+            <span class="date-month">${month}</span>
+          </div>
+          <div class="session-info">
+            <h4 class="session-title">Session with ${session.client_name}</h4>
+            <div class="session-meta-row">
+              <span class="session-time">
+                <i class="far fa-clock"></i> ${startTime} - ${endTime}
+              </span>
+              <span class="conf-tag ${statusClass}" style="${statusStyle}">
+                ${statusText}
+              </span>
+            </div>
+          </div>
+        </div>
+        
+        <div class="session-right">
+          <div class="dropdown">
+            <button class="session-action-btn" onclick="toggleDropdown(this)">
+              <i class="fas fa-ellipsis-h"></i>
+            </button>
+            <div class="dropdown-menu">
+              <a href="/dashboard/mentor/session/${session.id}/" class="dropdown-item">View Details</a>
+              <button class="dropdown-item">Edit Session</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+  
+  async function loadMoreSessions() {
+    if (isLoading || !hasMore) return;
+    
+    isLoading = true;
+    loadingIndicator.style.display = 'block';
+    
+    try {
+      const response = await fetch(`{% url 'general:dashboard_mentor:get_sessions_paginated' %}?page=${currentPage + 1}&per_page=${perPage}`, {
+        method: 'GET',
+        headers: {
+          'X-CSRFToken': getCookie('csrftoken') || '',
+        },
+      });
+      
+      const data = await response.json();
+      
+      if (data.success && data.sessions.length > 0) {
+        // Insert sessions before loading indicator
+        const fragment = document.createDocumentFragment();
+        data.sessions.forEach(session => {
+          const div = document.createElement('div');
+          div.innerHTML = formatSessionHTML(session);
+          fragment.appendChild(div.firstElementChild);
+        });
+        
+        loadingIndicator.parentNode.insertBefore(fragment, loadingIndicator);
+        
+        currentPage++;
+        hasMore = data.has_next;
+        
+        if (!hasMore) {
+          loadingIndicator.style.display = 'none';
+          endIndicator.style.display = 'block';
+        }
+      } else {
+        hasMore = false;
+        loadingIndicator.style.display = 'none';
+        if (currentPage === 1 && data.sessions.length === 0) {
+          // No sessions at all
+        } else {
+          endIndicator.style.display = 'block';
+        }
+      }
+    } catch (error) {
+      console.error('Error loading more sessions:', error);
+      hasMore = false;
+      loadingIndicator.style.display = 'none';
+    } finally {
+      isLoading = false;
+    }
+  }
+  
+  // Infinite scroll handler
+  let scrollTimeout;
+  sessionsContainer.addEventListener('scroll', function() {
+    clearTimeout(scrollTimeout);
+    scrollTimeout = setTimeout(function() {
+      const scrollTop = sessionsContainer.scrollTop;
+      const scrollHeight = sessionsContainer.scrollHeight;
+      const clientHeight = sessionsContainer.clientHeight;
+      
+      // Load more when user is 200px from bottom
+      if (scrollHeight - scrollTop - clientHeight < 200) {
+        loadMoreSessions();
+      }
+    }, 100);
+  });
+  
+  // Helper function to get CSRF token
+  function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      const cookies = document.cookie.split(';');
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+})();
+</script>
 {% endblock %}
 

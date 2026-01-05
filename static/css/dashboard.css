@@ -663,7 +663,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between; /* Push left and right apart */
-  padding: 24px 0;
+  padding: 16px 0;
   border-bottom: 1px solid #f1f5f9;
   position: relative;
 }
@@ -699,7 +699,7 @@
 .session-left {
   display: flex;
   align-items: center;
-  gap: 24px;
+  gap: 16px;
   position: relative;
 }
 
@@ -707,7 +707,7 @@
 .session-left::after {
   content: '';
   position: absolute;
-  left: 74px; /* After the date (50px width + 24px gap) */
+  left: 66px; /* After the date (50px width + 16px gap) */
   top: 10%;
   bottom: 10%;
   width: 3px;
@@ -739,27 +739,27 @@
   text-align: center;
   margin-left: 20px;
 }
-.date-day { font-size: 1.2rem; font-weight: 700; color: var(--dash-text-main); display: block; line-height: 1; margin-bottom: 2px; }
-.date-month { font-size: 0.8rem; color: var(--dash-text-muted); text-transform: uppercase; font-weight: 600; }
+.date-day { font-size: 1.1rem; font-weight: 700; color: var(--dash-text-main); display: block; line-height: 1; margin-bottom: 1px; }
+.date-month { font-size: 0.75rem; color: var(--dash-text-muted); text-transform: uppercase; font-weight: 600; }
 
 .session-info {
-  margin-left: 24px;
+  margin-left: 16px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
 }
 
-.session-title { font-weight: 600; color: var(--dash-text-main); margin: 0; font-size: 1.05rem; }
+.session-title { font-weight: 600; color: var(--dash-text-main); margin: 0; font-size: 0.95rem; line-height: 1.3; }
 
 .session-meta-row {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: wrap;
 }
 
 .session-time {
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   color: var(--dash-text-muted);
   font-weight: 500;
 }

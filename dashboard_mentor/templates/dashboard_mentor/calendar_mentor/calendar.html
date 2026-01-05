@@ -3147,6 +3147,14 @@
       deletedSessionDbIds = new Set();
       // changedSessionsById is already cleared in loadSavedAvailability()
       
+      // Refresh upcoming sessions in dashboard and my-sessions page
+      if (typeof window.refreshDashboardUpcomingSessions === 'function') {
+        window.refreshDashboardUpcomingSessions();
+      }
+      if (typeof window.refreshMySessionsPage === 'function') {
+        window.refreshMySessionsPage();
+      }
+      
       // Show success notification with client notification info
       if (typeof showNotification === 'function') {
         const clientsNotified = data.clients_notified || 0;

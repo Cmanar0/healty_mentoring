@@ -988,6 +988,9 @@ def my_sessions(request):
         one_time_slots = mentor_profile.availability_slots or []
     availability_data = {}
     
+    # Get mentor's timezone (use selected_timezone, fallback to time_zone)
+    mentor_timezone = mentor_profile.selected_timezone or mentor_profile.time_zone or 'UTC'
+    
     # Load one-time slots and convert times to mentor's timezone
     try:
         import pytz
@@ -1051,8 +1054,45 @@ def my_sessions(request):
     # Get session_length from mentor profile
     session_length = mentor_profile.session_length if mentor_profile and mentor_profile.session_length else 60
     
-    # Get mentor's timezone (use selected_timezone, fallback to time_zone)
-    mentor_timezone = mentor_profile.selected_timezone or mentor_profile.time_zone or 'UTC'
+    # Fetch initial sessions (first page)
+    from general.models import Session
+    from django.utils import timezone
+    now = timezone.now()
+    
+    # Get all upcoming sessions (invited and confirmed) - first page
+    initial_sessions = []
+    try:
+        all_upcoming = mentor_profile.sessions.filter(
+            status__in=['invited', 'confirmed'],
+            start_datetime__gte=now
+        ).order_by('start_datetime').select_related('created_by').prefetch_related('attendees')
+        
+        # Get first 10 sessions for initial load
+        sessions_queryset = all_upcoming[:10]
+        
+        # Format sessions for template
+        for session in sessions_queryset:
+            # Get first attendee (client) if any
+            client = session.attendees.first() if session.attendees.exists() else None
+            client_name = None
+            if client and hasattr(client, 'profile'):
+                client_name = f"{client.profile.first_name} {client.profile.last_name}".strip()
+                if not client_name:
+                    client_name = client.email.split('@')[0]
+            
+            initial_sessions.append({
+                'id': session.id,
+                'start_datetime': session.start_datetime,
+                'end_datetime': session.end_datetime,
+                'status': session.status,
+                'client_name': client_name or 'Client',
+                'note': session.note,
+            })
+    except Exception as e:
+        # Log error but don't fail the request
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error fetching initial sessions: {str(e)}")
     
     # Check if calendar should auto-open (e.g., after session length change with collisions)
     open_calendar = request.GET.get('open_calendar', 'false').lower() == 'true'
@@ -1064,7 +1104,134 @@ def my_sessions(request):
         'session_length': session_length,
         'mentor_timezone': mentor_timezone,
         'open_calendar': open_calendar,
+        'initial_sessions': initial_sessions,
     })
+
+@login_required
+def get_sessions_paginated(request):
+    """API endpoint for paginated sessions (infinite scroll)"""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+    
+    try:
+        from general.models import Session
+        from django.utils import timezone
+        from django.core.paginator import Paginator
+        
+        mentor_profile = request.user.mentor_profile if hasattr(request.user, 'mentor_profile') else None
+        if not mentor_profile:
+            return JsonResponse({'success': False, 'error': 'Mentor profile not found'}, status=404)
+        
+        # Get pagination parameters
+        page = int(request.GET.get('page', 1))
+        per_page = int(request.GET.get('per_page', 10))
+        
+        now = timezone.now()
+        
+        # Get all upcoming sessions (invited and confirmed)
+        all_upcoming = mentor_profile.sessions.filter(
+            status__in=['invited', 'confirmed'],
+            start_datetime__gte=now
+        ).order_by('start_datetime').select_related('created_by').prefetch_related('attendees')
+        
+        # Paginate
+        paginator = Paginator(all_upcoming, per_page)
+        page_obj = paginator.get_page(page)
+        
+        # Format sessions for JSON response
+        sessions_data = []
+        for session in page_obj:
+            # Get first attendee (client) if any
+            client = session.attendees.first() if session.attendees.exists() else None
+            client_name = None
+            if client and hasattr(client, 'profile'):
+                client_name = f"{client.profile.first_name} {client.profile.last_name}".strip()
+                if not client_name:
+                    client_name = client.email.split('@')[0]
+            
+            sessions_data.append({
+                'id': session.id,
+                'start_datetime': session.start_datetime.isoformat(),
+                'end_datetime': session.end_datetime.isoformat(),
+                'status': session.status,
+                'client_name': client_name or 'Client',
+                'note': session.note or '',
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'sessions': sessions_data,
+            'has_next': page_obj.has_next(),
+            'has_previous': page_obj.has_previous(),
+            'current_page': page,
+            'total_pages': paginator.num_pages,
+            'total_count': paginator.count,
+        })
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error fetching paginated sessions: {str(e)}")
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+@login_required
+def get_dashboard_upcoming_sessions(request):
+    """API endpoint for dashboard upcoming sessions (max 4)"""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+    
+    try:
+        from general.models import Session
+        from django.utils import timezone
+        
+        mentor_profile = request.user.mentor_profile if hasattr(request.user, 'mentor_profile') else None
+        if not mentor_profile:
+            return JsonResponse({'success': False, 'error': 'Mentor profile not found'}, status=404)
+        
+        now = timezone.now()
+        
+        # Get all upcoming sessions (invited and confirmed)
+        all_upcoming = mentor_profile.sessions.filter(
+            status__in=['invited', 'confirmed'],
+            start_datetime__gte=now
+        ).order_by('start_datetime').select_related('created_by').prefetch_related('attendees')
+        
+        # Get total count to check if there are more than 4
+        total_count = all_upcoming.count()
+        has_more_sessions = total_count > 4
+        
+        # Get first 4 sessions
+        sessions_queryset = all_upcoming[:4]
+        
+        # Format sessions for JSON response
+        sessions_data = []
+        for session in sessions_queryset:
+            # Get first attendee (client) if any
+            client = session.attendees.first() if session.attendees.exists() else None
+            client_name = None
+            if client and hasattr(client, 'profile'):
+                client_name = f"{client.profile.first_name} {client.profile.last_name}".strip()
+                if not client_name:
+                    client_name = client.email.split('@')[0]
+            
+            sessions_data.append({
+                'id': session.id,
+                'start_datetime': session.start_datetime.isoformat(),
+                'end_datetime': session.end_datetime.isoformat(),
+                'status': session.status,
+                'client_name': client_name or 'Client',
+                'note': session.note or '',
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'sessions': sessions_data,
+            'has_more_sessions': has_more_sessions,
+        })
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error in get_dashboard_upcoming_sessions: {str(e)}")
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 @login_required
 @require_POST
