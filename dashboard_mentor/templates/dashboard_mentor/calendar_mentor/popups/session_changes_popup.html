@@ -70,6 +70,25 @@
     opacity: 1;
     visibility: visible;
   }
+  .session-changes-overlay.is-locked {
+    pointer-events: auto;
+  }
+  .session-changes-overlay.is-locked .session-changes-backdrop {
+    pointer-events: none;
+    cursor: wait;
+  }
+  .session-changes-overlay.is-locked .session-changes-modal {
+    pointer-events: auto;
+  }
+  
+  @keyframes spin {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
   .session-changes-backdrop {
     position: absolute;
     inset: 0;

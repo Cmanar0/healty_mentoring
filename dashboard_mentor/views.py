@@ -1620,20 +1620,33 @@ def save_availability(request):
                                 # Check if this session was changed (has original_data in changed_sessions_map)
                                 is_changed = db_id_int in changed_sessions_map
                                 
+                                # Prepare original_data for email (use existing if available, otherwise from changed_sessions_map)
+                                email_original_data = None
+                                if existing.original_data:
+                                    # Use existing original_data (preserves first change snapshot)
+                                    email_original_data = existing.original_data
+                                elif is_changed:
+                                    # Use new snapshot from changed_sessions_map
+                                    email_original_data = changed_sessions_map[db_id_int]
+                                
                                 # If this is a changed session, save original_data and set changed_by
                                 if is_changed:
-                                    original_data = changed_sessions_map[db_id_int]
-                                    # Convert datetime objects to ISO strings for JSON storage
-                                    if isinstance(original_data, dict):
-                                        # Ensure start_datetime and end_datetime are ISO strings
-                                        if 'start_datetime' in original_data:
-                                            if hasattr(original_data['start_datetime'], 'isoformat'):
-                                                original_data['start_datetime'] = original_data['start_datetime'].isoformat()
-                                        if 'end_datetime' in original_data:
-                                            if hasattr(original_data['end_datetime'], 'isoformat'):
-                                                original_data['end_datetime'] = original_data['end_datetime'].isoformat()
-                                    # If original_data field is empty, add it; if not empty, rewrite it
-                                    existing.original_data = original_data
+                                    # Only set original_data if it's not already populated
+                                    # This preserves the original data from the first change, so the client
+                                    # always sees comparisons against what they originally saw
+                                    if not existing.original_data:
+                                        original_data = changed_sessions_map[db_id_int]
+                                        # Convert datetime objects to ISO strings for JSON storage
+                                        if isinstance(original_data, dict):
+                                            # Ensure start_datetime and end_datetime are ISO strings
+                                            if 'start_datetime' in original_data:
+                                                if hasattr(original_data['start_datetime'], 'isoformat'):
+                                                    original_data['start_datetime'] = original_data['start_datetime'].isoformat()
+                                            if 'end_datetime' in original_data:
+                                                if hasattr(original_data['end_datetime'], 'isoformat'):
+                                                    original_data['end_datetime'] = original_data['end_datetime'].isoformat()
+                                        existing.original_data = original_data
+                                    # Set changed_by to indicate mentor made changes
                                     existing.changed_by = 'mentor'
                                     # If status was 'confirmed', change to 'invited' for re-confirmation
                                     if existing.status == 'confirmed':
@@ -1649,11 +1662,13 @@ def save_availability(request):
                                 existing.save()
                                 
                                 # Track changed session for email sending
-                                if is_changed and client_email:
+                                # Send email whenever there are changes detected (session in changed_sessions_map)
+                                # This ensures emails are sent for every save that includes changes, even if original_data already exists
+                                if is_changed and client_email and email_original_data:
                                     changed_sessions_info.append({
                                         'session': existing,
                                         'client_email': client_email,
-                                        'original_data': original_data
+                                        'original_data': email_original_data
                                     })
                                 
                                 # Assign attendee if email provided and user exists
@@ -1695,6 +1710,7 @@ def save_availability(request):
             pass
 
         # Send emails for changed sessions (grouped by client email)
+        clients_notified_count = 0
         if changed_sessions_info:
             try:
                 from django.urls import reverse
@@ -1721,9 +1737,31 @@ def save_availability(request):
                         for item in client_sessions:
                             session = item['session']
                             original_data = item['original_data']
+                            
+                            # Parse ISO datetime strings in original_data to datetime objects for template
+                            if isinstance(original_data, dict):
+                                from datetime import datetime
+                                from django.utils import timezone as dj_timezone
+                                parsed_original_data = original_data.copy()
+                                try:
+                                    if 'start_datetime' in parsed_original_data and isinstance(parsed_original_data['start_datetime'], str):
+                                        dt = datetime.fromisoformat(parsed_original_data['start_datetime'].replace('Z', '+00:00'))
+                                        if dt.tzinfo is None:
+                                            dt = dj_timezone.make_aware(dt)
+                                        parsed_original_data['start_datetime'] = dt
+                                    if 'end_datetime' in parsed_original_data and isinstance(parsed_original_data['end_datetime'], str):
+                                        dt = datetime.fromisoformat(parsed_original_data['end_datetime'].replace('Z', '+00:00'))
+                                        if dt.tzinfo is None:
+                                            dt = dj_timezone.make_aware(dt)
+                                        parsed_original_data['end_datetime'] = dt
+                                except Exception:
+                                    pass
+                            else:
+                                parsed_original_data = original_data
+                            
                             session_changes.append({
                                 'session': session,
-                                'original_data': original_data
+                                'original_data': parsed_original_data
                             })
                         
                         # Get mentor name
@@ -1746,6 +1784,8 @@ def save_availability(request):
                             },
                             fail_silently=True
                         )
+                        # Count successful email sends
+                        clients_notified_count += 1
                     except Exception as e:
                         # Log error but don't fail the save
                         import logging
@@ -1794,6 +1834,7 @@ def save_availability(request):
             'sessions_created': sessions_created,
             'sessions_updated': sessions_updated,
             'sessions_deleted': sessions_deleted,
+            'clients_notified': clients_notified_count,
             'dates': sorted(list(edited_dates)) if edited_dates else []
         })
         

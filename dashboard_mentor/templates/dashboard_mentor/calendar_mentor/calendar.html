@@ -3130,6 +3130,9 @@
       const data = await res.json();
       if (!data.success) {
         console.warn('[MentorCalendar] save_availability failed:', data);
+        // Unlock popup on error
+        isSavingSessionChanges = false;
+        updateSessionChangesLockState();
         return;
       }
 
@@ -3143,8 +3146,18 @@
       await loadSavedAvailability();
       deletedSessionDbIds = new Set();
       // changedSessionsById is already cleared in loadSavedAvailability()
+      
+      // Show success notification with client notification info
       if (typeof showNotification === 'function') {
-        showNotification('Saved successfully.', 'success');
+        const clientsNotified = data.clients_notified || 0;
+        if (clientsNotified > 0) {
+          const message = clientsNotified === 1 
+            ? 'Saved successfully. Client was notified.' 
+            : `Saved successfully. ${clientsNotified} clients were notified.`;
+          showNotification(message, 'success');
+        } else {
+          showNotification('Saved successfully.', 'success');
+        }
       }
       // After a successful save, disable the Save button again.
       dirtyAvailability = false;
@@ -3153,6 +3166,9 @@
       openedFromSessionLengthChange = false;
     } catch (e) {
       console.error('[MentorCalendar] error saving availability:', e);
+      // Unlock popup on error
+      isSavingSessionChanges = false;
+      updateSessionChangesLockState();
     } finally {
       setSaveButtonLoading(false);
       updateSaveButtonState();
@@ -3990,6 +4006,10 @@
   }
 
   function hasUnsavedCalendarChanges() {
+    // Don't show unsaved changes popup if save is in progress
+    if (isSavingSessionChanges) {
+      return false;
+    }
     // Contract per your rule: Save enabled => unsaved changes exist
     if (saveBtn && saveBtn.disabled === false) return true;
     return !!(dirtyAvailability || dirtySession);
@@ -4093,6 +4113,9 @@
   /**
    * Show/hide session changes popup
    */
+  // Track if save is in progress to lock the popup
+  let isSavingSessionChanges = false;
+
   function setSessionChangesVisible(isVisible) {
     if (!sessionChangesOverlay) return;
     sessionChangesOverlay.classList.toggle('is-visible', !!isVisible);
@@ -4100,11 +4123,78 @@
     
     if (isVisible) {
       renderSessionChanges();
+      // Reset save state when opening
+      isSavingSessionChanges = false;
+      updateSessionChangesLockState();
     }
   }
 
   function closeSessionChanges() {
+    // Don't allow closing if save is in progress
+    if (isSavingSessionChanges) {
+      return;
+    }
     setSessionChangesVisible(false);
+  }
+
+  function updateSessionChangesLockState() {
+    if (!sessionChangesOverlay) return;
+    const isLocked = isSavingSessionChanges;
+    
+    // Disable/enable close buttons
+    sessionChangesOverlay.querySelectorAll('[data-session-changes-close]').forEach(el => {
+      if (isLocked) {
+        el.style.pointerEvents = 'none';
+        el.style.opacity = '0.5';
+        el.style.cursor = 'not-allowed';
+      } else {
+        el.style.pointerEvents = '';
+        el.style.opacity = '';
+        el.style.cursor = '';
+      }
+    });
+    
+    // Disable/enable cancel button
+    sessionChangesOverlay.querySelectorAll('[data-session-changes-cancel]').forEach(el => {
+      if (isLocked) {
+        el.disabled = true;
+        el.style.opacity = '0.5';
+        el.style.cursor = 'not-allowed';
+      } else {
+        el.disabled = false;
+        el.style.opacity = '';
+        el.style.cursor = '';
+      }
+    });
+    
+    // Update confirm button with loading state
+    if (sessionChangesConfirmBtn) {
+      if (isLocked) {
+        sessionChangesConfirmBtn.disabled = true;
+        sessionChangesConfirmBtn.style.opacity = '0.7';
+        sessionChangesConfirmBtn.style.cursor = 'wait';
+        // Add loading text
+        const originalText = sessionChangesConfirmBtn.innerHTML;
+        sessionChangesConfirmBtn.dataset.originalText = originalText;
+        sessionChangesConfirmBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style="margin-right: 6px; animation: spin 1s linear infinite;"><circle cx="8" cy="8" r="7" stroke="currentColor" stroke-width="2" fill="none" stroke-dasharray="43.98" stroke-dashoffset="10.99"/></svg>Saving...';
+      } else {
+        sessionChangesConfirmBtn.disabled = false;
+        sessionChangesConfirmBtn.style.opacity = '';
+        sessionChangesConfirmBtn.style.cursor = '';
+        // Restore original text
+        if (sessionChangesConfirmBtn.dataset.originalText) {
+          sessionChangesConfirmBtn.innerHTML = sessionChangesConfirmBtn.dataset.originalText;
+          delete sessionChangesConfirmBtn.dataset.originalText;
+        }
+      }
+    }
+    
+    // Add/remove locked class for styling
+    if (isLocked) {
+      sessionChangesOverlay.classList.add('is-locked');
+    } else {
+      sessionChangesOverlay.classList.remove('is-locked');
+    }
   }
 
   /**
@@ -4362,12 +4452,20 @@
     sessionChangesOverlay.querySelectorAll('[data-session-changes-close]').forEach(el => {
       el.addEventListener('click', (e) => {
         e.preventDefault();
+        // Don't allow closing if save is in progress
+        if (isSavingSessionChanges) {
+          return;
+        }
         closeSessionChanges();
       });
     });
     sessionChangesOverlay.querySelectorAll('[data-session-changes-cancel]').forEach(el => {
       el.addEventListener('click', (e) => {
         e.preventDefault();
+        // Don't allow closing if save is in progress
+        if (isSavingSessionChanges) {
+          return;
+        }
         closeSessionChanges();
       });
     });
@@ -4375,15 +4473,33 @@
   if (sessionChangesConfirmBtn) {
     sessionChangesConfirmBtn.addEventListener('click', async (e) => {
       e.preventDefault();
-      closeSessionChanges();
-      // Proceed with save
+      // Don't allow multiple clicks
+      if (isSavingSessionChanges) {
+        return;
+      }
+      
+      // Lock the popup
+      isSavingSessionChanges = true;
+      updateSessionChangesLockState();
+      
+      // Proceed with save (don't close popup yet)
       await saveAvailabilityToBackend();
+      
+      // Unlock and close after save completes
+      isSavingSessionChanges = false;
+      updateSessionChangesLockState();
+      closeSessionChanges();
     });
   }
   
   // ESC key handler for session changes popup
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && sessionChangesOverlay && sessionChangesOverlay.classList.contains('is-visible')) {
+      // Don't allow closing if save is in progress
+      if (isSavingSessionChanges) {
+        e.preventDefault();
+        return;
+      }
       closeSessionChanges();
     }
   });

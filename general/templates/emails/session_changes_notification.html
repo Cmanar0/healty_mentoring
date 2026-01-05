@@ -1,62 +1,112 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Session Changes - Action Required</title>
-</head>
-<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f5f5f5;">
-    <table role="presentation" style="width: 100%; border-collapse: collapse;">
-        <tr>
-            <td style="padding: 40px 20px;">
-                <table role="presentation" style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                    <tr>
-                        <td style="padding: 40px 30px;">
-                            <h1 style="margin: 0 0 20px; font-size: 24px; font-weight: 700; color: #0f172a;">Session Changes - Action Required</h1>
-                            <p style="margin: 0 0 20px; font-size: 16px; line-height: 1.6; color: #334155;">
-                                Hello,
-                            </p>
-                            <p style="margin: 0 0 20px; font-size: 16px; line-height: 1.6; color: #334155;">
-                                <strong>{{ mentor_name }}</strong> has made changes to your session{% if session_changes|length > 1 %}s{% endif %}. Please review and confirm or decline these changes.
-                            </p>
-                            
-                            {% for change in session_changes %}
-                            <div style="margin: 20px 0; padding: 20px; background-color: #f8fafc; border-radius: 8px; border-left: 4px solid #3b82f6;">
-                                <h3 style="margin: 0 0 15px; font-size: 18px; font-weight: 700; color: #0f172a;">Session #{{ change.session.id }}</h3>
-                                
-                                <div style="margin: 10px 0;">
-                                    <strong style="color: #64748b;">Date & Time:</strong>
-                                    <div style="margin-top: 5px; color: #0f172a;">
-                                        <div style="color: #dc2626; margin-bottom: 5px;">Previous: {{ change.original_data.start_datetime }} - {{ change.original_data.end_datetime }}</div>
-                                        <div style="color: #16a34a;">Updated: {{ change.session.start_datetime|date:"M d, Y • g:i A" }} - {{ change.session.end_datetime|date:"g:i A" }}</div>
-                                    </div>
-                                </div>
-                                
-                                {% if change.original_data.session_price != change.session.session_price %}
-                                <div style="margin: 10px 0;">
-                                    <strong style="color: #64748b;">Price:</strong>
-                                    <div style="margin-top: 5px; color: #0f172a;">
-                                        <div style="color: #dc2626; margin-bottom: 5px;">Previous: ${{ change.original_data.session_price|default:"Free" }}</div>
-                                        <div style="color: #16a34a;">Updated: ${{ change.session.session_price|default:"Free" }}</div>
-                                    </div>
-                                </div>
-                                {% endif %}
-                            </div>
-                            {% endfor %}
-                            
-                            <div style="margin: 30px 0; text-align: center;">
-                                <a href="{{ action_url }}" style="display: inline-block; padding: 14px 28px; background-color: #3b82f6; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 16px;">Review and Manage Changes</a>
-                            </div>
-                            
-                            <p style="margin: 20px 0 0; font-size: 14px; line-height: 1.6; color: #64748b;">
-                                This link will work multiple times. Click it to review all your session invitations and changes, then confirm or decline each one.
-                            </p>
-                        </td>
-                    </tr>
-                </table>
-            </td>
-        </tr>
-    </table>
-</body>
-</html>
+{% extends "emails/base.html" %}
 
+{% block title %}Session Changes - Action Required{% endblock %}
+
+{% block content %}
+<h1 style="color: #3b82f6; margin-bottom: 8px;">Action Required</h1>
+<p class="content-text" style="font-size: 18px; font-weight: 600; color: #111827; margin-bottom: 24px;">
+  Session Changes - Please Review (Confirm or Decline)
+</p>
+
+<!-- Prominent Action Button - Placed Early to Prevent Truncation -->
+<div style="margin: 0 0 32px 0; padding: 24px; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); border-radius: 12px; text-align: center; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);">
+  <p style="margin: 0 0 16px; font-size: 18px; font-weight: 700; color: #ffffff;">
+    Review Session Changes
+  </p>
+  <p style="margin: 0 0 20px; font-size: 14px; color: #ffffff; opacity: 0.95;">
+    Please review and confirm or decline these changes to proceed.
+  </p>
+  <a href="{{ action_url }}" style="display: inline-block; padding: 16px 40px; background-color: #ffffff; color: #3b82f6 !important; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 18px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);">
+    Review & Manage Changes →
+  </a>
+</div>
+
+<p class="content-text">
+  Hello,
+</p>
+
+<p class="content-text">
+  <strong>{{ mentor_name }}</strong> has made changes to your session{% if session_changes|length > 1 %}s{% endif %}. Please review and confirm or decline these changes.
+</p>
+
+{% for change in session_changes %}
+<div style="margin: 24px 0; padding: 0; border-radius: 12px; overflow: hidden; border: 1px solid #e5e7eb;">
+  <!-- Session Header -->
+  <div style="background-color: #f8fafc; padding: 16px 20px; border-bottom: 1px solid #e5e7eb;">
+    <h3 style="margin: 0; font-size: 18px; font-weight: 700; color: #111827;">Session #{{ change.session.id }}</h3>
+  </div>
+  
+  <!-- Changes Content -->
+  <div style="padding: 20px; background-color: #ffffff;">
+    {% with original_data=change.original_data %}
+    {% if original_data %}
+      {% if original_data.start_datetime %}
+      <!-- Date & Time Change -->
+      <div style="margin-bottom: 20px;">
+        <div style="font-size: 13px; font-weight: 600; color: #64748b; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">Date & Time</div>
+        
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width: 100%; border-collapse: separate; border-spacing: 0;">
+          <tr>
+            <td style="padding: 10px 12px; background-color: #fee2e2; border-left: 3px solid #ef4444; border-radius: 8px 0 0 8px; width: 45%;">
+              <div style="font-size: 11px; font-weight: 600; color: #991b1b; margin-bottom: 4px; text-transform: uppercase;">Previous</div>
+              <div style="font-size: 14px; font-weight: 600; color: #991b1b;">
+                {% if original_data.start_datetime|date:"Y-m-d" == original_data.end_datetime|date:"Y-m-d" %}
+                  {{ original_data.start_datetime|date:"M d, Y" }}<br>
+                  {{ original_data.start_datetime|date:"g:i A" }} - {{ original_data.end_datetime|date:"g:i A" }}
+                {% else %}
+                  {{ original_data.start_datetime|date:"M d, Y • g:i A" }}<br>
+                  {{ original_data.end_datetime|date:"M d, Y • g:i A" }}
+                {% endif %}
+              </div>
+            </td>
+            <td style="padding: 10px; text-align: center; vertical-align: middle; background-color: #f9fafb; width: 10%;">
+              <div style="color: #64748b; font-size: 16px; font-weight: bold;">→</div>
+            </td>
+            <td style="padding: 10px 12px; background-color: #dcfce7; border-right: 3px solid #10b981; border-radius: 0 8px 8px 0; width: 45%;">
+              <div style="font-size: 11px; font-weight: 600; color: #166534; margin-bottom: 4px; text-transform: uppercase;">Updated</div>
+              <div style="font-size: 14px; font-weight: 600; color: #166534;">
+                {{ change.session.start_datetime|date:"M d, Y" }}<br>
+                {{ change.session.start_datetime|date:"g:i A" }} - {{ change.session.end_datetime|date:"g:i A" }}
+              </div>
+            </td>
+          </tr>
+        </table>
+      </div>
+      {% endif %}
+      
+      {% if original_data.session_price != change.session.session_price %}
+      <!-- Price Change -->
+      <div style="margin-bottom: 20px;">
+        <div style="font-size: 13px; font-weight: 600; color: #64748b; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">Price</div>
+        
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width: 100%; border-collapse: separate; border-spacing: 0;">
+          <tr>
+            <td style="padding: 10px 12px; background-color: #fee2e2; border-left: 3px solid #ef4444; border-radius: 8px 0 0 8px; width: 45%;">
+              <div style="font-size: 11px; font-weight: 600; color: #991b1b; margin-bottom: 4px; text-transform: uppercase;">Previous</div>
+              <div style="font-size: 16px; font-weight: 600; color: #991b1b;">
+                ${{ original_data.session_price|default:"Free" }}
+              </div>
+            </td>
+            <td style="padding: 10px; text-align: center; vertical-align: middle; background-color: #f9fafb; width: 10%;">
+              <div style="color: #64748b; font-size: 16px; font-weight: bold;">→</div>
+            </td>
+            <td style="padding: 10px 12px; background-color: #dcfce7; border-right: 3px solid #10b981; border-radius: 0 8px 8px 0; width: 45%;">
+              <div style="font-size: 11px; font-weight: 600; color: #166534; margin-bottom: 4px; text-transform: uppercase;">Updated</div>
+              <div style="font-size: 16px; font-weight: 600; color: #166534;">
+                ${{ change.session.session_price|default:"Free" }}
+              </div>
+            </td>
+          </tr>
+        </table>
+      </div>
+      {% endif %}
+    {% endif %}
+    {% endwith %}
+  </div>
+</div>
+{% endfor %}
+
+<p class="content-text" style="font-size: 14px; color: #6b7280; margin-top: 32px; padding-top: 24px; border-top: 1px solid #e5e7eb;">
+  <strong>Note:</strong> This link will work multiple times. Click it to review all your session invitations and changes, then confirm or decline each one.
+</p>
+{% endblock %}
