@@ -1711,6 +1711,8 @@ def save_availability(request):
             from decimal import Decimal, InvalidOperation
 
             # Delete sessions that were removed client-side (only those linked to this mentor)
+            # Collect session info before deletion for email notifications
+            deleted_sessions_info = []  # Track deleted sessions for email sending
             to_delete_ids = []
             for raw in deleted_sessions_payload:
                 try:
@@ -1718,9 +1720,39 @@ def save_availability(request):
                 except Exception:
                     continue
             if to_delete_ids:
-                qs = mentor_profile.sessions.filter(id__in=to_delete_ids)
-                sessions_deleted = qs.count()
-                qs.delete()
+                # Get sessions with related data before deletion
+                sessions_to_delete = mentor_profile.sessions.filter(id__in=to_delete_ids).prefetch_related('attendees')
+                
+                # Collect session info grouped by client email (extract all data before deletion)
+                for session in sessions_to_delete:
+                    # Extract session data before deletion
+                    session_data = {
+                        'id': session.id,
+                        'start_datetime': session.start_datetime,
+                        'end_datetime': session.end_datetime,
+                        'session_price': session.session_price,
+                        'session_type': getattr(session, 'session_type', 'individual'),
+                        'status': session.status,
+                    }
+                    
+                    # Get all attendees (clients) for this session
+                    attendees = session.attendees.all()
+                    if attendees.exists():
+                        for attendee in attendees:
+                            client_email = attendee.email.lower().strip()
+                            if client_email:
+                                deleted_sessions_info.append({
+                                    'session_data': session_data,
+                                    'client_email': client_email
+                                })
+                    else:
+                        # If no attendees, try to get client email from session data
+                        # This handles cases where session was created but not yet assigned
+                        # We'll skip email for sessions without client emails
+                        pass
+                
+                sessions_deleted = sessions_to_delete.count()
+                sessions_to_delete.delete()
 
             # Get changed sessions data from request
             changed_sessions_payload = data.get('changed_sessions', [])
@@ -1876,6 +1908,57 @@ def save_availability(request):
             # Non-fatal: availability saving should still succeed if sessions can't be saved
             pass
 
+        # Send emails for deleted sessions (grouped by client email)
+        deleted_clients_notified_count = 0
+        if deleted_sessions_info:
+            try:
+                from django.urls import reverse
+                from general.email_service import EmailService
+                
+                # Group deleted sessions by client email
+                deleted_sessions_by_client = {}
+                for item in deleted_sessions_info:
+                    client_email = item['client_email']
+                    if client_email not in deleted_sessions_by_client:
+                        deleted_sessions_by_client[client_email] = []
+                    deleted_sessions_by_client[client_email].append(item['session_data'])
+                
+                # Send one email per client with all their deleted sessions
+                for client_email, deleted_sessions_list in deleted_sessions_by_client.items():
+                    try:
+                        # Get mentor name
+                        mentor_name = ''
+                        try:
+                            mentor_name = f"{mentor_profile.first_name} {mentor_profile.last_name}".strip()
+                        except Exception:
+                            mentor_name = 'your mentor'
+                        
+                        # Send email
+                        EmailService.send_email(
+                            subject=f'Session Cancelled',
+                            recipient_email=client_email,
+                            template_name='session_deleted_notification',
+                            context={
+                                'mentor_name': mentor_name,
+                                'deleted_sessions': deleted_sessions_list,
+                                'client_email': client_email
+                            },
+                            fail_silently=True
+                        )
+                        # Count successful email sends
+                        deleted_clients_notified_count += 1
+                    except Exception as e:
+                        # Log error but don't fail the save
+                        import logging
+                        logger = logging.getLogger(__name__)
+                        logger.error(f'Error sending session deleted email to {client_email}: {str(e)}')
+                        continue
+            except Exception as e:
+                # Non-fatal: log but don't fail the save
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f'Error processing session deleted emails: {str(e)}')
+        
         # Send emails for changed sessions (grouped by client email)
         clients_notified_count = 0
         if changed_sessions_info:
@@ -2002,6 +2085,7 @@ def save_availability(request):
             'sessions_updated': sessions_updated,
             'sessions_deleted': sessions_deleted,
             'clients_notified': clients_notified_count,
+            'deleted_clients_notified': deleted_clients_notified_count,
             'dates': sorted(list(edited_dates)) if edited_dates else []
         })
         

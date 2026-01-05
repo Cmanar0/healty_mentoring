@@ -1,0 +1,74 @@
+{% extends "emails/base.html" %}
+
+{% block title %}Session Cancelled{% endblock %}
+
+{% block content %}
+<h1 style="color: #ef4444; margin-bottom: 8px;">Session Cancelled</h1>
+<p class="content-text" style="font-size: 18px; font-weight: 600; color: #111827; margin-bottom: 24px;">
+  Your session{% if deleted_sessions|length > 1 %}s have{% else %} has{% endif %} been cancelled
+</p>
+
+<p class="content-text">
+  Hello,
+</p>
+
+<p class="content-text">
+  <strong>{{ mentor_name }}</strong> has cancelled your session{% if deleted_sessions|length > 1 %}s{% endif %}. Please see the details below.
+</p>
+
+{% for session_data in deleted_sessions %}
+<div style="margin: 24px 0; padding: 0; border-radius: 12px; overflow: hidden; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);">
+  <!-- Session Header -->
+  <div style="background-color: #fef2f2; padding: 16px 20px; border-bottom: 1px solid #e5e7eb;">
+    <h3 style="margin: 0; font-size: 18px; font-weight: 700; color: #991b1b;">Session #{{ session_data.id }} - Cancelled</h3>
+  </div>
+  
+  <!-- Session Details -->
+  <div style="padding: 20px; background-color: #ffffff;">
+    <!-- Date & Time -->
+    <div style="margin-bottom: 20px;">
+      <div style="font-size: 13px; font-weight: 600; color: #64748b; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">Date & Time</div>
+      <div style="font-size: 16px; font-weight: 600; color: #111827; line-height: 1.5;">
+        {% if session_data.start_datetime|date:"Y-m-d" == session_data.end_datetime|date:"Y-m-d" %}
+          {{ session_data.start_datetime|date:"M d, Y" }}<br>
+          <span style="color: #6b7280; font-weight: 500;">{{ session_data.start_datetime|date:"g:i A" }} - {{ session_data.end_datetime|date:"g:i A" }}</span>
+        {% else %}
+          {{ session_data.start_datetime|date:"M d, Y • g:i A" }}<br>
+          {{ session_data.end_datetime|date:"M d, Y • g:i A" }}
+        {% endif %}
+      </div>
+    </div>
+    
+    {% if session_data.session_price %}
+    <!-- Price -->
+    <div style="margin-bottom: 20px;">
+      <div style="font-size: 13px; font-weight: 600; color: #64748b; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">Price</div>
+      <div style="font-size: 16px; font-weight: 600; color: #111827;">
+        ${{ session_data.session_price|floatformat:0 }}
+      </div>
+    </div>
+    {% endif %}
+    
+    {% if session_data.session_type %}
+    <!-- Session Type -->
+    <div style="margin-bottom: 20px;">
+      <div style="font-size: 13px; font-weight: 600; color: #64748b; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">Session Type</div>
+      <div style="font-size: 16px; font-weight: 600; color: #111827; text-transform: capitalize;">
+        {{ session_data.session_type }}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endfor %}
+
+<p class="content-text" style="font-size: 14px; color: #6b7280; margin-top: 32px; padding-top: 24px; border-top: 1px solid #e5e7eb;">
+  If you have any questions or concerns about this cancellation, please contact your mentor directly.
+</p>
+
+<p class="content-text" style="margin-top: 32px; color: #374151;">
+  Best regards,<br>
+  <strong style="color: #111827;">The Healthy Mentoring Team</strong>
+</p>
+{% endblock %}
+

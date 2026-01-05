@@ -3158,14 +3158,28 @@
       // Show success notification with client notification info
       if (typeof showNotification === 'function') {
         const clientsNotified = data.clients_notified || 0;
+        const deletedClientsNotified = data.deleted_clients_notified || 0;
+        
+        let message = 'Saved successfully.';
+        const notifications = [];
+        
         if (clientsNotified > 0) {
-          const message = clientsNotified === 1 
-            ? 'Saved successfully. Client was notified.' 
-            : `Saved successfully. ${clientsNotified} clients were notified.`;
-          showNotification(message, 'success');
-        } else {
-          showNotification('Saved successfully.', 'success');
+          notifications.push(clientsNotified === 1 
+            ? 'Client was notified about session changes' 
+            : `${clientsNotified} clients were notified about session changes`);
         }
+        
+        if (deletedClientsNotified > 0) {
+          notifications.push(deletedClientsNotified === 1 
+            ? 'Client was notified about session cancellation' 
+            : `${deletedClientsNotified} clients were notified about session cancellation`);
+        }
+        
+        if (notifications.length > 0) {
+          message = `Saved successfully. ${notifications.join('. ')}.`;
+        }
+        
+        showNotification(message, 'success');
       }
       // After a successful save, disable the Save button again.
       dirtyAvailability = false;
@@ -3814,6 +3828,11 @@
       markDirty('session');
       ev.remove();
       recomputeCollisions();
+      
+      // Show notification reminding user to save
+      if (typeof showNotification === 'function') {
+        showNotification("Don't forget to save changes for them to take effect.", 'note');
+      }
       return;
     }
 
