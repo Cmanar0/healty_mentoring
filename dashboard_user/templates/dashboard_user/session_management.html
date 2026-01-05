@@ -7,7 +7,7 @@
   <div class="session-management-header-row">
     {% if invitations|length > 0 or changed_sessions|length > 0 %}
     <div class="session-count-badge">
-      <span class="count-number">{{ invitations|length|add:changed_sessions|length }}</span>
+      <span class="count-number">{{ pending_count }}</span>
       <span class="count-label">Pending</span>
     </div>
     {% endif %}
@@ -40,7 +40,6 @@
           </div>
           <div>
             <h2 class="section-title">New Invitations</h2>
-            <p class="section-description">{{ invitations|length }} session{{ invitations|length|pluralize }} waiting for your response</p>
           </div>
         </div>
       </div>
@@ -62,13 +61,18 @@
               <a href="/dashboard/mentor/session/{{ inv.session.id }}/" class="session-id-link">#{{ inv.session.id }}</a>
             </div>
             <div class="col-mentor">
-              <div class="mentor-info">
-                <i class="fas fa-user-tie"></i>
-                <span>{{ inv.mentor.first_name }} {{ inv.mentor.last_name }}</span>
-              </div>
+              <a href="{% url 'web:mentor_profile_detail' inv.mentor.id %}" class="mentor-link">
+                <div class="mentor-info">
+                  <i class="fas fa-user-tie"></i>
+                  <span>{{ inv.mentor.first_name }} {{ inv.mentor.last_name }}</span>
+                </div>
+              </a>
             </div>
             <div class="col-datetime">
-              <div class="info-value">{{ inv.session.start_datetime|date:"M d, Y • g:i A" }} - {{ inv.session.end_datetime|date:"g:i A" }}</div>
+              <div class="datetime-stacked">
+                <span class="date-part">{{ inv.session.start_datetime|date:"M d, Y" }}</span>
+                <span class="time-part">{{ inv.session.start_datetime|date:"g:i A" }} - {{ inv.session.end_datetime|date:"g:i A" }}</span>
+              </div>
             </div>
             <div class="col-minutes">
               <div class="info-value">{{ inv.session.duration_minutes }} min</div>
@@ -117,7 +121,6 @@
           </div>
           <div>
             <h2 class="section-title">Session Changes</h2>
-            <p class="section-description">{{ changed_sessions|length }} session{{ changed_sessions|length|pluralize }} with pending changes</p>
           </div>
         </div>
       </div>
@@ -142,10 +145,12 @@
             </div>
             <div class="col-mentor">
               {% if mentor %}
-              <div class="mentor-info">
-                <i class="fas fa-user-tie"></i>
-                <span>{{ mentor.first_name }} {{ mentor.last_name }}</span>
-              </div>
+              <a href="{% url 'web:mentor_profile_detail' mentor.id %}" class="mentor-link">
+                <div class="mentor-info">
+                  <i class="fas fa-user-tie"></i>
+                  <span>{{ mentor.first_name }} {{ mentor.last_name }}</span>
+                </div>
+              </a>
               {% else %}
               <div class="text-muted">—</div>
               {% endif %}
@@ -164,7 +169,10 @@
                 </div>
               </div>
               {% else %}
-              <div class="info-value">{{ session.start_datetime|date:"M d, Y • g:i A" }} - {{ session.end_datetime|date:"g:i A" }}</div>
+              <div class="datetime-stacked">
+                <span class="date-part">{{ session.start_datetime|date:"M d, Y" }}</span>
+                <span class="time-part">{{ session.start_datetime|date:"g:i A" }} - {{ session.end_datetime|date:"g:i A" }}</span>
+              </div>
               {% endif %}
             </div>
             <div class="col-minutes">
@@ -364,7 +372,7 @@
 
 .table-header {
   display: grid;
-  grid-template-columns: 70px 120px 1.5fr 80px 220px 180px;
+  grid-template-columns: 0.5fr 0.9fr 1.7fr 0.5fr 1.3fr 0.8fr;
   gap: 16px;
   padding: 16px 20px;
   background: linear-gradient(to bottom, rgba(248, 250, 252, 0.8), rgba(248, 250, 252, 0.4));
@@ -377,7 +385,7 @@
 }
 
 .table-header-changes {
-  grid-template-columns: 70px 120px 1.5fr 80px 220px 180px;
+  grid-template-columns: 0.5fr 0.9fr 1.7fr 0.5fr 1.3fr 0.8fr;
 }
 
 .table-body {
@@ -387,7 +395,7 @@
 
 .table-row {
   display: grid;
-  grid-template-columns: 70px 120px 1.5fr 80px 220px 180px;
+  grid-template-columns: 0.5fr 0.9fr 1.7fr 0.5fr 1.3fr 0.8fr;
   gap: 16px;
   padding: 20px;
   border-bottom: 1px solid var(--dash-border, #e2e8f0);
@@ -415,21 +423,38 @@
 .col-session {
   display: flex;
   align-items: center;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .col-mentor {
   display: flex;
   align-items: center;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.mentor-link {
+    text-decoration: none;
+    color: inherit;
+    transition: opacity 0.2s;
+}
+.mentor-link:hover {
+    opacity: 0.7;
 }
 
 .col-datetime {
   display: flex;
   align-items: center;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .col-minutes {
   display: flex;
   align-items: center;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .col-price {
@@ -448,6 +473,7 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
+  min-width: 140px; 
 }
 
 /* Session ID Link */
@@ -490,13 +516,31 @@
   color: var(--dash-text-muted, #64748b);
 }
 
+/* Stacked Datetime */
+.datetime-stacked {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.date-part {
+  font-weight: 600;
+  color: var(--dash-text-main, #1e293b);
+  font-size: 0.95rem;
+}
+
+.time-part {
+  color: var(--dash-text-muted, #64748b);
+  font-size: 0.85rem;
+}
+
 /* Change Comparison Inline - Using same colors as session_changes_popup.html */
 .change-comparison-inline {
   display: flex;
   align-items: center;
   gap: 12px;
   min-width: 0;
-  flex-wrap: nowrap;
+  flex-wrap: wrap; /* allow wrapping on very small screens if needed */
 }
 
 .change-old {
@@ -507,7 +551,6 @@
   border-left: 3px solid #ef4444;
   border-radius: 8px;
   min-width: 0;
-  flex: 1 1 0;
 }
 
 .change-new {
@@ -518,7 +561,6 @@
   border-left: 3px solid #10b981;
   border-radius: 8px;
   min-width: 0;
-  flex: 1 1 0;
 }
 
 .change-date {
@@ -574,15 +616,21 @@
 .action-buttons-vertical {
   flex-direction: column;
   align-items: stretch;
-  width: 100%;
+  width: 140px;
+  min-width: 140px;
+  max-width: 140px;
 }
 
 .action-buttons-vertical .btn {
   width: 100%;
+  min-width: 140px;
+  max-width: 140px;
   justify-content: center;
 }
 
 .action-buttons-invitation {
+  width: 140px;
+  min-width: 140px;
   max-width: 140px;
 }
 
@@ -684,19 +732,19 @@
   }
   
   .table-header {
-    grid-template-columns: 60px 150px 1.5fr 70px 100px 160px;
+    grid-template-columns: 0.5fr 0.9fr 1.5fr 0.5fr 1.3fr 0.8fr;
   }
   
   .table-row {
-    grid-template-columns: 60px 150px 1.5fr 70px 100px 160px;
+    grid-template-columns: 0.5fr 0.9fr 1.5fr 0.5fr 1.3fr 0.8fr;
   }
   
   .table-header-changes {
-    grid-template-columns: 60px 150px 1.5fr 70px 100px 160px;
+    grid-template-columns: 0.5fr 0.9fr 1.5fr 0.5fr 1.3fr 0.8fr;
   }
   
   .change-row {
-    grid-template-columns: 60px 150px 1.5fr 70px 100px 160px;
+    grid-template-columns: 0.5fr 0.9fr 1.5fr 0.5fr 1.3fr 0.8fr;
   }
 }
 
@@ -738,6 +786,7 @@
     align-items: center;
     padding: 8px 0;
     border-bottom: 1px solid rgba(226, 232, 240, 0.5);
+    width: 100%; /* Ensure full width on mobile */
   }
   
   .col-session::before,
@@ -762,3 +811,4 @@
 }
 </style>
 {% endblock %}
+

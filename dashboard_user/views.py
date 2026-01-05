@@ -333,7 +333,10 @@ def session_management(request):
             messages.error(request, f'Error processing request: {str(e)}')
             return redirect('general:dashboard_user:session_management')
     
+    pending_count = len(invitations) + len(changed_sessions)
+    
     return render(request, 'dashboard_user/session_management.html', {
         'invitations': invitations,
         'changed_sessions': changed_sessions,
+        'pending_count': pending_count,
     })
