@@ -61,7 +61,7 @@
               <a href="/dashboard/mentor/session/{{ inv.session.id }}/" class="session-id-link">#{{ inv.session.id }}</a>
             </div>
             <div class="col-mentor">
-              <a href="{% url 'web:mentor_profile_detail' inv.mentor.id %}" class="mentor-link">
+              <a href="{% url 'web:mentor_profile_detail' inv.mentor.user.id %}" class="mentor-link">
                 <div class="mentor-info">
                   <i class="fas fa-user-tie"></i>
                   <span>{{ inv.mentor.first_name }} {{ inv.mentor.last_name }}</span>
@@ -145,7 +145,7 @@
             </div>
             <div class="col-mentor">
               {% if mentor %}
-              <a href="{% url 'web:mentor_profile_detail' mentor.id %}" class="mentor-link">
+              <a href="{% url 'web:mentor_profile_detail' mentor.user.id %}" class="mentor-link">
                 <div class="mentor-info">
                   <i class="fas fa-user-tie"></i>
                   <span>{{ mentor.first_name }} {{ mentor.last_name }}</span>
@@ -241,6 +241,8 @@
   max-width: 1600px;
   margin: 0 auto;
   padding: 32px 24px;
+  container-type: inline-size;
+  container-name: session-management;
 }
 
 /* Header Row - Full Width */
@@ -540,7 +542,7 @@
   align-items: center;
   gap: 12px;
   min-width: 0;
-  flex-wrap: wrap; /* allow wrapping on very small screens if needed */
+  flex-wrap: nowrap; /* Prevent independent wrapping */
 }
 
 .change-old {
@@ -595,6 +597,67 @@
   color: var(--dash-text-muted, #64748b);
   font-size: 0.9rem;
   flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+/* When container is narrow, change comparison to column and arrow to point down */
+@container session-management (max-width: 1200px) {
+  .col-datetime .change-comparison-inline,
+  .col-price .change-comparison-inline {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  
+  .col-datetime .change-arrow,
+  .col-price .change-arrow {
+    transform: rotate(90deg);
+    align-self: center;
+    margin: 4px 0;
+    order: 2; /* Position between old and new */
+  }
+  
+  .col-datetime .change-old,
+  .col-price .change-old {
+    order: 1;
+    width: 100%;
+  }
+  
+  .col-datetime .change-new,
+  .col-price .change-new {
+    order: 3;
+    width: 100%;
+  }
+}
+
+/* Fallback for browsers that don't support container queries */
+@media (max-width: 1200px) {
+  .session-management-container .col-datetime .change-comparison-inline,
+  .session-management-container .col-price .change-comparison-inline {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  
+  .session-management-container .col-datetime .change-arrow,
+  .session-management-container .col-price .change-arrow {
+    transform: rotate(90deg);
+    align-self: center;
+    margin: 4px 0;
+    order: 2;
+  }
+  
+  .session-management-container .col-datetime .change-old,
+  .session-management-container .col-price .change-old {
+    order: 1;
+    width: 100%;
+  }
+  
+  .session-management-container .col-datetime .change-new,
+  .session-management-container .col-price .change-new {
+    order: 3;
+    width: 100%;
+  }
 }
 
 .change-indicator {

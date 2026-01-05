@@ -143,7 +143,7 @@ def session_management(request):
     # Check both previous_data/changes_requested_by AND original_data/changed_by
     changed_sessions = []
     if all_user_session_ids:
-        all_user_sessions = Session.objects.filter(id__in=all_user_session_ids).select_related('created_by').prefetch_related('mentors')
+        all_user_sessions = Session.objects.filter(id__in=all_user_session_ids).select_related('created_by').prefetch_related('mentors', 'mentors__user')
         
         for session in all_user_sessions:
             has_pending_change = False
@@ -189,34 +189,85 @@ def session_management(request):
                 
                 if change_data:
                     from django.utils import timezone as dj_timezone
+                    from datetime import timezone as dt_timezone
                     # Check if date/time changed
+                    old_start_parsed = None
+                    old_end_parsed = None
+                    
                     if 'start_datetime' in change_data and change_data['start_datetime']:
                         old_start = change_data['start_datetime']
                         if isinstance(old_start, str):
                             try:
-                                old_start = datetime.fromisoformat(old_start.replace('Z', '+00:00'))
-                                if old_start.tzinfo is None:
-                                    old_start = dj_timezone.make_aware(old_start)
+                                old_start_parsed = datetime.fromisoformat(old_start.replace('Z', '+00:00'))
+                                if old_start_parsed.tzinfo is None:
+                                    old_start_parsed = dj_timezone.make_aware(old_start_parsed)
+                                # Normalize to UTC for comparison
+                                if old_start_parsed.tzinfo:
+                                    old_start_parsed = old_start_parsed.astimezone(dt_timezone.utc)
                             except:
-                                pass
-                        if old_start != session.start_datetime:
-                            date_changed = True
+                                old_start_parsed = None
+                        elif isinstance(old_start, datetime):
+                            old_start_parsed = old_start
+                            if old_start_parsed.tzinfo is None:
+                                old_start_parsed = dj_timezone.make_aware(old_start_parsed)
+                            if old_start_parsed.tzinfo:
+                                old_start_parsed = old_start_parsed.astimezone(dt_timezone.utc)
+                    
                     if 'end_datetime' in change_data and change_data['end_datetime']:
                         old_end = change_data['end_datetime']
                         if isinstance(old_end, str):
                             try:
-                                old_end = datetime.fromisoformat(old_end.replace('Z', '+00:00'))
-                                if old_end.tzinfo is None:
-                                    old_end = dj_timezone.make_aware(old_end)
+                                old_end_parsed = datetime.fromisoformat(old_end.replace('Z', '+00:00'))
+                                if old_end_parsed.tzinfo is None:
+                                    old_end_parsed = dj_timezone.make_aware(old_end_parsed)
+                                # Normalize to UTC for comparison
+                                if old_end_parsed.tzinfo:
+                                    old_end_parsed = old_end_parsed.astimezone(dt_timezone.utc)
                             except:
-                                pass
-                        if old_end != session.end_datetime:
+                                old_end_parsed = None
+                        elif isinstance(old_end, datetime):
+                            old_end_parsed = old_end
+                            if old_end_parsed.tzinfo is None:
+                                old_end_parsed = dj_timezone.make_aware(old_end_parsed)
+                            if old_end_parsed.tzinfo:
+                                old_end_parsed = old_end_parsed.astimezone(dt_timezone.utc)
+                    
+                    # Compare datetimes only if we successfully parsed them
+                    if old_start_parsed is not None:
+                        new_start_normalized = session.start_datetime
+                        if new_start_normalized.tzinfo:
+                            new_start_normalized = new_start_normalized.astimezone(dt_timezone.utc)
+                        if old_start_parsed != new_start_normalized:
+                            date_changed = True
+                    
+                    if old_end_parsed is not None:
+                        new_end_normalized = session.end_datetime
+                        if new_end_normalized.tzinfo:
+                            new_end_normalized = new_end_normalized.astimezone(dt_timezone.utc)
+                        if old_end_parsed != new_end_normalized:
                             date_changed = True
                     
                     # Check if price changed
                     old_price = change_data.get('session_price')
                     new_price = session.session_price
-                    if old_price != new_price:
+                    
+                    # Normalize for comparison: handle None, empty string, and numeric values
+                    # Convert to comparable format (float or None)
+                    def normalize_price(price):
+                        if price is None:
+                            return None
+                        if price == '':
+                            return None
+                        try:
+                            return float(price)
+                        except (ValueError, TypeError):
+                            return None
+                    
+                    old_price_normalized = normalize_price(old_price)
+                    new_price_normalized = normalize_price(new_price)
+                    
+                    # Only mark as changed if values are actually different
+                    if old_price_normalized != new_price_normalized:
                         price_changed = True
                 
                 # Add flags to session object for template (no underscore for Django template access)
