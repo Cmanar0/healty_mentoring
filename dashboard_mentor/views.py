@@ -2107,6 +2107,10 @@ def get_availability(request):
         return JsonResponse({'success': False, 'error': 'Only mentors can fetch availability'}, status=403)
     
     try:
+        # Run cleanup synchronously before fetching calendar data
+        from general.cleanup.availability_slots import cleanup_expired_availability_slots
+        cleanup_expired_availability_slots()
+        
         mentor_profile = request.user.mentor_profile
         
         # Get one-time slots - use new field name with fallback to old

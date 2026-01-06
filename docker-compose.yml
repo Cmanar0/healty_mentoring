@@ -82,6 +82,30 @@ services:
     networks:
       - app_network
 
+  django_cron:
+    build: .
+    restart: always
+    depends_on:
+      - db
+    env_file:
+      - .env
+    environment:
+      - DATABASE_NAME=${DATABASE_NAME}
+      - DATABASE_USER=${DATABASE_USER}
+      - DATABASE_PASSWORD=${DATABASE_PASSWORD}
+      - DATABASE_HOST=db
+      - DATABASE_PORT=5432
+    volumes:
+      - static_volume:/srv/static
+      - media_volume:/app/media
+    networks:
+      - app_network
+    command: >
+      sh -c "
+      echo '*/2 * * * * cd /app && python manage.py cleanup_calendar >> /proc/1/fd/1 2>&1' | crontab - &&
+      crond -f -l 2
+      "
+
 volumes:
   caddy_data:
   caddy_config:
