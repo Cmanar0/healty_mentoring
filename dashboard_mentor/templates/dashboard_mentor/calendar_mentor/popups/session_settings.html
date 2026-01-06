@@ -12,7 +12,7 @@
     <div class="session-settings-body">
       <div class="session-settings-col session-settings-col--left">
         <!-- Left column: time + price -->
-        <section class="session-settings-section" aria-label="Session details">
+        <section class="session-settings-section" id="sessionSettingsNormalSection" aria-label="Session details">
         <div class="session-settings-row">
           <label class="session-settings-label" for="sessionSettingsDate">Start date</label>
           <input id="sessionSettingsDate" class="session-settings-input" type="date" />
@@ -52,6 +52,45 @@
             Apply
           </button>
         </div>
+        </section>
+
+        <!-- Completed session: show session details (read-only) -->
+        <section class="session-settings-section" id="sessionSettingsCompletedSection" aria-label="Session details" hidden>
+          <div class="session-settings-row session-settings-row--with-icon">
+            <label class="session-settings-label">
+              <i class="fas fa-user" aria-hidden="true"></i>
+              <span>Client</span>
+            </label>
+            <div class="session-settings-summary" id="sessionSettingsCompletedClientValue">--</div>
+          </div>
+          <div class="session-settings-row session-settings-row--with-icon">
+            <label class="session-settings-label">
+              <i class="fas fa-envelope" aria-hidden="true"></i>
+              <span>Email</span>
+            </label>
+            <div class="session-settings-summary" id="sessionSettingsCompletedEmailValue">--</div>
+          </div>
+          <div class="session-settings-row session-settings-row--with-icon">
+            <label class="session-settings-label">
+              <i class="fas fa-calendar-alt" aria-hidden="true"></i>
+              <span>Date & Time</span>
+            </label>
+            <div class="session-settings-summary" id="sessionSettingsCompletedDateTimeValue">--</div>
+          </div>
+          <div class="session-settings-row session-settings-row--summary session-settings-row--with-icon">
+            <label class="session-settings-label">
+              <i class="fas fa-clock" aria-hidden="true"></i>
+              <span>Minutes</span>
+            </label>
+            <div class="session-settings-summary" id="sessionSettingsCompletedMinutesValue">--</div>
+          </div>
+          <div class="session-settings-row session-settings-row--price session-settings-row--with-icon">
+            <label class="session-settings-label">
+              <i class="fas fa-dollar-sign" aria-hidden="true"></i>
+              <span>Session Price</span>
+            </label>
+            <div class="session-settings-summary" id="sessionSettingsCompletedPriceValue">$0</div>
+          </div>
         </section>
       </div>
 
@@ -97,24 +136,69 @@
           </div>
         </section>
 
-        <!-- Dedicated session page button (still in right column) -->
-        <section class="session-settings-section session-settings-section--session-detail" aria-label="Session detail page">
-          <a
-            id="sessionSettingsSessionDetailLink"
-            href="#"
-            target="_blank"
-            rel="noopener"
-            class="session-settings-session-detail-btn"
-            hidden
-          >
-            <span class="session-settings-session-detail-icon"><i class="fas fa-up-right-from-square"></i></span>
-            <span class="session-settings-session-detail-text">
-              <span class="session-settings-session-detail-title">Session Detail page</span>
-              <span class="session-settings-session-detail-subtitle" id="sessionSettingsSessionDetailSubtitle">Open the dedicated session page</span>
-            </span>
-          </a>
+        <!-- Refund section (shown only for completed sessions) -->
+        <section class="session-settings-section session-settings-section--refund" aria-label="Refund session" id="sessionSettingsRefundSection" hidden>
+          <div class="session-settings-refund-content">
+            <div class="session-settings-refund-label">Refund Session</div>
+            <div class="session-settings-refund-price">
+              <span class="session-settings-refund-price-label">Session Price:</span>
+              <span class="session-settings-refund-price-value" id="sessionSettingsRefundPriceValue">$0</span>
+            </div>
+            <button type="button" class="session-settings-btn session-settings-btn--warning session-settings-refund-btn-full" id="sessionSettingsRefundBtn">
+              Refund Session
+            </button>
+            <div class="session-settings-refund-help">
+              This will mark the session as refunded and cannot be undone.
+            </div>
+          </div>
         </section>
       </div>
+    </div>
+
+    <!-- Session detail button for completed sessions (outside session-settings-body, full width) -->
+    <div class="session-settings-detail-footer" id="sessionSettingsCompletedSessionDetailSection" hidden>
+      <a
+        id="sessionSettingsCompletedSessionDetailLink"
+        href="#"
+        target="_blank"
+        rel="noopener"
+        class="session-settings-session-detail-btn session-settings-session-detail-btn--full"
+        hidden
+      >
+        <span class="session-settings-session-detail-icon"><i class="fas fa-up-right-from-square"></i></span>
+        <span class="session-settings-session-detail-text">
+          <span class="session-settings-session-detail-title">Session Detail page</span>
+          <span class="session-settings-session-detail-subtitle">Open the dedicated session page</span>
+        </span>
+      </a>
+    </div>
+  </div>
+</div>
+
+<!-- Refund confirmation dialog -->
+<div id="sessionSettingsRefundConfirmOverlay" class="session-settings-refund-confirm-overlay" aria-hidden="true">
+  <div class="session-settings-refund-confirm-backdrop" data-refund-confirm-close></div>
+  <div class="session-settings-refund-confirm-modal" role="dialog" aria-modal="true" aria-label="Confirm refund">
+    <div class="session-settings-refund-confirm-header">
+      <h3 class="session-settings-refund-confirm-title">Confirm Refund</h3>
+      <button type="button" class="session-settings-refund-confirm-close" data-refund-confirm-close aria-label="Close">&times;</button>
+    </div>
+    <div class="session-settings-refund-confirm-body">
+      <p class="session-settings-refund-confirm-message">
+        Are you sure you want to refund this session? The session will be marked as refunded and this action cannot be undone.
+      </p>
+      <div class="session-settings-refund-confirm-price">
+        <span class="session-settings-refund-confirm-price-label">Refund Amount:</span>
+        <span class="session-settings-refund-confirm-price-value" id="sessionSettingsRefundConfirmPriceValue">$0</span>
+      </div>
+    </div>
+    <div class="session-settings-refund-confirm-footer">
+      <button type="button" class="session-settings-btn session-settings-btn--secondary" data-refund-confirm-cancel>
+        Cancel
+      </button>
+      <button type="button" class="session-settings-btn session-settings-btn--warning" id="sessionSettingsRefundConfirmBtn">
+        Confirm Refund
+      </button>
     </div>
   </div>
 </div>
@@ -241,6 +325,18 @@
     font-size: 0.9rem;
     font-weight: 600;
     color: #334155;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .session-settings-label i {
+    color: #64748b;
+    font-size: 0.85rem;
+    width: 16px;
+    text-align: center;
+  }
+  .session-settings-row--with-icon .session-settings-label i {
+    color: #94a3b8;
   }
 
   .session-settings-input {
@@ -520,6 +616,165 @@
   .session-settings-section--session-detail {
     padding: 0;
     display: flex;
+  }
+  .session-settings-detail-footer {
+    padding: 0 16px 16px;
+    width: 100%;
+  }
+  .session-settings-session-detail-btn--full {
+    width: 100%;
+  }
+
+  /* Refund section styling */
+  .session-settings-section--refund {
+    padding: 14px 16px 16px;
+  }
+  .session-settings-refund-content {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .session-settings-refund-btn-full {
+    width: 100%;
+  }
+  .session-settings-refund-label {
+    font-weight: 800;
+    color: #0f172a;
+    font-size: 1rem;
+  }
+  .session-settings-refund-price {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    background: #f8fafc;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+  }
+  .session-settings-refund-price-label {
+    font-weight: 600;
+    color: #64748b;
+    font-size: 0.9rem;
+  }
+  .session-settings-refund-price-value {
+    font-weight: 800;
+    color: #0f172a;
+    font-size: 1.1rem;
+  }
+  .session-settings-btn--warning {
+    background: #dc2626;
+    color: #ffffff;
+    border-color: #dc2626;
+  }
+  .session-settings-btn--warning:hover {
+    background: #b91c1c;
+    border-color: #b91c1c;
+  }
+  .session-settings-refund-help {
+    color: #64748b;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-align: center;
+  }
+
+  /* Refund confirmation dialog */
+  .session-settings-refund-confirm-overlay {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(15, 23, 42, 0.5);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    z-index: 10070;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s ease, visibility 0.2s ease;
+  }
+  .session-settings-refund-confirm-overlay.is-visible {
+    opacity: 1;
+    visibility: visible;
+  }
+  .session-settings-refund-confirm-backdrop {
+    position: absolute;
+    inset: 0;
+  }
+  .session-settings-refund-confirm-modal {
+    position: relative;
+    width: 90%;
+    max-width: 480px;
+    background: #ffffff;
+    border-radius: 14px;
+    box-shadow: 0 18px 60px rgba(0,0,0,0.25);
+    overflow: hidden;
+    border: 1px solid #e2e8f0;
+  }
+  .session-settings-refund-confirm-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 16px 12px;
+    border-bottom: 1px solid #e2e8f0;
+  }
+  .session-settings-refund-confirm-title {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #0f172a;
+  }
+  .session-settings-refund-confirm-close {
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    color: #64748b;
+    font-size: 1.35rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+  }
+  .session-settings-refund-confirm-close:hover {
+    background: #f1f5f9;
+    color: #0f172a;
+  }
+  .session-settings-refund-confirm-body {
+    padding: 20px 16px;
+  }
+  .session-settings-refund-confirm-message {
+    margin: 0 0 16px 0;
+    color: #334155;
+    font-size: 0.95rem;
+    line-height: 1.5;
+  }
+  .session-settings-refund-confirm-price {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    background: #fef2f2;
+    border-radius: 8px;
+    border: 1px solid #fecaca;
+  }
+  .session-settings-refund-confirm-price-label {
+    font-weight: 600;
+    color: #991b1b;
+    font-size: 0.9rem;
+  }
+  .session-settings-refund-confirm-price-value {
+    font-weight: 800;
+    color: #991b1b;
+    font-size: 1.2rem;
+  }
+  .session-settings-refund-confirm-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 12px 16px 16px;
+    border-top: 1px solid #e2e8f0;
   }
 
   @media (max-width: 520px) {

@@ -172,6 +172,9 @@ class Session(models.Model):
         ('invited', 'Invited'),
         ('confirmed', 'Confirmed'),
         ('cancelled', 'Cancelled'),
+        ('expired', 'Expired'),
+        ('completed', 'Completed'),
+        ('refunded', 'Refunded'),
     ]
     
     start_datetime = models.DateTimeField()

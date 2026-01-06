@@ -20,6 +20,7 @@ urlpatterns = [
     path('my-sessions/invite-session/', views.invite_session, name='invite_session'),
     path('my-sessions/schedule-session/', views.schedule_session, name='schedule_session'),
     path('my-sessions/remind-session/', views.remind_session, name='remind_session'),
+    path('my-sessions/refund-session/', views.refund_session, name='refund_session'),
     path('my-sessions/session/<int:session_id>/', views.session_detail, name='session_detail'),
     path('my-sessions/get-sessions/', views.get_sessions_paginated, name='get_sessions_paginated'),
     path('dashboard/upcoming-sessions/', views.get_dashboard_upcoming_sessions, name='get_dashboard_upcoming_sessions'),

@@ -2887,6 +2887,42 @@ def schedule_session(request):
 
 @login_required
 @require_POST
+def refund_session(request):
+    """Refund a completed session by changing its status to 'refunded'."""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        return JsonResponse({'success': False, 'error': 'Only mentors can refund sessions'}, status=403)
+
+    mentor_profile = request.user.mentor_profile
+    try:
+        import json as _json
+        payload = _json.loads((request.body or b'{}').decode('utf-8') or '{}')
+    except Exception:
+        payload = {}
+
+    session_id = payload.get('session_id') or request.POST.get('session_id')
+    try:
+        session_id = int(session_id)
+    except Exception:
+        return JsonResponse({'success': False, 'error': 'Session id is required'}, status=400)
+
+    from general.models import Session
+    s = mentor_profile.sessions.filter(id=session_id).first()
+    if not s:
+        return JsonResponse({'success': False, 'error': 'Session not found'}, status=404)
+
+    # Only allow refunding completed sessions
+    if s.status != 'completed':
+        return JsonResponse({'success': False, 'error': 'Only completed sessions can be refunded'}, status=400)
+
+    # Change status to refunded
+    s.status = 'refunded'
+    s.save()
+
+    return JsonResponse({'success': True, 'message': 'Session refunded successfully'})
+
+
+@login_required
+@require_POST
 def remind_session(request):
     """Resend session invitation email. Limited to once per day per session invitation."""
     if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':

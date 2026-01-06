@@ -607,6 +607,103 @@
     color: #ffffff !important;
   }
 
+  /* --- Expired session styling (grey, reduced opacity) --- */
+  .mentor-calendar-root .fc-event[data-session-status="expired"],
+  .mentor-calendar-root .fc-timegrid-event[data-session-status="expired"],
+  .mentor-calendar-root .fc-daygrid-event[data-session-status="expired"] {
+    opacity: 0.6 !important;
+    position: relative;
+  }
+  .mentor-calendar-root .fc-event[data-session-status="expired"]::after,
+  .mentor-calendar-root .fc-timegrid-event[data-session-status="expired"]::after,
+  .mentor-calendar-root .fc-daygrid-event[data-session-status="expired"]::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 4px,
+      rgba(0, 0, 0, 0.05) 4px,
+      rgba(0, 0, 0, 0.05) 8px
+    );
+    pointer-events: none;
+    border-radius: var(--mentor-calendar-slot-radius);
+  }
+  .mentor-calendar-root .fc-event[data-session-status="expired"] .fc-event-main,
+  .mentor-calendar-root .fc-event[data-session-status="expired"] .fc-event-time,
+  .mentor-calendar-root .fc-event[data-session-status="expired"] .fc-event-title,
+  .mentor-calendar-root .fc-event[data-session-status="expired"] [data-slot-time],
+  .mentor-calendar-root .fc-event[data-session-status="expired"] .mentor-calendar-slot-title {
+    opacity: 0.8;
+  }
+
+  /* --- Completed session styling (dark green) --- */
+  .mentor-calendar-root .fc-event[data-session-status="completed"],
+  .mentor-calendar-root .fc-timegrid-event[data-session-status="completed"],
+  .mentor-calendar-root .fc-daygrid-event[data-session-status="completed"] {
+    opacity: 0.85 !important;
+    position: relative;
+  }
+  .mentor-calendar-root .fc-event[data-session-status="completed"] .fc-event-main,
+  .mentor-calendar-root .fc-event[data-session-status="completed"] .fc-event-time,
+  .mentor-calendar-root .fc-event[data-session-status="completed"] .fc-event-title,
+  .mentor-calendar-root .fc-event[data-session-status="completed"] [data-slot-time],
+  .mentor-calendar-root .fc-event[data-session-status="completed"] .mentor-calendar-slot-title {
+    opacity: 0.95;
+  }
+  /* Hide X button for completed sessions */
+  .mentor-calendar-root .fc-event[data-session-status="completed"] .mentor-calendar-session-slot-delete,
+  .mentor-calendar-root .fc-timegrid-event[data-session-status="completed"] .mentor-calendar-session-slot-delete,
+  .mentor-calendar-root .fc-daygrid-event[data-session-status="completed"] .mentor-calendar-session-slot-delete {
+    display: none !important;
+  }
+  /* Style the checkmark button for completed sessions */
+  .mentor-calendar-root .fc-event[data-session-status="completed"] [data-completed-checkmark],
+  .mentor-calendar-root .fc-timegrid-event[data-session-status="completed"] [data-completed-checkmark],
+  .mentor-calendar-root .fc-daygrid-event[data-session-status="completed"] [data-completed-checkmark] {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 20px;
+    height: 20px;
+    border: none;
+    border-radius: 6px;
+    background: rgba(15, 23, 42, 0.2);
+    color: inherit;
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 5;
+    font-weight: bold;
+    transition: background 0.2s ease;
+  }
+  .mentor-calendar-root .fc-event[data-session-status="completed"] [data-completed-checkmark]:hover,
+  .mentor-calendar-root .fc-timegrid-event[data-session-status="completed"] [data-completed-checkmark]:hover,
+  .mentor-calendar-root .fc-daygrid-event[data-session-status="completed"] [data-completed-checkmark]:hover {
+    background: rgba(15, 23, 42, 0.35);
+  }
+
+  /* --- Refunded session styling (purple/indigo) --- */
+  .mentor-calendar-root .fc-event[data-session-status="refunded"],
+  .mentor-calendar-root .fc-timegrid-event[data-session-status="refunded"],
+  .mentor-calendar-root .fc-daygrid-event[data-session-status="refunded"] {
+    opacity: 0.85 !important;
+  }
+  .mentor-calendar-root .fc-event[data-session-status="refunded"] .fc-event-main,
+  .mentor-calendar-root .fc-event[data-session-status="refunded"] .fc-event-time,
+  .mentor-calendar-root .fc-event[data-session-status="refunded"] .fc-event-title,
+  .mentor-calendar-root .fc-event[data-session-status="refunded"] [data-slot-time],
+  .mentor-calendar-root .fc-event[data-session-status="refunded"] .mentor-calendar-slot-title {
+    opacity: 0.95;
+  }
+
   /* Sessions mode: availability hover is light + clickable */
   .mentor-calendar-root:not(.is-mode-availability) .fc-event.event-type-availability {
     cursor: pointer;
@@ -729,6 +826,27 @@
     background-color: rgba(249, 115, 22, 1);
   }
 
+  .mentor-calendar-root .mentor-month-square.status-expired {
+    background-color: rgba(148, 163, 184, 0.5); /* Slate-400 50% */
+  }
+  .mentor-calendar-root .mentor-month-square.status-expired:hover {
+    background-color: rgba(148, 163, 184, 1);
+  }
+
+  .mentor-calendar-root .mentor-month-square.status-completed {
+    background-color: rgba(21, 128, 61, 0.5); /* Dark green 50% */
+  }
+  .mentor-calendar-root .mentor-month-square.status-completed:hover {
+    background-color: rgba(21, 128, 61, 1);
+  }
+
+  .mentor-calendar-root .mentor-month-square.status-refunded {
+    background-color: rgba(99, 102, 241, 0.5); /* Indigo-500 50% */
+  }
+  .mentor-calendar-root .mentor-month-square.status-refunded:hover {
+    background-color: rgba(99, 102, 241, 1);
+  }
+
   /* Global Collision */
   .mentor-calendar-root .mentor-month-square.status-collision {
     background-color: rgba(239, 68, 68, 0.6); /* Red-500 60% */
@@ -795,6 +913,12 @@
   const sessionSettingsSessionDetailLink = document.getElementById('sessionSettingsSessionDetailLink');
   const sessionSettingsSessionDetailSubtitle = document.getElementById('sessionSettingsSessionDetailSubtitle');
   const sessionSettingsApplyBtn = document.getElementById('sessionSettingsApplyBtn');
+  const sessionSettingsRefundSection = document.getElementById('sessionSettingsRefundSection');
+  const sessionSettingsRefundPriceValue = document.getElementById('sessionSettingsRefundPriceValue');
+  const sessionSettingsRefundBtn = document.getElementById('sessionSettingsRefundBtn');
+  const sessionSettingsRefundConfirmOverlay = document.getElementById('sessionSettingsRefundConfirmOverlay');
+  const sessionSettingsRefundConfirmPriceValue = document.getElementById('sessionSettingsRefundConfirmPriceValue');
+  const sessionSettingsRefundConfirmBtn = document.getElementById('sessionSettingsRefundConfirmBtn');
   const scheduleSessionOverlay = document.getElementById('mentorScheduleSessionOverlay');
   const scheduleSessionEmailInput = document.getElementById('scheduleSessionEmailInput');
   const scheduleSessionEmailSuggestionsEl = document.getElementById('scheduleSessionEmailSuggestions');
@@ -1295,7 +1419,7 @@
       console.warn('[MentorCalendar] Could not prefill session settings:', e);
     }
 
-    function setInviteUiForEvent(ev) {
+    async function setInviteUiForEvent(ev) {
       const status = String(ev?.extendedProps?.status || '').toLowerCase();
       const email = String(ev?.extendedProps?.clientEmail || '').trim();
       const invitationSent = !!ev?.extendedProps?.invitationSent || (status === 'invited' && !!email);
@@ -1304,6 +1428,8 @@
 
       const isInvited = status === 'invited';
       const isConfirmed = status === 'confirmed';
+      const isCompleted = status === 'completed';
+      const isRefunded = status === 'refunded';
       const isDraft = status === 'draft' || !status;
       // Never show "sent" UI for draft sessions
       const showSent = (!!email) && (isInvited || isConfirmed);
@@ -1311,6 +1437,159 @@
       // Show the card as soon as the session exists in DB, but disable until invited/confirmed.
       const showSessionDetail = !!sessionDbId;
       const enableSessionDetail = !!sessionDbId && (isInvited || isConfirmed);
+      
+      // For completed sessions, show refund UI instead of normal settings
+      if (isCompleted) {
+        // Hide normal session settings section
+        const normalSection = document.getElementById('sessionSettingsNormalSection');
+        if (normalSection) normalSection.hidden = true;
+        
+        // Show completed section with all session details
+        const completedSection = document.getElementById('sessionSettingsCompletedSection');
+        if (completedSection) {
+          completedSection.hidden = false;
+          
+          // Client name and email - look up from client suggestions
+          const clientEmail = ev?.extendedProps?.clientEmail || '';
+          let clientFirstName = '';
+          let clientLastName = '';
+          let clientName = '--';
+          
+          if (clientEmail) {
+            // Try to get client name from suggestions
+            try {
+              const clients = await ensureClientSuggestionsLoaded();
+              const client = clients.find(c => c.email.toLowerCase() === clientEmail.toLowerCase());
+              if (client) {
+                clientFirstName = client.first_name || '';
+                clientLastName = client.last_name || '';
+                clientName = `${clientFirstName} ${clientLastName}`.trim() || '--';
+              } else {
+                // Fallback to email prefix if name not found
+                const emailPrefix = clientEmail.split('@')[0];
+                clientName = emailPrefix || '--';
+              }
+            } catch (e) {
+              console.warn('[MentorCalendar] Could not load client suggestions:', e);
+              const emailPrefix = clientEmail.split('@')[0];
+              clientName = emailPrefix || '--';
+            }
+          }
+          
+          const clientValueEl = document.getElementById('sessionSettingsCompletedClientValue');
+          if (clientValueEl) {
+            clientValueEl.textContent = clientName;
+          }
+          
+          const emailValueEl = document.getElementById('sessionSettingsCompletedEmailValue');
+          if (emailValueEl) {
+            emailValueEl.textContent = clientEmail || '--';
+          }
+          
+          // Date & Time (from - to)
+          let dateTimeValue = '--';
+          if (window.luxon && window.luxon.DateTime && ev?.start && ev?.end) {
+            try {
+              const startDt = window.luxon.DateTime.fromJSDate(ev.start).setZone(timezone_variable);
+              const endDt = window.luxon.DateTime.fromJSDate(ev.end).setZone(timezone_variable);
+              const dateStr = startDt.toFormat('MMM d, yyyy');
+              const startTimeStr = startDt.toFormat('h:mm a');
+              const endTimeStr = endDt.toFormat('h:mm a');
+              dateTimeValue = `${dateStr} • ${startTimeStr} - ${endTimeStr}`;
+            } catch (e) {
+              console.warn('[MentorCalendar] Could not format date/time for completed session:', e);
+            }
+          }
+          const dateTimeValueEl = document.getElementById('sessionSettingsCompletedDateTimeValue');
+          if (dateTimeValueEl) {
+            dateTimeValueEl.textContent = dateTimeValue;
+          }
+          
+          // Minutes
+          let minutesValue = '--';
+          if (ev?.start && ev?.end) {
+            try {
+              const startMs = ev.start.getTime();
+              const endMs = ev.end.getTime();
+              const diffMs = endMs - startMs;
+              const diffMinutes = Math.round(diffMs / (1000 * 60));
+              minutesValue = `${diffMinutes} min`;
+            } catch (e) {
+              console.warn('[MentorCalendar] Could not calculate minutes for completed session:', e);
+            }
+          }
+          const minutesValueEl = document.getElementById('sessionSettingsCompletedMinutesValue');
+          if (minutesValueEl) {
+            minutesValueEl.textContent = minutesValue;
+          }
+          
+          // Price
+          const price = ev?.extendedProps?.sessionPrice;
+          const priceValueEl = document.getElementById('sessionSettingsCompletedPriceValue');
+          if (priceValueEl) {
+            priceValueEl.textContent = price !== null && price !== undefined 
+              ? `$${String(price)}` 
+              : 'Free';
+          }
+          
+        }
+        
+        // Show session detail section (outside completed section, in left column)
+        const completedSessionDetailSection = document.getElementById('sessionSettingsCompletedSessionDetailSection');
+        const completedSessionDetailLink = document.getElementById('sessionSettingsCompletedSessionDetailLink');
+        if (completedSessionDetailSection && completedSessionDetailLink && sessionDbId) {
+          completedSessionDetailSection.hidden = false;
+          completedSessionDetailLink.hidden = false;
+          try {
+            completedSessionDetailLink.href = SESSION_DETAIL_URL_TEMPLATE.replace('0', String(sessionDbId));
+          } catch (e) {
+            completedSessionDetailLink.href = '#';
+          }
+        }
+        
+        // Show refund section in right column
+        if (sessionSettingsRefundSection) {
+          sessionSettingsRefundSection.hidden = false;
+          // Show refund price
+          const price = ev?.extendedProps?.sessionPrice;
+          if (sessionSettingsRefundPriceValue) {
+            sessionSettingsRefundPriceValue.textContent = price !== null && price !== undefined 
+              ? `$${String(price)}` 
+              : 'Free';
+          }
+        }
+        
+        // Hide right column invite section
+        const rightCol = document.querySelector('.session-settings-col--right');
+        if (rightCol) {
+          const inviteSection = rightCol.querySelector('.session-settings-section--assign');
+          if (inviteSection) inviteSection.hidden = true;
+        }
+        return; // Early return for completed sessions
+      } else {
+        // Hide completed section, completed session detail section, and refund section for non-completed sessions
+        const completedSection = document.getElementById('sessionSettingsCompletedSection');
+        if (completedSection) completedSection.hidden = true;
+        
+        const completedSessionDetailSection = document.getElementById('sessionSettingsCompletedSessionDetailSection');
+        if (completedSessionDetailSection) completedSessionDetailSection.hidden = true;
+        
+        // Show normal session settings section
+        const normalSection = document.getElementById('sessionSettingsNormalSection');
+        if (normalSection) normalSection.hidden = false;
+        
+        if (sessionSettingsRefundSection) {
+          sessionSettingsRefundSection.hidden = true;
+        }
+        
+        // Show right column sections
+        const rightCol = document.querySelector('.session-settings-col--right');
+        if (rightCol) {
+          rightCol.querySelectorAll('.session-settings-section:not(.session-settings-section--refund)').forEach(section => {
+            section.hidden = false;
+          });
+        }
+      }
 
       // If Apply is enabled, there are unapplied edits (disable invite/reminder until applied).
       const applyEnabled = !!(sessionSettingsApplyBtn && !sessionSettingsApplyBtn.disabled);
@@ -2292,9 +2571,13 @@
       if (hasCollision) return 'status-collision';
       if (!hasSession) return null;
       
-      if (sessionStatuses.has('draft')) return 'status-draft';
-      if (sessionStatuses.has('invited')) return 'status-invited';
+      // Priority order: refunded > completed > confirmed > invited > expired > draft
+      if (sessionStatuses.has('refunded')) return 'status-refunded';
+      if (sessionStatuses.has('completed')) return 'status-completed';
       if (sessionStatuses.has('confirmed')) return 'status-confirmed';
+      if (sessionStatuses.has('invited')) return 'status-invited';
+      if (sessionStatuses.has('expired')) return 'status-expired';
+      if (sessionStatuses.has('draft')) return 'status-draft';
       return 'status-draft';
     }
   }
@@ -2425,6 +2708,7 @@
   const INVITE_SESSION_URL = "{% url 'general:dashboard_mentor:invite_session' %}";
   const SCHEDULE_SESSION_URL = "{% url 'general:dashboard_mentor:schedule_session' %}";
   const REMIND_SESSION_URL = "{% url 'general:dashboard_mentor:remind_session' %}";
+  const REFUND_SESSION_URL = "{% url 'general:dashboard_mentor:refund_session' %}";
   const SESSION_DETAIL_URL_TEMPLATE = "{% url 'general:dashboard_mentor:session_detail' 0 %}";
 
   // Save button enablement:
@@ -2467,7 +2751,7 @@
 
   function normalizeSessionStatus(value) {
     const s = String(value || 'draft').toLowerCase().trim();
-    if (s === 'draft' || s === 'invited' || s === 'confirmed' || s === 'cancelled') return s;
+    if (s === 'draft' || s === 'invited' || s === 'confirmed' || s === 'cancelled' || s === 'expired' || s === 'completed' || s === 'refunded') return s;
     return 'draft';
   }
 
@@ -2476,6 +2760,9 @@
     if (s === 'draft') return { bg: '#f97316', border: '#ea580c', text: '#ffffff' };     // orange
     if (s === 'invited') return { bg: '#fbbf24', border: '#f59e0b', text: '#ffffff' };   // yellow
     if (s === 'confirmed') return { bg: '#22c55e', border: '#16a34a', text: '#ffffff' }; // green
+    if (s === 'expired') return { bg: '#94a3b8', border: '#64748b', text: '#ffffff' };   // slate/grey
+    if (s === 'completed') return { bg: '#15803d', border: '#166534', text: '#ffffff' }; // dark green
+    if (s === 'refunded') return { bg: '#6366f1', border: '#4f46e5', text: '#ffffff' };   // indigo/purple
     // cancelled
     return { bg: '#ffffff', border: '#e2e8f0', text: '#0f172a' };
   }
@@ -3426,6 +3713,10 @@
         // Prevent dragging past sessions (invited/confirmed sessions that have ended)
         if (info.event.extendedProps?.slotMode === 'session') {
           const status = info.event.extendedProps?.status;
+          // Block expired, completed, and refunded sessions (terminal states, cannot be moved)
+          if (status === 'expired' || status === 'completed' || status === 'refunded') {
+            return false;
+          }
           // Only block invited/confirmed sessions (draft sessions can be moved)
           if (status === 'invited' || status === 'confirmed') {
             const eventEnd = info.event.end;
@@ -3447,6 +3738,10 @@
         }
         // Prevent resizing past sessions (invited/confirmed sessions that have ended)
         const status = info.event.extendedProps?.status;
+        // Block expired, completed, and refunded sessions (terminal states, cannot be resized)
+        if (status === 'expired' || status === 'completed' || status === 'refunded') {
+          return false;
+        }
         // Only block invited/confirmed sessions (draft sessions can be resized)
         if (status === 'invited' || status === 'confirmed') {
           const eventEnd = info.event.end;
@@ -3467,6 +3762,10 @@
         }
         // Prevent resizing past sessions (invited/confirmed sessions that have ended)
         const status = info.event.extendedProps?.status;
+        // Block expired, completed, and refunded sessions (terminal states, cannot be resized)
+        if (status === 'expired' || status === 'completed' || status === 'refunded') {
+          return false;
+        }
         // Only block invited/confirmed sessions (draft sessions can be resized)
         if (status === 'invited' || status === 'confirmed') {
           const eventEnd = info.event.end;
@@ -3485,6 +3784,10 @@
         try {
           if (draggedEvent?.extendedProps?.slotMode === 'session') {
             const status = draggedEvent.extendedProps?.status;
+            // Block expired, completed, and refunded sessions (terminal states, cannot be moved)
+            if (status === 'expired' || status === 'completed' || status === 'refunded') {
+              return false;
+            }
             // Only block invited/confirmed sessions (draft sessions can be moved)
             if (status === 'invited' || status === 'confirmed') {
               const eventEnd = draggedEvent.end;
@@ -3534,6 +3837,49 @@
           if (!info.el) return;
           // Used by collision DOM updates (some builds don't rerender classes reliably)
           info.el.dataset.eventId = String(info.event?.id || '');
+          
+          // Set data-session-status attribute for session slots to enable status-specific styling
+          if (mode === 'session') {
+            const status = normalizeSessionStatus(info.event?.extendedProps?.status || 'draft');
+            info.el.setAttribute('data-session-status', status);
+            
+            // Add clickable checkmark for completed sessions (replaces X button)
+            if (status === 'completed') {
+              // Remove any existing checkmark element
+              const existingCheckmark = info.el.querySelector('[data-completed-checkmark]');
+              if (existingCheckmark) existingCheckmark.remove();
+              
+              // Create checkmark button at X button position
+              const checkmark = document.createElement('button');
+              checkmark.setAttribute('data-completed-checkmark', 'true');
+              checkmark.setAttribute('type', 'button');
+              checkmark.setAttribute('aria-label', 'Refund session');
+              checkmark.style.cssText = 'position: absolute; top: 6px; right: 6px; width: 20px; height: 20px; border: none; border-radius: 6px; background: rgba(15, 23, 42, 0.2); color: inherit; cursor: pointer; font-size: 16px; line-height: 1; display: flex; align-items: center; justify-content: center; z-index: 5; font-weight: bold;';
+              checkmark.textContent = '✓';
+              checkmark.addEventListener('mouseenter', () => {
+                checkmark.style.background = 'rgba(15, 23, 42, 0.35)';
+              });
+              checkmark.addEventListener('mouseleave', () => {
+                checkmark.style.background = 'rgba(15, 23, 42, 0.2)';
+              });
+              checkmark.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (typeof showNotification === 'function') {
+                  showNotification('You can refund this session in the session settings.', 'note');
+                }
+                // Open session settings if not already open
+                const eventId = info.event?.id;
+                if (eventId && calendar) {
+                  const ev = calendar.getEventById(eventId);
+                  if (ev) {
+                    openSessionSettingsForEvent(ev);
+                  }
+                }
+              });
+              info.el.appendChild(checkmark);
+            }
+          }
 
           // Tag recurring instances so we can style the whole series (blink)
           if (info.event?.extendedProps?.isRecurringInstance && info.event?.extendedProps?.recurringId) {
@@ -3610,8 +3956,15 @@
               const dt = Date.now() - (lastBlockedPastSessionDrag.atMs || 0);
               // only trigger near the time the block happened (avoid stale)
               if (dt >= 0 && dt < 800) {
-                if (typeof showNotification === 'function') {
-                  showNotification('Cannot move past sessions. Please use the session settings to make changes.', 'warning');
+                const status = info?.event?.extendedProps?.status;
+                if (status === 'completed' || status === 'refunded') {
+                  if (typeof showNotification === 'function') {
+                    showNotification('Completed sessions cannot be changed.', 'warning');
+                  }
+                } else {
+                  if (typeof showNotification === 'function') {
+                    showNotification('Cannot move past sessions. Please use the session settings to make changes.', 'warning');
+                  }
                 }
               }
               lastBlockedPastSessionDrag = null;
@@ -3672,6 +4025,13 @@
         // Notification is shown in eventDragStop to avoid duplicates.
         if (mode === 'session') {
           const status = info.event.extendedProps?.status;
+          // Block expired, completed, and refunded sessions (terminal states, cannot be moved)
+          if (status === 'expired' || status === 'completed' || status === 'refunded') {
+            info.revert();
+            // Track blocked drag for notification in eventDragStop
+            lastBlockedPastSessionDrag = { eventId: String(info.event.id || ''), atMs: Date.now() };
+            return;
+          }
           // Only block invited/confirmed sessions (draft sessions can be moved)
           if (status === 'invited' || status === 'confirmed') {
             // Check original end time (before drop) to see if it was in the past
@@ -3682,9 +4042,14 @@
               // If original session had ended (end time < now), prevent the drop
               if (originalEnd < now) {
                 info.revert();
-                // Notification handled in eventDragStop to show only once
+                // Track blocked drag for notification in eventDragStop
+                lastBlockedPastSessionDrag = { eventId: String(info.event.id || ''), atMs: Date.now() };
                 return;
               }
+            }
+            // Successfully moved invited/confirmed session - show reminder to save
+            if (typeof showNotification === 'function') {
+              showNotification("Don't forget to save changes for them to take effect.", 'note');
             }
           }
         }
@@ -3766,6 +4131,11 @@
         
         // Prevent resizing past sessions (invited/confirmed sessions that have ended)
         const status = info.event.extendedProps?.status;
+        // Block expired, completed, and refunded sessions (terminal states, cannot be resized)
+        if (status === 'expired' || status === 'completed' || status === 'refunded') {
+          info.revert();
+          return;
+        }
         // Only block invited/confirmed sessions (draft sessions can be resized)
         if (status === 'invited' || status === 'confirmed') {
           // Check original end time (before resize) to see if it was in the past
@@ -4059,6 +4429,20 @@
     
     // Session slot: mark for deletion (DB) if persisted
     if (slotMode === 'session') {
+      const status = ev.extendedProps?.status;
+      // Prevent deletion of expired, completed, or refunded sessions
+      if (status === 'expired') {
+        if (typeof showNotification === 'function') {
+          showNotification('Expired sessions cannot be deleted.', 'warning');
+        }
+        return;
+      }
+      if (status === 'completed' || status === 'refunded') {
+        if (typeof showNotification === 'function') {
+          showNotification('Completed and refunded sessions cannot be deleted.', 'warning');
+        }
+        return;
+      }
       const dbId = ev.extendedProps?.sessionDbId;
       if (dbId) {
         try {
@@ -4874,6 +5258,120 @@
       applySessionSettings();
     });
   }
+
+  // Refund session handlers
+  function setRefundConfirmVisible(isVisible) {
+    if (!sessionSettingsRefundConfirmOverlay) return;
+    sessionSettingsRefundConfirmOverlay.classList.toggle('is-visible', !!isVisible);
+    sessionSettingsRefundConfirmOverlay.setAttribute('aria-hidden', isVisible ? 'false' : 'true');
+  }
+
+  function closeRefundConfirm() {
+    setRefundConfirmVisible(false);
+  }
+
+  if (sessionSettingsRefundBtn) {
+    sessionSettingsRefundBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const ev = calendar && sessionSettingsEventId ? calendar.getEventById(sessionSettingsEventId) : null;
+      if (!ev) return;
+      
+      const price = ev?.extendedProps?.sessionPrice;
+      if (sessionSettingsRefundConfirmPriceValue) {
+        sessionSettingsRefundConfirmPriceValue.textContent = price !== null && price !== undefined 
+          ? `$${String(price)}` 
+          : 'Free';
+      }
+      setRefundConfirmVisible(true);
+    });
+  }
+
+  if (sessionSettingsRefundConfirmOverlay) {
+    sessionSettingsRefundConfirmOverlay.querySelectorAll('[data-refund-confirm-close]').forEach(el => {
+      el.addEventListener('click', (e) => {
+        e.preventDefault();
+        closeRefundConfirm();
+      });
+    });
+    sessionSettingsRefundConfirmOverlay.querySelectorAll('[data-refund-confirm-cancel]').forEach(el => {
+      el.addEventListener('click', (e) => {
+        e.preventDefault();
+        closeRefundConfirm();
+      });
+    });
+  }
+
+  if (sessionSettingsRefundConfirmBtn) {
+    sessionSettingsRefundConfirmBtn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      const ev = calendar && sessionSettingsEventId ? calendar.getEventById(sessionSettingsEventId) : null;
+      if (!ev) {
+        closeRefundConfirm();
+        return;
+      }
+      
+      const sessionId = ev?.extendedProps?.sessionDbId;
+      if (!sessionId) {
+        if (typeof showNotification === 'function') {
+          showNotification('Session not found.', 'error');
+        }
+        closeRefundConfirm();
+        return;
+      }
+
+      // Disable button and show loading
+      sessionSettingsRefundConfirmBtn.disabled = true;
+      sessionSettingsRefundConfirmBtn.style.opacity = '0.7';
+      sessionSettingsRefundConfirmBtn.style.cursor = 'wait';
+      const originalText = sessionSettingsRefundConfirmBtn.textContent;
+      sessionSettingsRefundConfirmBtn.textContent = 'Processing...';
+
+      const csrf = getCookie('csrftoken');
+      try {
+        const res = await fetch(REFUND_SESSION_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf || '' },
+          body: JSON.stringify({ session_id: sessionId })
+        });
+        const data = await res.json();
+        if (data && data.success) {
+          if (typeof showNotification === 'function') {
+            showNotification('Session refunded successfully.', 'success');
+          }
+          closeRefundConfirm();
+          closeSessionSettings();
+          // Reload calendar to reflect status change
+          await loadSavedAvailability();
+        } else {
+          if (typeof showNotification === 'function') {
+            showNotification(data?.error || 'Could not refund session.', 'error');
+          }
+          // Re-enable button on error
+          sessionSettingsRefundConfirmBtn.disabled = false;
+          sessionSettingsRefundConfirmBtn.style.opacity = '';
+          sessionSettingsRefundConfirmBtn.style.cursor = '';
+          sessionSettingsRefundConfirmBtn.textContent = originalText;
+        }
+      } catch (err) {
+        if (typeof showNotification === 'function') {
+          showNotification('Could not refund session.', 'error');
+        }
+        // Re-enable button on error
+        sessionSettingsRefundConfirmBtn.disabled = false;
+        sessionSettingsRefundConfirmBtn.style.opacity = '';
+        sessionSettingsRefundConfirmBtn.style.cursor = '';
+        sessionSettingsRefundConfirmBtn.textContent = originalText;
+      }
+    });
+  }
+
+  // ESC key handler for refund confirmation dialog
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && sessionSettingsRefundConfirmOverlay && sessionSettingsRefundConfirmOverlay.classList.contains('is-visible')) {
+      e.preventDefault();
+      closeRefundConfirm();
+    }
+  });
 
   // Schedule session popup handlers
   if (scheduleSessionOverlay) {

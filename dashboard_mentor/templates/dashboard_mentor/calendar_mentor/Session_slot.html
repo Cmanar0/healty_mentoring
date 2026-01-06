@@ -113,20 +113,38 @@ window.MentorCalendarSlotComponents.SessionSlot = {
 
     const deleteBtn = el.querySelector('[data-slot-delete]');
     if (deleteBtn) {
-      deleteBtn.addEventListener('pointerdown', (e) => e.stopPropagation());
-      deleteBtn.addEventListener('mousedown', (e) => e.stopPropagation());
-      deleteBtn.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        // Do not allow deleting session slots while in Availability mode
-        try {
-          const root = document.getElementById('mentorCalendarRoot');
-          if (root && root.classList.contains('is-mode-availability')) return;
-        } catch (err) {}
-        const eventId = props?.eventId;
-        if (!eventId) return;
-        window.MentorCalendarInternal?.removeEventById?.(eventId);
-      });
+      // Hide delete button for completed or refunded sessions (cannot be deleted)
+      // For expired sessions, show button but prevent deletion with notification
+      const status = props?.status || 'draft';
+      if (status === 'completed' || status === 'refunded') {
+        deleteBtn.style.display = 'none';
+      } else if (status === 'expired') {
+        // Keep button visible but prevent deletion
+        deleteBtn.addEventListener('pointerdown', (e) => e.stopPropagation());
+        deleteBtn.addEventListener('mousedown', (e) => e.stopPropagation());
+        deleteBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (typeof showNotification === 'function') {
+            showNotification('Expired sessions cannot be deleted.', 'warning');
+          }
+        });
+      } else {
+        deleteBtn.addEventListener('pointerdown', (e) => e.stopPropagation());
+        deleteBtn.addEventListener('mousedown', (e) => e.stopPropagation());
+        deleteBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          // Do not allow deleting session slots while in Availability mode
+          try {
+            const root = document.getElementById('mentorCalendarRoot');
+            if (root && root.classList.contains('is-mode-availability')) return;
+          } catch (err) {}
+          const eventId = props?.eventId;
+          if (!eventId) return;
+          window.MentorCalendarInternal?.removeEventById?.(eventId);
+        });
+      }
     }
   }
 };
