@@ -404,6 +404,28 @@
     border: 1px solid var(--fc-border-color) !important;
   }
 
+  /* Disable past days visually - more grey */
+  .mentor-calendar-root .fc-day-past-disabled {
+    opacity: 0.3;
+    pointer-events: none;
+    background-color: #f1f5f9 !important;
+  }
+  
+  .mentor-calendar-root .fc-day-past-disabled .fc-daygrid-day-frame,
+  .mentor-calendar-root .fc-day-past-disabled .fc-timegrid-col-frame {
+    cursor: not-allowed;
+    background-color: #f1f5f9 !important;
+  }
+  
+  .mentor-calendar-root .fc-day-past-disabled .fc-daygrid-day-number,
+  .mentor-calendar-root .fc-day-past-disabled .fc-col-header-cell-cushion {
+    color: #cbd5e1;
+  }
+  
+  .mentor-calendar-root .fc-day-past-disabled .fc-timegrid-slot {
+    background-color: #f8fafc !important;
+  }
+
   /* TimeGrid "drop rows" (FullCalendar time slots)
      - slotDuration controls how many rows per hour
      - snapDuration controls drag/drop snapping
@@ -3484,6 +3506,20 @@
       snapDuration: '00:05:00',
       slotLabelInterval: '01:00:00',
       
+      // Style past days as disabled
+      dayCellClassNames: function(arg) {
+        const cellDate = arg.date;
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const cellDateOnly = new Date(cellDate);
+        cellDateOnly.setHours(0, 0, 0, 0);
+        
+        if (cellDateOnly < today) {
+          return ['fc-day-past-disabled'];
+        }
+        return [];
+      },
+      
       // Events
       datesSet: function(info) {
         updateDateTitle(info.view.title);
@@ -3602,6 +3638,32 @@
         if (viewType !== 'timeGridDay' && viewType !== 'timeGridWeek') return;
         // Prevent accidental slot creation immediately after clicking month summary chips
         if (suppressNextDateClickUntilMs && Date.now() < suppressNextDateClickUntilMs) return;
+
+        // Prevent creating slots on past dates or past times
+        const clickedDate = info.date;
+        const now = new Date();
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const clickedDateOnly = new Date(clickedDate);
+        clickedDateOnly.setHours(0, 0, 0, 0);
+        
+        // Check if it's a past date
+        if (clickedDateOnly < today) {
+          // Past date clicked - do not create slot
+          if (typeof showNotification === 'function') {
+            showNotification('Cannot create availability slots for past dates.', 'warning');
+          }
+          return;
+        }
+        
+        // Check if it's today but the clicked time is in the past
+        if (clickedDateOnly.getTime() === today.getTime() && clickedDate < now) {
+          // Past time on today clicked - do not create slot
+          if (typeof showNotification === 'function') {
+            showNotification('Cannot create availability slots for past times.', 'warning');
+          }
+          return;
+        }
 
         const mode = isAvailabilityMode ? 'availability' : 'session';
         // Use mentor profile session_length (minutes) for slot length
@@ -4228,40 +4290,44 @@
    * Render session changes list in the popup
    */
   async function renderSessionChanges() {
-    if (!sessionChangesList) return;
-    
-    if (changedSessionsById.size === 0) {
-      sessionChangesList.innerHTML = `
-        <div class="session-changes-empty">
-          <svg class="session-changes-empty-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-          <div class="session-changes-empty-text">No changes found.</div>
-        </div>
-      `;
+    if (!sessionChangesList) {
+      console.error('[MentorCalendar] renderSessionChanges: sessionChangesList element not found');
       return;
     }
     
-    // Fetch client names for all sessions
-    const clientNameMap = new Map(); // email -> {first_name, last_name}
     try {
-      const clients = await ensureClientSuggestionsLoaded();
-      if (Array.isArray(clients)) {
-        clients.forEach(client => {
-          if (client.email) {
-            clientNameMap.set(client.email.toLowerCase(), {
-              first_name: client.first_name || '',
-              last_name: client.last_name || ''
-            });
-          }
-        });
+      if (changedSessionsById.size === 0) {
+        sessionChangesList.innerHTML = `
+          <div class="session-changes-empty">
+            <svg class="session-changes-empty-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <div class="session-changes-empty-text">No changes found.</div>
+          </div>
+        `;
+        return;
       }
-    } catch (e) {
-      console.warn('[MentorCalendar] Could not fetch client names:', e);
-    }
-    
-    let html = '';
-    changedSessionsById.forEach((snapshot, sessionId) => {
+      
+      // Fetch client names for all sessions
+      const clientNameMap = new Map(); // email -> {first_name, last_name}
+      try {
+        const clients = await ensureClientSuggestionsLoaded();
+        if (Array.isArray(clients)) {
+          clients.forEach(client => {
+            if (client.email) {
+              clientNameMap.set(client.email.toLowerCase(), {
+                first_name: client.first_name || '',
+                last_name: client.last_name || ''
+              });
+            }
+          });
+        }
+      } catch (e) {
+        console.warn('[MentorCalendar] Could not fetch client names:', e);
+      }
+      
+      let html = '';
+      changedSessionsById.forEach((snapshot, sessionId) => {
       const original = originalSessionsById.get(sessionId);
       
       // Helper to format dates
@@ -4411,6 +4477,7 @@
       
       // Status field (only show if changed)
       if (statusChanged && original) {
+        const newStatusLabel = (snapshot.status || 'draft').charAt(0).toUpperCase() + (snapshot.status || 'draft').slice(1);
         html += `<div class="session-changes-field session-changes-field-changed">`;
         html += `<div class="session-changes-field-label">`;
         html += `<svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" fill="currentColor"/></svg>`;
@@ -4423,7 +4490,7 @@
         html += `<svg class="session-changes-field-arrow" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" fill="currentColor"/></svg>`;
         html += `<div class="session-changes-field-new">`;
         html += `<div class="session-changes-field-new-label">Updated</div>`;
-        html += `${escapeHtml(statusLabel)}`;
+        html += `${escapeHtml(newStatusLabel)}`;
         html += `</div>`;
         html += `</div>`;
         html += `</div>`;
@@ -4431,9 +4498,20 @@
       
       html += `</div>`;
       html += `</div>`;
-    });
-    
-    sessionChangesList.innerHTML = html;
+      });
+      
+      sessionChangesList.innerHTML = html;
+    } catch (error) {
+      console.error('[MentorCalendar] Error rendering session changes:', error);
+      sessionChangesList.innerHTML = `
+        <div class="session-changes-empty">
+          <svg class="session-changes-empty-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <div class="session-changes-empty-text">Error loading changes. Please try again.</div>
+        </div>
+      `;
+    }
   }
 
   /**

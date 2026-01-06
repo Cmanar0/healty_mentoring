@@ -2109,7 +2109,9 @@ def get_availability(request):
     try:
         # Run cleanup synchronously before fetching calendar data
         from general.cleanup.availability_slots import cleanup_expired_availability_slots
+        from general.cleanup.session_slots import cleanup_draft_sessions
         cleanup_expired_availability_slots()
+        cleanup_draft_sessions()
         
         mentor_profile = request.user.mentor_profile
         

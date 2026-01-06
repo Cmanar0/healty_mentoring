@@ -1,5 +1,5 @@
 """
-Django management command to clean up expired availability slots.
+Django management command to clean up expired availability slots and draft sessions.
 
 Usage:
     python manage.py cleanup_calendar
@@ -7,23 +7,29 @@ Usage:
 
 from django.core.management.base import BaseCommand
 from general.cleanup.availability_slots import cleanup_expired_availability_slots
+from general.cleanup.session_slots import cleanup_draft_sessions
 
 
 class Command(BaseCommand):
-    help = 'Remove expired one-time availability slots from MentorProfile records'
+    help = 'Remove expired one-time availability slots and draft sessions'
 
     def handle(self, *args, **options):
-        """Execute the cleanup function."""
+        """Execute the cleanup functions."""
         self.stdout.write('Starting calendar cleanup...')
         
-        result = cleanup_expired_availability_slots()
+        # Cleanup expired availability slots
+        availability_result = cleanup_expired_availability_slots()
+        
+        # Cleanup draft sessions
+        sessions_result = cleanup_draft_sessions()
         
         self.stdout.write(
             self.style.SUCCESS(
                 f'Cleanup completed: '
-                f'{result["profiles_checked"]} profiles checked, '
-                f'{result["profiles_updated"]} profiles updated, '
-                f'{result["slots_removed"]} slots removed'
+                f'{availability_result["profiles_checked"]} profiles checked, '
+                f'{availability_result["profiles_updated"]} profiles updated, '
+                f'{availability_result["slots_removed"]} availability slots removed, '
+                f'{sessions_result["sessions_deleted"]} draft sessions deleted'
             )
         )
 
