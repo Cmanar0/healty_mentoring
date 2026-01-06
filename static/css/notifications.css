@@ -6,7 +6,7 @@
 /* Container for all notifications to ensure proper stacking */
 #notification-container {
   position: fixed !important;
-  top: 90px;
+  top: 30px;
   right: 20px;
   z-index: 99999 !important; /* above all popups - highest priority */
   display: flex !important;

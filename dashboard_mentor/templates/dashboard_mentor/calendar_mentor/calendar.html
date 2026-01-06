@@ -405,10 +405,57 @@
   }
 
   /* Disable past days visually - more grey */
+  /* Use opacity on background elements only, not the entire cell */
   .mentor-calendar-root .fc-day-past-disabled {
-    opacity: 0.3;
     pointer-events: none;
     background-color: #f1f5f9 !important;
+    position: relative;
+  }
+  
+  /* Grey out the background of past days using a pseudo-element overlay */
+  .mentor-calendar-root .fc-day-past-disabled::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(255, 255, 255, 0.7);
+    z-index: 0;
+    pointer-events: none;
+  }
+  
+  /* Past sessions should be fully visible and clickable on top of disabled days */
+  /* Events are positioned above the overlay with higher z-index */
+  /* Don't override background-color - let FullCalendar's inline styles (which set the green color) apply */
+  .mentor-calendar-root .fc-day-past-disabled .fc-event,
+  .mentor-calendar-root .fc-day-past-disabled .fc-timegrid-event,
+  .mentor-calendar-root .fc-day-past-disabled .fc-daygrid-event {
+    pointer-events: auto !important;
+    opacity: 1 !important;
+    z-index: 10 !important;
+    filter: none !important;
+    /* Don't set background-color here - let FullCalendar's inline styles apply */
+  }
+  
+  /* Ensure event content elements are also fully visible */
+  .mentor-calendar-root .fc-day-past-disabled .fc-event-main,
+  .mentor-calendar-root .fc-day-past-disabled .fc-event-title,
+  .mentor-calendar-root .fc-day-past-disabled .fc-event-time,
+  .mentor-calendar-root .fc-day-past-disabled .fc-event-title-container,
+  .mentor-calendar-root .fc-day-past-disabled .fc-event-content,
+  .mentor-calendar-root .fc-day-past-disabled .fc-event-segments,
+  .mentor-calendar-root .fc-day-past-disabled .fc-event-segment,
+  .mentor-calendar-root .fc-day-past-disabled .mentor-calendar-slot {
+    pointer-events: auto !important;
+    opacity: 1 !important;
+    color: inherit !important;
+    filter: none !important;
+  }
+  
+  /* Ensure timegrid events (which are absolutely positioned) are above the overlay */
+  .mentor-calendar-root .fc-day-past-disabled .fc-timegrid-event {
+    z-index: 10 !important;
   }
   
   .mentor-calendar-root .fc-day-past-disabled .fc-daygrid-day-frame,
@@ -782,6 +829,7 @@
   // Session change tracking
   let originalSessionsById = new Map(); // Map<sessionId, sessionData> - original data from backend
   let changedSessionsById = new Map(); // Map<sessionId, snapshot> - tracked changes
+  let lastBlockedPastSessionDrag = null; // Track blocked past session drag to show notification once
   let sessionsInitialized = false; // Flag to ensure originalSessionsById is populated only once per calendar open
 
   // Timezone source of truth: mentorprofile.selected_timezone (fallback: detected_timezone)
@@ -3374,20 +3422,87 @@
       headerToolbar: false, // Custom header
       allDaySlot: false,
       editable: true, // enables drag+resize (fine-grained control below)
-      eventStartEditable: true, // allow dragging for both slot types
+      eventStartEditable: function(info) {
+        // Prevent dragging past sessions (invited/confirmed sessions that have ended)
+        if (info.event.extendedProps?.slotMode === 'session') {
+          const status = info.event.extendedProps?.status;
+          // Only block invited/confirmed sessions (draft sessions can be moved)
+          if (status === 'invited' || status === 'confirmed') {
+            const eventEnd = info.event.end;
+            if (eventEnd) {
+              const now = new Date();
+              // If session has ended (end time < now), prevent dragging
+              if (eventEnd < now) {
+                return false;
+              }
+            }
+          }
+        }
+        return true; // allow dragging for both slot types
+      },
       eventDurationEditable: function(info) {
         // Only Session slots can be resized
-        return info.event.extendedProps?.slotMode === 'session';
+        if (info.event.extendedProps?.slotMode !== 'session') {
+          return false;
+        }
+        // Prevent resizing past sessions (invited/confirmed sessions that have ended)
+        const status = info.event.extendedProps?.status;
+        // Only block invited/confirmed sessions (draft sessions can be resized)
+        if (status === 'invited' || status === 'confirmed') {
+          const eventEnd = info.event.end;
+          if (eventEnd) {
+            const now = new Date();
+            // If session has ended (end time < now), prevent resizing
+            if (eventEnd < now) {
+              return false;
+            }
+          }
+        }
+        return true;
       },
       eventResizableFromStart: function(info) {
         // Only Session slots can be resized (from either edge)
-        return info.event.extendedProps?.slotMode === 'session';
+        if (info.event.extendedProps?.slotMode !== 'session') {
+          return false;
+        }
+        // Prevent resizing past sessions (invited/confirmed sessions that have ended)
+        const status = info.event.extendedProps?.status;
+        // Only block invited/confirmed sessions (draft sessions can be resized)
+        if (status === 'invited' || status === 'confirmed') {
+          const eventEnd = info.event.end;
+          if (eventEnd) {
+            const now = new Date();
+            // If session has ended (end time < now), prevent resizing
+            if (eventEnd < now) {
+              return false;
+            }
+          }
+        }
+        return true;
       },
       eventAllow: function(dropInfo, draggedEvent) {
-        // For recurring availability instances:
-        // - allow moving across days in timeGrid views (we'll prompt for "this one" vs "all future")
-        // - disallow dragging in Month view (dayGridMonth) for clarity
+        // Prevent dragging past sessions (invited/confirmed sessions that have ended)
         try {
+          if (draggedEvent?.extendedProps?.slotMode === 'session') {
+            const status = draggedEvent.extendedProps?.status;
+            // Only block invited/confirmed sessions (draft sessions can be moved)
+            if (status === 'invited' || status === 'confirmed') {
+              const eventEnd = draggedEvent.end;
+              if (eventEnd) {
+                const now = new Date();
+                // If session has ended (end time < now), prevent dragging
+                if (eventEnd < now) {
+                  // Track this blocked drag to show notification once in eventDragStop
+                  lastBlockedPastSessionDrag = { eventId: String(draggedEvent.id || ''), atMs: Date.now() };
+                  return false;
+                }
+              }
+            }
+          }
+          
+          // For recurring availability instances:
+          // - allow moving across days in timeGrid views (we'll prompt for "this one" vs "all future")
+          // - disallow dragging in Month view (dayGridMonth) for clarity
           if (draggedEvent?.extendedProps?.isRecurringInstance) {
             const viewType = calendar?.view?.type;
             if (viewType === 'dayGridMonth') {
@@ -3487,6 +3602,23 @@
         }
       },
       eventDragStop: function(info) {
+        // Show notification for blocked past session drag (only once per drag attempt)
+        try {
+          if (lastBlockedPastSessionDrag) {
+            const eventId = String(info?.event?.id || '');
+            if (lastBlockedPastSessionDrag.eventId === eventId) {
+              const dt = Date.now() - (lastBlockedPastSessionDrag.atMs || 0);
+              // only trigger near the time the block happened (avoid stale)
+              if (dt >= 0 && dt < 800) {
+                if (typeof showNotification === 'function') {
+                  showNotification('Cannot move past sessions. Please use the session settings to make changes.', 'warning');
+                }
+              }
+              lastBlockedPastSessionDrag = null;
+            }
+          }
+        } catch (e) {}
+        
         // If we just blocked a recurring drag (e.g., Month view), blink the series.
         try {
           if (info?.event?.extendedProps?.isRecurringInstance) {
@@ -3534,6 +3666,29 @@
       },
       eventDrop: function(info) {
         const mode = info.event.extendedProps?.slotMode;
+        
+        // Prevent dropping past sessions (invited/confirmed sessions that have ended)
+        // Note: Primary blocking happens in eventAllow/eventStartEditable, so this is a fallback.
+        // Notification is shown in eventDragStop to avoid duplicates.
+        if (mode === 'session') {
+          const status = info.event.extendedProps?.status;
+          // Only block invited/confirmed sessions (draft sessions can be moved)
+          if (status === 'invited' || status === 'confirmed') {
+            // Check original end time (before drop) to see if it was in the past
+            const originalEvent = info.oldEvent;
+            const originalEnd = originalEvent?.end;
+            if (originalEnd) {
+              const now = new Date();
+              // If original session had ended (end time < now), prevent the drop
+              if (originalEnd < now) {
+                info.revert();
+                // Notification handled in eventDragStop to show only once
+                return;
+              }
+            }
+          }
+        }
+        
         // Recurring instances: confirm move (one occurrence vs all).
         if (mode === 'availability' && info.event.extendedProps?.isRecurringInstance && isAvailabilityMode) {
           const recurringId = info.event.extendedProps?.recurringId;
@@ -3608,6 +3763,27 @@
           console.log('[MentorCalendar] prevented resize for non-session slot', { id: info.event.id, mode });
           return;
         }
+        
+        // Prevent resizing past sessions (invited/confirmed sessions that have ended)
+        const status = info.event.extendedProps?.status;
+        // Only block invited/confirmed sessions (draft sessions can be resized)
+        if (status === 'invited' || status === 'confirmed') {
+          // Check original end time (before resize) to see if it was in the past
+          const originalEvent = info.oldEvent;
+          const originalEnd = originalEvent?.end;
+          if (originalEnd) {
+            const now = new Date();
+            // If original session had ended (end time < now), prevent the resize
+            if (originalEnd < now) {
+              info.revert();
+              if (typeof showNotification === 'function') {
+                showNotification('Cannot resize past sessions. Please use the session settings to make changes.', 'warning');
+              }
+              return;
+            }
+          }
+        }
+        
         // Resizing session in Availability mode: revert and prompt to switch
         if (isAvailabilityMode) {
           info.revert();
@@ -3647,11 +3823,14 @@
         const clickedDateOnly = new Date(clickedDate);
         clickedDateOnly.setHours(0, 0, 0, 0);
         
+        const mode = isAvailabilityMode ? 'availability' : 'session';
+        
         // Check if it's a past date
         if (clickedDateOnly < today) {
           // Past date clicked - do not create slot
           if (typeof showNotification === 'function') {
-            showNotification('Cannot create availability slots for past dates.', 'warning');
+            const slotType = mode === 'availability' ? 'availability slots' : 'session slots';
+            showNotification(`Cannot create ${slotType} for past dates.`, 'warning');
           }
           return;
         }
@@ -3660,12 +3839,11 @@
         if (clickedDateOnly.getTime() === today.getTime() && clickedDate < now) {
           // Past time on today clicked - do not create slot
           if (typeof showNotification === 'function') {
-            showNotification('Cannot create availability slots for past times.', 'warning');
+            const slotType = mode === 'availability' ? 'availability slots' : 'session slots';
+            showNotification(`Cannot create ${slotType} for past times.`, 'warning');
           }
           return;
         }
-
-        const mode = isAvailabilityMode ? 'availability' : 'session';
         // Use mentor profile session_length (minutes) for slot length
         const durationMinutes = resolveMentorSessionLengthMinutes();
 
