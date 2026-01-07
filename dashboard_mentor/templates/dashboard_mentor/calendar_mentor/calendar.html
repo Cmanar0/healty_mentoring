@@ -1791,6 +1791,27 @@
                   ev.setExtendedProp('sessionPrice', v === '' ? null : v);
                 }
                 ev.setExtendedProp('clientEmail', email || null);
+                // Look up client name from suggestions
+                if (email) {
+                  try {
+                    const clients = await ensureClientSuggestionsLoaded();
+                    const client = clients.find(c => c.email.toLowerCase() === email.toLowerCase());
+                    if (client) {
+                      ev.setExtendedProp('clientFirstName', client.first_name || null);
+                      ev.setExtendedProp('clientLastName', client.last_name || null);
+                    } else {
+                      ev.setExtendedProp('clientFirstName', null);
+                      ev.setExtendedProp('clientLastName', null);
+                    }
+                  } catch (e) {
+                    console.warn('[MentorCalendar] Could not load client suggestions:', e);
+                    ev.setExtendedProp('clientFirstName', null);
+                    ev.setExtendedProp('clientLastName', null);
+                  }
+                } else {
+                  ev.setExtendedProp('clientFirstName', null);
+                  ev.setExtendedProp('clientLastName', null);
+                }
                 
                 markDirty('session');
                 recomputeCollisions();
@@ -1913,6 +1934,21 @@
             // Update UI state immediately and refresh from DB
             try {
               ev.setExtendedProp('clientEmail', email);
+              // Look up client name from suggestions
+              let clientFirstName = null;
+              let clientLastName = null;
+              try {
+                const clients = await ensureClientSuggestionsLoaded();
+                const client = clients.find(c => c.email.toLowerCase() === email.toLowerCase());
+                if (client) {
+                  clientFirstName = client.first_name || null;
+                  clientLastName = client.last_name || null;
+                }
+              } catch (e) {
+                console.warn('[MentorCalendar] Could not load client suggestions for name lookup:', e);
+              }
+              ev.setExtendedProp('clientFirstName', clientFirstName);
+              ev.setExtendedProp('clientLastName', clientLastName);
               ev.setExtendedProp('status', 'invited');
               ev.setExtendedProp('invitationSent', true);
               ev.setExtendedProp('canRemind', !!data?.can_remind);
@@ -2006,6 +2042,8 @@
       status: status,
       session_price: ev.extendedProps?.sessionPrice ?? null,
       client_email: ev.extendedProps?.clientEmail || null,
+      client_first_name: ev.extendedProps?.clientFirstName || null,
+      client_last_name: ev.extendedProps?.clientLastName || null,
       expires_at: ev.extendedProps?.expiresAt || null,
       session_type: ev.extendedProps?.sessionType || 'individual',
       invitation_sent: !!ev.extendedProps?.invitationSent,
@@ -2094,7 +2132,7 @@
     console.log('[MentorCalendar] onSessionMutated - changedSessionsById:', changedSessionsObj, `(size: ${changedSessionsById.size})`);
   }
 
-  function applySessionSettings() {
+  async function applySessionSettings() {
     if (!calendar) return;
     if (!sessionSettingsEventId) return;
     if (!sessionSettingsDateInput || !sessionSettingsTimeInput) return;
@@ -2144,6 +2182,27 @@
     if (sessionSettingsClientEmailInput) {
       const email = String(sessionSettingsClientEmailInput.value || '').trim();
       ev.setExtendedProp('clientEmail', email || null);
+      // Look up client name from suggestions
+      if (email) {
+        try {
+          const clients = await ensureClientSuggestionsLoaded();
+          const client = clients.find(c => c.email.toLowerCase() === email.toLowerCase());
+          if (client) {
+            ev.setExtendedProp('clientFirstName', client.first_name || null);
+            ev.setExtendedProp('clientLastName', client.last_name || null);
+          } else {
+            ev.setExtendedProp('clientFirstName', null);
+            ev.setExtendedProp('clientLastName', null);
+          }
+        } catch (e) {
+          console.warn('[MentorCalendar] Could not load client suggestions:', e);
+          ev.setExtendedProp('clientFirstName', null);
+          ev.setExtendedProp('clientLastName', null);
+        }
+      } else {
+        ev.setExtendedProp('clientFirstName', null);
+        ev.setExtendedProp('clientLastName', null);
+      }
     }
 
     markDirty('session');
@@ -2883,6 +2942,8 @@
             status: normalizeSessionStatus(s.status || 'draft'),
             session_price: s.session_price || null,
             client_email: s.client_email || null,
+            client_first_name: s.client_first_name || null,
+            client_last_name: s.client_last_name || null,
             expires_at: s.expires_at || null,
             session_type: s.session_type || 'individual',
             invitation_sent: !!s.invitation_sent,
@@ -2918,6 +2979,8 @@
             sessionDbId: s.id,
             sessionPrice: s.session_price || null,
             clientEmail: s.client_email || null,
+            clientFirstName: s.client_first_name || null,
+            clientLastName: s.client_last_name || null,
             expiresAt: s.expires_at || null,
             sessionType: s.session_type || 'individual',
             invitationSent: !!s.invitation_sent,
@@ -3428,7 +3491,9 @@
           status: normalizeSessionStatus(ev.extendedProps?.status || 'draft'),
           session_type: String(ev.extendedProps?.sessionType || 'individual'),
           session_price: (ev.extendedProps?.sessionPrice ?? null),
-          client_email: ev.extendedProps?.clientEmail || null
+          client_email: ev.extendedProps?.clientEmail || null,
+          client_first_name: ev.extendedProps?.clientFirstName || null,
+          client_last_name: ev.extendedProps?.clientLastName || null
         };
       }).filter(Boolean);
 
@@ -4277,7 +4342,10 @@
           recurringId: arg.event.extendedProps?.recurringId || null,
           instanceDate: arg.event.extendedProps?.instanceDate || null,
           startIso: arg.event.start ? arg.event.start.toISOString() : null,
-          endIso: arg.event.end ? arg.event.end.toISOString() : null
+          endIso: arg.event.end ? arg.event.end.toISOString() : null,
+          clientFirstName: arg.event.extendedProps?.clientFirstName || null,
+          clientLastName: arg.event.extendedProps?.clientLastName || null,
+          clientEmail: arg.event.extendedProps?.clientEmail || null,
         };
 
         if (mode === 'session') {

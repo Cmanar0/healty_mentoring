@@ -111,6 +111,30 @@ window.MentorCalendarSlotComponents.SessionSlot = {
     el.dataset.eventId = props?.eventId || '';
     el.dataset.sessionStatus = props?.status || 'draft';
 
+    // Update footer with client name if session is not draft
+    const footerEl = el.querySelector('.mentor-calendar-session-slot-footer');
+    if (footerEl) {
+      const status = props?.status || 'draft';
+      if (status !== 'draft') {
+        const firstName = props?.clientFirstName || '';
+        const lastName = props?.clientLastName || '';
+        const clientName = `${firstName} ${lastName}`.trim();
+        if (clientName) {
+          footerEl.textContent = clientName;
+        } else {
+          // Fallback to email if name not available
+          const email = props?.clientEmail || '';
+          if (email) {
+            footerEl.textContent = email.split('@')[0];
+          } else {
+            footerEl.textContent = '-- Add a Client --';
+          }
+        }
+      } else {
+        footerEl.textContent = '-- Add a Client --';
+      }
+    }
+
     const deleteBtn = el.querySelector('[data-slot-delete]');
     if (deleteBtn) {
       // Hide delete button for completed or refunded sessions (cannot be deleted)

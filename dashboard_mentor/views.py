@@ -1806,6 +1806,8 @@ def save_availability(request):
                             price_val = None
 
                     client_email = (item.get('client_email') or '').strip().lower()
+                    client_first_name = item.get('client_first_name') or None
+                    client_last_name = item.get('client_last_name') or None
 
                     db_id = item.get('session_id') or item.get('id')
                     if db_id:
@@ -1855,6 +1857,8 @@ def save_availability(request):
                                 existing.end_datetime = end_dt
                                 existing.status = status
                                 existing.session_price = price_val
+                                existing.client_first_name = client_first_name
+                                existing.client_last_name = client_last_name
                                 # expires_at left as-is for now
                                 if hasattr(existing, 'session_type'):
                                     existing.session_type = session_type
@@ -1881,6 +1885,23 @@ def save_availability(request):
                                 sessions_updated += 1
                                 continue
 
+                    # Look up client name if client_email is provided
+                    client_first_name = None
+                    client_last_name = None
+                    if client_email:
+                        try:
+                            client_user = CustomUser.objects.filter(email=client_email).first()
+                            if client_user:
+                                try:
+                                    user_profile = client_user.user_profile
+                                    if user_profile:
+                                        client_first_name = user_profile.first_name or ''
+                                        client_last_name = user_profile.last_name or ''
+                                except Exception:
+                                    pass
+                        except Exception:
+                            pass
+                    
                     # Create new
                     s = Session.objects.create(
                         start_datetime=start_dt,
@@ -1891,7 +1912,9 @@ def save_availability(request):
                         tasks=[],
                         status=status,
                         session_price=price_val,
-                        expires_at=None
+                        expires_at=None,
+                        client_first_name=client_first_name,
+                        client_last_name=client_last_name
                     )
                     mentor_profile.sessions.add(s)
                     if client_email:
@@ -2183,6 +2206,8 @@ def get_availability(request):
                     'expires_at': exp_dt.isoformat() if exp_dt else None,
                     'session_type': getattr(s, 'session_type', 'individual') or 'individual',
                     'client_email': client_email,
+                    'client_first_name': getattr(s, 'client_first_name', None) or None,
+                    'client_last_name': getattr(s, 'client_last_name', None) or None,
                     'invitation_sent': invitation_sent,
                     'can_remind': can_remind,
                     'last_invite_sent_at': last_sent_at.isoformat() if last_sent_at else None,
@@ -2547,13 +2572,27 @@ def invite_session(request):
             invitation_token=invitation_token
         )
 
+    # Look up client name from user profile
+    client_first_name = None
+    client_last_name = None
+    if invited_user:
+        try:
+            user_profile = invited_user.user_profile
+            if user_profile:
+                client_first_name = user_profile.first_name or ''
+                client_last_name = user_profile.last_name or ''
+        except Exception:
+            pass
+    
     # Attach attendee and set session status to invited
     try:
         if invited_user:
             s.attendees.set([invited_user])
         if getattr(s, 'status', None) != 'invited':
             s.status = 'invited'
-        s.save(update_fields=['status'])
+        s.client_first_name = client_first_name
+        s.client_last_name = client_last_name
+        s.save(update_fields=['status', 'client_first_name', 'client_last_name'])
     except Exception:
         pass
 
@@ -2724,19 +2763,6 @@ def schedule_session(request):
     except Exception:
         price_val = None
 
-    s = Session.objects.create(
-        start_datetime=start_dt,
-        end_datetime=end_dt,
-        created_by=request.user,
-        note='',
-        session_type='individual',
-        status='invited',
-        expires_at=None,
-        session_price=price_val,
-        tasks=[],
-    )
-    mentor_profile.sessions.add(s)
-
     # Reuse invite_session logic for creating/locating user + relationship + sending email.
     # We'll inline the minimal parts so we can return session_id.
     try:
@@ -2746,6 +2772,8 @@ def schedule_session(request):
 
     relationship = None
     invited_user = None
+    client_first_name = None
+    client_last_name = None
 
     if existing_user:
         try:
@@ -2756,6 +2784,9 @@ def schedule_session(request):
         invited_user = existing_user
         try:
             user_profile = existing_user.user_profile
+            if user_profile:
+                client_first_name = user_profile.first_name or ''
+                client_last_name = user_profile.last_name or ''
         except Exception:
             user_profile = None
         if user_profile:
@@ -2796,6 +2827,21 @@ def schedule_session(request):
             confirmed=False,
             invitation_token=invitation_token
         )
+
+    s = Session.objects.create(
+        start_datetime=start_dt,
+        end_datetime=end_dt,
+        created_by=request.user,
+        note='',
+        session_type='individual',
+        status='invited',
+        expires_at=None,
+        session_price=price_val,
+        client_first_name=client_first_name,
+        client_last_name=client_last_name,
+        tasks=[],
+    )
+    mentor_profile.sessions.add(s)
 
     try:
         if invited_user:

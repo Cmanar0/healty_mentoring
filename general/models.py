@@ -186,6 +186,8 @@ class Session(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft')
     expires_at = models.DateTimeField(blank=True, null=True)
     session_price = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
+    client_first_name = models.CharField(max_length=150, blank=True, null=True)
+    client_last_name = models.CharField(max_length=150, blank=True, null=True)
     tasks = models.JSONField(default=list, blank=True)  # Array of tasks
 
     # ============================================================================
