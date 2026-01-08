@@ -11,7 +11,8 @@
       <div class="mentor-calendar-session-slot-time" data-slot-time></div>
     </div>
     <div class="mentor-calendar-session-slot-footer">
-     -- Add a Client --
+      <div class="mentor-calendar-session-slot-status" data-slot-status></div>
+      <div class="mentor-calendar-session-slot-client">-- Add a Client --</div>
     </div>
   </div>
 </template>
@@ -52,7 +53,20 @@
   }
 
   .mentor-calendar-session-slot-footer {
-    padding: 6px 8px 3px;
+    padding: 0px 8px 3px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .mentor-calendar-session-slot-status {
+    font-weight: 600;
+    font-size: 0.7rem;
+    opacity: 0.9;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .mentor-calendar-session-slot-client {
     font-weight: 700;
     font-size: 0.75rem;
     opacity: 0.95;
@@ -111,27 +125,44 @@ window.MentorCalendarSlotComponents.SessionSlot = {
     el.dataset.eventId = props?.eventId || '';
     el.dataset.sessionStatus = props?.status || 'draft';
 
-    // Update footer with client name if session is not draft
-    const footerEl = el.querySelector('.mentor-calendar-session-slot-footer');
-    if (footerEl) {
-      const status = props?.status || 'draft';
+    // Update status and client name in footer
+    const statusEl = el.querySelector('[data-slot-status]');
+    const clientEl = el.querySelector('.mentor-calendar-session-slot-client');
+    const status = props?.status || 'draft';
+    
+    // Set status text
+    if (statusEl) {
+      const statusLabels = {
+        'draft': 'Draft',
+        'invited': 'Invited',
+        'confirmed': 'Confirmed',
+        'cancelled': 'Cancelled',
+        'expired': 'Expired',
+        'completed': 'Completed',
+        'refunded': 'Refunded'
+      };
+      statusEl.textContent = statusLabels[status] || status;
+    }
+    
+    // Update client name if session is not draft
+    if (clientEl) {
       if (status !== 'draft') {
         const firstName = props?.clientFirstName || '';
         const lastName = props?.clientLastName || '';
         const clientName = `${firstName} ${lastName}`.trim();
         if (clientName) {
-          footerEl.textContent = clientName;
+          clientEl.textContent = clientName;
         } else {
           // Fallback to email if name not available
           const email = props?.clientEmail || '';
           if (email) {
-            footerEl.textContent = email.split('@')[0];
+            clientEl.textContent = email.split('@')[0];
           } else {
-            footerEl.textContent = '-- Add a Client --';
+            clientEl.textContent = '-- Add a Client --';
           }
         }
       } else {
-        footerEl.textContent = '-- Add a Client --';
+        clientEl.textContent = '-- Add a Client --';
       }
     }
 
