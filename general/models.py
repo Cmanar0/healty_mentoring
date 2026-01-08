@@ -41,6 +41,28 @@ class Session(models.Model):
       - Terminal state (no transitions out)
       - Once cancelled, session cannot be reactivated
     
+    • expired
+      - Session was in 'invited' status and its end_datetime has passed
+      - Automatically set by cleanup process when invited session's end time is in the past
+      - Terminal state (no transitions out)
+      - Cannot be modified, moved, or deleted
+      - Historical record preserved for reference
+    
+    • completed
+      - Session was in 'confirmed' status and its end_datetime has passed
+      - Automatically set by cleanup process when confirmed session's end time is in the past
+      - Terminal state (no transitions out)
+      - Cannot be modified, moved, or deleted
+      - Can be refunded (transitions to 'refunded' status)
+      - Historical record preserved for reference
+    
+    • refunded
+      - Session was 'completed' and has been refunded
+      - Set when mentor refunds a completed session
+      - Terminal state (no transitions out)
+      - Cannot be modified, moved, or deleted
+      - Historical record preserved for reference
+    
     
     ALLOWED STATUS TRANSITIONS
     ---------------------------
@@ -68,10 +90,28 @@ class Session(models.Model):
        - Trigger: Client declines after a change to a confirmed session
        - Action: Session is permanently cancelled
     
+    6. invited → expired
+       - Trigger: Cleanup process detects invited session with end_datetime in the past
+       - Action: Session status automatically changed to expired
+       - Note: This is a system-initiated transition, not user-initiated
+    
+    7. confirmed → completed
+       - Trigger: Cleanup process detects confirmed session with end_datetime in the past
+       - Action: Session status automatically changed to completed
+       - Note: This is a system-initiated transition, not user-initiated
+    
+    8. completed → refunded
+       - Trigger: Mentor refunds a completed session
+       - Action: Session status changed to refunded
+       - Note: Only completed sessions can be refunded
+    
     Invalid transitions (not allowed):
     - draft → confirmed (must go through invited first)
     - confirmed → draft (cannot revert to draft)
     - cancelled → any state (cancelled is terminal)
+    - expired → any state (expired is terminal)
+    - completed → any state except refunded (completed is terminal)
+    - refunded → any state (refunded is terminal)
     - draft → cancelled (draft sessions are not sent to clients)
     
     
@@ -142,13 +182,11 @@ class Session(models.Model):
     
     The following behaviors are explicitly NOT implemented:
     
-    • No automatic timeouts
-      - Sessions do not expire or cancel automatically
-      - No background jobs check for stale pending changes
-    
-    • No background cancellation
+    • No automatic cancellation
       - Sessions are not cancelled by system processes
       - Only explicit user action (client decline) cancels sessions
+      - Note: Automatic expiration (invited → expired) and completion (confirmed → completed)
+        are implemented via cleanup processes, but these are status transitions, not cancellations
     
     • No auto-confirmation
       - Sessions are not automatically confirmed
@@ -157,7 +195,27 @@ class Session(models.Model):
     • Sessions remain pending until user action
       - A session with previous_data populated will remain in that state
         indefinitely until the client takes action
-      - No automatic cleanup or expiration
+      - No automatic cleanup of pending changes
+    
+    AUTOMATIC STATUS TRANSITIONS (CLEANUP PROCESSES)
+    -------------------------------------------------
+    
+    The following automatic transitions are implemented via cleanup processes:
+    
+    • invited → expired
+      - Triggered by cleanup process when invited session's end_datetime < now (UTC)
+      - Runs periodically (via cron) and synchronously before calendar data fetch
+      - Preserves session as historical record (does not delete)
+    
+    • confirmed → completed
+      - Triggered by cleanup process when confirmed session's end_datetime < now (UTC)
+      - Runs periodically (via cron) and synchronously before calendar data fetch
+      - Preserves session as historical record (does not delete)
+    
+    • draft → deleted
+      - Triggered by cleanup process when draft session's end_datetime < now (UTC)
+      - Only draft sessions are deleted (not terminal state sessions)
+      - Runs periodically (via cron) and synchronously before calendar data fetch
     
     ============================================================================
     """

@@ -137,10 +137,12 @@ window.MentorCalendarSlotComponents.SessionSlot = {
 
     const deleteBtn = el.querySelector('[data-slot-delete]');
     if (deleteBtn) {
-      // Hide delete button for completed or refunded sessions (cannot be deleted)
+      // Handle delete button based on session status
       // For expired sessions, show button but prevent deletion with notification
+      // For completed sessions, show button with refund notification (no deletion, no popup)
+      // For refunded sessions, hide button (cannot be deleted)
       const status = props?.status || 'draft';
-      if (status === 'completed' || status === 'refunded') {
+      if (status === 'refunded') {
         deleteBtn.style.display = 'none';
       } else if (status === 'expired') {
         // Keep button visible but prevent deletion
@@ -152,6 +154,18 @@ window.MentorCalendarSlotComponents.SessionSlot = {
           if (typeof showNotification === 'function') {
             showNotification('Expired sessions cannot be deleted.', 'warning');
           }
+        });
+      } else if (status === 'completed') {
+        // Show button but prevent deletion - only show refund notification
+        deleteBtn.addEventListener('pointerdown', (e) => e.stopPropagation());
+        deleteBtn.addEventListener('mousedown', (e) => e.stopPropagation());
+        deleteBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (typeof showNotification === 'function') {
+            showNotification('You can refund this session in the session settings.', 'note');
+          }
+          // Do NOT open popup or delete the session
         });
       } else {
         deleteBtn.addEventListener('pointerdown', (e) => e.stopPropagation());

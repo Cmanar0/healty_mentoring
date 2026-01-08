@@ -517,6 +517,7 @@
     border-style: solid !important;
     border-radius: var(--mentor-calendar-slot-radius) !important;
     overflow: hidden; /* keep slot content fully inside the event */
+    /* FullCalendar sets height via inline styles - never override height, min-height, or max-height */
   }
 
   /* Inner slot content should match the event wrapper radius */
@@ -608,11 +609,13 @@
   }
 
   /* --- Expired session styling (grey, reduced opacity) --- */
+  /* IMPORTANT: FullCalendar calculates event height based on start/end time and time grid slot height (9px per 5-min slot) */
+  /* The height is set via inline styles by FullCalendar - we must NOT override it or change positioning context */
   .mentor-calendar-root .fc-event[data-session-status="expired"],
   .mentor-calendar-root .fc-timegrid-event[data-session-status="expired"],
   .mentor-calendar-root .fc-daygrid-event[data-session-status="expired"] {
     opacity: 0.6 !important;
-    position: relative;
+    /* DO NOT set: position, height, min-height, max-height - FullCalendar controls these via inline styles */
   }
   .mentor-calendar-root .fc-event[data-session-status="expired"]::after,
   .mentor-calendar-root .fc-timegrid-event[data-session-status="expired"]::after,
@@ -632,6 +635,12 @@
     );
     pointer-events: none;
     border-radius: var(--mentor-calendar-slot-radius);
+    z-index: 1; /* Ensure it's above content but doesn't affect layout */
+    /* The ::after is absolutely positioned relative to the event's containing block (timegrid column) */
+    /* This doesn't interfere with FullCalendar's height calculation */
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
   }
   .mentor-calendar-root .fc-event[data-session-status="expired"] .fc-event-main,
   .mentor-calendar-root .fc-event[data-session-status="expired"] .fc-event-time,
@@ -642,11 +651,13 @@
   }
 
   /* --- Completed session styling (dark green) --- */
+  /* IMPORTANT: FullCalendar calculates event height based on start/end time and time grid slot height (9px per 5-min slot) */
+  /* The height is set via inline styles by FullCalendar - we must NOT override it or change positioning context */
   .mentor-calendar-root .fc-event[data-session-status="completed"],
   .mentor-calendar-root .fc-timegrid-event[data-session-status="completed"],
   .mentor-calendar-root .fc-daygrid-event[data-session-status="completed"] {
     opacity: 0.85 !important;
-    position: relative;
+    /* DO NOT set: position, height, min-height, max-height - FullCalendar controls these via inline styles */
   }
   .mentor-calendar-root .fc-event[data-session-status="completed"] .fc-event-main,
   .mentor-calendar-root .fc-event[data-session-status="completed"] .fc-event-time,
@@ -655,46 +666,15 @@
   .mentor-calendar-root .fc-event[data-session-status="completed"] .mentor-calendar-slot-title {
     opacity: 0.95;
   }
-  /* Hide X button for completed sessions */
-  .mentor-calendar-root .fc-event[data-session-status="completed"] .mentor-calendar-session-slot-delete,
-  .mentor-calendar-root .fc-timegrid-event[data-session-status="completed"] .mentor-calendar-session-slot-delete,
-  .mentor-calendar-root .fc-daygrid-event[data-session-status="completed"] .mentor-calendar-session-slot-delete {
-    display: none !important;
-  }
-  /* Style the checkmark button for completed sessions */
-  .mentor-calendar-root .fc-event[data-session-status="completed"] [data-completed-checkmark],
-  .mentor-calendar-root .fc-timegrid-event[data-session-status="completed"] [data-completed-checkmark],
-  .mentor-calendar-root .fc-daygrid-event[data-session-status="completed"] [data-completed-checkmark] {
-    position: absolute;
-    top: 6px;
-    right: 6px;
-    width: 20px;
-    height: 20px;
-    border: none;
-    border-radius: 6px;
-    background: rgba(15, 23, 42, 0.2);
-    color: inherit;
-    cursor: pointer;
-    font-size: 16px;
-    line-height: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 5;
-    font-weight: bold;
-    transition: background 0.2s ease;
-  }
-  .mentor-calendar-root .fc-event[data-session-status="completed"] [data-completed-checkmark]:hover,
-  .mentor-calendar-root .fc-timegrid-event[data-session-status="completed"] [data-completed-checkmark]:hover,
-  .mentor-calendar-root .fc-daygrid-event[data-session-status="completed"] [data-completed-checkmark]:hover {
-    background: rgba(15, 23, 42, 0.35);
-  }
 
   /* --- Refunded session styling (purple/indigo) --- */
+  /* IMPORTANT: FullCalendar calculates event height based on start/end time and time grid slot height (9px per 5-min slot) */
+  /* The height is set via inline styles by FullCalendar - we must NOT override it or change positioning context */
   .mentor-calendar-root .fc-event[data-session-status="refunded"],
   .mentor-calendar-root .fc-timegrid-event[data-session-status="refunded"],
   .mentor-calendar-root .fc-daygrid-event[data-session-status="refunded"] {
     opacity: 0.85 !important;
+    /* DO NOT set: position, height, min-height, max-height - FullCalendar controls these via inline styles */
   }
   .mentor-calendar-root .fc-event[data-session-status="refunded"] .fc-event-main,
   .mentor-calendar-root .fc-event[data-session-status="refunded"] .fc-event-time,
@@ -3414,9 +3394,41 @@
         ev.extendedProps?.slotMode === 'availability' && !ev.extendedProps?.isRecurringInstance
       );
 
-      const sessionEvents = calendar.getEvents().filter(ev =>
+      // Get visible session events from calendar
+      const visibleSessionEvents = calendar.getEvents().filter(ev =>
         ev.extendedProps?.slotMode === 'session'
       );
+
+      // Also include ALL sessions from originalSessionsById to ensure past sessions are preserved
+      // This ensures that even if a session is not visible in the current view, it's still sent to the backend
+      const visibleSessionIds = new Set(visibleSessionEvents.map(ev => ev.extendedProps?.sessionDbId).filter(Boolean));
+      const allSessionEvents = [...visibleSessionEvents];
+
+      // Add sessions from originalSessionsById that aren't currently visible
+      // This is critical: we must preserve ALL sessions, not just visible ones
+      originalSessionsById.forEach((sessionData, sessionId) => {
+        if (!visibleSessionIds.has(sessionId) && sessionData.start && sessionData.end) {
+          // Create a calendar event object for this session so it can be included in the payload
+          // This ensures past sessions are preserved even if not visible
+          allSessionEvents.push({
+            id: `session_${sessionId}`,
+            start: new Date(sessionData.start),
+            end: new Date(sessionData.end),
+            extendedProps: {
+              slotMode: 'session',
+              sessionDbId: sessionId,
+              status: normalizeSessionStatus(sessionData.status || 'draft'),
+              sessionPrice: sessionData.session_price || null,
+              clientEmail: sessionData.client_email || null,
+              clientFirstName: sessionData.client_first_name || null,
+              clientLastName: sessionData.client_last_name || null,
+              sessionType: sessionData.session_type || 'individual'
+            }
+          });
+        }
+      });
+
+      const sessionEvents = allSessionEvents;
 
       const oneTimePayload = availabilityEvents.map(ev => {
         const startIso = ev.start ? ev.start.toISOString() : null;
@@ -3534,6 +3546,29 @@
         });
       }
 
+      // Filter out terminal state sessions from deleted_sessions array
+      // Terminal state sessions (completed, refunded, expired) should NEVER be deleted
+      const deletedSessionsArray = Array.from(deletedSessionDbIds || []);
+      const filteredDeletedSessions = [];
+      for (const sessionId of deletedSessionsArray) {
+        // Check if this session is a terminal state session by looking it up in originalSessionsById
+        const originalSession = originalSessionsById.get(parseInt(sessionId));
+        if (originalSession) {
+          const status = normalizeSessionStatus(originalSession.status || 'draft');
+          // Only include in deletion if it's NOT a terminal state
+          if (status !== 'completed' && status !== 'refunded' && status !== 'expired') {
+            filteredDeletedSessions.push(sessionId);
+          } else {
+            console.warn('[MentorCalendar] Attempted to delete terminal state session:', sessionId, 'status:', status, '- This deletion was blocked.');
+          }
+        } else {
+          // If we can't find the original session, include it (might be a new session that was deleted)
+          // But log a warning
+          console.warn('[MentorCalendar] Could not find original session data for deletion:', sessionId);
+          filteredDeletedSessions.push(sessionId);
+        }
+      }
+
       const res = await fetch(SAVE_AVAILABILITY_URL, {
         method: 'POST',
         headers: {
@@ -3543,7 +3578,7 @@
         body: JSON.stringify({
           availability: availabilityPayload,
           sessions: sessionsPayload,
-          deleted_sessions: Array.from(deletedSessionDbIds || []),
+          deleted_sessions: filteredDeletedSessions,
           selected_date: selectedDate,
           edited_dates: editedDatesArr,
           changed_sessions: changedSessionsData  // New field for changed sessions
@@ -3845,7 +3880,7 @@
         return true;
       },
       eventAllow: function(dropInfo, draggedEvent) {
-        // Prevent dragging past sessions (invited/confirmed sessions that have ended)
+        // Prevent dropping sessions to the past (check drop location)
         try {
           if (draggedEvent?.extendedProps?.slotMode === 'session') {
             const status = draggedEvent.extendedProps?.status;
@@ -3853,17 +3888,16 @@
             if (status === 'expired' || status === 'completed' || status === 'refunded') {
               return false;
             }
-            // Only block invited/confirmed sessions (draft sessions can be moved)
-            if (status === 'invited' || status === 'confirmed') {
-              const eventEnd = draggedEvent.end;
-              if (eventEnd) {
-                const now = new Date();
-                // If session has ended (end time < now), prevent dragging
-                if (eventEnd < now) {
-                  // Track this blocked drag to show notification once in eventDragStop
-                  lastBlockedPastSessionDrag = { eventId: String(draggedEvent.id || ''), atMs: Date.now() };
-                  return false;
-                }
+            
+            // Check if the drop location is in the past
+            if (dropInfo && dropInfo.start) {
+              const dropEnd = dropInfo.end || dropInfo.start;
+              const now = new Date();
+              // If the drop location end time is in the past, prevent dropping
+              if (dropEnd < now) {
+                // Track this blocked drag to show notification once in eventDragStop
+                lastBlockedPastSessionDrag = { eventId: String(draggedEvent.id || ''), atMs: Date.now() };
+                return false;
               }
             }
           }
@@ -3903,48 +3937,11 @@
           // Used by collision DOM updates (some builds don't rerender classes reliably)
           info.el.dataset.eventId = String(info.event?.id || '');
           
-          // Set data-session-status attribute for session slots to enable status-specific styling
-          if (mode === 'session') {
-            const status = normalizeSessionStatus(info.event?.extendedProps?.status || 'draft');
-            info.el.setAttribute('data-session-status', status);
-            
-            // Add clickable checkmark for completed sessions (replaces X button)
-            if (status === 'completed') {
-              // Remove any existing checkmark element
-              const existingCheckmark = info.el.querySelector('[data-completed-checkmark]');
-              if (existingCheckmark) existingCheckmark.remove();
-              
-              // Create checkmark button at X button position
-              const checkmark = document.createElement('button');
-              checkmark.setAttribute('data-completed-checkmark', 'true');
-              checkmark.setAttribute('type', 'button');
-              checkmark.setAttribute('aria-label', 'Refund session');
-              checkmark.style.cssText = 'position: absolute; top: 6px; right: 6px; width: 20px; height: 20px; border: none; border-radius: 6px; background: rgba(15, 23, 42, 0.2); color: inherit; cursor: pointer; font-size: 16px; line-height: 1; display: flex; align-items: center; justify-content: center; z-index: 5; font-weight: bold;';
-              checkmark.textContent = '✓';
-              checkmark.addEventListener('mouseenter', () => {
-                checkmark.style.background = 'rgba(15, 23, 42, 0.35)';
-              });
-              checkmark.addEventListener('mouseleave', () => {
-                checkmark.style.background = 'rgba(15, 23, 42, 0.2)';
-              });
-              checkmark.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                if (typeof showNotification === 'function') {
-                  showNotification('You can refund this session in the session settings.', 'note');
-                }
-                // Open session settings if not already open
-                const eventId = info.event?.id;
-                if (eventId && calendar) {
-                  const ev = calendar.getEventById(eventId);
-                  if (ev) {
-                    openSessionSettingsForEvent(ev);
-                  }
-                }
-              });
-              info.el.appendChild(checkmark);
+            // Set data-session-status attribute for session slots to enable status-specific styling
+            if (mode === 'session') {
+              const status = normalizeSessionStatus(info.event?.extendedProps?.status || 'draft');
+              info.el.setAttribute('data-session-status', status);
             }
-          }
 
           // Tag recurring instances so we can style the whole series (blink)
           if (info.event?.extendedProps?.isRecurringInstance && info.event?.extendedProps?.recurringId) {
@@ -4085,9 +4082,7 @@
       eventDrop: function(info) {
         const mode = info.event.extendedProps?.slotMode;
         
-        // Prevent dropping past sessions (invited/confirmed sessions that have ended)
-        // Note: Primary blocking happens in eventAllow/eventStartEditable, so this is a fallback.
-        // Notification is shown in eventDragStop to avoid duplicates.
+        // Prevent dropping sessions to the past (check NEW drop location)
         if (mode === 'session') {
           const status = info.event.extendedProps?.status;
           // Block expired, completed, and refunded sessions (terminal states, cannot be moved)
@@ -4097,22 +4092,25 @@
             lastBlockedPastSessionDrag = { eventId: String(info.event.id || ''), atMs: Date.now() };
             return;
           }
-          // Only block invited/confirmed sessions (draft sessions can be moved)
-          if (status === 'invited' || status === 'confirmed') {
-            // Check original end time (before drop) to see if it was in the past
-            const originalEvent = info.oldEvent;
-            const originalEnd = originalEvent?.end;
-            if (originalEnd) {
-              const now = new Date();
-              // If original session had ended (end time < now), prevent the drop
-              if (originalEnd < now) {
-                info.revert();
-                // Track blocked drag for notification in eventDragStop
-                lastBlockedPastSessionDrag = { eventId: String(info.event.id || ''), atMs: Date.now() };
-                return;
+          
+          // Check if the NEW drop location is in the past
+          const newEnd = info.event.end;
+          if (newEnd) {
+            const now = new Date();
+            // If the new end time is in the past, prevent dropping to the past
+            if (newEnd < now) {
+              info.revert();
+              // Track blocked drag for notification in eventDragStop
+              lastBlockedPastSessionDrag = { eventId: String(info.event.id || ''), atMs: Date.now() };
+              if (typeof showNotification === 'function') {
+                showNotification('Cannot move sessions to the past.', 'warning');
               }
+              return;
             }
-            // Successfully moved invited/confirmed session - show reminder to save
+          }
+          
+          // Successfully moved session - show reminder to save
+          if (status === 'invited' || status === 'confirmed') {
             if (typeof showNotification === 'function') {
               showNotification("Don't forget to save changes for them to take effect.", 'note');
             }

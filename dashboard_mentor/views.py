@@ -1721,7 +1721,27 @@ def save_availability(request):
                     continue
             if to_delete_ids:
                 # Get sessions with related data before deletion
-                sessions_to_delete = mentor_profile.sessions.filter(id__in=to_delete_ids).prefetch_related('attendees')
+                # IMPORTANT: Never delete terminal state sessions (completed, refunded, expired)
+                # These are historical records that should be preserved
+                sessions_to_delete = mentor_profile.sessions.filter(
+                    id__in=to_delete_ids
+                ).exclude(
+                    status__in=['completed', 'refunded', 'expired']
+                ).prefetch_related('attendees')
+                
+                # Log if any terminal state sessions were requested for deletion (for debugging)
+                terminal_sessions = mentor_profile.sessions.filter(
+                    id__in=to_delete_ids,
+                    status__in=['completed', 'refunded', 'expired']
+                )
+                if terminal_sessions.exists():
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.warning(
+                        f'Attempted to delete {terminal_sessions.count()} terminal state session(s) '
+                        f'(completed/refunded/expired). These sessions are protected and were not deleted. '
+                        f'Session IDs: {list(terminal_sessions.values_list("id", flat=True))}'
+                    )
                 
                 # Collect session info grouped by client email (extract all data before deletion)
                 for session in sessions_to_delete:
@@ -1766,7 +1786,7 @@ def save_availability(request):
                         continue
 
             # Create or update sessions from payload
-            allowed_statuses = {'draft', 'invited', 'confirmed', 'cancelled'}
+            allowed_statuses = {'draft', 'invited', 'confirmed', 'cancelled', 'completed', 'refunded', 'expired'}
             for item in sessions_payload:
                 try:
                     start_iso = item.get('start_iso') or item.get('start')
@@ -1818,8 +1838,18 @@ def save_availability(request):
                         if db_id_int:
                             existing = mentor_profile.sessions.filter(id=db_id_int).first()
                             if existing:
-                                # Check if this session was changed (has original_data in changed_sessions_map)
+                                # IMPORTANT: Never update terminal state sessions (completed, refunded, expired)
+                                # unless they're explicitly being changed (in changed_sessions_map)
+                                # Terminal state sessions should be preserved as-is
+                                terminal_statuses = {'completed', 'refunded', 'expired'}
+                                is_terminal = existing.status in terminal_statuses
                                 is_changed = db_id_int in changed_sessions_map
+                                
+                                # Skip updating terminal state sessions that aren't being explicitly changed
+                                if is_terminal and not is_changed:
+                                    # Terminal state session is being sent just to preserve it
+                                    # Don't update it - just skip to next session
+                                    continue
                                 
                                 # Prepare original_data for email (use existing if available, otherwise from changed_sessions_map)
                                 email_original_data = None
@@ -1852,6 +1882,12 @@ def save_availability(request):
                                     # If status was 'confirmed', change to 'invited' for re-confirmation
                                     if existing.status == 'confirmed':
                                         status = 'invited'
+                                
+                                # For terminal state sessions that are being changed, preserve their status
+                                # (they shouldn't be changed, but if they are, at least preserve the terminal status)
+                                if is_terminal and is_changed:
+                                    # Don't change the status of terminal state sessions
+                                    status = existing.status
                                 
                                 existing.start_datetime = start_dt
                                 existing.end_datetime = end_dt

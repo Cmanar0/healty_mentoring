@@ -44,10 +44,14 @@ def cleanup_draft_sessions():
     if now_utc.tzinfo != dt_timezone.utc:
         now_utc = now_utc.astimezone(dt_timezone.utc)
     
-    # Delete expired draft sessions
+    # Delete expired draft sessions ONLY
+    # IMPORTANT: Never delete terminal state sessions (completed, refunded, expired)
+    # These are historical records that must be preserved
     draft_sessions = Session.objects.filter(
         status='draft',
         end_datetime__lt=now_utc
+    ).exclude(
+        status__in=['completed', 'refunded', 'expired']  # Extra protection (shouldn't be needed, but safety first)
     )
     sessions_deleted = draft_sessions.count()
     draft_sessions.delete()
