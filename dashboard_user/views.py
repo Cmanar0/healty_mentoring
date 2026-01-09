@@ -114,10 +114,12 @@ def session_management(request):
     user_email = (request.user.email or '').strip().lower()
     
     # Get all pending invitations for this user
+    # Filter out invitations for expired sessions
     invitations = SessionInvitation.objects.filter(
         invited_email=user_email,
         cancelled_at__isnull=True,
-        accepted_at__isnull=True
+        accepted_at__isnull=True,
+        session__status__in=['invited', 'confirmed']  # Only show invitations for non-expired sessions
     ).select_related('session', 'mentor', 'mentor__user').order_by('-created_at')
     
     # Calculate duration in minutes for each invitation
@@ -148,6 +150,10 @@ def session_management(request):
         all_user_sessions = Session.objects.filter(id__in=all_user_session_ids).select_related('created_by').prefetch_related('mentors', 'mentors__user')
         
         for session in all_user_sessions:
+            # Skip expired sessions
+            if session.status == 'expired':
+                continue
+            
             # Skip sessions that are 'invited' and have an active invitation
             # These should only appear as invitations, not as changes
             if session.status == 'invited' and session.id in invitation_session_ids:

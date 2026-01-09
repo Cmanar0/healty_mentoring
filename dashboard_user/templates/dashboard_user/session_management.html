@@ -12,7 +12,7 @@
     </div>
     {% endif %}
     <div class="header-content">
-      <h1 class="session-management-title">Session Invitations & Changes</h1>
+      <h1 class="dashboard-page-title">Session Invitations & Changes</h1>
       <p class="session-management-subtitle">Review and manage your pending session invitations and changes</p>
     </div>
     {% if invitations|length > 0 or changed_sessions|length > 0 %}
@@ -289,12 +289,18 @@
   flex: 1;
 }
 
+/* Title now uses dashboard-page-title class, keeping this for backward compatibility if needed */
 .session-management-title {
   font-size: 2rem;
   font-weight: 800;
   color: var(--dash-text-main, #1e293b);
   margin: 0 0 8px 0;
   letter-spacing: -0.02em;
+}
+
+/* Override dashboard-page-title margin in session management header */
+.session-management-header-row .dashboard-page-title {
+  margin: 0 0 8px 0;
 }
 
 .session-management-subtitle {

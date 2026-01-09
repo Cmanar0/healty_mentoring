@@ -1719,6 +1719,8 @@ def save_availability(request):
                     to_delete_ids.append(int(raw))
                 except Exception:
                     continue
+            # Track which session IDs were actually deleted (for filtering later)
+            actually_deleted_ids = set()
             if to_delete_ids:
                 # Get sessions with related data before deletion
                 # IMPORTANT: Never delete terminal state sessions (completed, refunded, expired)
@@ -1772,6 +1774,8 @@ def save_availability(request):
                         pass
                 
                 sessions_deleted = sessions_to_delete.count()
+                # Store IDs before deletion
+                actually_deleted_ids = set(sessions_to_delete.values_list('id', flat=True))
                 sessions_to_delete.delete()
 
             # Get changed sessions data from request
@@ -1836,6 +1840,9 @@ def save_availability(request):
                         except Exception:
                             db_id_int = None
                         if db_id_int:
+                            # Skip if this session was just deleted
+                            if db_id_int in actually_deleted_ids:
+                                continue
                             existing = mentor_profile.sessions.filter(id=db_id_int).first()
                             if existing:
                                 # IMPORTANT: Never update terminal state sessions (completed, refunded, expired)
@@ -1866,12 +1873,16 @@ def save_availability(request):
                                 if is_changed:
                                     # If session is 'invited' (not confirmed), don't track as a change
                                     # Just update the session - it will show as an updated invitation
+                                    # Only clear change tracking fields if session is actually 'invited' status
                                     if existing.status == 'invited':
-                                        # Clear any existing change tracking fields
-                                        existing.original_data = None
-                                        existing.changed_by = None
-                                        existing.previous_data = None
-                                        existing.changes_requested_by = None
+                                        # Clear any existing change tracking fields (but only if they exist)
+                                        # This ensures invited sessions don't show as "changes" in session management
+                                        if existing.original_data is not None or existing.changed_by is not None:
+                                            existing.original_data = None
+                                            existing.changed_by = None
+                                        if existing.previous_data is not None or existing.changes_requested_by is not None:
+                                            existing.previous_data = None
+                                            existing.changes_requested_by = None
                                     else:
                                         # Session is 'confirmed' or other status - track as a change
                                         # Only set original_data if it's not already populated
