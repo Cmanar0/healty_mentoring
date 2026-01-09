@@ -15,21 +15,31 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         """Execute the cleanup functions."""
-        self.stdout.write('Starting calendar cleanup...')
+        import sys
+        import traceback
         
-        # Cleanup expired availability slots
-        availability_result = cleanup_expired_availability_slots()
-        
-        # Cleanup draft sessions
-        sessions_result = cleanup_draft_sessions()
-        
-        self.stdout.write(
-            self.style.SUCCESS(
-                f'Cleanup completed: '
-                f'{availability_result["profiles_checked"]} profiles checked, '
-                f'{availability_result["profiles_updated"]} profiles updated, '
-                f'{availability_result["slots_removed"]} availability slots removed, '
-                f'{sessions_result["sessions_deleted"]} draft sessions deleted'
+        try:
+            self.stdout.write('Starting calendar cleanup...')
+            
+            # Cleanup expired availability slots
+            availability_result = cleanup_expired_availability_slots()
+            
+            # Cleanup draft sessions
+            sessions_result = cleanup_draft_sessions()
+            
+            self.stdout.write(
+                self.style.SUCCESS(
+                    f'Cleanup completed: '
+                    f'{availability_result["profiles_checked"]} profiles checked, '
+                    f'{availability_result["profiles_updated"]} profiles updated, '
+                    f'{availability_result["slots_removed"]} availability slots removed, '
+                    f'{sessions_result["sessions_deleted"]} draft sessions deleted, '
+                    f'{sessions_result["sessions_expired"]} sessions expired, '
+                    f'{sessions_result["sessions_completed"]} sessions completed'
+                )
             )
-        )
+        except Exception as e:
+            self.stderr.write(f'ERROR in cleanup_calendar: {str(e)}')
+            self.stderr.write(traceback.format_exc())
+            sys.exit(1)
 

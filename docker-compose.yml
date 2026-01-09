@@ -102,7 +102,8 @@ services:
       - app_network
     command: >
       sh -c "
-      echo '*/1 * * * * cd /app && python manage.py cleanup_calendar >> /proc/1/fd/1 2>&1' | crontab - &&
+      (crontab -l 2>/dev/null; echo '*/1 * * * * cd /app && python manage.py cleanup_calendar >> /proc/1/fd/1 2>&1') | crontab - &&
+      echo 'Cron job installed. Schedule: */1 * * * *' &&
       crond -f -l 2
       "
 
