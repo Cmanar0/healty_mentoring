@@ -2909,6 +2909,10 @@
       // Load Sessions from DB and render as session slots (status-colored)
       const sessions = Array.isArray(data.sessions) ? data.sessions : [];
       
+      // CRITICAL: Clear originalSessionsById BEFORE repopulating to remove deleted sessions
+      // If we don't clear it, deleted sessions will remain in the map and get recreated on save
+      originalSessionsById.clear();
+      
       // Always repopulate originalSessionsById from fetched sessions when data is refetched
       // This ensures that when sessions are updated (e.g., status changes from draft to invited),
       // the original data reflects the current state from the database
@@ -3404,7 +3408,12 @@
 
       // Add sessions from originalSessionsById that aren't currently visible
       // This is critical: we must preserve ALL sessions, not just visible ones
+      // BUT: Exclude sessions that are marked for deletion
       originalSessionsById.forEach((sessionData, sessionId) => {
+        // Skip if this session is marked for deletion
+        if (deletedSessionDbIds && deletedSessionDbIds.has(String(sessionId))) {
+          return;
+        }
         if (!visibleSessionIds.has(sessionId) && sessionData.start && sessionData.end) {
           // Create a calendar event object for this session so it can be included in the payload
           // This ensures past sessions are preserved even if not visible
@@ -4509,6 +4518,17 @@
       if (dbId) {
         try {
           deletedSessionDbIds.add(String(dbId));
+          // Remove from changedSessionsById if it was being tracked as a change
+          // When a session is deleted, it should no longer appear in the changes popup
+          const dbIdInt = parseInt(dbId);
+          if (changedSessionsById && changedSessionsById.has(dbIdInt)) {
+            changedSessionsById.delete(dbIdInt);
+            console.log('[MentorCalendar] Session', dbId, 'deleted, removed from changedSessionsById');
+            // Update the session changes popup if it's open
+            if (typeof renderSessionChanges === 'function') {
+              renderSessionChanges();
+            }
+          }
         } catch (e) {}
       }
       markDirty('session');
