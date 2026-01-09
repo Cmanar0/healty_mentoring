@@ -1932,12 +1932,19 @@ def save_availability(request):
                                 # Track changed session for email sending
                                 # Send email whenever there are changes detected (session in changed_sessions_map)
                                 # This ensures emails are sent for every save that includes changes, even if original_data already exists
-                                if is_changed and client_email and email_original_data:
-                                    changed_sessions_info.append({
-                                        'session': existing,
-                                        'client_email': client_email,
-                                        'original_data': email_original_data
-                                    })
+                                # The email template will only show fields that actually changed
+                                if is_changed and client_email:
+                                    # Ensure we have original_data - use from changed_sessions_map if email_original_data is None
+                                    final_original_data = email_original_data
+                                    if not final_original_data and db_id_int in changed_sessions_map:
+                                        final_original_data = changed_sessions_map[db_id_int]
+                                    
+                                    if final_original_data:
+                                        changed_sessions_info.append({
+                                            'session': existing,
+                                            'client_email': client_email,
+                                            'original_data': final_original_data
+                                        })
                                 
                                 # Assign attendee if email provided and user exists
                                 if client_email:
@@ -2070,8 +2077,11 @@ def save_availability(request):
                         from urllib.parse import quote
                         session_management_url = f"{site_domain}{reverse('accounts:session_changes_link')}?email={quote(client_email)}"
                         
-                        # Prepare session changes data for email
+                        # Prepare session changes data for email and determine change type
                         session_changes = []
+                        has_datetime_change = False
+                        has_price_change = False
+                        
                         for item in client_sessions:
                             session = item['session']
                             original_data = item['original_data']
@@ -2080,6 +2090,7 @@ def save_availability(request):
                             if isinstance(original_data, dict):
                                 from datetime import datetime
                                 from django.utils import timezone as dj_timezone
+                                from decimal import Decimal, InvalidOperation
                                 parsed_original_data = original_data.copy()
                                 try:
                                     if 'start_datetime' in parsed_original_data and isinstance(parsed_original_data['start_datetime'], str):
@@ -2094,6 +2105,50 @@ def save_availability(request):
                                         parsed_original_data['end_datetime'] = dt
                                 except Exception:
                                     pass
+                                
+                                # Check if datetime changed for this session
+                                session_datetime_changed = False
+                                try:
+                                    orig_start = parsed_original_data.get('start_datetime')
+                                    orig_end = parsed_original_data.get('end_datetime')
+                                    if orig_start and orig_end:
+                                        if isinstance(orig_start, str):
+                                            orig_start = datetime.fromisoformat(orig_start.replace('Z', '+00:00'))
+                                            if orig_start.tzinfo is None:
+                                                orig_start = dj_timezone.make_aware(orig_start)
+                                        if isinstance(orig_end, str):
+                                            orig_end = datetime.fromisoformat(orig_end.replace('Z', '+00:00'))
+                                            if orig_end.tzinfo is None:
+                                                orig_end = dj_timezone.make_aware(orig_end)
+                                        if session.start_datetime != orig_start or session.end_datetime != orig_end:
+                                            session_datetime_changed = True
+                                            has_datetime_change = True
+                                except Exception:
+                                    pass
+                                
+                                # Check if price changed for this session (normalize for comparison)
+                                session_price_changed = False
+                                try:
+                                    orig_price = parsed_original_data.get('session_price')
+                                    current_price = session.session_price
+                                    
+                                    # Normalize both to Decimal for comparison
+                                    def normalize_price(p):
+                                        if p is None:
+                                            return None
+                                        try:
+                                            return Decimal(str(p))
+                                        except (InvalidOperation, ValueError, TypeError):
+                                            return None
+                                    
+                                    orig_price_norm = normalize_price(orig_price)
+                                    current_price_norm = normalize_price(current_price)
+                                    
+                                    if orig_price_norm != current_price_norm:
+                                        session_price_changed = True
+                                        has_price_change = True
+                                except Exception:
+                                    pass
                             else:
                                 parsed_original_data = original_data
                             
@@ -2102,6 +2157,17 @@ def save_availability(request):
                                 'original_data': parsed_original_data
                             })
                         
+                        # Determine which template to use based on what changed across all sessions
+                        if has_datetime_change and has_price_change:
+                            template_name = 'session_changes_both'
+                        elif has_datetime_change:
+                            template_name = 'session_changes_datetime_only'
+                        elif has_price_change:
+                            template_name = 'session_changes_price_only'
+                        else:
+                            # No actual changes detected - skip email (shouldn't happen, but safety check)
+                            continue
+                        
                         # Get mentor name
                         mentor_name = ''
                         try:
@@ -2109,11 +2175,11 @@ def save_availability(request):
                         except Exception:
                             mentor_name = 'your mentor'
                         
-                        # Send email
+                        # Send email with appropriate template
                         EmailService.send_email(
                             subject=f'Session Changes - Action Required',
                             recipient_email=client_email,
-                            template_name='session_changes_notification',
+                            template_name=template_name,
                             context={
                                 'mentor_name': mentor_name,
                                 'session_changes': session_changes,

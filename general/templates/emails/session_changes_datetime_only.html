@@ -26,7 +26,7 @@
 </p>
 
 <p class="content-text">
-  <strong>{{ mentor_name }}</strong> has made changes to your session{% if session_changes|length > 1 %}s{% endif %}. Please review and confirm or decline these changes.
+  <strong>{{ mentor_name }}</strong> has made changes to the date and time of your session{% if session_changes|length > 1 %}s{% endif %}. Please review and confirm or decline these changes.
 </p>
 
 {% for change in session_changes %}
@@ -40,54 +40,22 @@
   <div style="padding: 20px; background-color: #ffffff;">
     {% with original_data=change.original_data %}
     {% if original_data %}
-      {% comment %}Check if date/time actually changed{% endcomment %}
-      {% if original_data._datetime_changed %}
-        <!-- Date & Time Change -->
-        <div style="margin-bottom: 20px;">
-          <div style="font-size: 13px; font-weight: 600; color: #64748b; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">Date & Time</div>
-          
-          <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width: 100%; border-collapse: separate; border-spacing: 0;">
-            <tr>
-              <td style="padding: 10px 12px; background-color: #fee2e2; border-left: 3px solid #ef4444; border-radius: 8px 0 0 8px; width: 45%;">
-                <div style="font-size: 11px; font-weight: 600; color: #991b1b; margin-bottom: 4px; text-transform: uppercase;">Previous</div>
-                <div style="font-size: 14px; font-weight: 600; color: #991b1b;">
-                  {% if original_data.start_datetime|date:"Y-m-d" == original_data.end_datetime|date:"Y-m-d" %}
-                    {{ original_data.start_datetime|date:"M d, Y" }}<br>
-                    {{ original_data.start_datetime|date:"g:i A" }} - {{ original_data.end_datetime|date:"g:i A" }}
-                  {% else %}
-                    {{ original_data.start_datetime|date:"M d, Y • g:i A" }}<br>
-                    {{ original_data.end_datetime|date:"M d, Y • g:i A" }}
-                  {% endif %}
-                </div>
-              </td>
-              <td style="padding: 10px; text-align: center; vertical-align: middle; background-color: #f9fafb; width: 10%;">
-                <div style="color: #64748b; font-size: 16px; font-weight: bold;">→</div>
-              </td>
-              <td style="padding: 10px 12px; background-color: #dcfce7; border-right: 3px solid #10b981; border-radius: 0 8px 8px 0; width: 45%;">
-                <div style="font-size: 11px; font-weight: 600; color: #166534; margin-bottom: 4px; text-transform: uppercase;">Updated</div>
-                <div style="font-size: 14px; font-weight: 600; color: #166534;">
-                  {{ change.session.start_datetime|date:"M d, Y" }}<br>
-                  {{ change.session.start_datetime|date:"g:i A" }} - {{ change.session.end_datetime|date:"g:i A" }}
-                </div>
-              </td>
-            </tr>
-          </table>
-        </div>
-        {% endif %}
-      {% endif %}
-      
-      {% comment %}Check if price actually changed{% endcomment %}
-      {% if original_data._price_changed %}
-      <!-- Price Change -->
+      <!-- Date & Time Change -->
       <div style="margin-bottom: 20px;">
-        <div style="font-size: 13px; font-weight: 600; color: #64748b; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">Price</div>
+        <div style="font-size: 13px; font-weight: 600; color: #64748b; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">Date & Time</div>
         
         <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width: 100%; border-collapse: separate; border-spacing: 0;">
           <tr>
             <td style="padding: 10px 12px; background-color: #fee2e2; border-left: 3px solid #ef4444; border-radius: 8px 0 0 8px; width: 45%;">
               <div style="font-size: 11px; font-weight: 600; color: #991b1b; margin-bottom: 4px; text-transform: uppercase;">Previous</div>
-              <div style="font-size: 16px; font-weight: 600; color: #991b1b;">
-                ${{ original_data.session_price|default:"Free" }}
+              <div style="font-size: 14px; font-weight: 600; color: #991b1b;">
+                {% if original_data.start_datetime|date:"Y-m-d" == original_data.end_datetime|date:"Y-m-d" %}
+                  {{ original_data.start_datetime|date:"M d, Y" }}<br>
+                  {{ original_data.start_datetime|date:"g:i A" }} - {{ original_data.end_datetime|date:"g:i A" }}
+                {% else %}
+                  {{ original_data.start_datetime|date:"M d, Y • g:i A" }}<br>
+                  {{ original_data.end_datetime|date:"M d, Y • g:i A" }}
+                {% endif %}
               </div>
             </td>
             <td style="padding: 10px; text-align: center; vertical-align: middle; background-color: #f9fafb; width: 10%;">
@@ -95,14 +63,14 @@
             </td>
             <td style="padding: 10px 12px; background-color: #dcfce7; border-right: 3px solid #10b981; border-radius: 0 8px 8px 0; width: 45%;">
               <div style="font-size: 11px; font-weight: 600; color: #166534; margin-bottom: 4px; text-transform: uppercase;">Updated</div>
-              <div style="font-size: 16px; font-weight: 600; color: #166534;">
-                ${{ change.session.session_price|default:"Free" }}
+              <div style="font-size: 14px; font-weight: 600; color: #166534;">
+                {{ change.session.start_datetime|date:"M d, Y" }}<br>
+                {{ change.session.start_datetime|date:"g:i A" }} - {{ change.session.end_datetime|date:"g:i A" }}
               </div>
             </td>
           </tr>
         </table>
       </div>
-      {% endif %}
     {% endif %}
     {% endwith %}
   </div>
@@ -113,3 +81,4 @@
   <strong>Note:</strong> This link will work multiple times. Click it to review all your session invitations and changes, then confirm or decline each one.
 </p>
 {% endblock %}
+

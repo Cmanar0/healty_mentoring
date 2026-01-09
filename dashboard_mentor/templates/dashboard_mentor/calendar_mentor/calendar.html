@@ -5341,17 +5341,6 @@
     });
   }
   
-  // ESC key handler for session changes popup
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && sessionChangesOverlay && sessionChangesOverlay.classList.contains('is-visible')) {
-      // Don't allow closing if save is in progress
-      if (isSavingSessionChanges) {
-        e.preventDefault();
-        return;
-      }
-      closeSessionChanges();
-    }
-  });
 
   // Availability settings popup handlers
   if (availabilitySettingsOverlay) {
@@ -5578,6 +5567,23 @@
   
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
+    
+    // CRITICAL: Check session changes popup FIRST, before checking if calendar is visible
+    // This prevents the calendar close logic from running when the changes popup is open
+    if (sessionChangesOverlay && sessionChangesOverlay.classList.contains('is-visible')) {
+      // Don't allow closing if save is in progress
+      if (isSavingSessionChanges) {
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+      e.preventDefault();
+      e.stopPropagation();
+      closeSessionChanges();
+      return;
+    }
+    
+    // Only proceed with calendar close logic if calendar is visible AND session changes popup is NOT visible
     if (!overlay.classList.contains('is-visible')) return;
 
     // Priority: close settings popups first, then switch popups, then the calendar popup.
