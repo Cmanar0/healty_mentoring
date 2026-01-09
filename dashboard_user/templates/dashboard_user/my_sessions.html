@@ -7,9 +7,12 @@
 <div class="dashboard-content-container">
     <div class="my-sessions-header">
         <h1 class="dashboard-page-title">My Sessions</h1>
-        <a href="{% url 'general:dashboard_user:session_management' %}" class="btn btn-primary">
+        <a href="{% url 'general:dashboard_user:session_management' %}" class="btn btn-primary" style="position: relative;">
             <i class="fas fa-inbox"></i>
             <span>Session Invitations & Changes</span>
+            {% if pending_sessions_count > 0 %}
+            <span class="btn-badge">{{ pending_sessions_count }}</span>
+            {% endif %}
         </a>
     </div>
 
@@ -44,6 +47,24 @@
     border-radius: 8px;
     gap: 8px;
     white-space: nowrap;
+}
+
+/* Button Badge for Session Management */
+.btn-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  background: #ef4444;
+  color: white;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 10px;
+  min-width: 18px;
+  text-align: center;
+  line-height: 1.4;
+  z-index: 2;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 @media (max-width: 768px) {

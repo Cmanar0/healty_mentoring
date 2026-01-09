@@ -204,7 +204,11 @@
         </li>
         <li>
           <a href="/dashboard/user/my-sessions/" class="sidebar-link {% if request.resolver_match.url_name == 'my_sessions' %}active{% endif %}" title="My Sessions">
-            <i class="fas fa-calendar"></i>
+            <i class="fas fa-calendar sidebar-icon-with-badge">
+              {% if pending_sessions_count > 0 %}
+              <span class="sidebar-badge">{{ pending_sessions_count }}</span>
+              {% endif %}
+            </i>
             <span class="sidebar-text">My Sessions</span>
           </a>
         </li>
@@ -621,6 +625,29 @@
 .view-all-notifications:hover {
   color: var(--dash-primary-hover);
   text-decoration: underline;
+}
+
+/* Sidebar Badge for Sessions */
+.sidebar-icon-with-badge {
+  position: relative;
+  display: inline-block;
+}
+
+.sidebar-badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  background: #ef4444;
+  color: white;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 10px;
+  min-width: 18px;
+  text-align: center;
+  line-height: 1.4;
+  z-index: 2;
+  transform: translate(50%, -50%);
 }
 </style>
 <script>

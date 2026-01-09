@@ -60,6 +60,7 @@ TEMPLATES = [{
         "django.contrib.auth.context_processors.auth",
         "django.contrib.messages.context_processors.messages",
         "general.context_processors.notifications",
+        "general.context_processors.pending_sessions_count",
     ]},
 }]
 
