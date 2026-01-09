@@ -15,10 +15,6 @@ from accounts.models import MentorProfile
 from datetime import datetime, timezone as dt_timezone
 
 
-# Configuration: intended execution frequency (in minutes)
-CLEANUP_INTERVAL_MINUTES = 2
-
-
 def cleanup_expired_availability_slots():
     """
     Remove expired one-time availability slots from all MentorProfile records.

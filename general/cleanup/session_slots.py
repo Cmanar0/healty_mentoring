@@ -15,10 +15,6 @@ from general.models import Session
 from datetime import timezone as dt_timezone
 
 
-# Configuration: intended execution frequency (in minutes)
-CLEANUP_INTERVAL_MINUTES = 2
-
-
 def cleanup_draft_sessions():
     """
     Clean up expired sessions based on their status.

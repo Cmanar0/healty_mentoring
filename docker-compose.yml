@@ -102,7 +102,7 @@ services:
       - app_network
     command: >
       sh -c "
-      echo '*/2 * * * * cd /app && python manage.py cleanup_calendar >> /proc/1/fd/1 2>&1' | crontab - &&
+      echo '*/15 * * * * cd /app && python manage.py cleanup_calendar >> /proc/1/fd/1 2>&1' | crontab - &&
       crond -f -l 2
       "
 
