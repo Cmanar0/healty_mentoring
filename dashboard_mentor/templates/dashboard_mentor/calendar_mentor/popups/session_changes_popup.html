@@ -1,6 +1,6 @@
 {# Popup shown before saving when there are tracked session changes #}
 
-<div id="mentorSessionChangesOverlay" class="session-changes-overlay" aria-hidden="true">
+<div id="mentorSessionChangesOverlay" class="session-changes-overlay" aria-hidden="true" style="display: none !important;">
   <div class="session-changes-backdrop" data-session-changes-close></div>
 
   <div class="session-changes-modal" role="dialog" aria-modal="true" aria-label="Session changes">
@@ -65,10 +65,12 @@
     opacity: 0;
     visibility: hidden;
     transition: opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    pointer-events: none;
   }
   .session-changes-overlay.is-visible {
     opacity: 1;
     visibility: visible;
+    pointer-events: auto;
   }
   .session-changes-overlay.is-locked {
     pointer-events: auto;

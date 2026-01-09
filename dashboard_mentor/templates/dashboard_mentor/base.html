@@ -27,14 +27,14 @@
     </div>
     <div class="dashboard-top-actions">
       {% if user.is_authenticated and user.profile.first_name and user.profile.last_name %}
-        <div class="dashboard-top-actions-group">
+        <div class="dashboard-top-actions-group" style="display: none !important;">
           <!-- Timezone Test Button (for testing only - only shown in DEBUG mode) -->
           {% if debug %}
           <div class="timezone-test-dropdown">
             <button class="timezone-test-btn" id="timezoneTestBtn" aria-label="Test Timezone Checker" title="Test Timezone Checker">
               <i class="fas fa-globe"></i>
             </button>
-            <div class="timezone-test-menu" id="timezoneTestMenu">
+            <div class="timezone-test-menu" id="timezoneTestMenu" style="display: none !important;">
               <div class="timezone-test-header">
                 <h4>Test Timezone Checker</h4>
                 <p>Select a test timezone to simulate mismatch</p>
@@ -57,7 +57,7 @@
           {% include "general/notifications/dropdown_snippet.html" %}
         </div>
           <div class="user-profile-dropdown">
-          <button class="user-profile-trigger" id="userProfileTrigger">
+          <button class="user-profile-trigger" id="userProfileTrigger" style="display: none !important;">
             <span class="user-name">{{ user.profile.first_name }} {{ user.profile.last_name }}</span>
             {# Inline sizing prevents flash-of-huge-avatar before CSS loads #}
             <div class="user-avatar" style="width:36px;height:36px;border-radius:50%;overflow:hidden;flex-shrink:0;">
@@ -70,7 +70,7 @@
               {% endif %}
             </div>
           </button>
-          <div class="user-dropdown-menu" id="userDropdownMenu">
+          <div class="user-dropdown-menu" id="userDropdownMenu" style="display: none !important;">
             <a href="/dashboard/mentor/account/" class="dropdown-item">
               <i class="fas fa-user"></i>
               <span>Account</span>
@@ -354,12 +354,15 @@
   transform: translateY(-10px);
   transition: all 0.2s ease;
   z-index: 1000;
+  display: block;
+  pointer-events: none;
 }
 
 .user-profile-dropdown.active .user-dropdown-menu {
   opacity: 1;
   visibility: visible;
   transform: translateY(0);
+  pointer-events: auto;
 }
 
 .dropdown-item,
@@ -488,12 +491,15 @@
   transform: translateY(-10px);
   transition: all 0.2s ease;
   z-index: 1000;
+  display: block;
+  pointer-events: none;
 }
 
 .timezone-test-dropdown.active .timezone-test-menu {
   opacity: 1;
   visibility: visible;
   transform: translateY(0);
+  pointer-events: auto;
 }
 
 .timezone-test-header {
@@ -626,12 +632,14 @@
   display: flex;
   flex-direction: column;
   height: 500px;
+  pointer-events: none;
 }
 
 .notification-dropdown.active .notification-menu {
   opacity: 1;
   visibility: visible;
   transform: translateY(0);
+  pointer-events: auto;
 }
 
 .notification-menu-header {
@@ -797,8 +805,17 @@ document.addEventListener('DOMContentLoaded', function() {
   const notificationBell = document.getElementById('notificationBell');
   const notificationMenu = document.getElementById('notificationMenu');
   const notificationDropdown = document.querySelector('.notification-dropdown');
+  const dashboardTopActionsGroup = document.querySelector('.dashboard-top-actions-group');
+
+  // Remove inline display:none immediately so CSS can control visibility (prevents flash)
+  if (dashboardTopActionsGroup) {
+    dashboardTopActionsGroup.style.display = '';
+  }
 
   if (notificationBell && notificationMenu) {
+    // Remove inline display:none immediately so CSS can control visibility (prevents flash)
+    notificationMenu.style.display = '';
+    
     notificationBell.addEventListener('click', function(e) {
       e.stopPropagation();
       notificationDropdown.classList.toggle('active');
@@ -845,6 +862,9 @@ document.addEventListener('DOMContentLoaded', function() {
   const timezoneTestReset = document.getElementById('timezoneTestReset');
 
   if (timezoneTestBtn && timezoneTestMenu) {
+    // Remove inline display:none immediately so CSS can control visibility (prevents flash)
+    timezoneTestMenu.style.display = '';
+    
     timezoneTestBtn.addEventListener('click', function(e) {
       e.stopPropagation();
       timezoneTestDropdown.classList.toggle('active');
@@ -953,6 +973,10 @@ document.addEventListener('DOMContentLoaded', function() {
   const userProfileDropdown = document.querySelector('.user-profile-dropdown');
 
   if (userProfileTrigger && userDropdownMenu) {
+    // Remove inline display:none immediately so CSS can control visibility (prevents flash)
+    userDropdownMenu.style.display = '';
+    userProfileTrigger.style.display = '';
+    
     userProfileTrigger.addEventListener('click', function(e) {
       e.stopPropagation();
       userProfileDropdown.classList.toggle('active');

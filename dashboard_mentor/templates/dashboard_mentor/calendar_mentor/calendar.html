@@ -917,6 +917,25 @@
   
   if (!overlay || !root) return;
 
+  // Remove inline display:none from all popups immediately so CSS can control visibility (prevents flash)
+  const allPopups = [
+    availabilitySettingsOverlay,
+    availabilitySwitchOverlay,
+    sessionSwitchOverlay,
+    sessionSettingsOverlay,
+    sessionSettingsRefundConfirmOverlay,
+    scheduleSessionOverlay,
+    unsavedChangesOverlay,
+    recurringDeleteOverlay,
+    recurringMoveOverlay,
+    sessionChangesOverlay
+  ];
+  allPopups.forEach(popup => {
+    if (popup && popup.style) {
+      popup.style.display = '';
+    }
+  });
+
   let calendar = null;
   // Used to avoid creating a slot right after we programmatically switch to day view (e.g. from month summary click)
   let suppressNextDateClickUntilMs = 0;

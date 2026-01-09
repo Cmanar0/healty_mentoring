@@ -1,6 +1,6 @@
 {# Popup shown when mentor edits a Session slot in Sessions mode #}
 
-<div id="mentorSessionSettingsOverlay" class="session-settings-overlay" aria-hidden="true">
+<div id="mentorSessionSettingsOverlay" class="session-settings-overlay" aria-hidden="true" style="display: none !important;">
   <div class="session-settings-backdrop" data-session-settings-close></div>
 
   <div class="session-settings-modal" role="dialog" aria-modal="true" aria-label="Session settings">
@@ -176,7 +176,7 @@
 </div>
 
 <!-- Refund confirmation dialog -->
-<div id="sessionSettingsRefundConfirmOverlay" class="session-settings-refund-confirm-overlay" aria-hidden="true">
+<div id="sessionSettingsRefundConfirmOverlay" class="session-settings-refund-confirm-overlay" aria-hidden="true" style="display: none !important;">
   <div class="session-settings-refund-confirm-backdrop" data-refund-confirm-close></div>
   <div class="session-settings-refund-confirm-modal" role="dialog" aria-modal="true" aria-label="Confirm refund">
     <div class="session-settings-refund-confirm-header">
@@ -219,10 +219,12 @@
     transition: opacity 0.2s ease, visibility 0.2s ease;
     /* Ensure this doesn't create a stacking context that traps notifications */
     isolation: auto;
+    pointer-events: none;
   }
   .session-settings-overlay.is-visible {
     opacity: 1;
     visibility: visible;
+    pointer-events: auto;
   }
   .session-settings-backdrop {
     position: absolute;
@@ -691,10 +693,12 @@
     opacity: 0;
     visibility: hidden;
     transition: opacity 0.2s ease, visibility 0.2s ease;
+    pointer-events: none;
   }
   .session-settings-refund-confirm-overlay.is-visible {
     opacity: 1;
     visibility: visible;
+    pointer-events: auto;
   }
   .session-settings-refund-confirm-backdrop {
     position: absolute;

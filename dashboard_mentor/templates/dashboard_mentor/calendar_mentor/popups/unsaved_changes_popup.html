@@ -1,6 +1,6 @@
 {# Popup shown when user tries to close calendar with unsaved changes #}
 
-<div id="mentorCalendarUnsavedChangesOverlay" class="unsaved-changes-overlay" aria-hidden="true">
+<div id="mentorCalendarUnsavedChangesOverlay" class="unsaved-changes-overlay" aria-hidden="true" style="display: none !important;">
   <div class="unsaved-changes-backdrop" data-unsaved-changes-close></div>
 
   <div class="unsaved-changes-modal" role="dialog" aria-modal="true" aria-label="Unsaved changes">
@@ -40,10 +40,12 @@
     opacity: 0;
     visibility: hidden;
     transition: opacity 0.2s ease, visibility 0.2s ease;
+    pointer-events: none;
   }
   .unsaved-changes-overlay.is-visible {
     opacity: 1;
     visibility: visible;
+    pointer-events: auto;
   }
   .unsaved-changes-backdrop {
     position: absolute;

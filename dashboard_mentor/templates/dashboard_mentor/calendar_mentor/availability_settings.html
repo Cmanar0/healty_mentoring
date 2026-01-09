@@ -1,6 +1,6 @@
 {# Popup shown when mentor double-clicks an availability slot in the calendar #}
 
-<div id="mentorAvailabilitySettingsOverlay" class="availability-settings-overlay" aria-hidden="true">
+<div id="mentorAvailabilitySettingsOverlay" class="availability-settings-overlay" aria-hidden="true" style="display: none !important;">
   <div class="availability-settings-backdrop" data-availability-settings-close></div>
 
   <div class="availability-settings-modal" role="dialog" aria-modal="true" aria-label="Availability settings">
@@ -56,6 +56,7 @@
 
 <style>
   .availability-settings-overlay {
+    pointer-events: none;
     position: fixed;
     inset: 0;
     display: flex;
@@ -72,6 +73,7 @@
   .availability-settings-overlay.is-visible {
     opacity: 1;
     visibility: visible;
+    pointer-events: auto;
   }
   .availability-settings-backdrop {
     position: absolute;

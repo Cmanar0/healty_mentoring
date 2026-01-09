@@ -1,6 +1,6 @@
 {# Popup shown when user tries to edit availability while in Sessions mode #}
 
-<div id="mentorAvailabilitySwitchModeOverlay" class="availability-switch-overlay" aria-hidden="true">
+<div id="mentorAvailabilitySwitchModeOverlay" class="availability-switch-overlay" aria-hidden="true" style="display: none !important;">
   <div class="availability-switch-backdrop" data-availability-switch-close></div>
 
   <div class="availability-switch-modal" role="dialog" aria-modal="true" aria-label="Switch to Availability mode">
@@ -40,10 +40,12 @@
     opacity: 0;
     visibility: hidden;
     transition: opacity 0.2s ease, visibility 0.2s ease;
+    pointer-events: none;
   }
   .availability-switch-overlay.is-visible {
     opacity: 1;
     visibility: visible;
+    pointer-events: auto;
   }
   .availability-switch-backdrop {
     position: absolute;

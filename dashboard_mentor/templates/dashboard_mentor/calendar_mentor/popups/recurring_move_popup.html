@@ -1,6 +1,6 @@
 {# Popup shown when user drags a recurring availability occurrence #}
 
-<div id="mentorRecurringMoveOverlay" class="recurring-move-overlay" aria-hidden="true">
+<div id="mentorRecurringMoveOverlay" class="recurring-move-overlay" aria-hidden="true" style="display: none !important;">
   <div class="recurring-move-backdrop" data-recurring-move-close></div>
 
   <div class="recurring-move-modal" role="dialog" aria-modal="true" aria-label="Move recurring slot">
@@ -42,10 +42,12 @@
     opacity: 0;
     visibility: hidden;
     transition: opacity 0.2s ease, visibility 0.2s ease;
+    pointer-events: none;
   }
   .recurring-move-overlay.is-visible {
     opacity: 1;
     visibility: visible;
+    pointer-events: auto;
   }
   .recurring-move-backdrop {
     position: absolute;

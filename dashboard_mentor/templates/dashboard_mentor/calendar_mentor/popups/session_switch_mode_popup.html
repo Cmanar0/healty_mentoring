@@ -1,6 +1,6 @@
 {# Popup shown when user tries to edit a Session slot while in Availability mode #}
 
-<div id="mentorSessionSwitchModeOverlay" class="session-switch-overlay" aria-hidden="true">
+<div id="mentorSessionSwitchModeOverlay" class="session-switch-overlay" aria-hidden="true" style="display: none !important;">
   <div class="session-switch-backdrop" data-session-switch-close></div>
 
   <div class="session-switch-modal" role="dialog" aria-modal="true" aria-label="Switch to Sessions mode">
@@ -40,10 +40,12 @@
     opacity: 0;
     visibility: hidden;
     transition: opacity 0.2s ease, visibility 0.2s ease;
+    pointer-events: none;
   }
   .session-switch-overlay.is-visible {
     opacity: 1;
     visibility: visible;
+    pointer-events: auto;
   }
   .session-switch-backdrop {
     position: absolute;

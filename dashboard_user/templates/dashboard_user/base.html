@@ -21,7 +21,8 @@
       </a>
     </div>
     <div class="dashboard-top-actions">
-      {% if user.is_authenticated and user.profile.first_name and user.profile.last_name %}
+      {% if user.is_authenticated %}
+        {% if user.profile and user.profile.first_name and user.profile.last_name %}
         <div class="dashboard-top-actions-group">
           <!-- Notification Bell -->
           <div class="notification-dropdown">
@@ -29,7 +30,7 @@
               <i class="fas fa-bell"></i>
               <span class="notification-badge">5</span>
             </button>
-            <div class="notification-menu" id="notificationMenu">
+            <div class="notification-menu" id="notificationMenu" style="display: none !important;">
             <div class="notification-menu-header">
               <h3>Notifications</h3>
               <button class="mark-all-read-btn" style="width: auto;" type="button">Mark all as read</button>
@@ -117,7 +118,7 @@
               {% endif %}
             </div>
           </button>
-          <div class="user-dropdown-menu" id="userDropdownMenu">
+          <div class="user-dropdown-menu" id="userDropdownMenu" style="display: none !important;">
             <a href="/dashboard/user/account/" class="dropdown-item">
               <i class="fas fa-user"></i>
               <span>Account</span>
@@ -144,6 +145,39 @@
         </form>
           </div>
         </div>
+        {% else %}
+        <!-- Fallback: Show navbar even if profile is missing or incomplete -->
+        <div class="dashboard-top-actions-group">
+          <div class="user-profile-dropdown">
+            <button class="user-profile-trigger" id="userProfileTrigger">
+              <span class="user-name">{% if user.profile %}{{ user.profile.first_name|default:user.email }} {{ user.profile.last_name|default:"" }}{% else %}{{ user.email }}{% endif %}</span>
+              <div class="user-avatar">
+                {% if user.profile and user.profile.profile_picture %}
+                  <img src="{{ user.profile.profile_picture.url }}" alt="Profile" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
+                {% else %}
+                  <div class="avatar-placeholder">
+                    <i class="fas fa-user"></i>
+                  </div>
+                {% endif %}
+              </div>
+            </button>
+            <div class="user-dropdown-menu" id="userDropdownMenu" style="display: none !important;">
+              <a href="/dashboard/user/account/" class="dropdown-item">
+                <i class="fas fa-user"></i>
+                <span>Account</span>
+              </a>
+              <div class="dropdown-divider"></div>
+              <form action="{% url 'accounts:logout' %}" method="post" class="dropdown-item-form">
+                {% csrf_token %}
+                <button type="submit" class="dropdown-item logout-item">
+                  <i class="fas fa-sign-out-alt"></i>
+                  <span>Logout</span>
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+        {% endif %}
       {% endif %}
     </div>
   </nav>
@@ -289,12 +323,15 @@
   transform: translateY(-10px);
   transition: all 0.2s ease;
   z-index: 1000;
+  display: block;
+  pointer-events: none;
 }
 
 .user-profile-dropdown.active .user-dropdown-menu {
   opacity: 1;
   visibility: visible;
   transform: translateY(0);
+  pointer-events: auto;
 }
 
 .dropdown-item,
@@ -450,12 +487,14 @@
   display: flex;
   flex-direction: column;
   height: 500px;
+  pointer-events: none;
 }
 
 .notification-dropdown.active .notification-menu {
   opacity: 1;
   visibility: visible;
   transform: translateY(0);
+  pointer-events: auto;
 }
 
 .notification-menu-header {
@@ -625,6 +664,9 @@ document.addEventListener('DOMContentLoaded', function() {
   const notificationDropdown = document.querySelector('.notification-dropdown');
 
   if (notificationBell && notificationMenu) {
+    // Remove inline display:none immediately so CSS can control visibility (prevents flash)
+    notificationMenu.style.display = '';
+    
     notificationBell.addEventListener('click', function(e) {
       e.stopPropagation();
       notificationDropdown.classList.toggle('active');
@@ -659,6 +701,9 @@ document.addEventListener('DOMContentLoaded', function() {
   const userProfileDropdown = document.querySelector('.user-profile-dropdown');
 
   if (userProfileTrigger && userDropdownMenu) {
+    // Remove inline display:none immediately so CSS can control visibility (prevents flash)
+    userDropdownMenu.style.display = '';
+    
     userProfileTrigger.addEventListener('click', function(e) {
       e.stopPropagation();
       userProfileDropdown.classList.toggle('active');

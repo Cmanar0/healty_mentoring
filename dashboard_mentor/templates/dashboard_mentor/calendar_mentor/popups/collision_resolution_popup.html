@@ -1,7 +1,7 @@
 {% load static %}
 
 <!-- Collision Resolution Popup -->
-<div id="collisionResolutionPopup" class="collision-resolution-popup" aria-hidden="true">
+<div id="collisionResolutionPopup" class="collision-resolution-popup" aria-hidden="true" style="display: none !important;">
   <div class="collision-resolution-backdrop"></div>
   <div class="collision-resolution-content">
     <div class="collision-resolution-header">
@@ -295,6 +295,10 @@
 <script>
 (function() {
   const popup = document.getElementById('collisionResolutionPopup');
+  // Remove inline display:none immediately so CSS can control visibility (prevents flash)
+  if (popup && popup.style) {
+    popup.style.display = '';
+  }
   const backdrop = document.querySelector('.collision-resolution-backdrop');
   const closeBtn = document.getElementById('collisionResolutionClose');
   const cancelBtn = document.getElementById('collisionCancelBtn');

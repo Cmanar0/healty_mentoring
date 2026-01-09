@@ -1,6 +1,6 @@
 {# Popup shown when mentor clicks an availability slot in Sessions mode #}
 
-<div id="mentorScheduleSessionOverlay" class="schedule-session-overlay" aria-hidden="true">
+<div id="mentorScheduleSessionOverlay" class="schedule-session-overlay" aria-hidden="true" style="display: none !important;">
   <div class="schedule-session-backdrop" data-schedule-session-close></div>
 
   <div class="schedule-session-modal" role="dialog" aria-modal="true" aria-label="Schedule a session">
@@ -53,10 +53,12 @@
     opacity: 0;
     visibility: hidden;
     transition: opacity 0.2s ease, visibility 0.2s ease;
+    pointer-events: none;
   }
   .schedule-session-overlay.is-visible {
     opacity: 1;
     visibility: visible;
+    pointer-events: auto;
   }
   .schedule-session-backdrop {
     position: absolute;
