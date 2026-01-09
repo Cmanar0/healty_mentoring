@@ -309,6 +309,38 @@ class Session(models.Model):
         verbose_name_plural = "Sessions"
         ordering = ['-start_datetime']
 
+    def save(self, *args, **kwargs):
+        # Track if end_datetime is changing
+        end_datetime_changed = False
+        old_end_datetime = None
+        
+        if self.pk:
+            # Check if end_datetime has changed by comparing with database
+            try:
+                old_instance = type(self).objects.get(pk=self.pk)
+                old_end_datetime = old_instance.end_datetime
+                if old_end_datetime != self.end_datetime:
+                    end_datetime_changed = True
+            except type(self).DoesNotExist:
+                pass
+        else:
+            # New instance, end_datetime is being set for the first time
+            if self.end_datetime:
+                end_datetime_changed = True
+        
+        super().save(*args, **kwargs)
+        
+        # Update related invitations when end_datetime changes
+        if end_datetime_changed and self.end_datetime:
+            # Update all non-expired, non-cancelled invitations for this session
+            # Only update if the new expiration is in the future
+            if self.end_datetime > timezone.now():
+                self.invitations.filter(
+                    cancelled_at__isnull=True
+                ).exclude(
+                    expires_at__lt=timezone.now()
+                ).update(expires_at=self.end_datetime)
+
     def __str__(self):
         return f"Session on {self.start_datetime.strftime('%Y-%m-%d %H:%M')}"
 
@@ -348,7 +380,12 @@ class SessionInvitation(models.Model):
         if not self.token:
             self.token = get_random_string(64)
         if not self.expires_at:
-            self.expires_at = timezone.now() + timedelta(days=7)
+            # Set expiration to the session's end_datetime if available
+            if self.session and self.session.end_datetime:
+                self.expires_at = self.session.end_datetime
+            else:
+                # Fallback to 7 days if session doesn't have end_datetime (shouldn't happen normally)
+                self.expires_at = timezone.now() + timedelta(days=7)
         if not self.last_sent_at:
             self.last_sent_at = timezone.now()
         super().save(*args, **kwargs)

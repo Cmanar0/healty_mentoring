@@ -934,7 +934,6 @@
   let originalSessionsById = new Map(); // Map<sessionId, sessionData> - original data from backend
   let changedSessionsById = new Map(); // Map<sessionId, snapshot> - tracked changes
   let lastBlockedPastSessionDrag = null; // Track blocked past session drag to show notification once
-  let sessionsInitialized = false; // Flag to ensure originalSessionsById is populated only once per calendar open
 
   // Timezone source of truth: mentorprofile.selected_timezone (fallback: detected_timezone)
   function resolveMentorTimezone() {
@@ -2910,30 +2909,29 @@
       // Load Sessions from DB and render as session slots (status-colored)
       const sessions = Array.isArray(data.sessions) ? data.sessions : [];
       
-      // Populate originalSessionsById from fetched sessions (only once per calendar open)
-      if (!sessionsInitialized) {
-        sessions.forEach((s) => {
-          if (!s || !s.id) return;
-          // Create a deep copy of the session data for originalSessionsById
-          const sessionSnapshot = {
-            id: s.id,
-            start: s.start || null,
-            end: s.end || null,
-            status: normalizeSessionStatus(s.status || 'draft'),
-            session_price: s.session_price || null,
-            client_email: s.client_email || null,
-            client_first_name: s.client_first_name || null,
-            client_last_name: s.client_last_name || null,
-            expires_at: s.expires_at || null,
-            session_type: s.session_type || 'individual',
-            invitation_sent: !!s.invitation_sent,
-            can_remind: !!s.can_remind,
-            last_invite_sent_at: s.last_invite_sent_at || null
-          };
-          originalSessionsById.set(s.id, sessionSnapshot);
-        });
-        sessionsInitialized = true;
-      }
+      // Always repopulate originalSessionsById from fetched sessions when data is refetched
+      // This ensures that when sessions are updated (e.g., status changes from draft to invited),
+      // the original data reflects the current state from the database
+      sessions.forEach((s) => {
+        if (!s || !s.id) return;
+        // Create a deep copy of the session data for originalSessionsById
+        const sessionSnapshot = {
+          id: s.id,
+          start: s.start || null,
+          end: s.end || null,
+          status: normalizeSessionStatus(s.status || 'draft'),
+          session_price: s.session_price || null,
+          client_email: s.client_email || null,
+          client_first_name: s.client_first_name || null,
+          client_last_name: s.client_last_name || null,
+          expires_at: s.expires_at || null,
+          session_type: s.session_type || 'individual',
+          invitation_sent: !!s.invitation_sent,
+          can_remind: !!s.can_remind,
+          last_invite_sent_at: s.last_invite_sent_at || null
+        };
+        originalSessionsById.set(s.id, sessionSnapshot);
+      });
       
       // Clear changedSessionsById after successful load (repopulate original, clear changes)
       changedSessionsById.clear();
@@ -3598,8 +3596,6 @@
         recurring: recurringPayload.length,
         deletedRecurring: deleteSeriesPayload.length
       });
-      // Reset sessionsInitialized so originalSessionsById gets repopulated with new data
-      sessionsInitialized = false;
       await loadSavedAvailability();
       deletedSessionDbIds = new Set();
       // changedSessionsById is already cleared in loadSavedAvailability()
@@ -4662,7 +4658,6 @@
     // Initialize session tracking maps on calendar open
     originalSessionsById.clear();
     changedSessionsById.clear();
-    sessionsInitialized = false;
     
     // Optional: allow opener to force initial mode.
     // Supported values: 'sessions' | 'availability'
@@ -4734,7 +4729,6 @@
 
   function closeNow() {
     // Reset session tracking on close
-    sessionsInitialized = false;
     originalSessionsById.clear();
     changedSessionsById.clear();
     

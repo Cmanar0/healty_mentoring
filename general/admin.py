@@ -2,7 +2,8 @@ from django.contrib import admin
 from django import forms
 from django.contrib import messages
 from django.utils.html import format_html
-from .models import Session, Notification
+from django.utils import timezone
+from .models import Session, Notification, SessionInvitation
 from accounts.models import CustomUser, UserProfile, MentorProfile
 import uuid
 
@@ -223,3 +224,94 @@ class NotificationAdmin(admin.ModelAdmin):
         return render(request, 'admin/general/notification/create_notification.html', context)
 
 admin.site.register(Notification, NotificationAdmin)
+
+
+class SessionInvitationAdmin(admin.ModelAdmin):
+    list_display = (
+        'id', 
+        'invited_email', 
+        'session_link', 
+        'mentor_link',
+        'expires_at', 
+        'session_end_datetime',
+        'is_expired_status',
+        'created_at',
+        'accepted_at',
+        'cancelled_at',
+        'token_preview'
+    )
+    list_filter = ('created_at', 'expires_at', 'accepted_at', 'cancelled_at')
+    search_fields = ('invited_email', 'token', 'session__id', 'mentor__user__email')
+    readonly_fields = ('token', 'created_at', 'last_sent_at', 'expires_at', 'accepted_at', 'cancelled_at', 'is_expired_status', 'session_end_datetime')
+    date_hierarchy = 'created_at'
+    raw_id_fields = ('session', 'mentor', 'invited_user')
+    
+    fieldsets = (
+        ('Invitation Details', {
+            'fields': ('token', 'invited_email', 'invited_user', 'created_at', 'last_sent_at')
+        }),
+        ('Expiration', {
+            'fields': ('expires_at', 'session_end_datetime', 'is_expired_status'),
+            'description': 'expires_at should match the session end_datetime'
+        }),
+        ('Status', {
+            'fields': ('accepted_at', 'cancelled_at')
+        }),
+        ('Relations', {
+            'fields': ('session', 'mentor')
+        }),
+    )
+    
+    def session_link(self, obj):
+        """Link to the related session"""
+        if obj.session:
+            url = f"/admin/general/session/{obj.session.id}/change/"
+            return format_html('<a href="{}">Session #{}</a>', url, obj.session.id)
+        return '-'
+    session_link.short_description = 'Session'
+    
+    def mentor_link(self, obj):
+        """Link to the related mentor"""
+        if obj.mentor and obj.mentor.user:
+            url = f"/admin/accounts/mentorprofile/{obj.mentor.id}/change/"
+            name = f"{obj.mentor.first_name} {obj.mentor.last_name}".strip() or obj.mentor.user.email
+            return format_html('<a href="{}">{}</a>', url, name)
+        return '-'
+    mentor_link.short_description = 'Mentor'
+    
+    def session_end_datetime(self, obj):
+        """Display the session's end_datetime for comparison"""
+        if obj.session and obj.session.end_datetime:
+            return obj.session.end_datetime
+        return '-'
+    session_end_datetime.short_description = 'Session End DateTime'
+    
+    def is_expired_status(self, obj):
+        """Display expiration status with color coding"""
+        if obj.cancelled_at:
+            return format_html('<span style="color: #dc3545;">Cancelled</span>')
+        if obj.accepted_at:
+            return format_html('<span style="color: #28a745;">Accepted</span>')
+        if obj.is_expired():
+            return format_html('<span style="color: #dc3545; font-weight: bold;">Expired</span>')
+        if obj.expires_at:
+            if obj.expires_at < timezone.now():
+                return format_html('<span style="color: #dc3545; font-weight: bold;">Expired</span>')
+            else:
+                return format_html('<span style="color: #28a745;">Active</span>')
+        return format_html('<span style="color: #ffc107;">No expiration set</span>')
+    is_expired_status.short_description = 'Status'
+    
+    def token_preview(self, obj):
+        """Show a preview of the token"""
+        if obj.token:
+            return format_html('<code style="font-size: 0.85em;">{}</code>', obj.token[:16] + '...')
+        return '-'
+    token_preview.short_description = 'Token'
+    
+    def get_queryset(self, request):
+        """Optimize queryset with select_related"""
+        qs = super().get_queryset(request)
+        return qs.select_related('session', 'mentor', 'mentor__user', 'invited_user')
+
+admin.site.register(SessionInvitation, SessionInvitationAdmin)
