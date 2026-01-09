@@ -141,11 +141,18 @@ def session_management(request):
     
     # Get all sessions with pending changes
     # Check both previous_data/changes_requested_by AND original_data/changed_by
+    # IMPORTANT: Exclude sessions that are 'invited' and have an active invitation
+    # (those should only appear in the invitations list, not as changes)
     changed_sessions = []
     if all_user_session_ids:
         all_user_sessions = Session.objects.filter(id__in=all_user_session_ids).select_related('created_by').prefetch_related('mentors', 'mentors__user')
         
         for session in all_user_sessions:
+            # Skip sessions that are 'invited' and have an active invitation
+            # These should only appear as invitations, not as changes
+            if session.status == 'invited' and session.id in invitation_session_ids:
+                continue
+            
             has_pending_change = False
             change_data = None
             

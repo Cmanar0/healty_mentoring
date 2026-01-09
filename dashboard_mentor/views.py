@@ -1861,27 +1861,39 @@ def save_availability(request):
                                     email_original_data = changed_sessions_map[db_id_int]
                                 
                                 # If this is a changed session, save original_data and set changed_by
+                                # BUT: If session is 'invited' (not confirmed), don't set change tracking fields
+                                # Instead, just update the session data - it will appear as an updated invitation
                                 if is_changed:
-                                    # Only set original_data if it's not already populated
-                                    # This preserves the original data from the first change, so the client
-                                    # always sees comparisons against what they originally saw
-                                    if not existing.original_data:
-                                        original_data = changed_sessions_map[db_id_int]
-                                        # Convert datetime objects to ISO strings for JSON storage
-                                        if isinstance(original_data, dict):
-                                            # Ensure start_datetime and end_datetime are ISO strings
-                                            if 'start_datetime' in original_data:
-                                                if hasattr(original_data['start_datetime'], 'isoformat'):
-                                                    original_data['start_datetime'] = original_data['start_datetime'].isoformat()
-                                            if 'end_datetime' in original_data:
-                                                if hasattr(original_data['end_datetime'], 'isoformat'):
-                                                    original_data['end_datetime'] = original_data['end_datetime'].isoformat()
-                                        existing.original_data = original_data
-                                    # Set changed_by to indicate mentor made changes
-                                    existing.changed_by = 'mentor'
-                                    # If status was 'confirmed', change to 'invited' for re-confirmation
-                                    if existing.status == 'confirmed':
-                                        status = 'invited'
+                                    # If session is 'invited' (not confirmed), don't track as a change
+                                    # Just update the session - it will show as an updated invitation
+                                    if existing.status == 'invited':
+                                        # Clear any existing change tracking fields
+                                        existing.original_data = None
+                                        existing.changed_by = None
+                                        existing.previous_data = None
+                                        existing.changes_requested_by = None
+                                    else:
+                                        # Session is 'confirmed' or other status - track as a change
+                                        # Only set original_data if it's not already populated
+                                        # This preserves the original data from the first change, so the client
+                                        # always sees comparisons against what they originally saw
+                                        if not existing.original_data:
+                                            original_data = changed_sessions_map[db_id_int]
+                                            # Convert datetime objects to ISO strings for JSON storage
+                                            if isinstance(original_data, dict):
+                                                # Ensure start_datetime and end_datetime are ISO strings
+                                                if 'start_datetime' in original_data:
+                                                    if hasattr(original_data['start_datetime'], 'isoformat'):
+                                                        original_data['start_datetime'] = original_data['start_datetime'].isoformat()
+                                                if 'end_datetime' in original_data:
+                                                    if hasattr(original_data['end_datetime'], 'isoformat'):
+                                                        original_data['end_datetime'] = original_data['end_datetime'].isoformat()
+                                            existing.original_data = original_data
+                                        # Set changed_by to indicate mentor made changes
+                                        existing.changed_by = 'mentor'
+                                        # If status was 'confirmed', change to 'invited' for re-confirmation
+                                        if existing.status == 'confirmed':
+                                            status = 'invited'
                                 
                                 # For terminal state sessions that are being changed, preserve their status
                                 # (they shouldn't be changed, but if they are, at least preserve the terminal status)
