@@ -2,10 +2,10 @@
 
 {# Entry-point popup template. Include this from a page via: {% include "dashboard_mentor/calendar_mentor/calendar.html" %} #}
 
-<div id="mentorCalendarOverlay" class="mentor-calendar-overlay" aria-hidden="true">
-  <div class="mentor-calendar-backdrop" data-mentor-calendar-close></div>
+<div id="mentorCalendarOverlay" class="mentor-calendar-overlay" aria-hidden="true" style="display: none !important;">
+  <div class="mentor-calendar-backdrop" data-mentor-calendar-close style="display: none !important;"></div>
 
-  <div class="mentor-calendar-modal" role="dialog" aria-modal="true" aria-label="Calendar">
+  <div class="mentor-calendar-modal" role="dialog" aria-modal="true" aria-label="Calendar" style="display: none !important;">
     <header class="mentor-calendar-header" style="display: none !important;">
       <div class="mentor-calendar-date-group">
         <h2 id="mentorCalendarDateDisplay">Loading...</h2>
@@ -88,14 +88,17 @@
     opacity: 0;
     visibility: hidden;
     transition: opacity 0.3s ease, visibility 0.3s ease;
+    pointer-events: none;
   }
   .mentor-calendar-overlay.is-visible {
     opacity: 1;
     visibility: visible;
+    pointer-events: auto;
   }
   .mentor-calendar-backdrop {
     position: absolute;
     inset: 0;
+    display: block;
   }
 
   /* --- Modal --- */
@@ -936,10 +939,24 @@
     }
   });
   
-  // Remove inline display:none from calendar header
+  // Remove inline display:none from calendar header, overlay, backdrop, and modal
   const calendarHeader = document.querySelector('.mentor-calendar-header');
   if (calendarHeader && calendarHeader.style) {
     calendarHeader.style.display = '';
+  }
+  
+  if (overlay && overlay.style) {
+    overlay.style.display = '';
+  }
+  
+  const calendarBackdrop = document.querySelector('.mentor-calendar-backdrop');
+  if (calendarBackdrop && calendarBackdrop.style) {
+    calendarBackdrop.style.display = '';
+  }
+  
+  const calendarModal = document.querySelector('.mentor-calendar-modal');
+  if (calendarModal && calendarModal.style) {
+    calendarModal.style.display = '';
   }
 
   let calendar = null;
