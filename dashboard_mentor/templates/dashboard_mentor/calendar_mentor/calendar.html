@@ -6,7 +6,7 @@
   <div class="mentor-calendar-backdrop" data-mentor-calendar-close></div>
 
   <div class="mentor-calendar-modal" role="dialog" aria-modal="true" aria-label="Calendar">
-    <header class="mentor-calendar-header">
+    <header class="mentor-calendar-header" style="display: none !important;">
       <div class="mentor-calendar-date-group">
         <h2 id="mentorCalendarDateDisplay">Loading...</h2>
       </div>
@@ -935,6 +935,12 @@
       popup.style.display = '';
     }
   });
+  
+  // Remove inline display:none from calendar header
+  const calendarHeader = document.querySelector('.mentor-calendar-header');
+  if (calendarHeader && calendarHeader.style) {
+    calendarHeader.style.display = '';
+  }
 
   let calendar = null;
   // Used to avoid creating a slot right after we programmatically switch to day view (e.g. from month summary click)
