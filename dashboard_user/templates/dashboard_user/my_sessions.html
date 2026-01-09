@@ -5,7 +5,13 @@
 
 {% block dashboard_content %}
 <div class="dashboard-content-container">
-    <h1 class="dashboard-page-title">My Sessions</h1>
+    <div class="my-sessions-header">
+        <h1 class="dashboard-page-title">My Sessions</h1>
+        <a href="{% url 'general:dashboard_user:session_management' %}" class="btn btn-primary">
+            <i class="fas fa-inbox"></i>
+            <span>Session Invitations & Changes</span>
+        </a>
+    </div>
 
     <div class="dashboard-grid">
         <div class="dashboard-card col-span-12">
@@ -17,4 +23,39 @@
         </div>
     </div>
 </div>
+
+<style>
+.my-sessions-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    gap: 16px;
+}
+
+.my-sessions-header .dashboard-page-title {
+    margin: 0;
+    flex: 1;
+}
+
+.my-sessions-header .btn {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 8px;
+    gap: 8px;
+    white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+    .my-sessions-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .my-sessions-header .btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
+</style>
 {% endblock %}
