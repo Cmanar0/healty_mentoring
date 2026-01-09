@@ -1895,12 +1895,23 @@
         }
         
         // Now send the invitation
+        // IMPORTANT: Send the current calendar event position (start/end) to ensure
+        // the session is updated to match the current position before creating the invitation
+        // This handles the case where the session was moved but not saved
+        const currentStart = ev?.start ? ev.start.toISOString() : null;
+        const currentEnd = ev?.end ? ev.end.toISOString() : null;
+        
         const csrf = getCookie('csrftoken');
         try {
           const res = await fetch(INVITE_SESSION_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf || '' },
-            body: JSON.stringify({ email, session_id: sessionId })
+            body: JSON.stringify({ 
+              email, 
+              session_id: sessionId,
+              start_iso: currentStart,
+              end_iso: currentEnd
+            })
           });
           const data = await res.json();
           if (data && data.success) {
@@ -2943,6 +2954,8 @@
       sessions.forEach((s) => {
         if (!s || !s.id || !s.start || !s.end) return;
         const status = normalizeSessionStatus(s.status || 'draft');
+        // Don't display cancelled sessions in the calendar
+        if (status === 'cancelled') return;
         const colors = sessionColorsForStatus(status);
         calendar.addEvent({
           id: `session_${s.id}`,

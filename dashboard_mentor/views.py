@@ -2556,6 +2556,8 @@ def invite_session(request):
 
     email = (payload.get('email') or request.POST.get('email') or '').strip().lower()
     session_id = payload.get('session_id') or request.POST.get('session_id')
+    start_iso = payload.get('start_iso')
+    end_iso = payload.get('end_iso')
 
     if not email:
         return JsonResponse({'success': False, 'error': 'Email is required'}, status=400)
@@ -2569,6 +2571,35 @@ def invite_session(request):
     s = mentor_profile.sessions.filter(id=session_id).first()
     if not s:
         return JsonResponse({'success': False, 'error': 'Session not found'}, status=404)
+    
+    # If current position (start_iso/end_iso) is provided, update the session to match
+    # This handles the case where the session was moved in the calendar but not saved yet
+    if start_iso and end_iso:
+        try:
+            from datetime import datetime
+            from django.utils import timezone as dj_timezone
+            new_start_dt = datetime.fromisoformat(str(start_iso).replace('Z', '+00:00'))
+            new_end_dt = datetime.fromisoformat(str(end_iso).replace('Z', '+00:00'))
+            if new_start_dt.tzinfo is None:
+                new_start_dt = dj_timezone.make_aware(new_start_dt)
+            if new_end_dt.tzinfo is None:
+                new_end_dt = dj_timezone.make_aware(new_end_dt)
+            
+            # Only update if the position has actually changed
+            if new_end_dt > new_start_dt:
+                # Check if position changed (with small tolerance for timezone rounding)
+                start_changed = abs((s.start_datetime - new_start_dt).total_seconds()) > 1
+                end_changed = abs((s.end_datetime - new_end_dt).total_seconds()) > 1
+                
+                if start_changed or end_changed:
+                    s.start_datetime = new_start_dt
+                    s.end_datetime = new_end_dt
+                    s.save(update_fields=['start_datetime', 'end_datetime'])
+        except Exception as e:
+            # Log error but don't fail the invitation - use existing session position
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f'Could not update session position before invitation: {str(e)}')
 
     # Resolve/create invited user + relationship token if needed
     try:
