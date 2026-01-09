@@ -33,12 +33,17 @@ def cleanup_draft_sessions():
             'sessions_completed': int
         }
     """
+    import logging
+    logger = logging.getLogger(__name__)
+    
     now = timezone.now()
     
     # Ensure now is in UTC for comparison
     now_utc = now if now.tzinfo else timezone.now()
     if now_utc.tzinfo != dt_timezone.utc:
         now_utc = now_utc.astimezone(dt_timezone.utc)
+    
+    logger.info(f'[cleanup_draft_sessions] Starting cleanup at {now_utc}')
     
     # Delete expired draft sessions ONLY
     # IMPORTANT: Never delete terminal state sessions (completed, refunded, expired)
@@ -50,7 +55,9 @@ def cleanup_draft_sessions():
         status__in=['completed', 'refunded', 'expired']  # Extra protection (shouldn't be needed, but safety first)
     )
     sessions_deleted = draft_sessions.count()
-    draft_sessions.delete()
+    if sessions_deleted > 0:
+        logger.info(f'[cleanup_draft_sessions] Deleting {sessions_deleted} expired draft sessions')
+        draft_sessions.delete()
     
     # Change invited sessions to expired
     invited_sessions = Session.objects.filter(
@@ -58,7 +65,9 @@ def cleanup_draft_sessions():
         end_datetime__lt=now_utc
     )
     sessions_expired = invited_sessions.count()
-    invited_sessions.update(status='expired')
+    if sessions_expired > 0:
+        logger.info(f'[cleanup_draft_sessions] Expiring {sessions_expired} invited sessions')
+        invited_sessions.update(status='expired')
     
     # Change confirmed sessions to completed
     confirmed_sessions = Session.objects.filter(
@@ -66,7 +75,21 @@ def cleanup_draft_sessions():
         end_datetime__lt=now_utc
     )
     sessions_completed = confirmed_sessions.count()
-    confirmed_sessions.update(status='completed')
+    if sessions_completed > 0:
+        logger.info(f'[cleanup_draft_sessions] Completing {sessions_completed} confirmed sessions')
+        # Log some example sessions for debugging
+        example_ids = list(confirmed_sessions.values_list('id', 'end_datetime')[:5])
+        logger.info(f'[cleanup_draft_sessions] Example sessions to complete: {example_ids}')
+        confirmed_sessions.update(status='completed')
+        logger.info(f'[cleanup_draft_sessions] Successfully updated {sessions_completed} sessions to completed')
+    else:
+        # Log if no sessions found - helps debug if query is working
+        total_confirmed = Session.objects.filter(status='confirmed').count()
+        logger.info(f'[cleanup_draft_sessions] No expired confirmed sessions found. Total confirmed sessions: {total_confirmed}')
+        if total_confirmed > 0:
+            # Show some example confirmed sessions and their end times
+            examples = Session.objects.filter(status='confirmed').values_list('id', 'end_datetime')[:5]
+            logger.info(f'[cleanup_draft_sessions] Example confirmed sessions: {examples}')
     
     return {
         'sessions_deleted': sessions_deleted,

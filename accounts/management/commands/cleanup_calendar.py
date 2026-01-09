@@ -17,9 +17,10 @@ class Command(BaseCommand):
         """Execute the cleanup functions."""
         import sys
         import traceback
+        from django.utils import timezone
         
         try:
-            self.stdout.write('Starting calendar cleanup...')
+            self.stdout.write(f'[{timezone.now()}] Starting calendar cleanup...')
             
             # Cleanup expired availability slots
             availability_result = cleanup_expired_availability_slots()
@@ -29,7 +30,7 @@ class Command(BaseCommand):
             
             self.stdout.write(
                 self.style.SUCCESS(
-                    f'Cleanup completed: '
+                    f'[{timezone.now()}] Cleanup completed: '
                     f'{availability_result["profiles_checked"]} profiles checked, '
                     f'{availability_result["profiles_updated"]} profiles updated, '
                     f'{availability_result["slots_removed"]} availability slots removed, '
@@ -39,7 +40,8 @@ class Command(BaseCommand):
                 )
             )
         except Exception as e:
-            self.stderr.write(f'ERROR in cleanup_calendar: {str(e)}')
+            error_msg = f'[{timezone.now()}] ERROR in cleanup_calendar: {str(e)}'
+            self.stderr.write(error_msg)
             self.stderr.write(traceback.format_exc())
             sys.exit(1)
 
