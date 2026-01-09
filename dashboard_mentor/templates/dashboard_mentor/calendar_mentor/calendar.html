@@ -934,6 +934,7 @@
   let originalSessionsById = new Map(); // Map<sessionId, sessionData> - original data from backend
   let changedSessionsById = new Map(); // Map<sessionId, snapshot> - tracked changes
   let lastBlockedPastSessionDrag = null; // Track blocked past session drag to show notification once
+  let lastBlockedPastAvailabilityDrag = null; // Track blocked past availability drag to show notification once
 
   // Timezone source of truth: mentorprofile.selected_timezone (fallback: detected_timezone)
   function resolveMentorTimezone() {
@@ -2717,6 +2718,10 @@
         const endDt = window.luxon.DateTime.fromISO(`${dateStr}T${rule.end_time}`, { zone: timezone_variable });
         if (!startDt.isValid || !endDt.isValid) continue;
         if (endDt <= startDt) continue;
+        
+        // Don't render past availability instances (end time is in the past)
+        const now = window.luxon.DateTime.now().setZone(timezone_variable);
+        if (endDt < now) continue;
 
         const instanceId = `${rule.id}__${dateStr}`;
         calendar.addEvent({
@@ -3847,6 +3852,19 @@
             }
           }
         }
+        
+        // Prevent dragging past availability slots
+        if (info.event.extendedProps?.slotMode === 'availability') {
+          const eventEnd = info.event.end;
+          if (eventEnd) {
+            const now = new Date();
+            // If availability slot has ended (end time < now), prevent dragging
+            if (eventEnd < now) {
+              return false;
+            }
+          }
+        }
+        
         return true; // allow dragging for both slot types
       },
       eventDurationEditable: function(info) {
@@ -3898,7 +3916,7 @@
         return true;
       },
       eventAllow: function(dropInfo, draggedEvent) {
-        // Prevent dropping sessions to the past (check drop location)
+        // Prevent dropping sessions and availability slots to the past (check drop location)
         try {
           if (draggedEvent?.extendedProps?.slotMode === 'session') {
             const status = draggedEvent.extendedProps?.status;
@@ -3915,6 +3933,21 @@
               if (dropEnd < now) {
                 // Track this blocked drag to show notification once in eventDragStop
                 lastBlockedPastSessionDrag = { eventId: String(draggedEvent.id || ''), atMs: Date.now() };
+                return false;
+              }
+            }
+          }
+          
+          // Prevent dropping availability slots to the past
+          if (draggedEvent?.extendedProps?.slotMode === 'availability') {
+            // Check if the drop location is in the past
+            if (dropInfo && dropInfo.start) {
+              const dropEnd = dropInfo.end || dropInfo.start;
+              const now = new Date();
+              // If the drop location end time is in the past, prevent dropping
+              if (dropEnd < now) {
+                // Track this blocked drag to show notification once in eventDragStop
+                lastBlockedPastAvailabilityDrag = { eventId: String(draggedEvent.id || ''), atMs: Date.now() };
                 return false;
               }
             }
@@ -4052,6 +4085,23 @@
           }
         } catch (e) {}
         
+        // Show notification for blocked past availability drag (only once per drag attempt)
+        try {
+          if (lastBlockedPastAvailabilityDrag) {
+            const eventId = String(info?.event?.id || '');
+            if (lastBlockedPastAvailabilityDrag.eventId === eventId) {
+              const dt = Date.now() - (lastBlockedPastAvailabilityDrag.atMs || 0);
+              // only trigger near the time the block happened (avoid stale)
+              if (dt >= 0 && dt < 800) {
+                if (typeof showNotification === 'function') {
+                  showNotification('Cannot move availability slots to the past.', 'warning');
+                }
+              }
+              lastBlockedPastAvailabilityDrag = null;
+            }
+          }
+        } catch (e) {}
+        
         // If we just blocked a recurring drag (e.g., Month view), blink the series.
         try {
           if (info?.event?.extendedProps?.isRecurringInstance) {
@@ -4131,6 +4181,24 @@
           if (status === 'invited' || status === 'confirmed') {
             if (typeof showNotification === 'function') {
               showNotification("Don't forget to save changes for them to take effect.", 'note');
+            }
+          }
+        }
+        
+        // Prevent dropping availability slots to the past (check NEW drop location)
+        if (mode === 'availability') {
+          const newEnd = info.event.end;
+          if (newEnd) {
+            const now = new Date();
+            // If the new end time is in the past, prevent dropping to the past
+            if (newEnd < now) {
+              info.revert();
+              // Track blocked drag for notification in eventDragStop
+              lastBlockedPastAvailabilityDrag = { eventId: String(info.event.id || ''), atMs: Date.now() };
+              if (typeof showNotification === 'function') {
+                showNotification('Cannot move availability slots to the past.', 'warning');
+              }
+              return;
             }
           }
         }
@@ -4713,30 +4781,51 @@
   try {
     const params = new URLSearchParams(window.location.search || '');
     if (params.get('open_calendar') === 'true') {
-      openedFromSessionLengthChange = true;
-      // Ensure Availability mode when opening for collision resolution
-      const trigger = document.querySelector('[data-open-mentor-calendar]') || null;
-      if (trigger && trigger.dataset) trigger.dataset.mentorCalendarInitialMode = 'availability';
-      open(trigger);
-      // Once events load, show collision popup if collisions exist
-      setTimeout(() => {
-        try {
-          if (hasCalendarCollisionsInHorizon() && typeof window.openCollisionResolutionPopup === 'function') {
-            window.openCollisionResolutionPopup(true);
+      // Check for collisions via API BEFORE opening calendar
+      // Only open if collisions actually exist
+      fetch('{% url "general:dashboard_mentor:check_availability_collisions" %}')
+        .then(response => response.json())
+        .then(data => {
+          if (data.success && data.has_collisions) {
+            // Collisions exist - proceed with opening calendar
+            openedFromSessionLengthChange = true;
+            // Ensure Availability mode when opening for collision resolution
+            const trigger = document.querySelector('[data-open-mentor-calendar]') || null;
+            if (trigger && trigger.dataset) trigger.dataset.mentorCalendarInitialMode = 'availability';
+            open(trigger);
+            // Once events load, show collision popup if collisions exist
+            setTimeout(() => {
+              try {
+                if (hasCalendarCollisionsInHorizon() && typeof window.openCollisionResolutionPopup === 'function') {
+                  window.openCollisionResolutionPopup(true);
+                } else {
+                  // No collisions anymore; exit locked mode.
+                  openedFromSessionLengthChange = false;
+                }
+              } catch (e) {}
+            }, 1200);
           } else {
-            // No collisions anymore; exit locked mode.
-            openedFromSessionLengthChange = false;
+            // No collisions - just clear the URL parameter and don't open calendar
+            // This prevents the calendar from opening on every page refresh
           }
-        } catch (e) {}
-      }, 1200);
-
-      // Prevent repeatedly re-triggering the auto-open flow on refresh.
-      try {
-        params.delete('open_calendar');
-        const next = params.toString();
-        const newUrl = window.location.pathname + (next ? ('?' + next) : '') + window.location.hash;
-        window.history.replaceState({}, '', newUrl);
-      } catch (e) {}
+          // Always clear the URL parameter to prevent infinite retries
+          try {
+            params.delete('open_calendar');
+            const next = params.toString();
+            const newUrl = window.location.pathname + (next ? ('?' + next) : '') + window.location.hash;
+            window.history.replaceState({}, '', newUrl);
+          } catch (e) {}
+        })
+        .catch(error => {
+          console.error('Error checking for collisions before auto-open:', error);
+          // On error, clear the URL parameter to prevent infinite retries
+          try {
+            params.delete('open_calendar');
+            const next = params.toString();
+            const newUrl = window.location.pathname + (next ? ('?' + next) : '') + window.location.hash;
+            window.history.replaceState({}, '', newUrl);
+          } catch (e) {}
+        });
     }
   } catch (e) {}
 

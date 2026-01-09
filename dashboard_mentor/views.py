@@ -436,10 +436,16 @@ def check_slot_collisions(one_time_slots, recurring_slots, new_session_length, m
                 continue
 
     # Add sessions as fixed time ranges (do not change length)
+    # IMPORTANT: Exclude cancelled sessions from collision detection
     try:
         if sessions:
             for s in sessions:
                 try:
+                    # Skip cancelled sessions - they shouldn't block availability
+                    status = getattr(s, 'status', None) or s.get('status')
+                    if status and str(status).lower() == 'cancelled':
+                        continue
+                    
                     start_dt = getattr(s, 'start_datetime', None) or s.get('start_datetime')
                     end_dt = getattr(s, 'end_datetime', None) or s.get('end_datetime')
                     if not start_dt or not end_dt:
@@ -2333,12 +2339,14 @@ def check_availability_collisions(request):
         try:
             if has_collisions and mentor_profile.session_length:
                 mentor_tz = mentor_profile.selected_timezone or mentor_profile.time_zone or 'UTC'
+                # Filter out cancelled sessions from collision detection
+                all_sessions = mentor_profile.sessions.exclude(status='cancelled')
                 recomputed = check_slot_collisions(
                     list(mentor_profile.one_time_slots or []),
                     list(mentor_profile.recurring_slots or []),
                     mentor_profile.session_length,
                     mentor_timezone_str=mentor_tz,
-                    sessions=list(mentor_profile.sessions.all())
+                    sessions=list(all_sessions)
                 )
                 if bool(recomputed) != bool(has_collisions):
                     mentor_profile.collisions = bool(recomputed)
