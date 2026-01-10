@@ -663,6 +663,8 @@ def session_invitation_link(request, token: str):
         current_email = (request.user.email or '').strip().lower()
         if current_email != invited_email:
             logout(request)
+            # Flush the session to ensure complete logout
+            request.session.flush()
             messages.warning(request, f'This invitation is for {invited_email}. Please log in with that account.')
             return redirect(reverse('accounts:login') + f'?next={quote(request.path)}')
         return redirect(target_confirm_path)
@@ -745,6 +747,8 @@ def session_changes_link(request):
         current_email = (request.user.email or '').strip().lower()
         if current_email != client_email:
             logout(request)
+            # Flush the session to ensure complete logout
+            request.session.flush()
             messages.warning(request, f'This link is for {client_email}. Please log in with that account.')
             return redirect(reverse('accounts:login') + f'?next={quote(target_path)}')
         return redirect(target_path)
