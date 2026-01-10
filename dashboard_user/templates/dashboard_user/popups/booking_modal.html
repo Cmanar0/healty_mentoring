@@ -14,7 +14,7 @@
                     {% endif %}
                     <div>
                         <div class="booking-mentor-name">{{ mentor_profile.first_name }} {{ mentor_profile.last_name }}</div>
-                        <div class="booking-session-name">1:1 Mentorship Session</div>
+                        <div class="booking-session-name">1:1 Session</div>
                     </div>
                 </div>
                 
@@ -30,6 +30,21 @@
                     <div class="booking-meta-item">
                         <i class="fas fa-tag"></i>
                         <span>${{ mentor_profile.price_per_hour|floatformat:0 }}</span>
+                    </div>
+                </div>
+
+                <!-- NEW: Dynamic Selection Summary -->
+                <div id="bookingSummary" class="booking-selection-summary" style="display: none;">
+                    <div class="summary-label">Your Selection</div>
+                    <div class="summary-details">
+                        <div class="summary-item">
+                            <i class="far fa-calendar-alt"></i>
+                            <span id="summaryDate">Select a date</span>
+                        </div>
+                        <div class="summary-item" id="summaryTimeRow" style="display: none;">
+                            <i class="far fa-clock"></i>
+                            <span id="summaryTime">Select a time</span>
+                        </div>
                     </div>
                 </div>
                 
@@ -135,8 +150,9 @@
 
 .booking-grid {
     display: grid;
-    grid-template-columns: 300px 1fr auto; /* Auto for slots col */
+    grid-template-columns: 300px 1fr 320px; /* Fixed width for slots col to prevent jumping */
     height: 100%;
+    max-height: 100%; /* Ensure grid doesn't exceed container */
 }
 
 /* Sidebar */
@@ -176,6 +192,41 @@
 .booking-meta-item i { color: #94a3b8; width: 20px; text-align: center; }
 
 .booking-desc { font-size: 0.9rem; color: #64748b; line-height: 1.6; }
+
+/* Selection Summary */
+.booking-selection-summary {
+    background: #f8fafc;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 24px;
+    border: 1px solid #e2e8f0;
+}
+.summary-label {
+    text-transform: uppercase;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #94a3b8;
+    letter-spacing: 0.05em;
+    margin-bottom: 10px;
+}
+.summary-details {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.summary-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #1e293b;
+    font-size: 0.95rem;
+    font-weight: 600;
+}
+.summary-item i {
+    color: #3b82f6;
+    width: 16px;
+    font-size: 0.9rem;
+}
 
 /* Calendar */
 .booking-calendar-col {
@@ -239,7 +290,7 @@
     font-weight: 600;
 }
 .cal-day.selected {
-    background: #3b82f6 !important; /* Blue selection */
+    background: #3b82f6 !important;
     color: white !important;
 }
 .cal-day.disabled {
@@ -268,14 +319,17 @@
 
 /* Slots Col */
 .booking-slots-col {
-    width: 280px;
+    width: 320px;
     padding: 32px;
     border-left: 1px solid #e2e8f0;
-    animation: slideIn 0.3s ease;
     display: flex;
     flex-direction: column;
     height: 100%;
-    min-height: 0; /* Important for flex scrolling */
+    max-height: 100%; /* Force height to match modal */
+    min-height: 0;
+    background: white;
+    box-sizing: border-box;
+    overflow: hidden; /* Prevent the column itself from scrolling */
 }
 .slots-header-row {
     display: flex;
@@ -301,41 +355,59 @@
     gap: 10px;
     flex: 1;
     overflow-y: auto;
-    min-height: 0; /* Important for flex scrolling */
+    overflow-x: hidden;
+    min-height: 0; /* Critical for scroll inside flex */
+    scrollbar-width: thin; /* Firefox: thin scrollbar */
+    scrollbar-color: #cbd5e1 transparent; /* Firefox: thumb and track */
+}
+.slots-list::-webkit-scrollbar {
+    width: 4px; /* Super thin width */
+}
+.slots-list::-webkit-scrollbar-track {
+    background: transparent;
+}
+.slots-list::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 10px;
+}
+.slots-list::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
 }
 .time-slot-btn {
-    padding: 12px;
-    border: 2px solid #3b82f6; /* Blue border, consistent thickness */
-    border-radius: 8px;
-    background: white;
-    color: #3b82f6; /* Blue text */
+    padding: 14px;
+    border: 1px solid #3b82f6; /* Default Blue Border */
+    border-radius: 12px;
+    background: #eff6ff; /* Default Light Blue Background */
+    color: #3b82f6; /* Default Blue Text */
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     text-align: center;
-    box-sizing: border-box; /* Ensure border doesn't affect layout */
+    box-sizing: border-box;
 }
 .time-slot-btn:hover {
-    border-color: #2563eb; /* Darker blue on hover */
-    background: #eff6ff; /* Light blue background */
-    color: #2563eb;
+    border-color: #2563eb; /* Darker Blue Border */
+    background: #dbeafe; /* Light Blue Background */
+    color: #2563eb; /* Darker Blue Text */
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 }
 .time-slot-btn.selected {
-    border-color: #10b981; /* Green border when selected */
-    background: #f0fdfa; /* Light green background */
-    color: #10b981; /* Green text */
+    border-color: #3b82f6;
+    background: #3b82f6; /* High contrast Blue selection */
+    color: white; /* White text for visibility */
+    box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.3);
 }
 .time-slot-btn.selected:hover {
-    border-color: #059669; /* Darker green on hover when selected */
-    background: #d1fae5;
-    color: #059669;
+    background: #2563eb;
+    border-color: #2563eb;
+    color: white;
 }
 
 .slots-footer {
-    padding-top: 16px;
+    padding-top: 20px;
     border-top: 1px solid #e2e8f0;
-    margin-top: 16px;
-    flex-shrink: 0; /* Prevent footer from shrinking */
+    margin-top: 20px;
+    flex-shrink: 0; /* Keep footer size fixed */
 }
 
 .book-slot-btn {
@@ -484,6 +556,11 @@
         nextMonthBtn = document.getElementById('nextMonth');
         slotsFooter = document.getElementById('slotsFooter');
         bookSlotBtn = document.getElementById('bookSlotBtn');
+
+        bookingSummary = document.getElementById('bookingSummary');
+        summaryDate = document.getElementById('summaryDate');
+        summaryTimeRow = document.getElementById('summaryTimeRow');
+        summaryTime = document.getElementById('summaryTime');
         
         // --- Events ---
         if (prevMonthBtn) prevMonthBtn.onclick = () => {
@@ -526,8 +603,9 @@
         currentDate = new Date(); // Reset to current month
         selectedDate = null;      // Clear selection
         selectedSlot = null;      // Clear slot selection
-        if (slotsCol) slotsCol.style.display = 'none'; // Hide slots
+        if (slotsCol) slotsCol.style.display = 'none'; // Hide slots initially
         if (slotsFooter) slotsFooter.style.display = 'none'; // Hide footer
+        if (bookingSummary) bookingSummary.style.display = 'none'; // Hide summary
         
         modal.classList.add('open');
         document.body.style.overflow = 'hidden'; // Prevent background scroll
@@ -543,12 +621,14 @@
         selectedSlot = null;
         if (slotsCol) slotsCol.style.display = 'none';
         if (slotsFooter) slotsFooter.style.display = 'none';
+        if (bookingSummary) bookingSummary.style.display = 'none';
         renderCalendar();
     }
     
     function closeSlots() {
         if (slotsCol) slotsCol.style.display = 'none';
         if (slotsFooter) slotsFooter.style.display = 'none';
+        if (bookingSummary) bookingSummary.style.display = 'none';
         selectedDate = null;
         selectedSlot = null;
         renderCalendar(); // Redraws calendar to remove 'selected' class
@@ -623,9 +703,19 @@
     function hasAvailability(date) {
         if (!availabilityData) return false;
         
-        const dateStr = date.toISOString().split('T')[0];
+        // Get date string in local timezone (YYYY-MM-DD format)
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const dateStr = `${year}-${month}-${day}`;
+        
         const now = new Date();
-        const isToday = dateStr === now.toISOString().split('T')[0];
+        // Check if it's today
+        const nowYear = now.getFullYear();
+        const nowMonth = String(now.getMonth() + 1).padStart(2, '0');
+        const nowDay = String(now.getDate()).padStart(2, '0');
+        const nowDateStr = `${nowYear}-${nowMonth}-${nowDay}`;
+        const isToday = dateStr === nowDateStr;
         
         // 1. One-Time Check
         const hasOneTime = availabilityData.one_time_slots.some(slot => {
@@ -635,7 +725,12 @@
             try {
                 const slotStart = new Date(slot.start.replace('Z', '+00:00'));
                 const slotEnd = new Date(slot.end.replace('Z', '+00:00'));
-                const slotDateStr = slotStart.toISOString().split('T')[0];
+                
+                // Convert slot date to local timezone for comparison
+                const slotYear = slotStart.getFullYear();
+                const slotMonth = String(slotStart.getMonth() + 1).padStart(2, '0');
+                const slotDay = String(slotStart.getDate()).padStart(2, '0');
+                const slotDateStr = `${slotYear}-${slotMonth}-${slotDay}`;
                 
                 if (slotDateStr !== dateStr) return false;
                 
@@ -711,7 +806,12 @@
         if (!availabilityData) return [];
 
         const slots = [];
-        const dateStr = date.toISOString().split('T')[0];
+        // Get date string in local timezone (YYYY-MM-DD format)
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const dateStr = `${year}-${month}-${day}`;
+        
         const weekdayMap = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
         const dayName = weekdayMap[date.getDay()];
         const now = new Date();
@@ -724,28 +824,46 @@
             try {
                 const slotStart = new Date(slot.start.replace('Z', '+00:00'));
                 const slotEnd = new Date(slot.end.replace('Z', '+00:00'));
-                const slotDateStr = slotStart.toISOString().split('T')[0];
+                
+                // Convert slot date to local timezone for comparison
+                const slotYear = slotStart.getFullYear();
+                const slotMonth = String(slotStart.getMonth() + 1).padStart(2, '0');
+                const slotDay = String(slotStart.getDate()).padStart(2, '0');
+                const slotDateStr = `${slotYear}-${slotMonth}-${slotDay}`;
                 
                 // Only include slots for this date that end in the future
                 if (slotDateStr === dateStr && slotEnd > now) {
                     // Generate time slots from this availability window
                     const windowSlots = generateTimeSlotsFromWindow(slotStart, slotEnd, sessionLengthMinutes);
-                    windowSlots.forEach(slotTime => {
-                        // Parse the slot time string (e.g., "14:00") and create proper datetime
-                        const [slotH, slotM] = slotTime.split(':').map(Number);
-                        const slotStartTime = new Date(date);
-                        slotStartTime.setHours(slotH, slotM, 0, 0);
+                    windowSlots.forEach(slotStartTime => {
                         const slotEndTime = new Date(slotStartTime.getTime() + sessionLengthMinutes * 60000);
                         
-                        const startTimeStr = slotStartTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                        const endTimeStr = slotEndTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                        // Format times in 12-hour format with AM/PM
+                        // Use local time methods which automatically handle timezone conversion
+                        const formatTime = (date) => {
+                            // getHours() and getMinutes() already return local time
+                            let hours = date.getHours();
+                            const minutes = date.getMinutes();
+                            const ampm = hours >= 12 ? 'pm' : 'am';
+                            hours = hours % 12;
+                            hours = hours ? hours : 12; // the hour '0' should be '12'
+                            const minutesStr = minutes < 10 ? '0' + minutes : minutes;
+                            return `${hours}:${minutesStr} ${ampm}`;
+                        };
+                        
+                        const startTimeStr = formatTime(slotStartTime);
+                        const endTimeStr = formatTime(slotEndTime);
+                        
+                        // Create a unique key for deduplication based on the actual start time
+                        const startTimeKey = slotStartTime.getTime(); // Use timestamp for uniqueness
                         
                         slots.push({ 
                             time: `${startTimeStr} - ${endTimeStr}`, 
                             raw: slot, 
                             type: 'one_time',
                             start: slotStartTime.toISOString(),
-                            end: slotEndTime.toISOString()
+                            end: slotEndTime.toISOString(),
+                            _startTimeKey: startTimeKey // Internal key for deduplication
                         });
                     });
                 }
@@ -801,24 +919,34 @@
                     
                     // Only include if the window end is in the future
                     if (windowEnd > now) {
-                        // Generate time slots from this availability window
                         const windowSlots = generateTimeSlotsFromWindow(windowStart, windowEnd, sessionLengthMinutes);
-                        windowSlots.forEach(slotTime => {
-                            // Create a proper start datetime for this slot
-                            const [slotH, slotM] = slotTime.split(':').map(Number);
-                            const slotStart = new Date(date);
-                            slotStart.setHours(slotH, slotM, 0, 0);
+                        windowSlots.forEach(slotStart => {
                             const slotEnd = new Date(slotStart.getTime() + sessionLengthMinutes * 60000);
                             
-                            const startTimeStr = slotStart.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                            const endTimeStr = slotEnd.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                            // Format times in 12-hour format with AM/PM
+                            const formatTime = (date) => {
+                                let hours = date.getHours();
+                                const minutes = date.getMinutes();
+                                const ampm = hours >= 12 ? 'pm' : 'am';
+                                hours = hours % 12;
+                                hours = hours ? hours : 12; // the hour '0' should be '12'
+                                const minutesStr = minutes < 10 ? '0' + minutes : minutes;
+                                return `${hours}:${minutesStr} ${ampm}`;
+                            };
+                            
+                            const startTimeStr = formatTime(slotStart);
+                            const endTimeStr = formatTime(slotEnd);
+                            
+                            // Create a unique key for deduplication based on the actual start time
+                            const startTimeKey = slotStart.getTime(); // Use timestamp for uniqueness
                             
                             slots.push({ 
                                 time: `${startTimeStr} - ${endTimeStr}`, 
                                 raw: rule, 
                                 type: 'recurring',
                                 start: slotStart.toISOString(),
-                                end: slotEnd.toISOString()
+                                end: slotEnd.toISOString(),
+                                _startTimeKey: startTimeKey // Internal key for deduplication
                             });
                         });
                     }
@@ -828,19 +956,22 @@
             }
         });
 
-        // Sort by time and remove duplicates
+        // Sort by start time and remove duplicates based on actual start timestamp
         const uniqueSlots = [];
-        const seenTimes = new Set();
+        const seenStartTimes = new Set();
         
         slots.sort((a, b) => {
-            const timeA = a.time;
-            const timeB = b.time;
-            if (timeA < timeB) return -1;
-            if (timeA > timeB) return 1;
-            return 0;
+            // Sort by actual start time (timestamp)
+            const timeA = a._startTimeKey || (a.start ? new Date(a.start).getTime() : 0);
+            const timeB = b._startTimeKey || (b.start ? new Date(b.start).getTime() : 0);
+            return timeA - timeB;
         }).forEach(slot => {
-            if (!seenTimes.has(slot.time)) {
-                seenTimes.add(slot.time);
+            // Use the timestamp for deduplication (most reliable)
+            const startTimeKey = slot._startTimeKey || (slot.start ? new Date(slot.start).getTime() : null);
+            if (startTimeKey !== null && !seenStartTimes.has(startTimeKey)) {
+                seenStartTimes.add(startTimeKey);
+                // Remove the internal key before returning
+                delete slot._startTimeKey;
                 uniqueSlots.push(slot);
             }
         });
@@ -853,21 +984,16 @@
         const slots = [];
         const now = new Date();
         
-        // Start from window start, increment by slot length until we can't fit another slot
         let currentTime = new Date(windowStart);
         
         while (currentTime < windowEnd) {
             const slotEnd = new Date(currentTime.getTime() + slotLengthMinutes * 60000);
             
-            // Only include slots that:
-            // 1. Fit within the window (slotEnd <= windowEnd)
-            // 2. End in the future (slotEnd > now)
             if (slotEnd <= windowEnd && slotEnd > now) {
-                const timeStr = currentTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                slots.push(timeStr);
+                // Return the actual Date object for robust formatting later
+                slots.push(new Date(currentTime));
             }
             
-            // Move to next potential slot start (increment by slot length)
             currentTime = new Date(currentTime.getTime() + slotLengthMinutes * 60000);
         }
         
@@ -877,12 +1003,23 @@
     function selectDate(date, dayEl) {
         selectedDate = date;
         selectedSlot = null; // Clear slot selection when date changes
-        renderCalendar(); // specific day highlighting
+        renderCalendar(); // Refresh calendar to show selected date
         
         // Show Slots
-        if (slotsCol) slotsCol.style.display = 'block';
-        if (selectedDateLabel) selectedDateLabel.textContent = date.toLocaleDateString([], {weekday: 'long', month: 'short', day: 'numeric'});
+        if (slotsCol) slotsCol.style.display = 'flex';
+        const dateOptions = {weekday: 'long', month: 'short', day: 'numeric'};
+        const formattedDate = date.toLocaleDateString([], dateOptions);
+        if (selectedDateLabel) selectedDateLabel.textContent = formattedDate;
         
+        // Update Sidebar Summary
+        if (bookingSummary) bookingSummary.style.display = 'block';
+        if (summaryDate) summaryDate.textContent = formattedDate;
+        if (summaryTimeRow) summaryTimeRow.style.display = 'none'; // Hide time until slot selected
+        
+        renderSlots(date);
+    }
+
+    function renderSlots(date) {
         const slots = getSlotsForDate(date);
         if (slotsList) {
             slotsList.innerHTML = '';
@@ -902,8 +1039,13 @@
                         // Add selected class to clicked button
                         btn.classList.add('selected');
                         selectedSlot = slot;
+                        
                         // Show book button
                         if (slotsFooter) slotsFooter.style.display = 'block';
+
+                        // Update Sidebar Summary Time
+                        if (summaryTimeRow) summaryTimeRow.style.display = 'flex';
+                        if (summaryTime) summaryTime.textContent = slot.time;
                     };
                     slotsList.appendChild(btn);
                 });
