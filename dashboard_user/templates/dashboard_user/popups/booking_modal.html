@@ -240,15 +240,12 @@
     color: #cbd5e1;
     cursor: default;
 }
-.cal-day.has-slots::after {
-    content: '';
-    position: absolute;
-    bottom: 6px;
-    width: 4px; height: 4px;
-    background: var(--mp-primary);
-    border-radius: 50%;
-}
 .cal-day.selected.has-slots::after { background: white; }
+.cal-day.today {
+    background: #f0fdfa; /* Lightest Emerald */
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    font-weight: 700;
+}
 
 /* Slots Col */
 .booking-slots-col {
@@ -461,6 +458,9 @@
             // Disable past dates and today
             if (checkDate <= today) {
                 dayEl.classList.add('disabled');
+                if (checkDate.getTime() === today.getTime()) {
+                    dayEl.classList.add('today');
+                }
             } else {
                 // Check Availability
                 if (hasAvailability(checkDate)) {
