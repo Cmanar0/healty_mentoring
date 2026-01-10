@@ -1,0 +1,582 @@
+{# Booking Modal Popup #}
+<div id="bookingModal" class="booking-modal-overlay">
+    <div class="booking-modal-container">
+        <button class="booking-close-btn" onclick="closeBookingModal()"><i class="fas fa-times"></i></button>
+        
+        <div class="booking-grid">
+            <!-- Col 1: Mentor Info -->
+            <div class="booking-sidebar">
+                <div class="booking-mentor-mini">
+                    {% if mentor_profile.profile_picture %}
+                    <img src="{{ mentor_profile.profile_picture.url }}" alt="Avatar" class="booking-avatar">
+                    {% else %}
+                    <div class="booking-avatar-placeholder">{{ mentor_profile.first_name|first }}</div>
+                    {% endif %}
+                    <div>
+                        <div class="booking-mentor-name">{{ mentor_profile.first_name }} {{ mentor_profile.last_name }}</div>
+                        <div class="booking-session-name">1:1 Mentorship Session</div>
+                    </div>
+                </div>
+                
+                <div class="booking-meta">
+                    <div class="booking-meta-item">
+                        <i class="fas fa-clock"></i>
+                        <span>{{ mentor_profile.session_length|default:"60" }} min</span>
+                    </div>
+                    <div class="booking-meta-item">
+                        <i class="fas fa-video"></i>
+                        <span>Google Meet</span>
+                    </div>
+                    <div class="booking-meta-item">
+                        <i class="fas fa-tag"></i>
+                        <span>${{ mentor_profile.price_per_hour|floatformat:0 }}</span>
+                    </div>
+                </div>
+                
+                <div class="booking-desc">
+                    Book a focused session to discuss your career, goals, or specific challenges.
+                </div>
+            </div>
+            
+            <!-- Col 2: Calendar -->
+            <div class="booking-calendar-col">
+                <h3 class="booking-title">Select a Date & Time</h3>
+                
+                <div class="calendar-header">
+                    <button class="cal-nav-btn" id="prevMonth"><i class="fas fa-chevron-left"></i></button>
+                    <div class="current-month-label" id="currentMonthLabel">October 2023</div>
+                    <button class="cal-nav-btn" id="nextMonth"><i class="fas fa-chevron-right"></i></button>
+                </div>
+                
+                <div class="calendar-grid-header">
+                    <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+                </div>
+                <div class="calendar-days" id="calendarDays">
+                    <!-- JS generated -->
+                </div>
+            </div>
+            
+            <!-- Col 3: Slots -->
+            <div class="booking-slots-col" id="slotsCol" style="display: none;">
+                <div class="slots-header-row">
+                    <h4 class="slots-date-label" id="selectedDateLabel">Thursday, Oct 12</h4>
+                </div>
+                <div class="slots-list" id="slotsList">
+                    <!-- JS generated -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Modal CSS */
+.booking-modal-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(4px);
+    z-index: 10000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+.booking-modal-overlay.open {
+    display: flex;
+    opacity: 1;
+}
+
+.booking-modal-container {
+    background: white;
+    width: 90%;
+    max-width: 1000px;
+    height: 600px;
+    border-radius: 20px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.booking-close-btn {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    background: rgba(15, 23, 42, 0.1); /* Subtle dark circle in light modal */
+    border: 1px solid rgba(15, 23, 42, 0.1);
+    color: #64748b;
+    font-size: 1rem;
+    cursor: pointer;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 20;
+}
+.booking-close-btn:hover {
+    background: #ef4444;
+    border-color: #ef4444;
+    color: white;
+    transform: rotate(90deg) scale(1.1);
+    box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
+}
+
+.booking-grid {
+    display: grid;
+    grid-template-columns: 300px 1fr auto; /* Auto for slots col */
+    height: 100%;
+}
+
+/* Sidebar */
+.booking-sidebar {
+    padding: 32px;
+    border-right: 1px solid #e2e8f0;
+    background: #f8fafc;
+}
+.booking-mentor-mini {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 32px;
+}
+.booking-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+.booking-avatar-placeholder {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: var(--mp-primary);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+}
+.booking-mentor-name { color: #64748b; font-size: 0.9rem; font-weight: 500; }
+.booking-session-name { color: #1e293b; font-size: 1.1rem; font-weight: 700; margin-top: 2px; }
+
+.booking-meta { display: flex; flex-direction: column; gap: 12px; margin-bottom: 32px; }
+.booking-meta-item { display: flex; align-items: center; gap: 10px; color: #475569; font-weight: 500; }
+.booking-meta-item i { color: #94a3b8; width: 20px; text-align: center; }
+
+.booking-desc { font-size: 0.9rem; color: #64748b; line-height: 1.6; }
+
+/* Calendar */
+.booking-calendar-col {
+    padding: 32px;
+    flex: 1;
+    overflow-y: auto;
+}
+.booking-title { font-size: 1.5rem; color: #1e293b; margin-bottom: 24px; }
+
+.calendar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+}
+.current-month-label { font-size: 1.1rem; font-weight: 600; color: #1e293b; }
+.cal-nav-btn {
+    background: transparent;
+    border: 1px solid #e2e8f0;
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    color: #64748b;
+}
+.cal-nav-btn:hover { background: #f1f5f9; color: var(--mp-primary); }
+
+.calendar-grid-header {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    text-align: center;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #94a3b8;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+}
+.calendar-days {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    row-gap: 8px;
+}
+.cal-day {
+    height: 44px;
+    width: 44px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: #334155;
+    transition: all 0.2s;
+    position: relative;
+}
+.cal-day:hover:not(.empty):not(.disabled) {
+    background: #f0fdfa; /* Light Emerald */
+    color: var(--mp-primary);
+    font-weight: 600;
+}
+.cal-day.selected {
+    background: var(--mp-primary) !important;
+    color: white !important;
+}
+.cal-day.disabled {
+    color: #cbd5e1;
+    cursor: default;
+}
+.cal-day.has-slots::after {
+    content: '';
+    position: absolute;
+    bottom: 6px;
+    width: 4px; height: 4px;
+    background: var(--mp-primary);
+    border-radius: 50%;
+}
+.cal-day.selected.has-slots::after { background: white; }
+
+/* Slots Col */
+.booking-slots-col {
+    width: 280px;
+    padding: 32px;
+    border-left: 1px solid #e2e8f0;
+    overflow-y: auto;
+    animation: slideIn 0.3s ease;
+}
+.slots-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+}
+.slots-date-label {
+    font-size: 1rem;
+    color: #475569;
+    margin: 0;
+}
+
+@keyframes slideIn {
+    from { opacity: 0; transform: translateX(10px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
+.slots-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.time-slot-btn {
+    padding: 12px;
+    border: 1px solid #e2e8f0; /* Default border */
+    border-radius: 8px;
+    background: white;
+    color: var(--mp-primary);
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+}
+.time-slot-btn:hover {
+    border-color: var(--mp-primary);
+    border-width: 2px;
+    padding: 11px; /* Adjust for border width */
+    background: #f0fdfa;
+}
+
+/* Responsiveness for Modal */
+@media (max-width: 900px) {
+    .booking-grid {
+        grid-template-columns: 250px 1fr;
+    }
+    .booking-slots-col {
+        position: absolute;
+        top: 0; right: 0; bottom: 0;
+        background: white;
+        box-shadow: -10px 0 20px rgba(0,0,0,0.1);
+        z-index: 10;
+    }
+}
+@media (max-width: 768px) {
+    .booking-modal-container {
+        height: 100%;
+        max-height: 100%;
+        width: 100%;
+        border-radius: 0;
+    }
+    .booking-grid {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto 1fr;
+    }
+    .booking-sidebar {
+        padding: 20px;
+        border-right: none;
+        border-bottom: 1px solid #e2e8f0;
+    }
+    .booking-mentor-mini { margin-bottom: 16px; }
+    .booking-meta { flex-direction: row; gap: 20px; margin-bottom: 16px; font-size: 0.85rem; }
+    .booking-desc { display: none; } /* Hide desc on mobile */
+    .booking-slots-col {
+        width: 100%;
+        border-left: none;
+    }
+}
+</style>
+
+<!-- Data Injection for JS -->
+<!-- Data Injection for JS -->
+{{ mentor_profile.one_time_slots|json_script:"one-time-slots-data" }}
+{{ mentor_profile.recurring_slots|json_script:"recurring-slots-data" }}
+
+
+<script>
+    // --- Data & State ---
+    let availabilityData;
+    let currentDate = new Date(); // To track month view
+    let selectedDate = null;
+    
+    // --- DOM Elements ---
+    let modal, currentMonthLabel, calendarDays, slotsCol, slotsList, selectedDateLabel, prevMonthBtn, nextMonthBtn;
+
+    document.addEventListener('DOMContentLoaded', function() {
+        // Safe access to data script
+        const oneTimeData = document.getElementById('one-time-slots-data');
+        const recurringData = document.getElementById('recurring-slots-data');
+        
+        availabilityData = {
+            one_time_slots: oneTimeData ? JSON.parse(oneTimeData.textContent) : [],
+            recurring_slots: recurringData ? JSON.parse(recurringData.textContent) : []
+        };
+        
+        modal = document.getElementById('bookingModal');
+        currentMonthLabel = document.getElementById('currentMonthLabel');
+        calendarDays = document.getElementById('calendarDays');
+        slotsCol = document.getElementById('slotsCol');
+        slotsList = document.getElementById('slotsList');
+        selectedDateLabel = document.getElementById('selectedDateLabel');
+        prevMonthBtn = document.getElementById('prevMonth');
+        nextMonthBtn = document.getElementById('nextMonth');
+        
+        // --- Events ---
+        if (prevMonthBtn) prevMonthBtn.onclick = () => {
+            currentDate.setMonth(currentDate.getMonth() - 1);
+            renderCalendar();
+        };
+        if (nextMonthBtn) nextMonthBtn.onclick = () => {
+            currentDate.setMonth(currentDate.getMonth() + 1);
+            renderCalendar();
+        };
+        
+        // Close on click outside
+        if (modal) modal.addEventListener('click', (e) => {
+            if (e.target === modal) closeBookingModal();
+        });
+    });
+
+    // --- Modal Logic ---
+    function openBookingModal() {
+        if (!modal) return; // Guard clause
+        
+        // Reset State on Open
+        currentDate = new Date(); // Reset to current month
+        selectedDate = null;      // Clear selection
+        if (slotsCol) slotsCol.style.display = 'none'; // Hide slots
+        
+        modal.classList.add('open');
+        document.body.style.overflow = 'hidden'; // Prevent background scroll
+        renderCalendar();
+    }
+
+    function closeBookingModal() {
+        if (!modal) return;
+        modal.classList.remove('open');
+        document.body.style.overflow = '';
+        // State is reset on next open, but good to clear view
+        selectedDate = null;
+        if (slotsCol) slotsCol.style.display = 'none';
+        renderCalendar();
+    }
+    
+    function closeSlots() {
+        if (slotsCol) slotsCol.style.display = 'none';
+        selectedDate = null;
+        renderCalendar(); // Redraws calendar to remove 'selected' class
+    }
+    
+    // Close on click outside
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) closeBookingModal();
+    });    
+        // --- Calendar Logic ---
+    function renderCalendar() {
+        if (!calendarDays) return;
+        
+        const year = currentDate.getFullYear();
+        const month = currentDate.getMonth();
+
+        // Update Header
+        const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+        if (currentMonthLabel) currentMonthLabel.textContent = `${monthNames[month]} ${year}`;
+
+        // Days calculation
+        const firstDayOfMonth = new Date(year, month, 1).getDay(); // 0 (Sun) - 6 (Sat)
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        
+        // Use a temp date for checking availability
+        const today = new Date();
+        today.setHours(0,0,0,0);
+
+        calendarDays.innerHTML = '';
+
+        // Empty cells for previous month padding
+        for (let i = 0; i < firstDayOfMonth; i++) {
+            const emptyCell = document.createElement('div');
+            emptyCell.classList.add('cal-day', 'empty');
+            calendarDays.appendChild(emptyCell);
+        }
+
+        // Days
+        for (let day = 1; day <= daysInMonth; day++) {
+            const dayEl = document.createElement('div');
+            dayEl.classList.add('cal-day');
+            dayEl.textContent = day;
+            
+            const checkDate = new Date(year, month, day);
+            checkDate.setHours(0,0,0,0);
+
+            // Disable past dates and today
+            if (checkDate <= today) {
+                dayEl.classList.add('disabled');
+            } else {
+                // Check Availability
+                if (hasAvailability(checkDate)) {
+                    dayEl.classList.add('has-slots');
+                }
+                
+                dayEl.onclick = () => selectDate(checkDate, dayEl);
+            }
+
+            // Selected State
+            if (selectedDate && checkDate.getTime() === selectedDate.getTime()) {
+                dayEl.classList.add('selected');
+            }
+
+            calendarDays.appendChild(dayEl);
+        }
+    }
+
+    // --- Slot Calculation Logic ---
+    function hasAvailability(date) {
+        if (!availabilityData) return false;
+        
+        // 1. One-Time Check
+        const dateStr = date.toISOString().split('T')[0];
+        const hasOneTime = availabilityData.one_time_slots.some(slot => slot.start.startsWith(dateStr) && !slot.booked);
+        if (hasOneTime) return true;
+
+        // 2. Recurring Check
+        const weekdayMap = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+        const dayName = weekdayMap[date.getDay()];
+        
+        // Find if there's any recurring rule for this day
+        const hasRecurring = availabilityData.recurring_slots.some(rule => {
+             // Basic Check: Is this rule for the current day?
+             if (rule.type === 'weekly' && rule.weekdays.includes(dayName)) return true;
+             // TODO: Add complex checks for skip_dates, daily, monthly
+             return false;
+        });
+        
+        return hasRecurring;
+    }
+
+    function getSlotsForDate(date) {
+        if (!availabilityData) return [];
+
+        const slots = [];
+        const dateStr = date.toISOString().split('T')[0];
+        const weekdayMap = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+        const dayName = weekdayMap[date.getDay()];
+
+        // 1. Add One-Time Slots
+        availabilityData.one_time_slots.forEach(slot => {
+             if (slot.start.startsWith(dateStr) && !slot.booked) {
+                 const time = new Date(slot.start).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                 slots.push({ time: time, raw: slot });
+             }
+        });
+
+        // 2. Generate Recurring Slots
+        availabilityData.recurring_slots.forEach(rule => {
+            if (rule.type === 'weekly' && rule.weekdays.includes(dayName)) {
+                // Determine start/end times from rule (e.g., "09:00" to "17:00")
+                // Parsing time
+                let start = rule.start_time; // "09:00"
+                let end = rule.end_time;     // "17:00"
+                
+                if (start && end) {
+                     // For this demo, let's just add the start time + every hour until end
+                     let [startH, startM] = start.split(':').map(Number);
+                     let [endH, endM] = end.split(':').map(Number);
+                     
+                     let currentH = startH;
+                     while(currentH < endH) {
+                         // Simple formatted time
+                         const d = new Date(); d.setHours(currentH); d.setMinutes(startM);
+                         const fmtTime = d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                         
+                         slots.push({ time: fmtTime, raw: rule, type: 'recurring' });
+                         
+                         currentH++; // Increment by 1 hour (simplified)
+                     }
+                }
+            }
+        });
+
+        // Sort by time
+        return slots.sort((a,b) => {
+            return new Date('1970/01/01 ' + a.time) - new Date('1970/01/01 ' + b.time);
+        });
+    }
+
+    function selectDate(date, dayEl) {
+        selectedDate = date;
+        renderCalendar(); // specific day highlighting
+        
+        // Show Slots
+        if (slotsCol) slotsCol.style.display = 'block';
+        if (selectedDateLabel) selectedDateLabel.textContent = date.toLocaleDateString([], {weekday: 'long', month: 'short', day: 'numeric'});
+        
+        const slots = getSlotsForDate(date);
+        if (slotsList) {
+            slotsList.innerHTML = '';
+            
+            if (slots.length === 0) {
+                slotsList.innerHTML = '<div style="color: #94a3b8; font-style: italic;">No available slots.</div>';
+            } else {
+                slots.forEach(slot => {
+                    const btn = document.createElement('button');
+                    btn.classList.add('time-slot-btn');
+                    btn.textContent = slot.time;
+                    btn.onclick = () => {
+                        alert('Booking flow to be implemented! Selected: ' + slot.time);
+                    };
+                    slotsList.appendChild(btn);
+                });
+            }
+        }
+    }
+</script>

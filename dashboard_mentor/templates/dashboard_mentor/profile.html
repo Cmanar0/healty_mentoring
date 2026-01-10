@@ -479,7 +479,7 @@
 
                     <!-- Instagram, LinkedIn, and Personal Website -->
                     <div class="compact-form-group form-grid-full">
-                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
                             <div class="compact-form-group">
                                 <label><i class="fab fa-instagram"></i> Instagram</label>
                                 <input type="text" name="instagram_name" value="{{ user.profile.instagram_name|default:'' }}" class="form-input" placeholder="@username">
@@ -491,6 +491,10 @@
                             <div class="compact-form-group">
                                 <label><i class="fas fa-globe"></i> Personal Website</label>
                                 <input type="url" name="personal_website" value="{{ user.profile.personal_website|default:'' }}" class="form-input" placeholder="https://example.com">
+                            </div>
+                            <div class="compact-form-group">
+                                <label><i class="fab fa-youtube"></i> Video Introduction URL</label>
+                                <input type="url" name="video_introduction_url" value="{{ user.profile.video_introduction_url|default:'' }}" class="form-input" placeholder="YouTube or Vimeo URL">
                             </div>
                         </div>
                     </div>

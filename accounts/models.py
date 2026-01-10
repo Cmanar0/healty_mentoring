@@ -161,6 +161,7 @@ class MentorProfile(models.Model):
     profile_picture = models.ImageField(upload_to=mentor_profile_picture_upload_to, blank=True, null=True, max_length=255)
     cover_image = models.ImageField(upload_to=mentor_cover_image_upload_to, blank=True, null=True, max_length=255, help_text="Cover/banner image for profile")
     marketing_quiz_url = models.URLField(blank=True, null=True, help_text="URL for mentor's marketing quiz/funnel")
+    video_introduction_url = models.URLField(blank=True, null=True, help_text="URL to YouTube/Vimeo introduction video")
     
     # Billing Info (JSON for flexibility)
     billing = models.JSONField(default=dict, blank=True)

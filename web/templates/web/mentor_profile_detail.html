@@ -3,6 +3,10 @@
 
 {% block title %}{{ mentor_profile.first_name }} {{ mentor_profile.last_name }} — Mentor Profile{% endblock %}
 
+{% block extra_head %}
+<meta name="referrer" content="strict-origin-when-cross-origin">
+{% endblock %}
+
 {% block extra_css %}
 <!-- Flag Icons -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flag-icons@7.0.0/css/flag-icons.min.css">
@@ -103,29 +107,71 @@
         flex-shrink: 0;
     }
 
-    .mp-avatar {
+    .mp-avatar-wrapper {
+        position: relative;
         width: 160px;
         height: 160px;
         border-radius: 50%;
         border: 5px solid var(--mp-bg-card);
         background: var(--mp-bg-main);
-        object-fit: cover;
         box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        overflow: hidden; /* Ensure overlay stays inside */
+    }
+    
+    .mp-avatar-wrapper.video-trigger {
+        cursor: pointer;
+    }
+
+    .mp-avatar {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
         display: block;
+        transition: filter 0.3s ease;
     }
 
     .mp-avatar-placeholder {
-        width: 160px;
-        height: 160px;
-        border-radius: 50%;
-        border: 5px solid var(--mp-bg-card);
-        background: var(--mp-bg-main);
+        width: 100%;
+        height: 100%;
         display: flex;
         align-items: center;
         justify-content: center;
         font-size: 4rem;
         color: var(--mp-text-light);
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        transition: filter 0.3s ease;
+    }
+    
+    .mp-avatar-overlay {
+        position: absolute;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0, 0, 0, 0.4);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+        border-radius: 50%;
+    }
+    
+    .mp-avatar-overlay i {
+        color: white;
+        font-size: 2.5rem;
+        filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+        transform: scale(0.8);
+        transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    
+    .mp-avatar-wrapper.video-trigger:hover .mp-avatar,
+    .mp-avatar-wrapper.video-trigger:hover .mp-avatar-placeholder {
+        filter: blur(2px) brightness(0.8);
+    }
+    
+    .mp-avatar-wrapper.video-trigger:hover .mp-avatar-overlay {
+        opacity: 1;
+    }
+    
+    .mp-avatar-wrapper.video-trigger:hover .mp-avatar-overlay i {
+        transform: scale(1);
     }
 
     .mp-head-info {
@@ -141,6 +187,28 @@
         margin-bottom: 8px;
         flex-wrap: wrap;
     }
+    
+    .mp-video-btn {
+        background: transparent;
+        border: 1px solid var(--mp-primary-light);
+        color: var(--mp-primary-dark);
+        padding: 5px 12px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition: all 0.2s;
+        text-decoration: none;
+        margin-left: 8px;
+    }
+    .mp-video-btn:hover {
+        background: var(--mp-primary-light);
+        transform: translateY(-1px);
+    }
+    .mp-video-btn i { font-size: 0.9rem; }
 
     .mp-name {
         font-size: 2rem;
@@ -364,7 +432,7 @@
         top: calc(var(--header-height, 70px) + 24px); /* Sticky offset: Header + Gap */
         display: flex;
         flex-direction: column;
-        gap: 16px; /* Reduced gap */
+        gap: 32px; /* Reduced gap */
     }
 
     /* Action Card */
@@ -508,19 +576,22 @@
         color: #94a3b8;
         margin-bottom: 16px; /* Reduced margin */
     }
-    .mp-community-stat-row {
-        display: flex;
-        justify-content: center;
-        gap: 24px;
-        margin-bottom: 16px; /* Reduced margin */
-        border-top: 1px solid rgba(255,255,255,0.1);
-        padding-top: 16px;
-    }
-    .mp-c-stat { text-align: center; }
-    .mp-c-val { display: block; font-weight: 700; font-size: 1.2rem; color: var(--mp-primary); }
-    .mp-c-lbl { font-size: 0.75rem; text-transform: uppercase; color: #64748b; letter-spacing: 0.5px; }
 
     /* Tags */
+    .mp-btn-community-contrast {
+        background: #ffffff;
+        color: var(--mp-secondary, #0f172a);
+        font-weight: 700;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        border: none;
+        transition: all 0.2s ease;
+    }
+    .mp-btn-community-contrast:hover {
+        background: #f8fafc;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(0,0,0,0.2);
+    }
+
     .mp-tags-container {
         display: flex;
         flex-wrap: wrap;
@@ -632,11 +703,28 @@
         
         <div class="mp-profile-head">
             <div class="mp-avatar-container">
-                {% if mentor_profile.profile_picture %}
-                    <img src="{{ mentor_profile.profile_picture.url }}" alt="{{ mentor_profile.first_name }}" class="mp-avatar">
+                {% if mentor_profile.video_introduction_url %}
+                    <div class="mp-avatar-wrapper video-trigger" onclick="openVideoModal('{{ mentor_profile.video_introduction_url }}')">
+                        {% if mentor_profile.profile_picture %}
+                            <img src="{{ mentor_profile.profile_picture.url }}" alt="{{ mentor_profile.first_name }}" class="mp-avatar">
+                        {% else %}
+                            <div class="mp-avatar-placeholder">
+                                <i class="fas fa-user"></i>
+                            </div>
+                        {% endif %}
+                        <div class="mp-avatar-overlay">
+                            <i class="fas fa-play"></i>
+                        </div>
+                    </div>
                 {% else %}
-                    <div class="mp-avatar-placeholder">
-                        <i class="fas fa-user"></i>
+                    <div class="mp-avatar-wrapper">
+                        {% if mentor_profile.profile_picture %}
+                            <img src="{{ mentor_profile.profile_picture.url }}" alt="{{ mentor_profile.first_name }}" class="mp-avatar">
+                        {% else %}
+                            <div class="mp-avatar-placeholder">
+                                <i class="fas fa-user"></i>
+                            </div>
+                        {% endif %}
                     </div>
                 {% endif %}
             </div>
@@ -644,6 +732,7 @@
             <div class="mp-head-info">
                 <div class="mp-name-row">
                     <h1 class="mp-name">{{ mentor_profile.first_name }} {{ mentor_profile.last_name }}</h1>
+
                     {% if mentor_profile.mentor_type %}
                     <span class="mp-badge-role">
                         {% if mentor_profile.mentor_type == 'life_coach' %}Life Coach
@@ -832,7 +921,7 @@
                     {% endif %}
                 </div>
 
-                <a href="#" class="mp-btn mp-btn-primary">
+                <a href="#" class="mp-btn mp-btn-primary" onclick="openBookingModal(); return false;">
                     {% if mentor_profile.first_session_free %}
                         <span class="mp-btn-badge">1st Free</span>
                     {% endif %}
@@ -866,43 +955,50 @@
                     <i class="fas fa-shield-alt" style="color: var(--mp-primary); margin-right: 4px;"></i> Verified Mentor
                 </div>
             </div>
-
-            <!-- Community Promo -->
+            
             <div class="mp-community-promo">
                 <div class="mp-community-title">Inner Circle</div>
-                <p class="mp-community-text">Get exclusive access to resources, daily tips, and a network of like-minded individuals.</p>
-                <div class="mp-community-stat-row">
-                    <div class="mp-c-stat">
-                        <span class="mp-c-val">500+</span>
-                        <span class="mp-c-lbl">Members</span>
-                    </div>
-                    <div class="mp-c-stat">
-                        <span class="mp-c-val">Weekly</span>
-                        <span class="mp-c-lbl">Events</span>
-                    </div>
+                <div class="mp-community-text">
+                    Join my private community for exclusive content, weekly QA, and network access.
                 </div>
-                <a href="#" style="color: white; text-decoration: underline; font-size: 0.9rem; font-weight: 500;">View Community Page →</a>
-            </div>
 
+                <a href="#" class="mp-btn mp-btn-community-contrast">
+                    Visit Community Page
+                </a>
+            </div>
+            
+            <!-- Tags -->
+            <!-- <div class="mp-action-card" style="text-align: left;">
+               <h4 style="margin-top:0; margin-bottom: 16px;">Focus Areas</h4>
+               <div class="mp-tags-container">
+                   {% for tag in mentor_profile.tags %}
+                    <span class="mp-tag">{{ tag }}</span>
+                   {% endfor %}
+               </div>
+            </div> -->
         </div>
     </div>
+
+    <!-- Mobile Action Bar -->
+    <div class="mp-mobile-action-bar">
+        <div style="font-weight: 700; font-size: 1.1rem; color: var(--mp-text-main);">
+            {% if mentor_profile.price_per_hour %}
+                ${{ mentor_profile.price_per_hour|floatformat:0 }}<span style="font-size: 0.8rem; font-weight: 400; color: var(--mp-text-muted);">/session</span>
+            {% else %}
+               Contact me
+            {% endif %}
+        </div>
+        <button class="mp-btn mp-btn-primary" style="width: auto; margin-bottom: 0;" onclick="openBookingModal()">
+            Book Session
+        </button>
+    </div>
+
 </div>
 
-<!-- Mobile Fixed Bottom Action Bar -->
-<div class="mp-mobile-action-bar">
-    <div style="display: flex; flex-direction: column;">
-        <span style="font-size: 0.85rem; color: var(--mp-text-muted); font-weight: 500;">Starting at</span>
-        <span style="font-size: 1.2rem; font-weight: 700; color: var(--mp-text-main); line-height: 1;">
-            {% if mentor_profile.price_per_hour %}
-                ${{ mentor_profile.price_per_hour|floatformat:0 }}
-            {% else %}
-                -
-            {% endif %}
-        </span>
-    </div>
-    <a href="#" class="mp-btn mp-btn-primary" style="width: auto; padding: 12px 24px; margin: 0;">
-        <i class="fas fa-calendar-check"></i> Book Session
-    </a>
-</div>
+<!-- Booking Modal Include -->
+{% include 'dashboard_user/popups/booking_modal.html' %}
+<!-- Video Modal Include -->
+{% include 'dashboard_user/popups/video_modal.html' %}
+
 
 {% endblock %}

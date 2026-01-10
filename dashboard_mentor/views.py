@@ -787,6 +787,10 @@ def profile(request):
             profile.linkedin_name = linkedin_name.strip() if linkedin_name else None
             profile.personal_website = personal_website.strip() if personal_website else None
             
+            # Handle Video Introduction
+            video_introduction_url = request.POST.get("video_introduction_url", "")
+            profile.video_introduction_url = video_introduction_url.strip() if video_introduction_url else None
+            
             # Handle qualifications (from JSON array)
             qualifications_data = request.POST.get("qualifications_data", "")
             if qualifications_data:
