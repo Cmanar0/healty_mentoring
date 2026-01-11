@@ -5,26 +5,26 @@
 
 {% block dashboard_content %}
 <div class="dashboard-content-container">
-    <div class="dashboard-grid" style="display: grid; grid-template-columns: 1fr; gap: 24px;">
-        <!-- Profile Card -->
+    <div class="dashboard-grid" style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px;">
+        <!-- Main Profile Card (2/3 width) -->
         <div class="dashboard-card profile-card-compact" style="padding: 0; overflow: hidden;">
             
-            <!-- Profile Header (Avatar + Info) -->
-            <div class="profile-header-compact" style="padding: 24px; border-bottom: 1px solid var(--dash-border);">
+            <!-- Profile Header (Avatar + Info) - Without Cover Photo -->
+            <div class="profile-header-compact user-profile-header" style="padding: 40px 24px 24px 24px; margin-top: 0; border-bottom: 1px solid var(--dash-border);">
                 <div class="profile-avatar-wrapper" style="display: flex; justify-content: center; margin-bottom: 16px;">
                     <form method="post" enctype="multipart/form-data" id="pictureForm" style="margin: 0;">
                         {% csrf_token %}
                         <input type="hidden" name="action" value="update_picture">
-                        <label for="profilePictureInput" class="profile-avatar-compact profile-avatar-hover" style="cursor: pointer; position: relative; display: inline-block;">
+                        <label for="profilePictureInput" class="profile-avatar-compact profile-avatar-hover">
                             {% if user.profile.profile_picture %}
-                                <img src="{{ user.profile.profile_picture.url }}" alt="Profile" id="profileImagePreview" style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 3px solid white; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">
+                                <img src="{{ user.profile.profile_picture.url }}" alt="Profile" id="profileImagePreview">
                             {% else %}
-                                <div class="avatar-placeholder" style="width: 120px; height: 120px; border-radius: 50%; background: #e2e8f0; display: flex; align-items: center; justify-content: center; font-size: 3rem; color: #94a3b8; border: 3px solid white; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">
+                                <div class="avatar-placeholder">
                                     <i class="fas fa-user"></i>
                                 </div>
                             {% endif %}
-                            <div class="avatar-overlay" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.5); border-radius: 50%; display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s;">
-                                <i class="fas fa-camera" style="color: white; font-size: 1.5rem;"></i>
+                            <div class="avatar-overlay">
+                                <i class="fas fa-camera"></i>
                             </div>
                             <input type="file" name="profile_picture" id="profilePictureInput" accept="image/*" style="display: none;">
                         </label>
@@ -32,64 +32,174 @@
                 </div>
                 
                 <div class="profile-header-info" style="text-align: center;">
-                    <div class="profile-name-row" style="display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 8px;">
-                        <h2 class="profile-name" style="margin: 0; font-size: 1.5rem; font-weight: 700; color: var(--dash-text-main);">{{ user.profile.first_name }} {{ user.profile.last_name }}</h2>
+                    <div class="profile-name-row">
+                        <h2 class="profile-name">{{ user.profile.first_name }} {{ user.profile.last_name }}</h2>
                     </div>
-                    <p class="profile-title" style="margin: 0; color: var(--dash-text-muted); font-size: 0.95rem;">User</p>
+                    <p class="profile-title">User</p>
                 </div>
             </div>
 
-
             <!-- Main Form Content -->
-            <div class="profile-content-wrapper" style="padding: 24px;">
+            <div class="profile-content-wrapper" style="padding: 0 24px 24px 24px;">
                 <form method="post" id="profileForm">
                     {% csrf_token %}
                     <input type="hidden" name="action" value="update_profile">
                     
-                    <div class="form-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div class="form-grid">
                         <!-- First Name -->
                         <div class="compact-form-group">
-                            <label style="display: block; margin-bottom: 8px; font-weight: 600; color: var(--dash-text-main); font-size: 0.95rem;"><i class="fas fa-user" style="margin-right: 8px; color: var(--dash-primary);"></i> First Name</label>
-                            <input type="text" name="first_name" value="{{ user.profile.first_name }}" class="form-input" placeholder="First Name" style="width: 100%; padding: 12px 16px; border: 1px solid var(--dash-border); border-radius: 8px; font-size: 0.95rem;">
+                            <label><i class="fas fa-user"></i> First Name</label>
+                            <input type="text" name="first_name" value="{{ user.profile.first_name }}" class="form-input" placeholder="First Name">
                         </div>
 
                         <!-- Last Name -->
                         <div class="compact-form-group">
-                            <label style="display: block; margin-bottom: 8px; font-weight: 600; color: var(--dash-text-main); font-size: 0.95rem;"><i class="fas fa-user" style="margin-right: 8px; color: var(--dash-primary);"></i> Last Name</label>
-                            <input type="text" name="last_name" value="{{ user.profile.last_name }}" class="form-input" placeholder="Last Name" style="width: 100%; padding: 12px 16px; border: 1px solid var(--dash-border); border-radius: 8px; font-size: 0.95rem;">
+                            <label><i class="fas fa-user"></i> Last Name</label>
+                            <input type="text" name="last_name" value="{{ user.profile.last_name }}" class="form-input" placeholder="Last Name">
                         </div>
 
-                        <!-- Email (Read-only with link to account) -->
-                        <div class="compact-form-group form-grid-full" style="grid-column: 1 / -1;">
-                            <label style="display: block; margin-bottom: 8px; font-weight: 600; color: var(--dash-text-main); font-size: 0.95rem;"><i class="fas fa-envelope" style="margin-right: 8px; color: var(--dash-primary);"></i> Email</label>
-                            <div style="display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: #f8fafc; border: 1px solid var(--dash-border); border-radius: 8px;">
-                                <span style="flex: 1; color: var(--dash-text-main);">{{ user.email }}</span>
-                                {% if user.is_email_verified %}
-                                    <span class="email-verified-badge" style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; background: #d1fae5; color: #065f46; border-radius: 4px; font-size: 0.85rem; font-weight: 500;">
-                                        <i class="fas fa-check-circle"></i> Verified
-                                    </span>
-                                {% endif %}
-                                <a href="/dashboard/user/account/" class="btn btn-outline btn-sm" style="white-space: nowrap;">
-                                    <i class="fas fa-edit"></i> Change Email
-                                </a>
+                        <!-- Email -->
+                        <div class="compact-form-group form-grid-full">
+                            <div class="account-section" style="padding: 0; border-bottom: none;">
+                                <div class="email-row-layout">
+                                    <div class="email-label-group">
+                                        <h4><i class="fas fa-envelope"></i> Email</h4>
+                                        <span class="field-value">
+                                            {{ user.email }}
+                                            {% if user.is_email_verified %}
+                                            <span class="email-verified-badge completion-popover-trigger" data-popover="emailVerifiedPopover">
+                                                <i class="fas fa-check-circle"></i>
+                                            </span>
+                                            {% endif %}
+                                        </span>
+                                    </div>
+                                    <!-- Email Verified Popover - positioned relative to badge -->
+                                    {% if user.is_email_verified %}
+                                    <div class="completion-popover" id="emailVerifiedPopover">
+                                        <div class="popover-content">
+                                            <p style="margin: 0; color: var(--dash-primary);">✓ Email is verified</p>
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                    <button type="button" class="btn-change-email btn-fixed-width-email" onclick="openEmailModal()">Change email</button>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <div style="text-align: right; margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--dash-border);">
-                        <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-save"></i> Save Changes
-                        </button>
+                    <div class="profile-save-bar">
+                        <button type="submit" class="btn btn-primary">Save Changes</button>
                     </div>
                 </form>
+            </div>
+        </div>
+
+        <!-- Right Column (1/3 width) - Profile Completion -->
+        <div class="dashboard-card" style="height: fit-content;">
+            <div class="card-header">
+                <h3 class="card-title">Profile Credibility</h3>
+            </div>
+            
+            <!-- Profile Completion Circle -->
+            <div style="display: flex; justify-content: center; padding: 20px 0;">
+                <div style="text-align: center; position: relative;">
+                    <div class="profile-completion-circle completion-popover-trigger" style="margin: 0 auto; cursor: help;" data-popover="completenessPopover">
+                        <svg width="120" height="120" viewBox="0 0 120 120">
+                            <!-- Background circle -->
+                            <circle
+                                cx="60"
+                                cy="60"
+                                r="52"
+                                fill="none"
+                                stroke="#e5e7eb"
+                                stroke-width="8"
+                            />
+                            <!-- Progress circle -->
+                            <circle
+                                id="profileProgressCircle"
+                                cx="60"
+                                cy="60"
+                                r="52"
+                                fill="none"
+                                stroke="var(--dash-primary)"
+                                stroke-width="8"
+                                stroke-linecap="round"
+                                stroke-dasharray="326.73"
+                                stroke-dashoffset="326.73"
+                                transform="rotate(-90 60 60)"
+                                style="transition: stroke-dashoffset 0.3s ease;"
+                            />
+                        </svg>
+                        <div class="completion-percentage">
+                            <span id="profileCompletionText">{{ profile_completion|default:0 }}%</span>
+                        </div>
+                    </div>
+                    <p style="margin: 12px 0 0; font-size: 0.85rem; color: var(--dash-text-muted);">
+                        Profile completeness
+                    </p>
+                    <!-- Popover -->
+                    <div class="completion-popover" id="completenessPopover">
+                        <div class="popover-header">
+                            <strong>Missing Fields</strong>
+                        </div>
+                        <div class="popover-content">
+                            {% if missing_fields %}
+                                <ul style="margin: 0; padding-left: 20px; text-align: left;">
+                                    {% for field in missing_fields %}
+                                        <li style="margin-bottom: 6px;">{{ field }}</li>
+                                    {% endfor %}
+                                </ul>
+                            {% else %}
+                                <p style="margin: 0; color: var(--dash-primary);">✓ All fields completed!</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Premium Image Preview Modal -->
+<div id="imagePreviewModal" class="cropper-modal-backdrop">
+    <div class="cropper-modal-card">
+        <div class="cropper-header">
+            <h3 id="previewTitle"><i class="fas fa-crop-alt"></i> Preview Image</h3>
+            <button type="button" class="cropper-close-btn" onclick="closeImagePreview()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <div class="cropper-body">
+            <img id="previewImage" src="" alt="Preview">
+        </div>
+        
+        <div class="cropper-footer">
+            <div class="cropper-toolbar">
+                <button type="button" class="cropper-tool-btn" onclick="zoomOut()" title="Zoom Out">
+                    <i class="fas fa-search-minus"></i>
+                </button>
+                <button type="button" class="cropper-tool-btn" onclick="zoomIn()" title="Zoom In">
+                    <i class="fas fa-search-plus"></i>
+                </button>
+                <button type="button" class="cropper-tool-btn" onclick="resetZoom()" title="Reset View">
+                    <i class="fas fa-undo"></i>
+                </button>
+            </div>
+            
+            <div class="cropper-actions">
+                <button type="button" class="btn-cropper-cancel" onclick="closeImagePreview()">Cancel</button>
+                <button type="button" class="btn-cropper-save" onclick="saveCroppedImage()">
+                    <i class="fas fa-check"></i> Crop & Save
+                </button>
             </div>
         </div>
     </div>
 </div>
 
 <script>
+// Check for saved notification on page load
 document.addEventListener('DOMContentLoaded', function() {
-    // Check for saved notification on page load
     const savedNotification = sessionStorage.getItem('profileNotification');
     const savedNotificationType = sessionStorage.getItem('profileNotificationType');
     
@@ -99,44 +209,210 @@ document.addEventListener('DOMContentLoaded', function() {
         sessionStorage.removeItem('profileNotification');
         sessionStorage.removeItem('profileNotificationType');
     }
+});
+
+// CropperJS instance
+let cropper = null;
+let currentInputType = null; // 'profile' or 'cover'
+let currentFormId = null;
+let currentFileInput = null;
+
+// Show image with CropperJS
+function showImagePreview(file, inputType, formId, fileInput) {
+    if (!file) return;
     
-    // Profile picture upload - AJAX submission
-    const profilePictureInput = document.getElementById('profilePictureInput');
-    if (profilePictureInput) {
-        profilePictureInput.addEventListener('change', function() {
-            if (this.files && this.files[0]) {
-                const form = document.getElementById('pictureForm');
-                if (form) {
-                    const formData = new FormData(form);
-                    const csrfToken = form.querySelector('[name=csrfmiddlewaretoken]');
-                    
-                    fetch(window.location.pathname, {
-                        method: 'POST',
-                        body: formData,
-                        headers: {
-                            'X-CSRFToken': csrfToken ? csrfToken.value : ''
-                        }
-                    })
-                    .then(response => {
-                        if (response.ok) {
-                            // Save notification to sessionStorage
-                            sessionStorage.setItem('profileNotification', 'Profile picture updated successfully!');
-                            sessionStorage.setItem('profileNotificationType', 'success');
-                            // Reload immediately
-                            window.location.reload();
-                        } else {
-                            if (typeof showNotification === 'function') {
-                                showNotification('Failed to update profile picture. Please try again.', 'error');
-                            }
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error:', error);
-                        if (typeof showNotification === 'function') {
-                            showNotification('Failed to update profile picture. Please try again.', 'error');
-                        }
-                    });
+    // Check if CropperJS is loaded
+    if (typeof Cropper === 'undefined') {
+        alert('Image cropper library not loaded. Please refresh the page.');
+        return;
+    }
+    
+    currentInputType = inputType;
+    currentFormId = formId;
+    currentFileInput = fileInput;
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const modal = document.getElementById('imagePreviewModal');
+        const img = document.getElementById('previewImage');
+        const title = document.getElementById('previewTitle');
+        
+        if (modal && img && title) {
+            // Set image source
+            img.src = e.target.result;
+            title.innerHTML = inputType === 'profile' ? '<i class="fas fa-user-circle"></i> Crop Profile Picture' : '<i class="fas fa-image"></i> Crop Cover Photo';
+            
+            // Show modal with flex and fade-in
+            modal.style.display = 'flex';
+            // Small delay to allow display:flex to apply before adding active class for transition
+            setTimeout(() => {
+                modal.classList.add('active');
+            }, 10);
+            
+            // Add circular class for profile picture
+            if (inputType === 'profile') {
+                document.querySelector('.cropper-modal-card').classList.add('cropper-circle-view');
+            } else {
+                document.querySelector('.cropper-modal-card').classList.remove('cropper-circle-view');
+            }
+            
+            // Wait for image to load, then initialize CropperJS
+            img.onload = function() {
+                // Destroy previous cropper if exists
+                if (cropper) {
+                    cropper.destroy();
+                    cropper = null;
                 }
+                
+                // Initialize CropperJS with locked aspect ratios
+                // Profile: 1:1 (square), Cover: 3:1 (wide horizontal ratio)
+                const aspectRatio = inputType === 'profile' ? 1 : 3/1;
+                cropper = new Cropper(img, {
+                    aspectRatio: aspectRatio,
+                    viewMode: 1, // Restrict crop box within canvas
+                    autoCropArea: 1,
+                    responsive: true,
+                    restore: false,
+                    guides: true,
+                    center: true,
+                    highlight: false,
+                    cropBoxMovable: true,
+                    cropBoxResizable: false, // Lock aspect ratio - user can't resize to custom ratio
+                    toggleDragModeOnDblclick: false,
+                    dragMode: 'move', // Allow dragging the image when zoomed
+                    zoomable: true, // Enable zoom
+                    scalable: false, // Disable scaling (we only want zoom)
+                    rotatable: false, // Disable rotation
+                });
+            };
+            
+            // If image already loaded
+            if (img.complete) {
+                img.onload();
+            }
+        }
+    };
+    reader.readAsDataURL(file);
+}
+
+function closeImagePreview() {
+    const modal = document.getElementById('imagePreviewModal');
+    if (modal) {
+        modal.classList.remove('active');
+        // Wait for transition to finish before hiding
+        setTimeout(() => {
+            modal.style.display = 'none';
+        }, 300);
+    }
+    
+    // Destroy cropper
+    if (cropper) {
+        cropper.destroy();
+        cropper = null;
+    }
+    
+    // Reset file input so the same file can be selected again
+    if (currentFileInput) {
+        currentFileInput.value = '';
+    }
+    
+    // Reset variables
+    currentInputType = null;
+    currentFormId = null;
+    currentFileInput = null;
+}
+
+// Zoom functions
+function zoomIn() {
+    if (cropper) {
+        cropper.zoom(0.1); // Zoom in by 10%
+    }
+}
+
+function zoomOut() {
+    if (cropper) {
+        cropper.zoom(-0.1); // Zoom out by 10%
+    }
+}
+
+function resetZoom() {
+    if (cropper) {
+        cropper.reset(); // Reset zoom and position
+    }
+}
+
+// Save cropped image
+function saveCroppedImage() {
+    if (!cropper || !currentFileInput || !currentFormId) {
+        alert('Error: Missing cropper or form data');
+        return;
+    }
+    
+    // Get cropped canvas with proper dimensions
+    // Profile: 400x400 (square), Cover: 1920x640 (3:1 wide ratio)
+    const canvas = cropper.getCroppedCanvas({
+        width: currentInputType === 'profile' ? 400 : 1920,
+        height: currentInputType === 'profile' ? 400 : 640,
+        imageSmoothingEnabled: true,
+        imageSmoothingQuality: 'high',
+    });
+    
+    // Convert to blob
+    canvas.toBlob(function(blob) {
+        if (!blob) {
+            alert('Error creating cropped image');
+            return;
+        }
+        
+        // Create a new File object from the blob
+        const fileName = currentFileInput.files[0].name;
+        const croppedFile = new File([blob], fileName, { type: 'image/jpeg' });
+        
+        // Update the file input with the cropped file
+        const dataTransfer = new DataTransfer();
+        dataTransfer.items.add(croppedFile);
+        currentFileInput.files = dataTransfer.files;
+        
+        // Save notification to sessionStorage before submitting
+        sessionStorage.setItem('profileNotification', 'Profile picture updated successfully!');
+        sessionStorage.setItem('profileNotificationType', 'success');
+        
+        // Submit the form
+        const form = document.getElementById(currentFormId);
+        if (form) {
+            form.submit();
+        } else {
+            alert('Form not found');
+        }
+        
+        // Close modal
+        closeImagePreview();
+    }, 'image/jpeg', 0.9);
+}
+
+// Handle profile picture and cover image selection
+document.addEventListener('DOMContentLoaded', function() {
+    // Check if CropperJS is loaded
+    if (typeof Cropper === 'undefined') {
+        console.error('CropperJS library not loaded. Make sure it is included in the base template.');
+    }
+    
+    // Handle profile picture selection
+    const profilePicInput = document.getElementById('profilePictureInput');
+    if (profilePicInput) {
+        profilePicInput.addEventListener('change', function(e) {
+            if (e.target.files && e.target.files[0]) {
+                showImagePreview(e.target.files[0], 'profile', 'pictureForm', e.target);
+            }
+        });
+    }
+    
+    // Close modal when clicking outside
+    const modal = document.getElementById('imagePreviewModal');
+    if (modal) {
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                closeImagePreview();
             }
         });
     }
@@ -178,25 +454,612 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     }
+
+    // Popover functionality with smart positioning
+    const popoverTriggers = document.querySelectorAll('.completion-popover-trigger');
+    popoverTriggers.forEach(trigger => {
+        const popoverId = trigger.getAttribute('data-popover');
+        const popover = document.getElementById(popoverId);
+        
+        if (popover) {
+            // Ensure popover is positioned relative to trigger's parent (email-label-group)
+            const emailLabelGroup = trigger.closest('.email-label-group');
+            if (emailLabelGroup && popover.parentElement !== emailLabelGroup.parentElement) {
+                emailLabelGroup.parentElement.insertBefore(popover, emailLabelGroup.nextSibling);
+            }
+            
+            trigger.addEventListener('mouseenter', function() {
+                popover.style.display = 'block';
+                
+                const triggerRect = trigger.getBoundingClientRect();
+                const popoverRect = popover.getBoundingClientRect();
+                const viewportHeight = window.innerHeight;
+                const viewportWidth = window.innerWidth;
+                
+                const spaceAbove = triggerRect.top;
+                const spaceBelow = viewportHeight - triggerRect.bottom;
+                const popoverHeight = popoverRect.height || 200;
+                
+                popover.style.position = 'fixed';
+                popover.style.left = '';
+                popover.style.right = '';
+                popover.style.top = '';
+                popover.style.bottom = '';
+                popover.style.transform = '';
+                
+                const triggerCenterX = triggerRect.left + triggerRect.width / 2;
+                const popoverWidth = popoverRect.width || 250;
+                
+                if (spaceAbove >= popoverHeight + 20 || spaceAbove > spaceBelow) {
+                    popover.style.bottom = `${window.innerHeight - triggerRect.top + 12}px`;
+                    popover.style.top = 'auto';
+                    popover.style.left = `${triggerCenterX}px`;
+                    popover.style.transform = 'translateX(-50%)';
+                    popover.classList.remove('popover-below');
+                    popover.classList.add('popover-above');
+                } else {
+                    popover.style.top = `${triggerRect.bottom + 12}px`;
+                    popover.style.bottom = 'auto';
+                    popover.style.left = `${triggerCenterX}px`;
+                    popover.style.transform = 'translateX(-50%)';
+                    popover.classList.remove('popover-above');
+                    popover.classList.add('popover-below');
+                }
+
+                setTimeout(() => {
+                    const finalPopoverRect = popover.getBoundingClientRect();
+                    if (finalPopoverRect.left < 10) {
+                        popover.style.left = '10px';
+                        popover.style.transform = 'translateX(0)';
+                    } else if (finalPopoverRect.right > viewportWidth - 10) {
+                        popover.style.left = 'auto';
+                        popover.style.right = '10px';
+                        popover.style.transform = 'translateX(0)';
+                    }
+                    
+                    popover.classList.add('active');
+                }, 10);
+            });
+            
+            trigger.addEventListener('mouseleave', function() {
+                popover.classList.remove('active');
+                setTimeout(() => {
+                    popover.style.display = 'none';
+                }, 200);
+            });
+        }
+    });
+
+    // Profile completion circle animation
+    function getProgressColor(percentage) {
+        if (percentage >= 90) {
+            return '#059669'; // Dark green - Excellent (90-100%)
+        } else if (percentage >= 70) {
+            return '#10b981'; // Green - Good (70-89%)
+        } else if (percentage >= 40) {
+            return '#f59e0b'; // Orange - Needs improvement (40-69%)
+        } else {
+            return '#ef4444'; // Red - Low (0-39%)
+        }
+    }
+
+    const progressCircle = document.getElementById('profileProgressCircle');
+    const completionText = document.getElementById('profileCompletionText');
     
-    // Avatar hover effect
-    const avatarHover = document.querySelector('.profile-avatar-hover');
-    if (avatarHover) {
-        avatarHover.addEventListener('mouseenter', function() {
-            const overlay = this.querySelector('.avatar-overlay');
-            if (overlay) overlay.style.opacity = '1';
+    if (progressCircle && completionText) {
+        const percentage = parseInt('{{ profile_completion|default:0 }}', 10) || 0;
+        const circumference = 326.73; // 2 * PI * radius (52)
+        const offset = circumference - (percentage / 100) * circumference;
+        
+        // Set color based on percentage
+        const color = getProgressColor(percentage);
+        progressCircle.style.stroke = color;
+        
+        // Animate the circle
+        setTimeout(() => {
+            progressCircle.style.strokeDashoffset = offset;
+        }, 100);
+    }
+});
+</script>
+
+<!-- Email Verification Modal -->
+<div id="emailModal" class="modal-overlay">
+    <div class="modal-content">
+        <button type="button" class="modal-close" onclick="closeEmailModal()">
+            <i class="fas fa-times"></i>
+        </button>
+        
+        <!-- Step 1: New Email Input -->
+        <div id="emailStep1">
+            <div class="modal-header">
+                <h3 class="modal-title">Change Email Address</h3>
+                <p class="modal-subtitle">Enter your new email address. We'll send you a verification code.</p>
+                <div style="margin-top: 16px; display: flex; justify-content: center; align-items: center;">
+                    <button type="button" class="btn btn-outline btn-no-green-hover" id="showCodeInputBtn" onclick="showCodeInput()" style="display: none; width: auto; padding: 8px 16px; font-size: 0.9rem;">
+                        I already have the verification code
+                    </button>
+                </div>
+            </div>
+            <div id="emailStep1Error" class="email-error-message" style="display: none; margin-bottom: 16px; padding: 12px 16px; background: rgba(239, 68, 68, 0.1); border-radius: 8px; border-left: 3px solid #ef4444;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-exclamation-circle" style="color: #ef4444;"></i>
+                    <span id="emailStep1ErrorText" style="color: #ef4444; font-size: 0.9rem;"></span>
+                </div>
+            </div>
+            <form id="emailFormStep1" onsubmit="handleEmailStep1(event)">
+                <div style="margin-bottom: 24px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 500;">New Email Address</label>
+                    <input type="email" id="newEmailInput" class="form-input" placeholder="name@example.com" required>
+                </div>
+                <div class="modal-actions">
+                    <button type="submit" id="sendVerificationCodeBtn" class="btn btn-primary btn-full">
+                        <span class="btn-text">Send Verification Code</span>
+                        <span class="btn-loading" style="display: none;">
+                            <i class="fas fa-spinner fa-spin" style="margin-right: 8px;"></i>Sending...
+                        </span>
+                    </button>
+                    <button type="button" class="btn btn-outline btn-full" onclick="closeEmailModal()" id="cancelEmailBtn">Cancel</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Step 2: Verification Code -->
+        <div id="emailStep2" style="display: none;">
+            <div class="modal-header">
+                <h3 class="modal-title">Verify Email</h3>
+                <p class="modal-subtitle">Enter the 6-digit code sent to <strong id="confirmEmailDisplay"></strong></p>
+            </div>
+            <div id="emailStep2Error" class="email-error-message" style="display: none; margin-bottom: 16px; padding: 12px 16px; background: rgba(239, 68, 68, 0.1); border-radius: 8px; border-left: 3px solid #ef4444;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-exclamation-circle" style="color: #ef4444;"></i>
+                    <span id="emailStep2ErrorText" style="color: #ef4444; font-size: 0.9rem;"></span>
+                </div>
+            </div>
+            <form id="emailFormStep2" method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="update_email">
+                <input type="hidden" name="email" id="finalEmailInput">
+                
+                <div class="verification-input-group">
+                    <input type="text" class="verification-digit" maxlength="1" pattern="[0-9]" required>
+                    <input type="text" class="verification-digit" maxlength="1" pattern="[0-9]" required>
+                    <input type="text" class="verification-digit" maxlength="1" pattern="[0-9]" required>
+                    <input type="text" class="verification-digit" maxlength="1" pattern="[0-9]" required>
+                    <input type="text" class="verification-digit" maxlength="1" pattern="[0-9]" required>
+                    <input type="text" class="verification-digit" maxlength="1" pattern="[0-9]" required>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="submit" id="verifyEmailBtn" class="btn btn-primary btn-full">
+                        <span class="btn-text">Verify & Update Email</span>
+                        <span class="btn-loading" style="display: none;">
+                            <i class="fas fa-spinner fa-spin" style="margin-right: 8px;"></i>Processing...
+                        </span>
+                    </button>
+                    <button type="button" class="btn btn-outline btn-full" onclick="backToStep1()" id="backToStep1Btn">Back</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+// Email modal functions
+function openEmailModal() {
+    document.getElementById('emailModal').classList.add('active');
+    document.getElementById('emailStep1').style.display = 'block';
+    document.getElementById('emailStep2').style.display = 'none';
+    document.getElementById('newEmailInput').value = '';
+    hideEmailErrors();
+    checkPendingEmailChange();
+}
+
+function closeEmailModal() {
+    document.getElementById('emailModal').classList.remove('active');
+    hideEmailErrors();
+}
+
+function hideEmailErrors() {
+    const step1Error = document.getElementById('emailStep1Error');
+    const step2Error = document.getElementById('emailStep2Error');
+    if (step1Error) step1Error.style.display = 'none';
+    if (step2Error) step2Error.style.display = 'none';
+}
+
+function showEmailError(step, message) {
+    hideEmailErrors();
+    if (step === 1) {
+        const errorDiv = document.getElementById('emailStep1Error');
+        const errorText = document.getElementById('emailStep1ErrorText');
+        if (errorDiv && errorText) {
+            errorText.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+    } else if (step === 2) {
+        const errorDiv = document.getElementById('emailStep2Error');
+        const errorText = document.getElementById('emailStep2ErrorText');
+        if (errorDiv && errorText) {
+            errorText.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+    }
+}
+
+function showCodeInput() {
+    fetch('{% url "accounts:check_pending_email_change" %}', {
+        method: 'GET',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.has_pending && data.email) {
+            document.getElementById('emailStep1').style.display = 'none';
+            document.getElementById('emailStep2').style.display = 'block';
+            document.getElementById('confirmEmailDisplay').textContent = data.email;
+            document.getElementById('finalEmailInput').value = data.email;
+            hideEmailErrors();
+            setTimeout(() => document.querySelector('.verification-digit').focus(), 100);
+        } else {
+            showEmailError(1, 'No pending email change found. Please enter your email and request a new code.');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showEmailError(1, 'Unable to check for pending email change. Please request a new code.');
+    });
+}
+
+function checkPendingEmailChange() {
+    fetch('{% url "accounts:check_pending_email_change" %}', {
+        method: 'GET',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        const showCodeBtn = document.getElementById('showCodeInputBtn');
+        if (showCodeBtn) {
+            if (data.has_pending) {
+                showCodeBtn.style.display = 'block';
+            } else {
+                showCodeBtn.style.display = 'none';
+            }
+        }
+    })
+    .catch(error => {
+        console.error('Error checking pending email change:', error);
+    });
+}
+
+function handleEmailStep1(e) {
+    e.preventDefault();
+    hideEmailErrors();
+    const email = document.getElementById('newEmailInput').value.trim();
+    if (!email) {
+        showEmailError(1, 'Please enter an email address');
+        return;
+    }
+    
+    const sendBtn = document.getElementById('sendVerificationCodeBtn');
+    const cancelBtn = document.getElementById('cancelEmailBtn');
+    if (sendBtn) {
+        sendBtn.disabled = true;
+        sendBtn.style.opacity = '0.6';
+        sendBtn.style.cursor = 'not-allowed';
+        sendBtn.querySelector('.btn-text').style.display = 'none';
+        sendBtn.querySelector('.btn-loading').style.display = 'inline';
+    }
+    if (cancelBtn) {
+        cancelBtn.disabled = true;
+    }
+    
+    fetch('{% url "accounts:initiate_email_change" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({ new_email: email })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (sendBtn) {
+            sendBtn.disabled = false;
+            sendBtn.style.opacity = '1';
+            sendBtn.style.cursor = 'pointer';
+            sendBtn.querySelector('.btn-text').style.display = 'inline';
+            sendBtn.querySelector('.btn-loading').style.display = 'none';
+        }
+        if (cancelBtn) {
+            cancelBtn.disabled = false;
+        }
+        
+        if (data.success) {
+            document.getElementById('emailStep1').style.display = 'none';
+            document.getElementById('emailStep2').style.display = 'block';
+            document.getElementById('confirmEmailDisplay').textContent = email;
+            document.getElementById('finalEmailInput').value = email;
+            hideEmailErrors();
+            document.querySelectorAll('.verification-digit').forEach(input => input.value = '');
+            setTimeout(() => document.querySelector('.verification-digit').focus(), 100);
+        } else {
+            showEmailError(1, data.error || 'Failed to send verification code');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showEmailError(1, 'An error occurred. Please try again.');
+        if (sendBtn) {
+            sendBtn.disabled = false;
+            sendBtn.style.opacity = '1';
+            sendBtn.style.cursor = 'pointer';
+            sendBtn.querySelector('.btn-text').style.display = 'inline';
+            sendBtn.querySelector('.btn-loading').style.display = 'none';
+        }
+        if (cancelBtn) {
+            cancelBtn.disabled = false;
+        }
+    });
+}
+
+function backToStep1() {
+    document.getElementById('emailStep1').style.display = 'block';
+    document.getElementById('emailStep2').style.display = 'none';
+    hideEmailErrors();
+}
+
+// Email verification code input handling
+document.addEventListener('DOMContentLoaded', function() {
+    const digits = document.querySelectorAll('.verification-digit');
+    
+    function handlePaste(e) {
+        e.preventDefault();
+        const pastedData = (e.clipboardData || window.clipboardData).getData('text');
+        const digitsOnly = pastedData.replace(/\D/g, '').slice(0, 6);
+        
+        if (digitsOnly.length > 0) {
+            digits.forEach(input => {
+                input.value = '';
+            });
+            
+            if (digits.length > 0) {
+                digits[0].focus();
+            }
+            
+            digits.forEach((input, idx) => {
+                if (idx < digitsOnly.length) {
+                    input.value = digitsOnly[idx];
+                }
+            });
+            
+            const nextEmptyIdx = Math.min(digitsOnly.length, digits.length - 1);
+            digits[nextEmptyIdx].focus();
+        }
+    }
+    
+    digits.forEach((digit, idx) => {
+        digit.addEventListener('paste', handlePaste);
+        
+        digit.addEventListener('input', function(e) {
+            this.value = this.value.replace(/\D/g, '');
+            
+            if (this.value.length > 1) {
+                this.value = this.value.slice(0, 1);
+            }
+            
+            if (this.value.length === 1) {
+                if (idx < digits.length - 1) {
+                    digits[idx + 1].focus();
+                }
+            }
         });
-        avatarHover.addEventListener('mouseleave', function() {
-            const overlay = this.querySelector('.avatar-overlay');
-            if (overlay) overlay.style.opacity = '0';
+        
+        digit.addEventListener('keydown', function(e) {
+            if (e.key === 'ArrowRight' || (e.key === 'Tab' && !e.shiftKey)) {
+                e.preventDefault();
+                if (idx < digits.length - 1) {
+                    digits[idx + 1].focus();
+                }
+            }
+            else if (e.key === 'ArrowLeft' || (e.key === 'Tab' && e.shiftKey)) {
+                e.preventDefault();
+                if (idx > 0) {
+                    digits[idx - 1].focus();
+                    digits[idx - 1].value = '';
+                }
+            }
+            else if (e.key === 'Backspace') {
+                if (this.value.length === 0 && idx > 0) {
+                    e.preventDefault();
+                    digits[idx - 1].focus();
+                    digits[idx - 1].value = '';
+                }
+            }
+            else if (!['Backspace', 'Delete', 'Tab', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(e.key)) {
+                if (!(e.ctrlKey || e.metaKey)) {
+                    if (!/[0-9]/.test(e.key)) {
+                        e.preventDefault();
+                    }
+                }
+            }
+        });
+    });
+    
+    const emailFormStep2 = document.getElementById('emailFormStep2');
+    const verifyEmailBtn = document.getElementById('verifyEmailBtn');
+    const backToStep1Btn = document.getElementById('backToStep1Btn');
+    
+    function enableEmailButtons() {
+        if (verifyEmailBtn) {
+            verifyEmailBtn.disabled = false;
+            verifyEmailBtn.style.opacity = '1';
+            verifyEmailBtn.style.cursor = 'pointer';
+            verifyEmailBtn.querySelector('.btn-text').style.display = 'inline';
+            verifyEmailBtn.querySelector('.btn-loading').style.display = 'none';
+        }
+        if (backToStep1Btn) {
+            backToStep1Btn.disabled = false;
+        }
+    }
+    
+    function disableEmailButtons() {
+        if (verifyEmailBtn) {
+            verifyEmailBtn.disabled = true;
+            verifyEmailBtn.style.opacity = '0.6';
+            verifyEmailBtn.style.cursor = 'not-allowed';
+            verifyEmailBtn.querySelector('.btn-text').style.display = 'none';
+            verifyEmailBtn.querySelector('.btn-loading').style.display = 'inline';
+        }
+        if (backToStep1Btn) {
+            backToStep1Btn.disabled = true;
+        }
+    }
+    
+    if (emailFormStep2) {
+        emailFormStep2.addEventListener('submit', function(e) {
+            e.preventDefault();
+            hideEmailErrors();
+            
+            disableEmailButtons();
+            
+            let otp = '';
+            document.querySelectorAll('.verification-digit').forEach(input => {
+                otp += input.value;
+            });
+            
+            if (otp.length !== 6) {
+                showEmailError(2, 'Please enter the full 6-digit code');
+                enableEmailButtons();
+                return;
+            }
+            
+            fetch('{% url "accounts:verify_email_change" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({ otp: otp })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    if (typeof showNotification !== 'undefined') {
+                        showNotification('Email updated successfully!', 'success');
+                    } else {
+                        alert('Email updated successfully!');
+                    }
+                    closeEmailModal();
+                    setTimeout(() => location.reload(), 500);
+                } else {
+                    showEmailError(2, data.error || 'Verification failed. Please check your code and try again.');
+                    document.querySelectorAll('.verification-digit').forEach(input => input.value = '');
+                    setTimeout(() => document.querySelector('.verification-digit').focus(), 100);
+                    enableEmailButtons();
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showEmailError(2, 'An error occurred. Please try again.');
+                enableEmailButtons();
+            });
+        });
+    }
+    
+    // Close modal when clicking outside
+    const modal = document.getElementById('emailModal');
+    if (modal) {
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                closeEmailModal();
+            }
         });
     }
 });
 </script>
 
 <style>
-.profile-avatar-hover:hover .avatar-overlay {
-    opacity: 1 !important;
+/* User Profile Header - Without Cover Photo */
+.user-profile-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    margin-top: 0 !important;
+}
+
+.user-profile-header .profile-avatar-wrapper {
+    margin-bottom: 16px;
+}
+
+.user-profile-header .profile-header-info {
+    width: 100%;
+}
+
+.user-profile-header .profile-name-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+/* Email styling to match mentor profile */
+.email-row-layout {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.email-label-group {
+    flex: 1;
+    min-width: 200px;
+}
+
+.email-label-group h4 {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--dash-text-main);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.email-label-group h4 i {
+    color: var(--dash-primary);
+}
+
+.field-value {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9rem;
+    color: var(--dash-text-main);
+}
+
+
+.btn-change-email {
+    padding: 8px 16px;
+    font-size: 0.9rem;
+    white-space: nowrap;
+}
+
+.btn-fixed-width-email {
+    min-width: 140px;
+}
+
+/* Right column button styling */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
 }
 </style>
 {% endblock %}

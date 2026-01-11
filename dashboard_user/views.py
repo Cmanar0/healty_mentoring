@@ -71,9 +71,33 @@ def profile(request):
             profile.save()
             return redirect("/dashboard/user/profile/")
     
+    # Compute profile completion percentage
+    filled = 0
+    total = 0
+    missing_fields = []
+
+    def consider(value, field_name, display_name):
+        nonlocal filled, total
+        total += 1
+        if value:
+            filled += 1
+        else:
+            missing_fields.append(display_name)
+
+    consider(profile.first_name, 'first_name', 'First Name')
+    consider(profile.last_name, 'last_name', 'Last Name')
+    consider(user.email, 'email', 'Email')
+    timezone_value = profile.selected_timezone or profile.time_zone
+    consider(timezone_value, 'time_zone', 'Time Zone')
+    consider(profile.profile_picture, 'profile_picture', 'Profile Picture')
+    
+    profile_completion = int(round((filled / total) * 100)) if total else 0
+
     return render(request, 'dashboard_user/profile.html', {
         'user': user,
         'profile': profile,
+        'profile_completion': profile_completion,
+        'missing_fields': missing_fields,
     })
 
 @login_required

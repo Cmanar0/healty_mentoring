@@ -6,6 +6,8 @@
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/dashboard.css' %}">
 <link rel="stylesheet" href="{% static 'css/notifications.css' %}">
+<!-- Cropper.js CSS -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
 {% endblock %}
 
 {% block navbar %}
@@ -213,7 +215,7 @@
             <span class="sidebar-text">My Sessions</span>
           </a>
         </li>
-        <li class="your-section-divider" style="margin: 16px 0; border-top: 1px solid var(--dash-border);"></li>
+        <li class="your-section-divider"></li>
         <li>
           <a href="/dashboard/user/profile/" class="sidebar-link sidebar-link-your {% if request.resolver_match.url_name == 'profile' %}active{% endif %}" title="Your Profile">
             <i class="fas fa-id-badge"></i>
@@ -248,6 +250,8 @@
 {% block scripts %}
 {{ block.super }}
 <script src="{% static 'js/notifications.js' %}"></script>
+<!-- Cropper.js JS -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
 <style>
 :root {
   --primary: #10b981;
