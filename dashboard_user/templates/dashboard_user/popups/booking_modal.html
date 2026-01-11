@@ -29,7 +29,13 @@
                     </div>
                     <div class="booking-meta-item">
                         <i class="fas fa-tag"></i>
-                        <span>${{ mentor_profile.price_per_hour|floatformat:0 }}</span>
+                        <span>
+                            {% if mentor_profile.first_session_free %}
+                                $0 <span style=" color: #10b981; font-weight: 600;">(First Session Free)</span>
+                            {% else %}
+                                ${{ mentor_profile.price_per_hour|floatformat:0 }}
+                            {% endif %}
+                        </span>
                     </div>
                 </div>
 
