@@ -30,32 +30,106 @@ def dashboard(request):
     })
 
 @login_required
+def profile(request):
+    """User profile page - for editing profile information (first name, last name, profile picture)"""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'user':
+        return redirect('general:index')
+    
+    user = request.user
+    profile = user.profile
+    
+    if request.method == "POST":
+        action = request.POST.get("action")
+        
+        if action == "update_picture":
+            if 'profile_picture' in request.FILES:
+                # Delete old profile picture if it exists
+                if profile.profile_picture:
+                    old_picture = profile.profile_picture
+                    # Delete the file from storage using storage API
+                    if old_picture.name:
+                        old_picture.storage.delete(old_picture.name)
+                    # Clear the field reference
+                    profile.profile_picture = None
+                    profile.save(update_fields=['profile_picture'])
+                
+                # Save new profile picture
+                profile.profile_picture = request.FILES['profile_picture']
+                profile.save()
+            return redirect("/dashboard/user/profile/")
+        
+        elif action == "update_profile":
+            # Update basic fields
+            first_name = request.POST.get("first_name")
+            last_name = request.POST.get("last_name")
+            
+            if first_name is not None:
+                profile.first_name = first_name
+            if last_name is not None:
+                profile.last_name = last_name
+            
+            profile.save()
+            return redirect("/dashboard/user/profile/")
+    
+    return render(request, 'dashboard_user/profile.html', {
+        'user': user,
+        'profile': profile,
+    })
+
+@login_required
 def account(request):
+    """User account page - for account settings (email change with verification, password change, name updates)"""
     if not hasattr(request.user, 'profile') or request.user.profile.role != 'user':
         return redirect('general:index')
 
-    if request.method == "POST":
-        profile = request.user.profile
-        profile.first_name = request.POST.get("first_name", profile.first_name)
-        profile.last_name = request.POST.get("last_name", profile.last_name)
-        profile.time_zone = request.POST.get("time_zone", profile.time_zone)
-        if request.FILES.get("profile_picture"):
-            # Delete old profile picture if it exists
-            if profile.profile_picture:
-                old_picture = profile.profile_picture
-                # Delete the file from storage using storage API
-                if old_picture.name:
-                    old_picture.storage.delete(old_picture.name)
-                # Clear the field reference
-                profile.profile_picture = None
-                profile.save(update_fields=['profile_picture'])
-            
-            # Save new profile picture
-            profile.profile_picture = request.FILES.get("profile_picture")
-        profile.save()
-        return redirect("/dashboard/user/account/")
+    user = request.user
+    profile = user.profile
 
-    return render(request, 'dashboard_user/account.html')
+    if request.method == "POST":
+        action = request.POST.get("action")
+        
+        if action == "update_name":
+            # Update basic name fields
+            first_name = request.POST.get("first_name")
+            last_name = request.POST.get("last_name")
+            if first_name is not None:
+                profile.first_name = first_name
+            if last_name is not None:
+                profile.last_name = last_name
+            profile.save()
+            messages.success(request, 'Name updated successfully!')
+            return redirect("/dashboard/user/account/")
+        
+        elif action == "update_password":
+            # Handle password change
+            new_password = request.POST.get("new_password")
+            new_password_again = request.POST.get("new_password_again")
+            if new_password and new_password_again and new_password == new_password_again:
+                from django.contrib.auth import update_session_auth_hash
+                from general.email_service import EmailService
+
+                user.set_password(new_password)
+                user.save()
+                update_session_auth_hash(request, user)
+                
+                # Send password changed confirmation email
+                try:
+                    EmailService.send_password_changed_email(user)
+                except Exception as e:
+                    # Log error but don't fail the request
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.error(f"Error sending password changed email: {str(e)}")
+                
+                messages.success(request, 'Password updated successfully!')
+            else:
+                messages.error(request, 'Passwords do not match.')
+            return redirect("/dashboard/user/account/")
+
+    return render(request, 'dashboard_user/account.html', {
+        'user': user,
+        'profile': profile,
+    })
 
 @login_required
 def my_sessions(request):

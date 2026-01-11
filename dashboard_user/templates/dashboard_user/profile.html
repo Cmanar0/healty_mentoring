@@ -1,0 +1,203 @@
+{% extends "dashboard_user/base.html" %}
+{% load static %}
+
+{% block page_title %}My Profile{% endblock %}
+
+{% block dashboard_content %}
+<div class="dashboard-content-container">
+    <div class="dashboard-grid" style="display: grid; grid-template-columns: 1fr; gap: 24px;">
+        <!-- Profile Card -->
+        <div class="dashboard-card profile-card-compact" style="padding: 0; overflow: hidden;">
+            
+            <!-- Profile Header (Avatar + Info) -->
+            <div class="profile-header-compact" style="padding: 24px; border-bottom: 1px solid var(--dash-border);">
+                <div class="profile-avatar-wrapper" style="display: flex; justify-content: center; margin-bottom: 16px;">
+                    <form method="post" enctype="multipart/form-data" id="pictureForm" style="margin: 0;">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="update_picture">
+                        <label for="profilePictureInput" class="profile-avatar-compact profile-avatar-hover" style="cursor: pointer; position: relative; display: inline-block;">
+                            {% if user.profile.profile_picture %}
+                                <img src="{{ user.profile.profile_picture.url }}" alt="Profile" id="profileImagePreview" style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 3px solid white; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">
+                            {% else %}
+                                <div class="avatar-placeholder" style="width: 120px; height: 120px; border-radius: 50%; background: #e2e8f0; display: flex; align-items: center; justify-content: center; font-size: 3rem; color: #94a3b8; border: 3px solid white; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">
+                                    <i class="fas fa-user"></i>
+                                </div>
+                            {% endif %}
+                            <div class="avatar-overlay" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.5); border-radius: 50%; display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s;">
+                                <i class="fas fa-camera" style="color: white; font-size: 1.5rem;"></i>
+                            </div>
+                            <input type="file" name="profile_picture" id="profilePictureInput" accept="image/*" style="display: none;">
+                        </label>
+                    </form>
+                </div>
+                
+                <div class="profile-header-info" style="text-align: center;">
+                    <div class="profile-name-row" style="display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 8px;">
+                        <h2 class="profile-name" style="margin: 0; font-size: 1.5rem; font-weight: 700; color: var(--dash-text-main);">{{ user.profile.first_name }} {{ user.profile.last_name }}</h2>
+                    </div>
+                    <p class="profile-title" style="margin: 0; color: var(--dash-text-muted); font-size: 0.95rem;">User</p>
+                </div>
+            </div>
+
+
+            <!-- Main Form Content -->
+            <div class="profile-content-wrapper" style="padding: 24px;">
+                <form method="post" id="profileForm">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="update_profile">
+                    
+                    <div class="form-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <!-- First Name -->
+                        <div class="compact-form-group">
+                            <label style="display: block; margin-bottom: 8px; font-weight: 600; color: var(--dash-text-main); font-size: 0.95rem;"><i class="fas fa-user" style="margin-right: 8px; color: var(--dash-primary);"></i> First Name</label>
+                            <input type="text" name="first_name" value="{{ user.profile.first_name }}" class="form-input" placeholder="First Name" style="width: 100%; padding: 12px 16px; border: 1px solid var(--dash-border); border-radius: 8px; font-size: 0.95rem;">
+                        </div>
+
+                        <!-- Last Name -->
+                        <div class="compact-form-group">
+                            <label style="display: block; margin-bottom: 8px; font-weight: 600; color: var(--dash-text-main); font-size: 0.95rem;"><i class="fas fa-user" style="margin-right: 8px; color: var(--dash-primary);"></i> Last Name</label>
+                            <input type="text" name="last_name" value="{{ user.profile.last_name }}" class="form-input" placeholder="Last Name" style="width: 100%; padding: 12px 16px; border: 1px solid var(--dash-border); border-radius: 8px; font-size: 0.95rem;">
+                        </div>
+
+                        <!-- Email (Read-only with link to account) -->
+                        <div class="compact-form-group form-grid-full" style="grid-column: 1 / -1;">
+                            <label style="display: block; margin-bottom: 8px; font-weight: 600; color: var(--dash-text-main); font-size: 0.95rem;"><i class="fas fa-envelope" style="margin-right: 8px; color: var(--dash-primary);"></i> Email</label>
+                            <div style="display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: #f8fafc; border: 1px solid var(--dash-border); border-radius: 8px;">
+                                <span style="flex: 1; color: var(--dash-text-main);">{{ user.email }}</span>
+                                {% if user.is_email_verified %}
+                                    <span class="email-verified-badge" style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; background: #d1fae5; color: #065f46; border-radius: 4px; font-size: 0.85rem; font-weight: 500;">
+                                        <i class="fas fa-check-circle"></i> Verified
+                                    </span>
+                                {% endif %}
+                                <a href="/dashboard/user/account/" class="btn btn-outline btn-sm" style="white-space: nowrap;">
+                                    <i class="fas fa-edit"></i> Change Email
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="text-align: right; margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--dash-border);">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> Save Changes
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Check for saved notification on page load
+    const savedNotification = sessionStorage.getItem('profileNotification');
+    const savedNotificationType = sessionStorage.getItem('profileNotificationType');
+    
+    if (savedNotification && typeof showNotification === 'function') {
+        showNotification(savedNotification, savedNotificationType || 'success');
+        // Clear the saved notification
+        sessionStorage.removeItem('profileNotification');
+        sessionStorage.removeItem('profileNotificationType');
+    }
+    
+    // Profile picture upload - AJAX submission
+    const profilePictureInput = document.getElementById('profilePictureInput');
+    if (profilePictureInput) {
+        profilePictureInput.addEventListener('change', function() {
+            if (this.files && this.files[0]) {
+                const form = document.getElementById('pictureForm');
+                if (form) {
+                    const formData = new FormData(form);
+                    const csrfToken = form.querySelector('[name=csrfmiddlewaretoken]');
+                    
+                    fetch(window.location.pathname, {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'X-CSRFToken': csrfToken ? csrfToken.value : ''
+                        }
+                    })
+                    .then(response => {
+                        if (response.ok) {
+                            // Save notification to sessionStorage
+                            sessionStorage.setItem('profileNotification', 'Profile picture updated successfully!');
+                            sessionStorage.setItem('profileNotificationType', 'success');
+                            // Reload immediately
+                            window.location.reload();
+                        } else {
+                            if (typeof showNotification === 'function') {
+                                showNotification('Failed to update profile picture. Please try again.', 'error');
+                            }
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        if (typeof showNotification === 'function') {
+                            showNotification('Failed to update profile picture. Please try again.', 'error');
+                        }
+                    });
+                }
+            }
+        });
+    }
+    
+    // Profile form submission - AJAX
+    const profileForm = document.getElementById('profileForm');
+    if (profileForm) {
+        profileForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const csrfToken = this.querySelector('[name=csrfmiddlewaretoken]');
+            
+            fetch(window.location.pathname, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': csrfToken ? csrfToken.value : ''
+                }
+            })
+            .then(response => {
+                if (response.ok) {
+                    // Save notification to sessionStorage
+                    sessionStorage.setItem('profileNotification', 'Profile updated successfully!');
+                    sessionStorage.setItem('profileNotificationType', 'success');
+                    // Reload immediately
+                    window.location.reload();
+                } else {
+                    if (typeof showNotification === 'function') {
+                        showNotification('Failed to update profile. Please try again.', 'error');
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                if (typeof showNotification === 'function') {
+                    showNotification('Failed to update profile. Please try again.', 'error');
+                }
+            });
+        });
+    }
+    
+    // Avatar hover effect
+    const avatarHover = document.querySelector('.profile-avatar-hover');
+    if (avatarHover) {
+        avatarHover.addEventListener('mouseenter', function() {
+            const overlay = this.querySelector('.avatar-overlay');
+            if (overlay) overlay.style.opacity = '1';
+        });
+        avatarHover.addEventListener('mouseleave', function() {
+            const overlay = this.querySelector('.avatar-overlay');
+            if (overlay) overlay.style.opacity = '0';
+        });
+    }
+});
+</script>
+
+<style>
+.profile-avatar-hover:hover .avatar-overlay {
+    opacity: 1 !important;
+}
+</style>
+{% endblock %}
+
