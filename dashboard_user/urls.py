@@ -10,5 +10,6 @@ urlpatterns = [
     path('my-sessions/', views.my_sessions, name='my_sessions'),
     path('session-invitation/<str:token>/', views.session_invitation, name='session_invitation'),
     path('session-management/', views.session_management, name='session_management'),
+    path('book-session/', views.book_session, name='book_session'),
 ]
 

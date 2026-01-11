@@ -10,6 +10,8 @@ urlpatterns = [
     path("logout/", CustomLogoutView.as_view(), name="logout"),
     path("register/", RegisterView.as_view(), name="register"),
     path("verify/<uidb64>/<token>/", VerifyEmailView.as_view(), name="verify_email"),
+    # Complete Registration (for booking-created users)
+    path("complete-registration/<uidb64>/<token>/", views.complete_registration, name="complete_registration"),
     # Password reset
     path("password_reset/", auth_views.PasswordResetView.as_view(
         template_name="accounts/password_reset.html",

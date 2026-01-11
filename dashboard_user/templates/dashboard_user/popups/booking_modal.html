@@ -3,7 +3,24 @@
     <div class="booking-modal-container">
         <button class="booking-close-btn" onclick="closeBookingModal()"><i class="fas fa-times"></i></button>
         
-        <div class="booking-grid">
+        <!-- Error State (for mentors trying to book) -->
+        <div id="bookingErrorState" class="booking-error-state" style="display: none;">
+            <div class="booking-error-content">
+                <div class="booking-error-icon">
+                    <i class="fas fa-exclamation-circle"></i>
+                </div>
+                <h2 class="booking-error-title">Cannot Book Session</h2>
+                <p class="booking-error-message">
+                    Mentors cannot book sessions with other mentors. Please use a different account.
+                </p>
+                <button class="booking-error-btn" onclick="closeBookingModal()">
+                    <i class="fas fa-arrow-left"></i>
+                    Go Back
+                </button>
+            </div>
+        </div>
+        
+        <div class="booking-grid" id="bookingMainContent">
             <!-- Col 1: Mentor Info -->
             <div class="booking-sidebar">
                 <div class="booking-mentor-mini">
@@ -21,7 +38,13 @@
                 <div class="booking-meta">
                     <div class="booking-meta-item">
                         <i class="fas fa-clock"></i>
-                        <span>{{ mentor_profile.session_length|default:"60" }} min</span>
+                        <span>
+                            {% if mentor_profile.first_session_free %}
+                                {{ mentor_profile.first_session_length|default:30 }} min (First Session) / {{ mentor_profile.session_length|default:60 }} min (Regular)
+                            {% else %}
+                                {{ mentor_profile.session_length|default:"60" }} min
+                            {% endif %}
+                        </span>
                     </div>
                     <div class="booking-meta-item">
                         <i class="fas fa-video"></i>
@@ -55,7 +78,11 @@
                 </div>
                 
                 <div class="booking-desc">
-                    Book a focused session to discuss your career, goals, or specific challenges.
+                    {% if mentor_profile.first_session_free %}
+                        Your first session with {{ mentor_profile.first_name }} is free! This introductory session lasts {{ mentor_profile.first_session_length|default:30 }} minutes and is perfect for discussing your goals and how {{ mentor_profile.first_name }} can help you. Regular sessions are {{ mentor_profile.session_length|default:60 }} minutes.
+                    {% else %}
+                        Book a focused session to discuss your career, goals, or specific challenges.
+                    {% endif %}
                 </div>
             </div>
             
@@ -92,6 +119,127 @@
                     </button>
                 </div>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- Email Collection Modal (for non-logged-in users) -->
+<div id="emailCollectionModal" class="booking-modal-overlay" style="display: none;">
+    <div class="booking-modal-container" style="max-width: 900px; height: 600px; overflow-y: auto;">
+        <button class="booking-close-btn" onclick="closeEmailCollectionModal()"><i class="fas fa-times"></i></button>
+        
+        <div style="padding: 32px; min-height: 100%; box-sizing: border-box;">
+            <h2 style="font-size: 1.5rem; color: #1e293b; margin-bottom: 8px;">Book Your Session</h2>
+            <p style="color: #64748b; margin-bottom: 24px; font-size: 0.95rem;">Please provide your email to complete the booking</p>
+            
+            <form id="emailCollectionForm">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start;">
+                    <!-- Left Column: Email and Message -->
+                    <div style="display: flex; flex-direction: column; gap: 16px;">
+                        <!-- Email Input -->
+                        <div>
+                            <label style="display: block; font-weight: 600; color: #1e293b; margin-bottom: 8px; font-size: 0.9rem;">
+                                Email Address <span style="color: #ef4444;">*</span>
+                            </label>
+                            <input type="email" id="bookingEmailInput" class="form-input" placeholder="your@email.com" required style="width: 100%; max-width: 100%; padding: 12px 16px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 0.95rem; box-sizing: border-box;">
+                            <div id="emailError" style="color: #ef4444; font-size: 0.85rem; margin-top: 6px; display: none;"></div>
+                        </div>
+                        
+                        <!-- Note Input -->
+                        <div>
+                            <label style="display: block; font-weight: 600; color: #1e293b; margin-bottom: 8px; font-size: 0.9rem;">
+                                Message (Optional)
+                            </label>
+                            <textarea id="bookingNoteInput" class="form-input" placeholder="What would you like to focus on during this session?" rows="8" style="width: 100%; max-width: 100%; max-height: 300px; padding: 12px 16px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 0.95rem; resize: none; font-family: inherit; box-sizing: border-box; overflow-y: auto;"></textarea>
+                        </div>
+                        
+                        <!-- Price Display (moved to left column) -->
+                        <div style="padding: 14px 16px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                                <span style="font-weight: 600; color: #1e293b; font-size: 0.95rem;">Session Price:</span>
+                                <span id="bookingPriceDisplay" style="font-size: 1.05rem; font-weight: 700; color: #10b981; text-align: right;">
+                                    {% if mentor_profile.first_session_free %}
+                                        $0 <span style="font-size: 0.85rem; font-weight: 600;">(First Session Free)</span>
+                                    {% else %}
+                                        ${{ mentor_profile.price_per_hour|floatformat:0 }}
+                                    {% endif %}
+                                </span>
+                            </div>
+                            <div id="bookingPriceNote" style="font-size: 0.8rem; color: #64748b; margin-top: 6px; display: none;">
+                                This is your first session with this mentor
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Right Column: Timezone, Price, and Button -->
+                    <div style="display: flex; flex-direction: column; gap: 16px;">
+                        <!-- Timezone Confirmation -->
+                        <div>
+                            <label style="display: block; font-weight: 600; color: #1e293b; margin-bottom: 8px; font-size: 0.9rem;">
+                                Timezone
+                            </label>
+                            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 16px;">
+                                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                                    <input type="checkbox" id="timezoneConfirmed" checked style="width: 18px; height: 18px; cursor: pointer; flex-shrink: 0;">
+                                    <label for="timezoneConfirmed" style="cursor: pointer; flex: 1; color: #475569; font-size: 0.9rem; line-height: 1.4;">
+                                        <span id="detectedTimezoneDisplay">We detected your timezone: <strong id="detectedTimezoneName">Loading...</strong></span>
+                                    </label>
+                                </div>
+                                <!-- Live Clock Display -->
+                                <div id="timezoneClockDisplay" style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px; padding: 8px 12px; background: white; border-radius: 6px; border: 1px solid #e2e8f0;">
+                                    <i class="far fa-clock" style="color: #3b82f6; font-size: 0.9rem;"></i>
+                                    <div style="display: flex; flex-direction: column; gap: 2px;">
+                                        <span id="timezoneCurrentTime" style="font-size: 0.95rem; font-weight: 600; color: #1e293b;">--:--</span>
+                                        <span id="timezoneCurrentDate" style="font-size: 0.75rem; color: #64748b;">--</span>
+                                    </div>
+                                </div>
+                                <div id="timezoneSelectorWrapper" style="display: none;">
+                                    <div class="autocomplete-container" style="position: relative;">
+                                        <input type="text" id="bookingTimezoneInput" class="form-input autocomplete-input" placeholder="Search for your timezone..." autocomplete="off" style="width: 100%; padding: 12px 16px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 0.95rem; box-sizing: border-box;">
+                                        <input type="hidden" id="bookingTimezoneValue" value="">
+                                        <div class="autocomplete-suggestions" id="bookingTimezoneSuggestions" style="max-height: 250px; overflow-y: auto; overflow-x: hidden;"></div>
+                                    </div>
+                                    <!-- Selected Timezone Clock Display -->
+                                    <div id="selectedTimezoneClockDisplay" style="display: none; margin-top: 12px; padding: 8px 12px; background: white; border-radius: 6px; border: 1px solid #e2e8f0;">
+                                        <div style="display: flex; align-items: center; gap: 8px;">
+                                            <i class="far fa-clock" style="color: #10b981; font-size: 0.9rem;"></i>
+                                            <div style="display: flex; flex-direction: column; gap: 2px;">
+                                                <span id="selectedTimezoneCurrentTime" style="font-size: 0.95rem; font-weight: 600; color: #1e293b;">--:--</span>
+                                                <span id="selectedTimezoneCurrentDate" style="font-size: 0.75rem; color: #64748b;">--</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Session Recap -->
+                        <div id="sessionRecap" style="padding: 16px; background: #eff6ff; border-radius: 8px; border: 1px solid #bfdbfe; margin-bottom: 16px;">
+                            <div style="font-size: 0.85rem; font-weight: 600; color: #3b82f6; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px;">Session Details</div>
+                            <div style="display: flex; flex-direction: column; gap: 8px;">
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <i class="far fa-calendar-alt" style="color: #3b82f6; font-size: 0.9rem; width: 18px;"></i>
+                                    <span id="recapDate" style="font-size: 0.95rem; color: #1e293b; font-weight: 500;">--</span>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <i class="far fa-clock" style="color: #3b82f6; font-size: 0.9rem; width: 18px;"></i>
+                                    <span id="recapTime" style="font-size: 0.95rem; color: #1e293b; font-weight: 500;">--</span>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <i class="fas fa-hourglass-half" style="color: #3b82f6; font-size: 0.9rem; width: 18px;"></i>
+                                    <span id="recapLength" style="font-size: 0.95rem; color: #1e293b; font-weight: 500;">--</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Submit Button -->
+                        <button type="submit" class="book-slot-btn" id="submitBookingBtn" style="width: 100%; margin-top: auto;">
+                            <i class="fas fa-calendar-check"></i>
+                            <span>Book Session</span>
+                        </button>
+                    </div>
+                </div>
+            </form>
         </div>
     </div>
 </div>
@@ -441,6 +589,68 @@
     transform: scale(0.98);
 }
 
+/* Error State */
+.booking-error-state {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    padding: 40px;
+    min-height: 400px;
+}
+
+.booking-error-content {
+    text-align: center;
+    max-width: 400px;
+    width: 100%;
+}
+
+.booking-error-icon {
+    font-size: 64px;
+    color: #ef4444;
+    margin-bottom: 24px;
+}
+
+.booking-error-title {
+    font-size: 24px;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 16px;
+}
+
+.booking-error-message {
+    font-size: 16px;
+    color: #64748b;
+    line-height: 1.6;
+    margin-bottom: 32px;
+}
+
+.booking-error-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    background: #3b82f6;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+    justify-content: center;
+}
+
+.booking-error-btn:hover {
+    background: #2563eb;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px rgba(59, 130, 246, 0.3);
+}
+
+.booking-error-btn:active {
+    transform: translateY(0);
+}
+
 /* Responsiveness for Modal */
 @media (max-width: 900px) {
     .booking-grid {
@@ -487,6 +697,22 @@
 
 
 <script>
+    // --- Booking Logic Variables (must be declared first) ---
+    // Get user authentication status from Django template
+    const isUserAuthenticated = {% if user.is_authenticated %}true{% else %}false{% endif %};
+    const userRole = {% if user.is_authenticated %}'{{ user.profile.role|default:"" }}'{% else %}null{% endif %};
+    const mentorId = {{ mentor_profile.user.id }};
+    const mentorFirstSessionFree = {% if mentor_profile.first_session_free %}true{% else %}false{% endif %};
+    const mentorFirstSessionLength = {{ mentor_profile.first_session_length|default:30 }};
+    const mentorSessionLength = {{ mentor_profile.session_length|default:60 }};
+    const mentorPricePerHour = {{ mentor_profile.price_per_hour|default_if_none:"null" }};
+    
+    // Detected timezone (will be set on modal open)
+    let detectedTimezone = null;
+    let selectedTimezone = null;
+    let timezoneClockInterval = null;
+    let selectedTimezoneClockInterval = null;
+    
     // --- Data & State ---
     let availabilityData;
     let sessionLengthMinutes = 60; // Default session length
@@ -594,8 +820,46 @@
         if (bookSlotBtn) {
             bookSlotBtn.addEventListener('click', function() {
                 if (selectedSlot && selectedDate) {
-                    alert('Booking flow to be implemented! Selected: ' + selectedDate.toLocaleDateString() + ' at ' + selectedSlot.time);
-                    // TODO: Implement actual booking logic
+                    handleBookingClick();
+                }
+            });
+        }
+        
+        // Email collection form handler
+        const emailCollectionForm = document.getElementById('emailCollectionForm');
+        if (emailCollectionForm) {
+            emailCollectionForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                handleEmailCollectionSubmit();
+            });
+        }
+        
+        // Timezone confirmation checkbox
+        const timezoneConfirmed = document.getElementById('timezoneConfirmed');
+        if (timezoneConfirmed) {
+            timezoneConfirmed.addEventListener('change', function() {
+                const timezoneSelectorWrapper = document.getElementById('timezoneSelectorWrapper');
+                if (timezoneSelectorWrapper) {
+                    if (this.checked) {
+                        // Hide selector, use detected timezone
+                        timezoneSelectorWrapper.style.display = 'none';
+                        selectedTimezone = detectedTimezone;
+                        const bookingTimezoneValue = document.getElementById('bookingTimezoneValue');
+                        if (bookingTimezoneValue) {
+                            bookingTimezoneValue.value = detectedTimezone;
+                        }
+                        // Stop selected timezone clock
+                        if (selectedTimezoneClockInterval) {
+                            clearInterval(selectedTimezoneClockInterval);
+                            selectedTimezoneClockInterval = null;
+                        }
+                        const selectedClockDisplay = document.getElementById('selectedTimezoneClockDisplay');
+                        if (selectedClockDisplay) selectedClockDisplay.style.display = 'none';
+                    } else {
+                        // Show selector, initialize autocomplete
+                        timezoneSelectorWrapper.style.display = 'block';
+                        initializeBookingTimezoneAutocomplete();
+                    }
                 }
             });
         }
@@ -628,7 +892,24 @@
         if (slotsCol) slotsCol.style.display = 'none';
         if (slotsFooter) slotsFooter.style.display = 'none';
         if (bookingSummary) bookingSummary.style.display = 'none';
+        hideBookingError(); // Hide error state when closing
         renderCalendar();
+    }
+    
+    function showBookingError() {
+        const errorState = document.getElementById('bookingErrorState');
+        const mainContent = document.getElementById('bookingMainContent');
+        
+        if (errorState) errorState.style.display = 'flex';
+        if (mainContent) mainContent.style.display = 'none';
+    }
+    
+    function hideBookingError() {
+        const errorState = document.getElementById('bookingErrorState');
+        const mainContent = document.getElementById('bookingMainContent');
+        
+        if (errorState) errorState.style.display = 'none';
+        if (mainContent) mainContent.style.display = 'grid';
     }
     
     function closeSlots() {
@@ -869,7 +1150,8 @@
                             type: 'one_time',
                             start: slotStartTime.toISOString(),
                             end: slotEndTime.toISOString(),
-                            _startTimeKey: startTimeKey // Internal key for deduplication
+                            _startTimeKey: startTimeKey, // Internal key for deduplication
+                            availability_slot_id: slot.id || null // For one-time slots
                         });
                     });
                 }
@@ -946,13 +1228,18 @@
                             // Create a unique key for deduplication based on the actual start time
                             const startTimeKey = slotStart.getTime(); // Use timestamp for uniqueness
                             
+                            // Get date string for recurring slots (YYYY-MM-DD)
+                            const slotDateStr = `${slotStart.getFullYear()}-${String(slotStart.getMonth() + 1).padStart(2, '0')}-${String(slotStart.getDate()).padStart(2, '0')}`;
+                            
                             slots.push({ 
                                 time: `${startTimeStr} - ${endTimeStr}`, 
                                 raw: rule, 
                                 type: 'recurring',
                                 start: slotStart.toISOString(),
                                 end: slotEnd.toISOString(),
-                                _startTimeKey: startTimeKey // Internal key for deduplication
+                                _startTimeKey: startTimeKey, // Internal key for deduplication
+                                recurring_id: rule.id || null, // For recurring slots
+                                instance_date: slotDateStr // Date string (YYYY-MM-DD format)
                             });
                         });
                     }
@@ -1058,6 +1345,602 @@
                 // Hide footer initially (will show when slot is selected)
                 if (slotsFooter) slotsFooter.style.display = 'none';
             }
+        }
+    }
+    
+    // --- Booking Logic Functions ---
+    function handleBookingClick() {
+        if (!selectedSlot || !selectedDate) {
+            return;
+        }
+        
+        // Check authentication
+        if (isUserAuthenticated) {
+            if (userRole === 'mentor') {
+                // Show error state in modal for mentors
+                showBookingError();
+                return;
+            } else if (userRole === 'user') {
+                // Logged-in user - proceed directly to booking
+                submitBooking();
+                return;
+            }
+        }
+        
+        // Not logged in - show email collection modal
+        openEmailCollectionModal();
+    }
+    
+    // Helper functions for time formatting
+    function formatTime(date, timezone) {
+        try {
+            const formatter = new Intl.DateTimeFormat('en-US', {
+                timeZone: timezone,
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: true
+            });
+            return formatter.format(date);
+        } catch (e) {
+            return 'Unable to format time';
+        }
+    }
+    
+    function formatDate(date, timezone) {
+        try {
+            const formatter = new Intl.DateTimeFormat('en-US', {
+                timeZone: timezone,
+                weekday: 'short',
+                month: 'short',
+                day: 'numeric'
+            });
+            return formatter.format(date);
+        } catch (e) {
+            return 'Unable to format date';
+        }
+    }
+    
+    function updateTimezoneClock(timezone, timeEl, dateEl) {
+        if (!timezone || !timeEl) return;
+        
+        const now = new Date();
+        const timeStr = formatTime(now, timezone);
+        if (timeEl) timeEl.textContent = timeStr;
+        
+        if (dateEl) {
+            const dateStr = formatDate(now, timezone);
+            dateEl.textContent = dateStr;
+        }
+    }
+    
+    function startTimezoneClock(timezone) {
+        // Clear any existing interval
+        if (timezoneClockInterval) {
+            clearInterval(timezoneClockInterval);
+        }
+        
+        const timeEl = document.getElementById('timezoneCurrentTime');
+        const dateEl = document.getElementById('timezoneCurrentDate');
+        
+        // Update immediately
+        updateTimezoneClock(timezone, timeEl, dateEl);
+        
+        // Update every second
+        timezoneClockInterval = setInterval(() => {
+            updateTimezoneClock(timezone, timeEl, dateEl);
+        }, 1000);
+    }
+    
+    function startSelectedTimezoneClock(timezone) {
+        // Clear any existing interval
+        if (selectedTimezoneClockInterval) {
+            clearInterval(selectedTimezoneClockInterval);
+        }
+        
+        const timeEl = document.getElementById('selectedTimezoneCurrentTime');
+        const dateEl = document.getElementById('selectedTimezoneCurrentDate');
+        const clockDisplay = document.getElementById('selectedTimezoneClockDisplay');
+        
+        if (!timezone || !timeEl) {
+            if (clockDisplay) clockDisplay.style.display = 'none';
+            return;
+        }
+        
+        if (clockDisplay) clockDisplay.style.display = 'block';
+        
+        // Update immediately
+        updateTimezoneClock(timezone, timeEl, dateEl);
+        
+        // Update every second
+        selectedTimezoneClockInterval = setInterval(() => {
+            updateTimezoneClock(timezone, timeEl, dateEl);
+        }, 1000);
+    }
+    
+    function stopTimezoneClocks() {
+        if (timezoneClockInterval) {
+            clearInterval(timezoneClockInterval);
+            timezoneClockInterval = null;
+        }
+        if (selectedTimezoneClockInterval) {
+            clearInterval(selectedTimezoneClockInterval);
+            selectedTimezoneClockInterval = null;
+        }
+    }
+    
+    function openEmailCollectionModal() {
+        const emailModal = document.getElementById('emailCollectionModal');
+        if (!emailModal) return;
+        
+        // Detect timezone
+        try {
+            detectedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+            selectedTimezone = detectedTimezone;
+            
+            // Update timezone display using TIMEZONE_OPTIONS if available
+            const detectedTimezoneName = document.getElementById('detectedTimezoneName');
+            if (detectedTimezoneName) {
+                let tzDisplay = detectedTimezone;
+                let offset = '';
+                
+                // Try to use TIMEZONE_OPTIONS from timezone-checker.js
+                if (window.TIMEZONE_OPTIONS && window.TIMEZONE_OPTIONS.length > 0) {
+                    const tzObj = window.TIMEZONE_OPTIONS.find(tz => tz.id === detectedTimezone);
+                    if (tzObj) {
+                        tzDisplay = tzObj.name;
+                        // Get current offset (handles DST)
+                        const now = new Date();
+                        const formatter = new Intl.DateTimeFormat('en', {
+                            timeZone: detectedTimezone,
+                            timeZoneName: 'longOffset'
+                        });
+                        const parts = formatter.formatToParts(now);
+                        const offsetPart = parts.find(p => p.type === 'timeZoneName');
+                        offset = offsetPart ? offsetPart.value : '';
+                    }
+                } else {
+                    // Fallback: format manually
+                    const tzParts = detectedTimezone.split('/');
+                    const tzCity = tzParts[tzParts.length - 1] || detectedTimezone;
+                    tzDisplay = tzCity.replace(/_/g, ' ');
+                    
+                    const now = new Date();
+                    const formatter = new Intl.DateTimeFormat('en', {
+                        timeZone: detectedTimezone,
+                        timeZoneName: 'longOffset'
+                    });
+                    const parts = formatter.formatToParts(now);
+                    const offsetPart = parts.find(p => p.type === 'timeZoneName');
+                    offset = offsetPart ? offsetPart.value : '';
+                }
+                
+                detectedTimezoneName.textContent = offset ? `${tzDisplay} (${offset})` : tzDisplay;
+            }
+            
+            // Set hidden timezone value
+            const bookingTimezoneValue = document.getElementById('bookingTimezoneValue');
+            if (bookingTimezoneValue) {
+                bookingTimezoneValue.value = detectedTimezone;
+            }
+            
+            // Start live clock
+            startTimezoneClock(detectedTimezone);
+        } catch (e) {
+            console.error('Error detecting timezone:', e);
+            detectedTimezone = 'UTC';
+            selectedTimezone = 'UTC';
+            startTimezoneClock('UTC');
+        }
+        
+        // Calculate and display price
+        updatePriceDisplay();
+        
+        // Update session recap
+        updateSessionRecap();
+        
+        // Reset form
+        const emailForm = document.getElementById('emailCollectionForm');
+        if (emailForm) emailForm.reset();
+        const emailError = document.getElementById('emailError');
+        if (emailError) {
+            emailError.style.display = 'none';
+            emailError.textContent = '';
+        }
+        
+        // Show modal
+        emailModal.style.display = 'flex';
+        setTimeout(() => {
+            emailModal.style.opacity = '1';
+        }, 10);
+        
+        // Focus email input
+        const emailInput = document.getElementById('bookingEmailInput');
+        if (emailInput) emailInput.focus();
+    }
+    
+    function closeEmailCollectionModal() {
+        const emailModal = document.getElementById('emailCollectionModal');
+        if (!emailModal) return;
+        
+        // Stop clocks
+        stopTimezoneClocks();
+        
+        emailModal.style.opacity = '0';
+        setTimeout(() => {
+            emailModal.style.display = 'none';
+        }, 300);
+    }
+    
+    function updatePriceDisplay() {
+        const priceDisplay = document.getElementById('bookingPriceDisplay');
+        const priceNote = document.getElementById('bookingPriceNote');
+        
+        if (!priceDisplay) return;
+        
+        // For new users, first session is always free if mentor has it enabled
+        if (mentorFirstSessionFree) {
+            priceDisplay.innerHTML = '$0 <span style="font-size: 0.85rem; font-weight: 600;">(First Session Free)</span>';
+            if (priceNote) {
+                priceNote.style.display = 'block';
+                priceNote.textContent = 'This is your first session with this mentor';
+            }
+        } else {
+            const price = mentorPricePerHour || 0;
+            priceDisplay.textContent = `$${price}`;
+            if (priceNote) {
+                priceNote.style.display = 'none';
+            }
+        }
+    }
+    
+    function updateSessionRecap() {
+        if (!selectedSlot || !selectedDate) {
+            const recapDate = document.getElementById('recapDate');
+            const recapTime = document.getElementById('recapTime');
+            const recapLength = document.getElementById('recapLength');
+            if (recapDate) recapDate.textContent = '--';
+            if (recapTime) recapTime.textContent = '--';
+            if (recapLength) recapLength.textContent = '--';
+            return;
+        }
+        
+        const recapDate = document.getElementById('recapDate');
+        const recapTime = document.getElementById('recapTime');
+        const recapLength = document.getElementById('recapLength');
+        
+        if (!recapDate || !recapTime || !recapLength) return;
+        
+        // Format date
+        const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        const formattedDate = selectedDate.toLocaleDateString('en-US', dateOptions);
+        recapDate.textContent = formattedDate;
+        
+        // Format time (from selectedSlot.time which is already formatted)
+        recapTime.textContent = selectedSlot.time || '--';
+        
+        // Determine session length based on first session free logic
+        // Same logic as in the booking modal sidebar
+        let sessionLengthMinutes = mentorSessionLength;
+        let lengthDisplay = `${mentorSessionLength} minutes`;
+        
+        if (mentorFirstSessionFree) {
+            // If first session free is enabled, show both lengths like in the booking modal
+            // For non-logged-in users, it's always a first session
+            // For logged-in users, we can't determine without backend, so show the actual slot duration
+            if (!isUserAuthenticated) {
+                // Not logged in - always first session if first_session_free is enabled
+                sessionLengthMinutes = mentorFirstSessionLength;
+                lengthDisplay = `${mentorFirstSessionLength} minutes (First Session)`;
+            } else {
+                // Logged in - use actual slot duration (can't determine if first session without backend)
+                try {
+                    const startDate = new Date(selectedSlot.start);
+                    const endDate = new Date(selectedSlot.end);
+                    const diffMs = endDate.getTime() - startDate.getTime();
+                    const calculatedMinutes = Math.round(diffMs / (1000 * 60));
+                    sessionLengthMinutes = calculatedMinutes;
+                    lengthDisplay = `${calculatedMinutes} minutes`;
+                } catch (e) {
+                    // Fallback: show both like in booking modal
+                    lengthDisplay = `${mentorFirstSessionLength} min (First Session) / ${mentorSessionLength} min (Regular)`;
+                }
+            }
+        } else {
+            // No first session free - use regular session length or calculated duration
+            try {
+                const startDate = new Date(selectedSlot.start);
+                const endDate = new Date(selectedSlot.end);
+                const diffMs = endDate.getTime() - startDate.getTime();
+                const calculatedMinutes = Math.round(diffMs / (1000 * 60));
+                sessionLengthMinutes = calculatedMinutes;
+                lengthDisplay = `${calculatedMinutes} minutes`;
+            } catch (e) {
+                lengthDisplay = `${mentorSessionLength} minutes`;
+            }
+        }
+        
+        recapLength.textContent = lengthDisplay;
+    }
+    
+    function handleEmailCollectionSubmit() {
+        const emailInput = document.getElementById('bookingEmailInput');
+        const noteInput = document.getElementById('bookingNoteInput');
+        const timezoneConfirmed = document.getElementById('timezoneConfirmed');
+        const bookingTimezoneValue = document.getElementById('bookingTimezoneValue');
+        const emailError = document.getElementById('emailError');
+        const submitBtn = document.getElementById('submitBookingBtn');
+        
+        if (!emailInput || !submitBtn) return;
+        
+        const email = emailInput.value.trim();
+        
+        // Validate email
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!email || !emailRegex.test(email)) {
+            if (emailError) {
+                emailError.textContent = 'Please enter a valid email address';
+                emailError.style.display = 'block';
+            }
+            return;
+        }
+        
+        // Get timezone
+        let timezone = detectedTimezone || 'UTC';
+        if (timezoneConfirmed && !timezoneConfirmed.checked && bookingTimezoneValue) {
+            timezone = bookingTimezoneValue.value || detectedTimezone || 'UTC';
+        }
+        
+        const note = noteInput ? noteInput.value.trim() : '';
+        
+        // Disable button
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <span>Booking...</span>';
+        
+        // Hide error
+        if (emailError) {
+            emailError.style.display = 'none';
+        }
+        
+        // Submit booking
+        submitBooking(email, note, timezone);
+    }
+    
+    function submitBooking(email = null, note = null, timezone = null) {
+        if (!selectedSlot || !selectedDate) {
+            return;
+        }
+        
+        // Prepare payload
+        const payload = {
+            mentor_id: mentorId,
+            start_datetime: selectedSlot.start,
+            end_datetime: selectedSlot.end,
+            is_logged_in: isUserAuthenticated
+        };
+        
+        // Add availability slot info
+        if (selectedSlot.type === 'one_time' && selectedSlot.availability_slot_id) {
+            payload.availability_slot_id = selectedSlot.availability_slot_id;
+        } else if (selectedSlot.type === 'recurring' && selectedSlot.recurring_id && selectedSlot.instance_date) {
+            payload.recurring_id = selectedSlot.recurring_id;
+            payload.instance_date = selectedSlot.instance_date;
+        }
+        
+        // Add email/note/timezone if not logged in
+        if (!isUserAuthenticated) {
+            if (email) payload.email = email;
+            if (note) payload.note = note;
+            if (timezone) payload.timezone = timezone;
+        }
+        
+        // Get CSRF token
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+        
+        const csrftoken = getCookie('csrftoken');
+        
+        // Make API call
+        fetch('{% url "general:dashboard_user:book_session" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrftoken
+            },
+            body: JSON.stringify(payload)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Close modals
+                closeBookingModal();
+                closeEmailCollectionModal();
+                
+                // Show success message
+                if (typeof showNotification !== 'undefined') {
+                    if (isUserAuthenticated) {
+                        showNotification('Session booked successfully! Check your session management page.', 'success');
+                        // Redirect to session management after a delay
+                        setTimeout(() => {
+                            window.location.href = '{% url "general:dashboard_user:session_management" %}';
+                        }, 1500);
+                    } else {
+                        showNotification('Session booked! Please check your email to complete registration and confirm your session.', 'success');
+                    }
+                } else {
+                    alert(isUserAuthenticated ? 
+                        'Session booked successfully! Redirecting to session management...' : 
+                        'Session booked! Please check your email to complete registration.');
+                    if (isUserAuthenticated) {
+                        setTimeout(() => {
+                            window.location.href = '{% url "general:dashboard_user:session_management" %}';
+                        }, 1500);
+                    }
+                }
+            } else {
+                // Show error
+                const errorMsg = data.error || 'Failed to book session. Please try again.';
+                if (typeof showNotification !== 'undefined') {
+                    showNotification(errorMsg, 'error');
+                } else {
+                    alert(errorMsg);
+                }
+                
+                // Re-enable button
+                const submitBtn = document.getElementById('submitBookingBtn');
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '<i class="fas fa-calendar-check"></i> <span>Book Session</span>';
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Booking error:', error);
+            const errorMsg = 'An error occurred while booking. Please try again.';
+            if (typeof showNotification !== 'undefined') {
+                showNotification(errorMsg, 'error');
+            } else {
+                alert(errorMsg);
+            }
+            
+            // Re-enable button
+            const submitBtn = document.getElementById('submitBookingBtn');
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fas fa-calendar-check"></i> <span>Book Session</span>';
+            }
+        });
+    }
+    
+    // Initialize timezone autocomplete for email collection modal
+    function initializeBookingTimezoneAutocomplete() {
+        const timezoneInput = document.getElementById('bookingTimezoneInput');
+        const timezoneValue = document.getElementById('bookingTimezoneValue');
+        const timezoneSuggestions = document.getElementById('bookingTimezoneSuggestions');
+        
+        if (!timezoneInput || !timezoneValue || !timezoneSuggestions) return;
+        
+        // Use TIMEZONE_OPTIONS from timezone-checker.js if available
+        const timezones = window.TIMEZONE_OPTIONS || [];
+        
+        if (timezones.length === 0) {
+            // Fallback: build timezone list
+            let ids = [];
+            try {
+                if (typeof Intl.supportedValuesOf === 'function') {
+                    ids = Intl.supportedValuesOf('timeZone');
+                }
+            } catch (e) {
+                ids = ['UTC', 'America/New_York', 'Europe/London', 'Asia/Tokyo', 'Australia/Sydney'];
+            }
+            
+            // Simple timezone list for autocomplete
+            timezones = ids.map(id => ({
+                id: id,
+                name: id.split('/').pop().replace(/_/g, ' ')
+            }));
+        }
+        
+        if (timezones.length === 0) {
+            console.warn('TIMEZONE_OPTIONS not available, waiting for timezone-checker.js to load...');
+            // Wait a bit and try again
+            setTimeout(initializeBookingTimezoneAutocomplete, 500);
+            return;
+        }
+        
+        // Use the same autocomplete function from timezone-checker.js if available
+        if (typeof window.initializeTimezoneAutocomplete === 'function') {
+            window.initializeTimezoneAutocomplete(
+                timezoneInput,
+                timezoneValue,
+                timezoneSuggestions,
+                timezones,
+                function(selectedTzObj) {
+                    // When timezone is selected
+                    selectedTimezone = selectedTzObj.id;
+                    timezoneValue.value = selectedTzObj.id;
+                    
+                    // Update and start clock for selected timezone
+                    startSelectedTimezoneClock(selectedTzObj.id);
+                }
+            );
+        } else {
+            // Fallback: simple autocomplete implementation
+            function filterTimezones(query) {
+                if (!query || query.trim() === '') {
+                    return timezones.slice(0, 20); // Show first 20 if empty
+                }
+                const lowerQuery = query.toLowerCase();
+                return timezones.filter(tz => 
+                    (tz.name && tz.name.toLowerCase().includes(lowerQuery)) ||
+                    (tz.region && tz.region.toLowerCase().includes(lowerQuery)) ||
+                    (tz.id && tz.id.toLowerCase().includes(lowerQuery)) ||
+                    (tz.offset && tz.offset.toLowerCase().includes(lowerQuery))
+                ).slice(0, 20);
+            }
+            
+            function displaySuggestions(suggestions) {
+                if (suggestions.length === 0) {
+                    timezoneSuggestions.style.display = 'none';
+                    return;
+                }
+                
+                timezoneSuggestions.innerHTML = '';
+                suggestions.forEach(tz => {
+                    const item = document.createElement('div');
+                    item.className = 'suggestion-item';
+                    item.style.cssText = 'cursor: pointer; padding: 12px 16px; border-bottom: 1px solid #e2e8f0; transition: background 0.2s;';
+                    item.innerHTML = `<div style="font-weight: 600; color: #1e293b;">${tz.name || tz.id}</div><div style="font-size: 0.85rem; color: #64748b;">${tz.offset || ''}</div>`;
+                    item.addEventListener('mouseenter', function() {
+                        this.style.background = '#f1f5f9';
+                    });
+                    item.addEventListener('mouseleave', function() {
+                        this.style.background = 'transparent';
+                    });
+                    item.addEventListener('click', function() {
+                        timezoneInput.value = (tz.name || tz.id) + (tz.offset ? ' (' + tz.offset + ')' : '');
+                        timezoneValue.value = tz.id;
+                        timezoneSuggestions.style.display = 'none';
+                        selectedTimezone = tz.id;
+                        
+                        // Update and start clock for selected timezone
+                        startSelectedTimezoneClock(tz.id);
+                    });
+                    timezoneSuggestions.appendChild(item);
+                });
+                
+                timezoneSuggestions.style.display = 'block';
+            }
+            
+            timezoneInput.addEventListener('input', function() {
+                const query = this.value.trim();
+                displaySuggestions(filterTimezones(query));
+            });
+            
+            timezoneInput.addEventListener('focus', function() {
+                const query = this.value.trim();
+                displaySuggestions(filterTimezones(query));
+            });
+            
+            // Close on outside click
+            document.addEventListener('click', function(e) {
+                if (timezoneInput && !timezoneInput.contains(e.target) && 
+                    timezoneSuggestions && !timezoneSuggestions.contains(e.target)) {
+                    timezoneSuggestions.style.display = 'none';
+                }
+            });
         }
     }
 </script>

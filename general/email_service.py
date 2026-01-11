@@ -253,4 +253,141 @@ class EmailService:
             template_name='email_change_verify',
             context=context,
         )
+    
+    @staticmethod
+    def send_session_booking_confirmation_email(
+        session,
+        mentor_profile,
+        user,
+        user_timezone: str,
+        is_free_session: bool = False,
+        first_session_length: Optional[int] = None,
+        regular_session_length: Optional[int] = None
+    ) -> bool:
+        """
+        Send session booking confirmation email to user.
+        
+        Args:
+            session: Session instance
+            mentor_profile: MentorProfile instance
+            user: CustomUser instance (can be None for new users)
+            user_timezone: User's timezone (IANA string)
+            is_free_session: Whether this is a free first session
+            first_session_length: Length of first session in minutes (if free)
+            regular_session_length: Length of regular sessions in minutes
+            
+        Returns:
+            bool: True if email was sent successfully
+        """
+        from django.urls import reverse
+        from zoneinfo import ZoneInfo
+        from datetime import timezone as dt_timezone
+        
+        # Get user's name
+        user_name = None
+        user_email = None
+        is_new_user = False
+        
+        if user:
+            user_email = user.email
+            if hasattr(user, 'profile') and user.profile:
+                if hasattr(user.profile, 'first_name') and user.profile.first_name:
+                    user_name = user.profile.first_name
+            is_new_user = not user.is_email_verified
+        else:
+            # This shouldn't happen, but handle it
+            return False
+        
+        # Convert session times to user's timezone
+        try:
+            tzinfo = ZoneInfo(str(user_timezone))
+        except Exception:
+            tzinfo = dt_timezone.utc
+        
+        session_date_local = None
+        session_start_time_local = None
+        session_end_time_local = None
+        
+        try:
+            if session.start_datetime and session.end_datetime:
+                start_local = session.start_datetime.astimezone(tzinfo)
+                end_local = session.end_datetime.astimezone(tzinfo)
+                
+                session_date_local = start_local.strftime('%A, %B %d, %Y')
+                session_start_time_local = start_local.strftime('%I:%M %p').lstrip('0')
+                session_end_time_local = end_local.strftime('%I:%M %p').lstrip('0')
+        except Exception:
+            # Fallback to UTC if conversion fails
+            if session.start_datetime:
+                session_date_local = session.start_datetime.strftime('%A, %B %d, %Y')
+                session_start_time_local = session.start_datetime.strftime('%I:%M %p').lstrip('0')
+            if session.end_datetime:
+                session_end_time_local = session.end_datetime.strftime('%I:%M %p').lstrip('0')
+        
+        # Build action URL - check if user needs to complete registration
+        site_domain = EmailService.get_site_domain()
+        action_url = None
+        
+        try:
+            # Check if user needs to complete registration
+            # (booking-created users have empty first_name/last_name)
+            needs_registration = False
+            if user and hasattr(user, 'user_profile'):
+                profile = user.user_profile
+                if not profile.first_name or not profile.last_name:
+                    needs_registration = True
+            
+            if needs_registration:
+                # Generate token for registration completion
+                from django.utils.http import urlsafe_base64_encode
+                from django.utils.encoding import force_bytes
+                from django.contrib.auth.tokens import default_token_generator
+                from django.urls import reverse
+                
+                reg_token = default_token_generator.make_token(user)
+                uid = urlsafe_base64_encode(force_bytes(user.pk))
+                action_url = f"{site_domain}{reverse('accounts:complete_registration', kwargs={'uidb64': uid, 'token': reg_token})}"
+            else:
+                # Link to my-sessions page (requires login)
+                # URL pattern: /dashboard/user/my-sessions/
+                action_url = f"{site_domain}/dashboard/user/my-sessions/"
+        except Exception:
+            pass
+        
+        # Get mentor name and profile URL
+        mentor_name = f"{mentor_profile.first_name} {mentor_profile.last_name}"
+        mentor_profile_url = None
+        try:
+            mentor_profile_url = f"{site_domain}{reverse('web:mentor_profile_detail', kwargs={'user_id': mentor_profile.user.id})}"
+        except Exception:
+            pass
+        
+        # Get note from session
+        note = session.note or ''
+        
+        context = {
+            'user': user,
+            'user_name': user_name,
+            'session': session,
+            'mentor_name': mentor_name,
+            'mentor_profile_url': mentor_profile_url,
+            'session_date_local': session_date_local,
+            'session_start_time_local': session_start_time_local,
+            'session_end_time_local': session_end_time_local,
+            'user_timezone': user_timezone,
+            'session_price': session.session_price,
+            'is_free_session': is_free_session,
+            'first_session_length': first_session_length,
+            'regular_session_length': regular_session_length,
+            'note': note,
+            'action_url': action_url,
+            'is_new_user': is_new_user,
+        }
+        
+        return EmailService.send_email(
+            subject=f"Session Booking Confirmed with {mentor_name}",
+            recipient_email=user_email,
+            template_name='session_booking_confirmation',
+            context=context,
+        )
 

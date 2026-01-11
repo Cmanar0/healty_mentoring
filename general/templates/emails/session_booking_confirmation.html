@@ -1,0 +1,80 @@
+{% extends "emails/base.html" %}
+
+{% block title %}Session Booking Confirmation{% endblock %}
+
+{% block content %}
+<h1>Session Booking Confirmed!</h1>
+
+<p class="content-text">
+  Hi{% if user_name %} {{ user_name }}{% endif %},
+</p>
+
+<p class="content-text">
+  Your session with 
+  {% if mentor_profile_url %}
+    <a href="{{ mentor_profile_url }}" class="highlight" style="text-decoration: none;">{{ mentor_name }}</a>
+  {% else %}
+    <span class="highlight">{{ mentor_name }}</span>
+  {% endif %}
+  has been successfully booked!
+</p>
+
+<div style="background-color: #f9fafb; border-radius: 12px; padding: 24px; margin: 24px 0; border: 1px solid #e5e7eb;">
+  <h2 style="font-size: 18px; font-weight: 600; color: #111827; margin-top: 0; margin-bottom: 16px;">Session Details</h2>
+  
+  <p class="content-text" style="font-size: 15px; color: #374151; margin-bottom: 12px;">
+    <strong style="color: #111827;">Date:</strong> {{ session_date_local }}<br>
+    <strong style="color: #111827;">Time:</strong> {{ session_start_time_local }} – {{ session_end_time_local }}
+    {% if user_timezone %} <span style="color: #6b7280;">({{ user_timezone }})</span>{% endif %}<br>
+    <strong style="color: #111827;">Duration:</strong> 
+    {% if is_free_session %}
+      {{ first_session_length }} minutes (First Session Free)
+      {% if regular_session_length %}
+        <span style="color: #6b7280; font-size: 14px;">• Regular sessions are {{ regular_session_length }} minutes</span>
+      {% endif %}
+    {% else %}
+      {{ regular_session_length }} minutes
+    {% endif %}
+    <br>
+    <strong style="color: #111827;">Price:</strong> 
+    {% if is_free_session %}
+      <span style="color: #10b981; font-weight: 600;">$0 (First Session Free)</span>
+    {% else %}
+      ${{ session_price|floatformat:2 }}
+    {% endif %}
+  </p>
+  
+  {% if note %}
+  <p class="content-text" style="font-size: 15px; color: #374151; margin-top: 16px; margin-bottom: 0;">
+    <strong style="color: #111827;">Your message:</strong><br>
+    <em style="color: #6b7280;">{{ note }}</em>
+  </p>
+  {% endif %}
+</div>
+
+{% if action_url %}
+<div class="btn-container">
+  <a href="{{ action_url }}" class="btn">
+    Finish Registration and Check The Session Details
+  </a>
+</div>
+{% endif %}
+
+{% if is_new_user %}
+<p class="content-text" style="font-size: 14px; color: #6b7280; margin-top: 24px;">
+  <strong>Next steps:</strong><br>
+  1. Check your email for a verification link to activate your account<br>
+  2. Once verified, you can log in to view and manage your sessions<br>
+  3. You'll receive reminders before your session
+</p>
+{% else %}
+<p class="content-text" style="font-size: 14px; color: #6b7280; margin-top: 24px;">
+  Log in to view and manage your sessions. You'll receive reminders before your session. If you need to make any changes, please contact your mentor.
+</p>
+{% endif %}
+
+<p class="content-text" style="font-size: 13px; color: #9ca3af; margin-top: 24px;">
+  If you have any questions, don't hesitate to reach out to us.
+</p>
+{% endblock %}
+

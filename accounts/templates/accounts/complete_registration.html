@@ -1,0 +1,77 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Complete Registration - Healthy Mentoring</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="{% static 'css/auth.css' %}">
+</head>
+<body>
+  <!-- Auth Container -->
+  <div class="auth-container">
+    <div class="auth-card">
+      <!-- Logo and Header -->
+      <div class="auth-header-wrapper">
+        <a href="{% url 'web:landing' %}" class="auth-logo">
+          <img src="{% static 'images/logo.png' %}" alt="Healthy Mentoring">
+        </a>
+        <div class="auth-header-text">
+          <h2>Complete Your Registration</h2>
+          <p class="subtitle">Finish setting up your account to access your sessions</p>
+        </div>
+      </div>
+
+      {% if messages %}
+      <div class="form-errors">
+        {% for message in messages %}
+          <div class="error-message">{{ message }}</div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <form method="post" class="auth-form">
+        {% csrf_token %}
+        
+        <div class="form-group">
+          <label for="email">Email Address</label>
+          <input type="email" id="email" name="email" value="{{ user_email }}" disabled style="background: #f3f4f6; cursor: not-allowed;">
+          <small style="color: #6b7280; font-size: 0.85rem; margin-top: 4px; display: block;">This email was used for your booking</small>
+        </div>
+
+        <div class="form-group">
+          <label for="first_name">First Name <span style="color: #ef4444;">*</span></label>
+          <input type="text" id="first_name" name="first_name" required autofocus>
+        </div>
+
+        <div class="form-group">
+          <label for="last_name">Last Name <span style="color: #ef4444;">*</span></label>
+          <input type="text" id="last_name" name="last_name" required>
+        </div>
+
+        <div class="form-group">
+          <label for="password1">Password <span style="color: #ef4444;">*</span></label>
+          <input type="password" id="password1" name="password1" required minlength="8">
+          <small style="color: #6b7280; font-size: 0.85rem; margin-top: 4px; display: block;">Must be at least 8 characters long</small>
+        </div>
+
+        <div class="form-group">
+          <label for="password2">Confirm Password <span style="color: #ef4444;">*</span></label>
+          <input type="password" id="password2" name="password2" required minlength="8">
+        </div>
+
+        <button type="submit" class="auth-btn-primary">Complete Registration</button>
+      </form>
+
+      <div class="auth-footer">
+        <p>Already have an account? <a href="{% url 'accounts:login' %}">Log in</a></p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+

@@ -155,6 +155,20 @@ class VerifyEmailView(View):
             except Exception as e:
                 print(f"Error sending welcome email: {e}")
                 
+            # Check if user needs to complete registration (booking-created users)
+            # If user has empty first_name/last_name, they need to complete registration
+            needs_registration = False
+            if hasattr(user, 'user_profile'):
+                profile = user.user_profile
+                if not profile.first_name or not profile.last_name:
+                    needs_registration = True
+            
+            if needs_registration:
+                # Generate token for registration completion
+                reg_token = default_token_generator.make_token(user)
+                uid = urlsafe_base64_encode(force_bytes(user.pk))
+                return redirect(reverse('accounts:complete_registration', kwargs={'uidb64': uid, 'token': reg_token}))
+            
             return render(request, "accounts/verify_success.html")
         else:
             return HttpResponse("Invalid verification link", status=400)
@@ -496,6 +510,95 @@ def complete_invitation(request, token):
     return render(request, 'accounts/complete_invitation.html', {
         'relationship': relationship,
         'mentor_name': f"{relationship.mentor.first_name} {relationship.mentor.last_name}",
+        'user_email': user.email,
+    })
+
+
+@require_http_methods(["GET", "POST"])
+def complete_registration(request, uidb64, token):
+    """
+    Complete registration for users created via booking.
+    Users need to set their password, first_name, and last_name.
+    If already completed, redirects to my-sessions (requires login).
+    """
+    try:
+        uid = force_str(urlsafe_base64_decode(uidb64))
+        user = CustomUser.objects.get(pk=uid)
+    except Exception:
+        user = None
+        messages.error(request, 'Invalid registration link.')
+        return redirect('accounts:login')
+    
+    if user is None or not default_token_generator.check_token(user, token):
+        messages.error(request, 'Invalid or expired registration link.')
+        return redirect('accounts:login')
+    
+    # Check if user already completed registration
+    registration_complete = False
+    if hasattr(user, 'user_profile'):
+        profile = user.user_profile
+        if profile.first_name and profile.last_name:
+            # User has set their name, check if they're logged in
+            if request.user.is_authenticated and request.user.id == user.id:
+                # Already logged in and registered, redirect to my-sessions
+                return redirect('dashboard_user:my_sessions')
+            else:
+                # Not logged in, redirect to login with next parameter
+                from django.urls import reverse
+                from urllib.parse import quote
+                login_url = reverse('accounts:login')
+                next_url = reverse('dashboard_user:my_sessions')
+                return redirect(f"{login_url}?next={quote(next_url)}")
+    
+    # User needs to complete registration
+    
+    if request.method == 'POST':
+        password1 = request.POST.get('password1', '').strip()
+        password2 = request.POST.get('password2', '').strip()
+        first_name = request.POST.get('first_name', '').strip()
+        last_name = request.POST.get('last_name', '').strip()
+        
+        errors = []
+        
+        if not first_name:
+            errors.append('First name is required.')
+        if not last_name:
+            errors.append('Last name is required.')
+        if not password1:
+            errors.append('Password is required.')
+        elif len(password1) < 8:
+            errors.append('Password must be at least 8 characters long.')
+        elif password1 != password2:
+            errors.append('Passwords do not match.')
+        
+        if errors:
+            for error in errors:
+                messages.error(request, error)
+        else:
+            # Update user profile
+            if hasattr(user, 'user_profile'):
+                profile = user.user_profile
+                profile.first_name = first_name
+                profile.last_name = last_name
+                profile.save()
+            
+            # Set password
+            user.set_password(password1)
+            user.is_email_verified = True  # Ensure email is verified
+            user.save()
+            
+            # Auto-login for smoother UX
+            try:
+                login(request, user)
+            except Exception:
+                # Fallback: still allow user to log in manually
+                pass
+
+            # Redirect to my-sessions page
+            messages.success(request, 'Registration completed successfully! Your email has been verified.')
+            return redirect('dashboard_user:my_sessions')
+    
+    return render(request, 'accounts/complete_registration.html', {
         'user_email': user.email,
     })
 

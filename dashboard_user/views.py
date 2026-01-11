@@ -2,9 +2,14 @@ from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.contrib.auth import logout
-from accounts.models import MentorClientRelationship
+from accounts.models import MentorClientRelationship, MentorProfile, UserProfile, CustomUser
 from django.utils import timezone
 from datetime import timedelta
+from django.http import JsonResponse
+from django.views.decorators.http import require_POST
+from django.views.decorators.csrf import csrf_exempt
+import json
+from decimal import Decimal
 
 @login_required
 def dashboard(request):
@@ -550,3 +555,356 @@ def session_management(request):
         'changed_sessions': changed_sessions,
         'pending_count': pending_count,
     })
+
+
+@require_POST
+def book_session(request):
+    """
+    Book a session from the booking modal.
+    Handles both logged-in users and non-logged-in users (new and existing).
+    """
+    try:
+        from datetime import datetime
+        from django.utils.crypto import get_random_string
+        from general.models import Session, SessionInvitation
+        from general.email_service import EmailService
+        from zoneinfo import ZoneInfo
+        from datetime import timezone as dt_timezone
+        
+        data = json.loads(request.body)
+        mentor_id = data.get('mentor_id')
+        start_datetime_str = data.get('start_datetime')
+        end_datetime_str = data.get('end_datetime')
+        availability_slot_id = data.get('availability_slot_id')
+        recurring_id = data.get('recurring_id')
+        instance_date = data.get('instance_date')
+        is_logged_in = data.get('is_logged_in', False)
+        
+        # For non-logged-in users
+        email = data.get('email', '').strip().lower() if not is_logged_in else None
+        note = data.get('note', '').strip() if not is_logged_in else ''
+        timezone_str = data.get('timezone', 'UTC') if not is_logged_in else None
+        
+        # Validation
+        if not mentor_id or not start_datetime_str or not end_datetime_str:
+            return JsonResponse({'success': False, 'error': 'Missing required fields'}, status=400)
+        
+        if not availability_slot_id and not (recurring_id and instance_date):
+            return JsonResponse({'success': False, 'error': 'Missing availability slot information'}, status=400)
+        
+        # Get mentor profile
+        try:
+            mentor_user = CustomUser.objects.get(id=mentor_id)
+            mentor_profile = mentor_user.mentor_profile
+        except (CustomUser.DoesNotExist, AttributeError):
+            return JsonResponse({'success': False, 'error': 'Mentor not found'}, status=404)
+        
+        # Parse datetimes
+        try:
+            start_dt = datetime.fromisoformat(start_datetime_str.replace('Z', '+00:00'))
+            end_dt = datetime.fromisoformat(end_datetime_str.replace('Z', '+00:00'))
+            if start_dt.tzinfo is None:
+                start_dt = timezone.make_aware(start_dt)
+            if end_dt.tzinfo is None:
+                end_dt = timezone.make_aware(end_dt)
+            
+            # Ensure UTC
+            if start_dt.tzinfo != dt_timezone.utc:
+                start_dt = start_dt.astimezone(dt_timezone.utc)
+            if end_dt.tzinfo != dt_timezone.utc:
+                end_dt = end_dt.astimezone(dt_timezone.utc)
+            
+            # Validate future
+            if start_dt <= timezone.now():
+                return JsonResponse({'success': False, 'error': 'Cannot book sessions in the past'}, status=400)
+            
+            if end_dt <= start_dt:
+                return JsonResponse({'success': False, 'error': 'Invalid session duration'}, status=400)
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': f'Invalid datetime format: {str(e)}'}, status=400)
+        
+        # Calculate duration
+        duration_minutes = int((end_dt - start_dt).total_seconds() / 60)
+        
+        # Handle availability slot
+        try:
+            if availability_slot_id:
+                # One-time slot: delete it
+                slots = list(mentor_profile.one_time_slots or [])
+                before_len = len(slots)
+                slots = [s for s in slots if str(s.get('id', '')) != str(availability_slot_id)]
+                if len(slots) == before_len:
+                    return JsonResponse({'success': False, 'error': 'This availability slot is no longer available. Please refresh and try again.'}, status=400)
+                mentor_profile.one_time_slots = slots
+                mentor_profile.save(update_fields=['one_time_slots'])
+            elif recurring_id and instance_date:
+                # Recurring slot: add to booked_dates
+                rules = list(mentor_profile.recurring_slots or [])
+                updated = False
+                for r in rules:
+                    if str(r.get('id', '')) == str(recurring_id):
+                        booked = r.get('booked_dates') or []
+                        if not isinstance(booked, list):
+                            booked = []
+                        if instance_date not in booked:
+                            booked.append(instance_date)
+                        r['booked_dates'] = booked
+                        updated = True
+                        break
+                if not updated:
+                    return JsonResponse({'success': False, 'error': 'This availability series is no longer available. Please refresh and try again.'}, status=400)
+                mentor_profile.recurring_slots = rules
+                mentor_profile.save(update_fields=['recurring_slots'])
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': f'Could not update availability: {str(e)}'}, status=500)
+        
+        # Determine user and first session status
+        user = None
+        user_profile = None
+        is_first_session = False
+        is_free_session = False
+        session_length_minutes = mentor_profile.session_length or 60
+        is_new_user_account = False  # Track if we created a new user account
+        
+        if is_logged_in:
+            # Logged-in user
+            if not request.user.is_authenticated:
+                return JsonResponse({'success': False, 'error': 'User not authenticated'}, status=401)
+            
+            # Check if user is mentor
+            if hasattr(request.user, 'mentor_profile'):
+                return JsonResponse({'success': False, 'error': 'Mentors cannot book sessions with other mentors'}, status=400)
+            
+            user = request.user
+            try:
+                user_profile = user.profile
+            except AttributeError:
+                return JsonResponse({'success': False, 'error': 'User profile not found'}, status=400)
+            
+            # Check first session free
+            relationship = MentorClientRelationship.objects.filter(
+                mentor=mentor_profile,
+                client=user_profile
+            ).first()
+            
+            is_first_session = relationship is None or relationship.sessions_count == 0
+            
+            if is_first_session and mentor_profile.first_session_free:
+                price = Decimal('0')
+                session_length_minutes = mentor_profile.first_session_length or 30
+                is_free_session = True
+            else:
+                # Calculate regular price
+                price_per_hour = mentor_profile.price_per_hour or Decimal('0')
+                hours = Decimal(str(duration_minutes)) / Decimal('60')
+                price = price_per_hour * hours
+                is_free_session = False
+            
+            # Use user's timezone for email
+            user_timezone = user_profile.selected_timezone or user_profile.detected_timezone or user_profile.time_zone or 'UTC'
+        else:
+            # Not logged in - need email
+            if not email:
+                return JsonResponse({'success': False, 'error': 'Email is required'}, status=400)
+            
+            # Validate email format
+            import re
+            email_regex = r'^[^\s@]+@[^\s@]+\.[^\s@]+$'
+            if not re.match(email_regex, email):
+                return JsonResponse({'success': False, 'error': 'Invalid email format'}, status=400)
+            
+            # Check if user exists
+            existing_user = CustomUser.objects.filter(email=email).first()
+            
+            if existing_user:
+                # Existing user
+                if hasattr(existing_user, 'mentor_profile'):
+                    return JsonResponse({'success': False, 'error': 'This email belongs to a mentor account. Please use a different email.'}, status=400)
+                
+                user = existing_user
+                try:
+                    user_profile = user.profile
+                except AttributeError:
+                    # Create user profile if missing
+                    user_profile = UserProfile.objects.create(
+                        user=user,
+                        first_name='',
+                        last_name='',
+                        role='user'
+                    )
+                
+                # Update timezone if provided and different
+                if timezone_str and timezone_str != 'UTC':
+                    try:
+                        # Validate timezone
+                        ZoneInfo(timezone_str)
+                        user_profile.selected_timezone = timezone_str
+                        user_profile.detected_timezone = timezone_str
+                        user_profile.time_zone = timezone_str
+                        user_profile.save(update_fields=['selected_timezone', 'detected_timezone', 'time_zone'])
+                    except Exception:
+                        pass  # Invalid timezone, use existing
+                
+                user_timezone = user_profile.selected_timezone or user_profile.detected_timezone or user_profile.time_zone or 'UTC'
+                
+                # Check first session free
+                relationship = MentorClientRelationship.objects.filter(
+                    mentor=mentor_profile,
+                    client=user_profile
+                ).first()
+                
+                is_first_session = relationship is None or relationship.sessions_count == 0
+                
+                if is_first_session and mentor_profile.first_session_free:
+                    price = Decimal('0')
+                    session_length_minutes = mentor_profile.first_session_length or 30
+                    is_free_session = True
+                else:
+                    price_per_hour = mentor_profile.price_per_hour or Decimal('0')
+                    hours = Decimal(str(duration_minutes)) / Decimal('60')
+                    price = price_per_hour * hours
+                    is_free_session = False
+            else:
+                # New user
+                # Validate timezone
+                if not timezone_str or timezone_str == 'UTC':
+                    timezone_str = 'UTC'
+                else:
+                    try:
+                        ZoneInfo(timezone_str)
+                    except Exception:
+                        timezone_str = 'UTC'
+                
+                # Check first session free (no relationship exists yet)
+                if mentor_profile.first_session_free:
+                    price = Decimal('0')
+                    session_length_minutes = mentor_profile.first_session_length or 30
+                    is_free_session = True
+                else:
+                    price_per_hour = mentor_profile.price_per_hour or Decimal('0')
+                    hours = Decimal(str(duration_minutes)) / Decimal('60')
+                    price = price_per_hour * hours
+                    is_free_session = False
+                
+                # Create user account
+                temp_password = get_random_string(32)
+                user = CustomUser.objects.create_user(
+                    email=email,
+                    password=temp_password,
+                    is_email_verified=False,
+                    is_active=True
+                )
+                
+                user_profile = UserProfile.objects.create(
+                    user=user,
+                    first_name='',
+                    last_name='',
+                    role='user',
+                    selected_timezone=timezone_str,
+                    detected_timezone=timezone_str,
+                    time_zone=timezone_str
+                )
+                
+                user_timezone = timezone_str
+                is_first_session = True
+                is_new_user_account = True
+        
+        # Create session
+        session = Session.objects.create(
+            start_datetime=start_dt,
+            end_datetime=end_dt,
+            created_by=mentor_profile.user,
+            note=note or '',
+            session_type='individual',
+            status='confirmed',
+            session_price=price,
+            tasks=[],
+        )
+        mentor_profile.sessions.add(session)
+        
+        if user:
+            session.attendees.add(user)
+        
+        # Create or update relationship - automatically confirm since user booked a session
+        relationship = MentorClientRelationship.objects.filter(
+            mentor=mentor_profile,
+            client=user_profile
+        ).first()
+        
+        if not relationship:
+            # Create confirmed relationship since user booked a session
+            relationship = MentorClientRelationship.objects.create(
+                mentor=mentor_profile,
+                client=user_profile,
+                status='confirmed',
+                confirmed=True,
+                verified_at=timezone.now(),
+                invitation_token=None  # No invitation token needed for booking-created relationships
+            )
+            # Add to mentor's clients ManyToMany relationship
+            if user_profile not in mentor_profile.clients.all():
+                mentor_profile.clients.add(user_profile)
+        else:
+            # Update existing relationship to confirmed if not already
+            if not relationship.confirmed or relationship.status != 'confirmed':
+                relationship.status = 'confirmed'
+                relationship.confirmed = True
+                if not relationship.verified_at:
+                    relationship.verified_at = timezone.now()
+                relationship.invitation_token = None  # Clear invitation token
+                relationship.save(update_fields=['status', 'confirmed', 'verified_at', 'invitation_token'])
+                # Ensure it's in the ManyToMany relationship
+                if user_profile not in mentor_profile.clients.all():
+                    mentor_profile.clients.add(user_profile)
+        
+        # Note: We don't create SessionInvitation for confirmed sessions
+        # The session is already confirmed, so no invitation/confirmation needed
+        
+        # Send confirmation email
+        try:
+            EmailService.send_session_booking_confirmation_email(
+                session=session,
+                mentor_profile=mentor_profile,
+                user=user,
+                user_timezone=user_timezone,
+                is_free_session=is_free_session,
+                first_session_length=session_length_minutes if is_free_session else None,
+                regular_session_length=mentor_profile.session_length or 60
+            )
+        except Exception as e:
+            # Log error but don't fail the booking
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f'Error sending booking confirmation email: {str(e)}')
+        
+        # Send verification email for new users
+        if is_new_user_account:
+            try:
+                from django.utils.http import urlsafe_base64_encode
+                from django.utils.encoding import force_bytes
+                from django.contrib.auth.tokens import default_token_generator
+                
+                token = default_token_generator.make_token(user)
+                uid = urlsafe_base64_encode(force_bytes(user.pk))
+                site_domain = EmailService.get_site_domain()
+                verify_url = f"{site_domain}/accounts/verify/{uid}/{token}/"
+                
+                EmailService.send_verification_email(user, verify_url)
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f'Error sending verification email: {str(e)}')
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Session booked successfully',
+            'session_id': session.id
+        })
+        
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f'Error booking session: {str(e)}', exc_info=True)
+        return JsonResponse({'success': False, 'error': f'An error occurred: {str(e)}'}, status=500)
