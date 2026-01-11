@@ -816,7 +816,7 @@
             });
             
             suggestionsEl.style.display = 'block';
-            suggestionsEl.style.maxHeight = '400px';
+            suggestionsEl.style.maxHeight = '250px';
             suggestionsEl.style.overflowY = 'auto';
             suggestionsEl.style.zIndex = '10001'; // Above modal
         }

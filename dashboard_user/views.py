@@ -62,11 +62,16 @@ def profile(request):
             # Update basic fields
             first_name = request.POST.get("first_name")
             last_name = request.POST.get("last_name")
+            time_zone = request.POST.get("time_zone")
             
             if first_name is not None:
                 profile.first_name = first_name
             if last_name is not None:
                 profile.last_name = last_name
+            if time_zone is not None:
+                profile.selected_timezone = time_zone
+                # Also update legacy time_zone field for backward compatibility
+                profile.time_zone = time_zone
             
             profile.save()
             return redirect("/dashboard/user/profile/")
@@ -211,6 +216,17 @@ def session_management(request):
     
     user_email = (request.user.email or '').strip().lower()
     
+    # Get user's timezone for converting session times
+    user_profile = request.user.profile
+    user_timezone = user_profile.selected_timezone or user_profile.detected_timezone or user_profile.time_zone or 'UTC'
+    user_tzinfo = None
+    try:
+        from zoneinfo import ZoneInfo
+        user_tzinfo = ZoneInfo(str(user_timezone))
+    except Exception:
+        from datetime import timezone as dt_timezone
+        user_tzinfo = dt_timezone.utc
+    
     # Get all pending invitations for this user
     # Filter out invitations for expired sessions
     invitations = SessionInvitation.objects.filter(
@@ -220,13 +236,23 @@ def session_management(request):
         session__status__in=['invited', 'confirmed']  # Only show invitations for non-expired sessions
     ).select_related('session', 'mentor', 'mentor__user').order_by('-created_at')
     
-    # Calculate duration in minutes for each invitation
+    # Calculate duration in minutes and convert times to user's timezone for each invitation
     for inv in invitations:
         if inv.session.start_datetime and inv.session.end_datetime:
             duration = inv.session.end_datetime - inv.session.start_datetime
             inv.session.duration_minutes = int(duration.total_seconds() / 60)
+            
+            # Convert to user's timezone
+            try:
+                inv.session.start_datetime_local = inv.session.start_datetime.astimezone(user_tzinfo)
+                inv.session.end_datetime_local = inv.session.end_datetime.astimezone(user_tzinfo)
+            except Exception:
+                inv.session.start_datetime_local = inv.session.start_datetime
+                inv.session.end_datetime_local = inv.session.end_datetime
         else:
             inv.session.duration_minutes = 0
+            inv.session.start_datetime_local = None
+            inv.session.end_datetime_local = None
     
     # Get all sessions linked to this user (via attendees OR via invitations)
     # First, get session IDs from invitations
@@ -389,8 +415,30 @@ def session_management(request):
                 if session.start_datetime and session.end_datetime:
                     duration = session.end_datetime - session.start_datetime
                     session.duration_minutes = int(duration.total_seconds() / 60)
+                    
+                    # Convert to user's timezone
+                    try:
+                        session.start_datetime_local = session.start_datetime.astimezone(user_tzinfo)
+                        session.end_datetime_local = session.end_datetime.astimezone(user_tzinfo)
+                    except Exception:
+                        session.start_datetime_local = session.start_datetime
+                        session.end_datetime_local = session.end_datetime
                 else:
                     session.duration_minutes = 0
+                    session.start_datetime_local = None
+                    session.end_datetime_local = None
+                
+                # Also convert change_data datetimes to user's timezone
+                if change_data and isinstance(change_data, dict):
+                    try:
+                        if 'start_datetime' in change_data and change_data['start_datetime']:
+                            if isinstance(change_data['start_datetime'], datetime):
+                                change_data['start_datetime_local'] = change_data['start_datetime'].astimezone(user_tzinfo)
+                        if 'end_datetime' in change_data and change_data['end_datetime']:
+                            if isinstance(change_data['end_datetime'], datetime):
+                                change_data['end_datetime_local'] = change_data['end_datetime'].astimezone(user_tzinfo)
+                    except Exception:
+                        pass
                 
                 changed_sessions.append(session)
     
