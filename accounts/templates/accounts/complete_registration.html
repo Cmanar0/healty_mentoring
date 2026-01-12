@@ -49,23 +49,23 @@
 
         <div class="form-group">
           <label for="first_name">First Name <span style="color: #ef4444;">*</span></label>
-          <input type="text" id="first_name" name="first_name" value="" required autofocus>
+          <input type="text" id="first_name" name="first_name" value="" required autofocus autocomplete="off">
         </div>
 
         <div class="form-group">
           <label for="last_name">Last Name <span style="color: #ef4444;">*</span></label>
-          <input type="text" id="last_name" name="last_name" value="" required>
+          <input type="text" id="last_name" name="last_name" value="" required autocomplete="off">
         </div>
 
         <div class="form-group">
           <label for="password1">Password <span style="color: #ef4444;">*</span></label>
-          <input type="password" id="password1" name="password1" required minlength="8">
+          <input type="password" id="password1" name="password1" required minlength="8" autocomplete="new-password">
           <small style="color: #6b7280; font-size: 0.85rem; margin-top: 4px; display: block;">Must be at least 8 characters long</small>
         </div>
 
         <div class="form-group">
           <label for="password2">Confirm Password <span style="color: #ef4444;">*</span></label>
-          <input type="password" id="password2" name="password2" required minlength="8">
+          <input type="password" id="password2" name="password2" required minlength="8" autocomplete="new-password">
         </div>
 
         <button type="submit" class="btn-submit" style="margin-top: 10px;">Complete Registration</button>

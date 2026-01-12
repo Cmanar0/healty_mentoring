@@ -1062,12 +1062,14 @@
             const adjustedEnd = urlParams.get('adjusted_end');
             
             if (slotStart && slotEnd) {
-                // Open booking modal
-                openBookingModal();
-                
-                // Set selected slot
+                // Set selected slot BEFORE opening modal (so openBookingModal doesn't clear it)
                 const startDt = new Date(slotStart);
-                selectedDate = startDt.toISOString().split('T')[0];
+                // Store as Date object (consistent with selectDate function)
+                const dateObj = new Date(startDt.getFullYear(), startDt.getMonth(), startDt.getDate());
+                selectedDate = dateObj;
+                
+                // Set currentDate to the month of the selected date so calendar shows correct month
+                currentDate = new Date(startDt.getFullYear(), startDt.getMonth(), 1);
                 
                 selectedSlot = {
                     start: slotStart,
@@ -1080,30 +1082,75 @@
                     instance_date: instanceDate
                 };
                 
-                // Update UI
-                renderCalendar();
-                if (selectedDateLabel) {
-                    const dateObj = new Date(selectedDate + 'T00:00:00');
-                    selectedDateLabel.textContent = formatDateForDisplay(dateObj);
-                }
-                if (slotsCol) slotsCol.style.display = 'block';
-                renderSlotsForDate(selectedDate);
+                // Open booking modal (but don't let it reset our selected slot)
+                if (!modal) return;
+                modal.classList.add('open');
+                document.body.style.overflow = 'hidden';
                 
-                // Highlight the selected slot
+                // Render calendar with the correct month
+                renderCalendar();
+                
+                // Update selected date label - use Date object for formatting
+                const dateOptions = {weekday: 'long', month: 'short', day: 'numeric'};
+                const formattedDate = dateObj.toLocaleDateString([], dateOptions);
+                if (selectedDateLabel) {
+                    selectedDateLabel.textContent = formattedDate;
+                }
+                
+                // Show slots column and render slots (pass Date object)
+                if (slotsCol) slotsCol.style.display = 'flex';
+                renderSlots(dateObj);
+                
+                // Show footer and summary since slot is selected
+                if (slotsFooter) slotsFooter.style.display = 'block';
+                if (bookingSummary) bookingSummary.style.display = 'block';
+                if (summaryDate) summaryDate.textContent = formattedDate;
+                if (summaryTimeRow) {
+                    // Format time for summary
+                    const formatTime = (dateStr) => {
+                        const d = new Date(dateStr);
+                        let hours = d.getHours();
+                        const minutes = d.getMinutes();
+                        const ampm = hours >= 12 ? 'pm' : 'am';
+                        hours = hours % 12;
+                        hours = hours ? hours : 12;
+                        const mins = minutes < 10 ? '0' + minutes : minutes;
+                        return `${hours}:${mins} ${ampm}`;
+                    };
+                    const endDt = new Date(selectedSlot.end);
+                    const timeText = `${formatTime(selectedSlot.start)} - ${formatTime(selectedSlot.end)}`;
+                    if (summaryTime) summaryTime.textContent = timeText;
+                    summaryTimeRow.style.display = 'flex';
+                }
+                
+                // Highlight the selected slot after slots are rendered
                 setTimeout(() => {
-                    const slotElements = document.querySelectorAll('.slot-item');
-                    slotElements.forEach(el => {
-                        const slotStartAttr = el.getAttribute('data-slot-start');
-                        if (slotStartAttr === slotStart) {
-                            el.classList.add('selected');
-                            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        }
+                    const slots = getSlotsForDate(dateObj);
+                    // Find the slot that matches our selected slot
+                    const matchingSlotIndex = slots.findIndex(slot => {
+                        // Compare ISO strings - normalize both to ensure comparison works
+                        const slotStartISO = slot.start ? new Date(slot.start).toISOString() : null;
+                        const targetStartISO = new Date(slotStart).toISOString();
+                        return slotStartISO === targetStartISO;
                     });
-                }, 100);
+                    
+                    if (matchingSlotIndex !== -1) {
+                        const slotButtons = slotsList.querySelectorAll('.time-slot-btn');
+                        if (slotButtons[matchingSlotIndex]) {
+                            slotButtons[matchingSlotIndex].classList.add('selected');
+                            slotButtons[matchingSlotIndex].scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            // Update selectedSlot to match the slot from the list (preserves all slot data)
+                            selectedSlot = slots[matchingSlotIndex];
+                        }
+                    }
+                }, 500);
                 
                 // Clean up URL parameters
                 const newUrl = window.location.pathname;
                 window.history.replaceState({}, '', newUrl);
+            } else {
+                // No slot specified, just open modal normally
+                openBookingModal();
             }
         }
         

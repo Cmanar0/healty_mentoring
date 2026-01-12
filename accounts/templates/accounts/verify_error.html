@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Email Verified - Healthy Mentoring</title>
+  <title>Verification Error - Healthy Mentoring</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;700;800&display=swap" rel="stylesheet">
@@ -21,20 +21,24 @@
           <img src="{% static 'images/logo.png' %}" alt="Healthy Mentoring">
         </a>
         <div class="auth-header-text">
-          <h2>Email Verified</h2>
-          <p class="subtitle">{% if was_already_verified %}Your email was already verified.{% else %}Your email has been successfully verified.{% endif %}</p>
+          <h2>Verification Error</h2>
+          <p class="subtitle">Unable to verify your email</p>
         </div>
       </div>
 
       <div style="text-align: center; padding: 20px 0;">
-        <div style="width: 64px; height: 64px; margin: 0 auto 24px; border-radius: 50%; background: rgba(16, 185, 129, 0.1); display: flex; align-items: center; justify-content: center;">
-          <i class="fas fa-check-circle" style="color: #10b981; font-size: 2rem;"></i>
+        <div style="width: 64px; height: 64px; margin: 0 auto 24px; border-radius: 50%; background: rgba(239, 68, 68, 0.1); display: flex; align-items: center; justify-content: center;">
+          <i class="fas fa-exclamation-circle" style="color: #ef4444; font-size: 2rem;"></i>
         </div>
         <p style="color: #64748b; font-size: 1rem; line-height: 1.6; margin-bottom: 24px;">
-          You can now <a href="{% url 'accounts:login' %}" style="color: #10b981; text-decoration: none; font-weight: 500;">log in</a> to access your account.
+          {{ error_message|default:"Invalid or expired verification link." }}
+        </p>
+        <p style="color: #94a3b8; font-size: 0.9rem; margin-bottom: 32px;">
+          Please request a new verification email or <a href="{% url 'accounts:login' %}" style="color: #10b981; text-decoration: none; font-weight: 500;">try logging in</a> if your email is already verified.
         </p>
       </div>
     </div>
   </div>
 </body>
 </html>
+

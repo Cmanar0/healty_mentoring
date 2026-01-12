@@ -144,34 +144,49 @@ class VerifyEmailView(View):
             user = CustomUser.objects.get(pk=uid)
         except Exception:
             user = None
-        if user is not None and default_token_generator.check_token(user, token):
-            user.is_active = True
-            user.is_email_verified = True
-            user.save()
-            
-            # Send welcome email
+            return render(request, "accounts/verify_error.html", {
+                'error_message': 'Invalid verification link.'
+            })
+        
+        # Check if token is valid
+        if user is None or not default_token_generator.check_token(user, token):
+            return render(request, "accounts/verify_error.html", {
+                'error_message': 'Invalid or expired verification link.'
+            })
+        
+        # Check if email is already verified
+        was_already_verified = user.is_email_verified
+        
+        # Verify email (even if already verified, this is idempotent)
+        user.is_active = True
+        user.is_email_verified = True
+        user.save()
+        
+        # Send welcome email only if this is the first verification
+        if not was_already_verified:
             try:
                 EmailService.send_welcome_email(user)
             except Exception as e:
                 print(f"Error sending welcome email: {e}")
-                
-            # Check if user needs to complete registration (booking-created users)
-            # If user has empty first_name/last_name, they need to complete registration
-            needs_registration = False
-            if hasattr(user, 'user_profile'):
-                profile = user.user_profile
-                if not profile.first_name or not profile.last_name:
-                    needs_registration = True
-            
-            if needs_registration:
-                # Generate token for registration completion
-                reg_token = default_token_generator.make_token(user)
-                uid = urlsafe_base64_encode(force_bytes(user.pk))
-                return redirect(reverse('accounts:complete_registration', kwargs={'uidb64': uid, 'token': reg_token}))
-            
-            return render(request, "accounts/verify_success.html")
-        else:
-            return HttpResponse("Invalid verification link", status=400)
+        
+        # Check if user needs to complete registration (booking-created users)
+        # If user has empty first_name/last_name, they need to complete registration
+        needs_registration = False
+        if hasattr(user, 'user_profile'):
+            profile = user.user_profile
+            if not profile.first_name or not profile.last_name:
+                needs_registration = True
+        
+        if needs_registration:
+            # Generate token for registration completion
+            reg_token = default_token_generator.make_token(user)
+            uid = urlsafe_base64_encode(force_bytes(user.pk))
+            return redirect(reverse('accounts:complete_registration', kwargs={'uidb64': uid, 'token': reg_token}))
+        
+        # Email is verified and registration is complete
+        return render(request, "accounts/verify_success.html", {
+            'was_already_verified': was_already_verified
+        })
 
 import random
 from django.http import JsonResponse
@@ -330,8 +345,9 @@ class CustomLoginView(BaseLoginView):
             mentor_id = self.request.GET.get('mentor_id')
             if mentor_id:
                 # Redirect to mentor profile page with booking modal open
+                # Note: URL pattern uses 'user_id' not 'mentor_id'
                 from django.urls import reverse
-                mentor_url = reverse('web:mentor_profile_detail', kwargs={'mentor_id': mentor_id})
+                mentor_url = reverse('web:mentor_profile_detail', kwargs={'user_id': mentor_id})
                 
                 # Build URL with booking parameters
                 params = []
@@ -584,17 +600,10 @@ def complete_registration(request, uidb64, token):
     if hasattr(user, 'user_profile'):
         profile = user.user_profile
         if profile.first_name and profile.last_name:
-            # User has set their name, check if they're logged in
-            if request.user.is_authenticated and request.user.id == user.id:
-                # Already logged in and registered, redirect to my-sessions
-                return redirect('general:dashboard_user:my_sessions')
-            else:
-                # Not logged in, redirect to login with next parameter
-                from django.urls import reverse
-                from urllib.parse import quote
-                login_url = reverse('accounts:login')
-                next_url = reverse('general:dashboard_user:my_sessions')
-                return redirect(f"{login_url}?next={quote(next_url)}")
+            # Registration is already complete - show message and redirect to login
+            return render(request, 'accounts/registration_already_complete.html', {
+                'user_email': user.email,
+            })
     
     # User needs to complete registration
     
