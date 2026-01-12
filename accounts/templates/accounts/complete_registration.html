@@ -26,7 +26,7 @@
         </div>
       </div>
 
-      {% if messages %}
+      {% if show_messages and messages %}
       <div class="form-errors">
         {% for message in messages %}
           {% if message.tags == 'error' %}

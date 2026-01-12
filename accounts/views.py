@@ -606,6 +606,10 @@ def complete_registration(request, uidb64, token):
             })
     
     # User needs to complete registration
+    # Clear any existing messages on GET request (first load) to prevent showing stale messages
+    if request.method == 'GET':
+        storage = messages.get_messages(request)
+        storage.used = True  # Mark all messages as used so they won't be displayed
     
     if request.method == 'POST':
         password1 = request.POST.get('password1', '').strip()
@@ -629,6 +633,11 @@ def complete_registration(request, uidb64, token):
         if errors:
             for error in errors:
                 messages.error(request, error)
+            # Re-render with errors (messages will be shown)
+            return render(request, 'accounts/complete_registration.html', {
+                'user_email': user.email,
+                'show_messages': True,  # Show messages after form submission with errors
+            })
         else:
             # Update user profile
             if hasattr(user, 'user_profile'):
@@ -655,6 +664,7 @@ def complete_registration(request, uidb64, token):
     
     return render(request, 'accounts/complete_registration.html', {
         'user_email': user.email,
+        'show_messages': False,  # Don't show messages on first load (GET request)
     })
 
 
