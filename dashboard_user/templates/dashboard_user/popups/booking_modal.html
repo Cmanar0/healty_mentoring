@@ -149,7 +149,7 @@
                                     Your first session with {{ mentor_profile.first_name }} is free! This introductory session lasts {{ mentor_profile.first_session_length|default:30 }} minutes and is perfect for discussing your goals and how {{ mentor_profile.first_name }} can help you. Regular sessions are {{ mentor_profile.session_length|default:60 }} minutes.
                                 {% endif %}
                             {% else %}
-                                Book a focused session to discuss your career, goals, or specific challenges.
+                    Book a focused session to discuss your career, goals, or specific challenges.
                             {% endif %}
                         {% else %}
                             {% if mentor_profile.first_session_length == mentor_profile.session_length %}
@@ -1482,7 +1482,7 @@
                     windowEnd.setHours(endH, endM, 0, 0);
                     return windowEnd > now;
                 } catch (e) {
-                    return false;
+             return false;
                 }
             }
             
@@ -1576,7 +1576,7 @@
                 }
             } catch (e) {
                 console.error('Error processing one-time slot:', e);
-            }
+             }
         });
 
         // 2. Generate Recurring Slots
