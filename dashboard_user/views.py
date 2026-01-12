@@ -169,7 +169,178 @@ def account(request):
 def my_sessions(request):
     if not hasattr(request.user, 'profile') or request.user.profile.role != 'user':
         return redirect('general:index')
-    return render(request, 'dashboard_user/my_sessions.html')
+    
+    from general.models import Session
+    from django.utils import timezone
+    from zoneinfo import ZoneInfo
+    from datetime import timezone as dt_timezone
+    
+    # Get user's timezone
+    user_profile = request.user.profile
+    user_timezone = user_profile.selected_timezone or user_profile.detected_timezone or user_profile.time_zone or 'UTC'
+    user_tzinfo = None
+    try:
+        user_tzinfo = ZoneInfo(str(user_timezone))
+    except Exception:
+        user_tzinfo = dt_timezone.utc
+    
+    now = timezone.now()
+    
+    # Get all upcoming sessions where user is an attendee (invited and confirmed)
+    initial_sessions = []
+    try:
+        all_upcoming = Session.objects.filter(
+            attendees=request.user,
+            status__in=['invited', 'confirmed'],
+            start_datetime__gte=now
+        ).order_by('start_datetime').select_related('created_by', 'created_by__mentor_profile').prefetch_related('attendees')
+        
+        # Get first 10 sessions for initial load
+        sessions_queryset = all_upcoming[:10]
+        
+        # Format sessions for template
+        for session in sessions_queryset:
+            # Get mentor name (created_by is the mentor)
+            mentor_name = None
+            if session.created_by and hasattr(session.created_by, 'mentor_profile'):
+                mentor_profile = session.created_by.mentor_profile
+                mentor_name = f"{mentor_profile.first_name} {mentor_profile.last_name}".strip()
+                if not mentor_name:
+                    mentor_name = session.created_by.email.split('@')[0]
+            else:
+                mentor_name = session.created_by.email.split('@')[0] if session.created_by else 'Mentor'
+            
+            # Convert to user's timezone
+            start_datetime_local = session.start_datetime
+            end_datetime_local = session.end_datetime
+            try:
+                start_datetime_local = session.start_datetime.astimezone(user_tzinfo)
+                end_datetime_local = session.end_datetime.astimezone(user_tzinfo)
+            except Exception:
+                pass
+            
+            initial_sessions.append({
+                'id': session.id,
+                'start_datetime': start_datetime_local,
+                'end_datetime': end_datetime_local,
+                'status': session.status,
+                'mentor_name': mentor_name,
+                'note': session.note,
+            })
+    except Exception as e:
+        # Log error but don't fail the request
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error fetching initial sessions: {str(e)}")
+    
+    return render(request, 'dashboard_user/my_sessions.html', {
+        'initial_sessions': initial_sessions,
+        'user_timezone': user_timezone,
+    })
+
+
+@login_required
+def get_sessions_paginated(request):
+    """API endpoint for paginated sessions (infinite scroll) for users"""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'user':
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+    
+    try:
+        from general.models import Session
+        from django.utils import timezone
+        from django.core.paginator import Paginator
+        from zoneinfo import ZoneInfo
+        from datetime import timezone as dt_timezone
+        
+        # Get user's timezone
+        user_profile = request.user.profile
+        user_timezone = user_profile.selected_timezone or user_profile.detected_timezone or user_profile.time_zone or 'UTC'
+        user_tzinfo = None
+        try:
+            user_tzinfo = ZoneInfo(str(user_timezone))
+        except Exception:
+            user_tzinfo = dt_timezone.utc
+        
+        # Get pagination parameters
+        page = int(request.GET.get('page', 1))
+        per_page = int(request.GET.get('per_page', 10))
+        
+        now = timezone.now()
+        
+        # Get all upcoming sessions where user is an attendee (invited and confirmed)
+        all_upcoming = Session.objects.filter(
+            attendees=request.user,
+            status__in=['invited', 'confirmed'],
+            start_datetime__gte=now
+        ).order_by('start_datetime').select_related('created_by', 'created_by__mentor_profile').prefetch_related('attendees')
+        
+        # Paginate
+        paginator = Paginator(all_upcoming, per_page)
+        page_obj = paginator.get_page(page)
+        
+        # Format sessions for JSON response
+        sessions_data = []
+        for session in page_obj:
+            # Get mentor name (created_by is the mentor)
+            mentor_name = None
+            if session.created_by and hasattr(session.created_by, 'mentor_profile'):
+                mentor_profile = session.created_by.mentor_profile
+                mentor_name = f"{mentor_profile.first_name} {mentor_profile.last_name}".strip()
+                if not mentor_name:
+                    mentor_name = session.created_by.email.split('@')[0]
+            else:
+                mentor_name = session.created_by.email.split('@')[0] if session.created_by else 'Mentor'
+            
+            # Convert to user's timezone for JSON response
+            start_dt = session.start_datetime
+            end_dt = session.end_datetime
+            try:
+                start_dt = session.start_datetime.astimezone(user_tzinfo)
+                end_dt = session.end_datetime.astimezone(user_tzinfo)
+            except Exception:
+                pass
+            
+            sessions_data.append({
+                'id': session.id,
+                'start_datetime': start_dt.isoformat(),
+                'end_datetime': end_dt.isoformat(),
+                'status': session.status,
+                'mentor_name': mentor_name,
+                'note': session.note or '',
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'sessions': sessions_data,
+            'has_next': page_obj.has_next(),
+            'has_previous': page_obj.has_previous(),
+            'current_page': page,
+            'total_pages': paginator.num_pages,
+            'total_count': paginator.count,
+        })
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error fetching paginated sessions: {str(e)}")
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+def mentors_list(request):
+    """Display list of all mentors for the logged-in user"""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'user':
+        return redirect('general:index')
+    
+    from accounts.models import MentorClientRelationship
+    
+    user_profile = request.user.profile
+    relationships = MentorClientRelationship.objects.filter(
+        client=user_profile
+    ).select_related('mentor', 'mentor__user').order_by('-created_at')
+    
+    return render(request, 'dashboard_user/mentors.html', {
+        'relationships': relationships,
+    })
 
 
 @login_required
@@ -575,6 +746,7 @@ def book_session(request):
         mentor_id = data.get('mentor_id')
         start_datetime_str = data.get('start_datetime')
         end_datetime_str = data.get('end_datetime')
+        adjusted_end_datetime_str = data.get('adjusted_end_datetime')  # For first session with different length
         availability_slot_id = data.get('availability_slot_id')
         recurring_id = data.get('recurring_id')
         instance_date = data.get('instance_date')
@@ -603,6 +775,11 @@ def book_session(request):
         try:
             start_dt = datetime.fromisoformat(start_datetime_str.replace('Z', '+00:00'))
             end_dt = datetime.fromisoformat(end_datetime_str.replace('Z', '+00:00'))
+            
+            # Use adjusted end datetime if provided (for first session with different length)
+            if adjusted_end_datetime_str:
+                end_dt = datetime.fromisoformat(adjusted_end_datetime_str.replace('Z', '+00:00'))
+            
             if start_dt.tzinfo is None:
                 start_dt = timezone.make_aware(start_dt)
             if end_dt.tzinfo is None:
@@ -895,10 +1072,15 @@ def book_session(request):
                 logger = logging.getLogger(__name__)
                 logger.error(f'Error sending verification email: {str(e)}')
         
+        # Get email for response
+        user_email = user.email if user else email
+        
         return JsonResponse({
             'success': True,
             'message': 'Session booked successfully',
-            'session_id': session.id
+            'session_id': session.id,
+            'email': user_email,
+            'is_new_user': is_new_user_account
         })
         
     except json.JSONDecodeError:

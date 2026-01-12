@@ -215,6 +215,12 @@
             <span class="sidebar-text">My Sessions</span>
           </a>
         </li>
+        <li>
+          <a href="{% url 'general:dashboard_user:mentors_list' %}" class="sidebar-link {% if request.resolver_match.url_name == 'mentors_list' %}active{% endif %}" title="Your Mentors">
+            <i class="fas fa-user-tie"></i>
+            <span class="sidebar-text">Your Mentors</span>
+          </a>
+        </li>
         <li class="your-section-divider"></li>
         <li>
           <a href="/dashboard/user/profile/" class="sidebar-link sidebar-link-your {% if request.resolver_match.url_name == 'profile' %}active{% endif %}" title="Your Profile">

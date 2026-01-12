@@ -20,6 +20,40 @@
             </div>
         </div>
         
+        <!-- Success/Confirmation State -->
+        <div id="bookingSuccessState" class="booking-success-state" style="display: none;">
+            <div class="booking-success-content">
+                <div class="booking-success-icon">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <h2 class="booking-success-title">Session Booked Successfully!</h2>
+                <p class="booking-success-message" id="bookingSuccessMessage">
+                    A confirmation email has been sent to your email address.
+                </p>
+                <div id="bookingSuccessEmail" class="booking-success-email" style="display: none;">
+                    <i class="fas fa-envelope"></i>
+                    <span id="bookingSuccessEmailText"></span>
+                </div>
+                <div id="bookingSuccessInstructions" class="booking-success-instructions" style="display: none;">
+                    <h3>What's Next?</h3>
+                    <ol>
+                        <li>Check your email for a verification link to activate your account</li>
+                        <li>Complete your registration by setting up your password</li>
+                        <li>Once verified, you can log in and manage your sessions</li>
+                    </ol>
+                </div>
+                <div id="bookingSuccessActions" class="booking-success-actions" style="display: none;">
+                    <button class="booking-success-btn" onclick="window.location.href='/dashboard/user/my-sessions/'">
+                        <i class="fas fa-calendar"></i>
+                        View My Sessions
+                    </button>
+                </div>
+                <button class="booking-success-close-btn" onclick="closeBookingModal()">
+                    Close
+                </button>
+            </div>
+        </div>
+        
         <div class="booking-grid" id="bookingMainContent">
             <!-- Col 1: Mentor Info -->
             <div class="booking-sidebar">
@@ -40,7 +74,25 @@
                         <i class="fas fa-clock"></i>
                         <span>
                             {% if mentor_profile.first_session_free %}
-                                {{ mentor_profile.first_session_length|default:30 }} min (First Session) / {{ mentor_profile.session_length|default:60 }} min (Regular)
+                                {% if user.is_authenticated %}
+                                    {# For logged-in users, check if it's first session #}
+                                    {% if is_first_session %}
+                                        {% if mentor_profile.first_session_length == mentor_profile.session_length %}
+                                            {{ mentor_profile.session_length|default:"60" }} min
+                                        {% else %}
+                                            {{ mentor_profile.first_session_length|default:30 }} min (First Session) / {{ mentor_profile.session_length|default:60 }} min (Regular)
+                                        {% endif %}
+                                    {% else %}
+                                        {{ mentor_profile.session_length|default:"60" }} min
+                                    {% endif %}
+                                {% else %}
+                                    {# For non-authenticated users, always show both if lengths differ #}
+                                    {% if mentor_profile.first_session_length == mentor_profile.session_length %}
+                                        {{ mentor_profile.session_length|default:"60" }} min
+                                    {% else %}
+                                        {{ mentor_profile.first_session_length|default:30 }} min (First Session) / {{ mentor_profile.session_length|default:60 }} min (Regular)
+                                    {% endif %}
+                                {% endif %}
                             {% else %}
                                 {{ mentor_profile.session_length|default:"60" }} min
                             {% endif %}
@@ -54,7 +106,17 @@
                         <i class="fas fa-tag"></i>
                         <span>
                             {% if mentor_profile.first_session_free %}
-                                $0 <span style=" color: #10b981; font-weight: 600;">(First Session Free)</span>
+                                {% if user.is_authenticated %}
+                                    {# For logged-in users, check if it's first session #}
+                                    {% if is_first_session %}
+                                        $0 <span style=" color: #10b981; font-weight: 600;">(First Session Free)</span>
+                                    {% else %}
+                                        ${{ mentor_profile.price_per_hour|floatformat:0 }}
+                                    {% endif %}
+                                {% else %}
+                                    {# For non-authenticated users, always show free #}
+                                    $0 <span style=" color: #10b981; font-weight: 600;">(First Session Free)</span>
+                                {% endif %}
                             {% else %}
                                 ${{ mentor_profile.price_per_hour|floatformat:0 }}
                             {% endif %}
@@ -79,7 +141,23 @@
                 
                 <div class="booking-desc">
                     {% if mentor_profile.first_session_free %}
-                        Your first session with {{ mentor_profile.first_name }} is free! This introductory session lasts {{ mentor_profile.first_session_length|default:30 }} minutes and is perfect for discussing your goals and how {{ mentor_profile.first_name }} can help you. Regular sessions are {{ mentor_profile.session_length|default:60 }} minutes.
+                        {% if user.is_authenticated %}
+                            {% if is_first_session %}
+                                {% if mentor_profile.first_session_length == mentor_profile.session_length %}
+                                    Your first session with {{ mentor_profile.first_name }} is free! This session lasts {{ mentor_profile.session_length|default:60 }} minutes and is perfect for discussing your goals and how {{ mentor_profile.first_name }} can help you.
+                                {% else %}
+                                    Your first session with {{ mentor_profile.first_name }} is free! This introductory session lasts {{ mentor_profile.first_session_length|default:30 }} minutes and is perfect for discussing your goals and how {{ mentor_profile.first_name }} can help you. Regular sessions are {{ mentor_profile.session_length|default:60 }} minutes.
+                                {% endif %}
+                            {% else %}
+                                Book a focused session to discuss your career, goals, or specific challenges.
+                            {% endif %}
+                        {% else %}
+                            {% if mentor_profile.first_session_length == mentor_profile.session_length %}
+                                Your first session with {{ mentor_profile.first_name }} is free! This session lasts {{ mentor_profile.session_length|default:60 }} minutes and is perfect for discussing your goals and how {{ mentor_profile.first_name }} can help you.
+                            {% else %}
+                                Your first session with {{ mentor_profile.first_name }} is free! This introductory session lasts {{ mentor_profile.first_session_length|default:30 }} minutes and is perfect for discussing your goals and how {{ mentor_profile.first_name }} can help you. Regular sessions are {{ mentor_profile.session_length|default:60 }} minutes.
+                            {% endif %}
+                        {% endif %}
                     {% else %}
                         Book a focused session to discuss your career, goals, or specific challenges.
                     {% endif %}
@@ -611,6 +689,126 @@
     margin-bottom: 24px;
 }
 
+.booking-success-state {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    padding: 40px;
+    min-height: 400px;
+}
+
+.booking-success-content {
+    text-align: center;
+    max-width: 500px;
+    width: 100%;
+}
+
+.booking-success-icon {
+    font-size: 64px;
+    color: #10b981;
+    margin-bottom: 24px;
+}
+
+.booking-success-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 16px;
+}
+
+.booking-success-message {
+    font-size: 1rem;
+    color: #64748b;
+    margin-bottom: 20px;
+    line-height: 1.6;
+}
+
+.booking-success-email {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px 20px;
+    background: #f1f5f9;
+    border-radius: 8px;
+    margin-bottom: 24px;
+    font-size: 0.95rem;
+    color: #475569;
+}
+
+.booking-success-email i {
+    color: #3b82f6;
+}
+
+.booking-success-instructions {
+    text-align: left;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 24px;
+}
+
+.booking-success-instructions h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #1e293b;
+    margin-bottom: 12px;
+}
+
+.booking-success-instructions ol {
+    margin: 0;
+    padding-left: 20px;
+    color: #64748b;
+    font-size: 0.9rem;
+    line-height: 1.8;
+}
+
+.booking-success-instructions li {
+    margin-bottom: 8px;
+}
+
+.booking-success-actions {
+    margin-bottom: 16px;
+}
+
+.booking-success-btn {
+    background: #10b981;
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: background-color 0.2s;
+    justify-content: center;
+}
+
+.booking-success-btn:hover {
+    background: #059669;
+}
+
+.booking-success-close-btn {
+    background: transparent;
+    color: #64748b;
+    border: 1px solid #e2e8f0;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.booking-success-close-btn:hover {
+    background: #f1f5f9;
+    color: #475569;
+}
+
 .booking-error-title {
     font-size: 24px;
     font-weight: 700;
@@ -706,12 +904,17 @@
     const mentorFirstSessionLength = {{ mentor_profile.first_session_length|default:30 }};
     const mentorSessionLength = {{ mentor_profile.session_length|default:60 }};
     const mentorPricePerHour = {{ mentor_profile.price_per_hour|default_if_none:"null" }};
+    const isFirstSession = {% if user.is_authenticated %}{% if is_first_session %}true{% else %}false{% endif %}{% else %}true{% endif %}; // For non-authenticated users, always assume first session
+    const firstSessionLengthDiffers = mentorFirstSessionLength !== mentorSessionLength;
     
     // Detected timezone (will be set on modal open)
     let detectedTimezone = null;
     let selectedTimezone = null;
     let timezoneClockInterval = null;
     let selectedTimezoneClockInterval = null;
+    
+    // Store email for use in success handler
+    let submittedEmail = null;
     
     // --- Data & State ---
     let availabilityData;
@@ -909,6 +1112,59 @@
         const mainContent = document.getElementById('bookingMainContent');
         
         if (errorState) errorState.style.display = 'none';
+        if (mainContent) mainContent.style.display = 'grid';
+    }
+    
+    function showBookingSuccess(email, isNewUser) {
+        const mainContent = document.getElementById('bookingMainContent');
+        const successState = document.getElementById('bookingSuccessState');
+        const emailCollectionModal = document.getElementById('emailCollectionModal');
+        
+        // Hide main content and email collection modal
+        if (mainContent) mainContent.style.display = 'none';
+        if (emailCollectionModal) emailCollectionModal.style.display = 'none';
+        
+        // Show success state
+        if (successState) {
+            successState.style.display = 'flex';
+            
+            // Set email
+            const emailText = document.getElementById('bookingSuccessEmailText');
+            const emailDiv = document.getElementById('bookingSuccessEmail');
+            if (emailText && emailDiv && email) {
+                emailText.textContent = email;
+                emailDiv.style.display = 'flex';
+            } else if (emailDiv) {
+                emailDiv.style.display = 'none';
+            }
+            
+            // Show instructions for new users (not registered yet)
+            const instructionsDiv = document.getElementById('bookingSuccessInstructions');
+            if (instructionsDiv) {
+                if (isNewUser) {
+                    instructionsDiv.style.display = 'block';
+                } else {
+                    instructionsDiv.style.display = 'none';
+                }
+            }
+            
+            // Show "View My Sessions" button for logged-in users (existing registered users)
+            const actionsDiv = document.getElementById('bookingSuccessActions');
+            if (actionsDiv) {
+                if (isUserAuthenticated && !isNewUser) {
+                    actionsDiv.style.display = 'block';
+                } else {
+                    actionsDiv.style.display = 'none';
+                }
+            }
+        }
+    }
+    
+    function hideBookingSuccess() {
+        const successState = document.getElementById('bookingSuccessState');
+        const mainContent = document.getElementById('bookingMainContent');
+        
+        if (successState) successState.style.display = 'none';
         if (mainContent) mainContent.style.display = 'grid';
     }
     
@@ -1141,15 +1397,31 @@
                         const startTimeStr = formatTime(slotStartTime);
                         const endTimeStr = formatTime(slotEndTime);
                         
+                        // Check if we need to show adjusted end time for first session
+                        let displayTime = `${startTimeStr} - ${endTimeStr}`;
+                        let adjustedEndTime = slotEndTime;
+                        let useAdjustedEndTime = false;
+                        
+                        if (mentorFirstSessionFree && isFirstSession && firstSessionLengthDiffers) {
+                            // Calculate adjusted end time based on first session length
+                            adjustedEndTime = new Date(slotStartTime.getTime() + mentorFirstSessionLength * 60000);
+                            const adjustedEndTimeStr = formatTime(adjustedEndTime);
+                            // Just show the adjusted end time, hide the original
+                            displayTime = `${startTimeStr} - ${adjustedEndTimeStr}`;
+                            useAdjustedEndTime = true;
+                        }
+                        
                         // Create a unique key for deduplication based on the actual start time
                         const startTimeKey = slotStartTime.getTime(); // Use timestamp for uniqueness
                         
                         slots.push({ 
-                            time: `${startTimeStr} - ${endTimeStr}`, 
+                            time: displayTime, 
                             raw: slot, 
                             type: 'one_time',
                             start: slotStartTime.toISOString(),
                             end: slotEndTime.toISOString(),
+                            adjustedEnd: useAdjustedEndTime ? adjustedEndTime.toISOString() : null,
+                            useAdjustedEndTime: useAdjustedEndTime,
                             _startTimeKey: startTimeKey, // Internal key for deduplication
                             availability_slot_id: slot.id || null // For one-time slots
                         });
@@ -1225,6 +1497,20 @@
                             const startTimeStr = formatTime(slotStart);
                             const endTimeStr = formatTime(slotEnd);
                             
+                            // Check if we need to show adjusted end time for first session
+                            let displayTime = `${startTimeStr} - ${endTimeStr}`;
+                            let adjustedEndTime = slotEnd;
+                            let useAdjustedEndTime = false;
+                            
+                            if (mentorFirstSessionFree && isFirstSession && firstSessionLengthDiffers) {
+                                // Calculate adjusted end time based on first session length
+                                adjustedEndTime = new Date(slotStart.getTime() + mentorFirstSessionLength * 60000);
+                                const adjustedEndTimeStr = formatTime(adjustedEndTime);
+                                // Just show the adjusted end time, hide the original
+                                displayTime = `${startTimeStr} - ${adjustedEndTimeStr}`;
+                                useAdjustedEndTime = true;
+                            }
+                            
                             // Create a unique key for deduplication based on the actual start time
                             const startTimeKey = slotStart.getTime(); // Use timestamp for uniqueness
                             
@@ -1232,11 +1518,13 @@
                             const slotDateStr = `${slotStart.getFullYear()}-${String(slotStart.getMonth() + 1).padStart(2, '0')}-${String(slotStart.getDate()).padStart(2, '0')}`;
                             
                             slots.push({ 
-                                time: `${startTimeStr} - ${endTimeStr}`, 
+                                time: displayTime, 
                                 raw: rule, 
                                 type: 'recurring',
                                 start: slotStart.toISOString(),
                                 end: slotEnd.toISOString(),
+                                adjustedEnd: useAdjustedEndTime ? adjustedEndTime.toISOString() : null,
+                                useAdjustedEndTime: useAdjustedEndTime,
                                 _startTimeKey: startTimeKey, // Internal key for deduplication
                                 recurring_id: rule.id || null, // For recurring slots
                                 instance_date: slotDateStr // Date string (YYYY-MM-DD format)
@@ -1324,6 +1612,7 @@
                 slots.forEach((slot, index) => {
                     const btn = document.createElement('button');
                     btn.classList.add('time-slot-btn');
+                    // Use textContent since we're no longer using HTML (no crossed-out text)
                     btn.textContent = slot.time;
                     btn.dataset.slotIndex = index;
                     btn.onclick = () => {
@@ -1578,8 +1867,10 @@
         
         if (!priceDisplay) return;
         
-        // For new users, first session is always free if mentor has it enabled
-        if (mentorFirstSessionFree) {
+        // Check if it's first session (for logged-in users) or always true for non-authenticated
+        const isFirstSessionCheck = isUserAuthenticated ? isFirstSession : true;
+        
+        if (mentorFirstSessionFree && isFirstSessionCheck) {
             priceDisplay.innerHTML = '$0 <span style="font-size: 0.85rem; font-weight: 600;">(First Session Free)</span>';
             if (priceNote) {
                 priceNote.style.display = 'block';
@@ -1620,37 +1911,28 @@
         recapTime.textContent = selectedSlot.time || '--';
         
         // Determine session length based on first session free logic
-        // Same logic as in the booking modal sidebar
+        const isFirstSessionCheck = isUserAuthenticated ? isFirstSession : true;
         let sessionLengthMinutes = mentorSessionLength;
         let lengthDisplay = `${mentorSessionLength} minutes`;
         
-        if (mentorFirstSessionFree) {
-            // If first session free is enabled, show both lengths like in the booking modal
-            // For non-logged-in users, it's always a first session
-            // For logged-in users, we can't determine without backend, so show the actual slot duration
-            if (!isUserAuthenticated) {
-                // Not logged in - always first session if first_session_free is enabled
+        if (mentorFirstSessionFree && isFirstSessionCheck) {
+            // First session free is enabled and it's the first session
+            if (firstSessionLengthDiffers) {
+                // Lengths differ - show first session length
                 sessionLengthMinutes = mentorFirstSessionLength;
                 lengthDisplay = `${mentorFirstSessionLength} minutes (First Session)`;
             } else {
-                // Logged in - use actual slot duration (can't determine if first session without backend)
-                try {
-                    const startDate = new Date(selectedSlot.start);
-                    const endDate = new Date(selectedSlot.end);
-                    const diffMs = endDate.getTime() - startDate.getTime();
-                    const calculatedMinutes = Math.round(diffMs / (1000 * 60));
-                    sessionLengthMinutes = calculatedMinutes;
-                    lengthDisplay = `${calculatedMinutes} minutes`;
-                } catch (e) {
-                    // Fallback: show both like in booking modal
-                    lengthDisplay = `${mentorFirstSessionLength} min (First Session) / ${mentorSessionLength} min (Regular)`;
-                }
+                // Lengths are the same - just show regular length
+                sessionLengthMinutes = mentorSessionLength;
+                lengthDisplay = `${mentorSessionLength} minutes`;
             }
         } else {
-            // No first session free - use regular session length or calculated duration
+            // Not first session or first session free disabled - use regular session length or calculated duration
             try {
                 const startDate = new Date(selectedSlot.start);
-                const endDate = new Date(selectedSlot.end);
+                const endDate = selectedSlot.useAdjustedEndTime && selectedSlot.adjustedEnd 
+                    ? new Date(selectedSlot.adjustedEnd) 
+                    : new Date(selectedSlot.end);
                 const diffMs = endDate.getTime() - startDate.getTime();
                 const calculatedMinutes = Math.round(diffMs / (1000 * 60));
                 sessionLengthMinutes = calculatedMinutes;
@@ -1711,6 +1993,9 @@
             return;
         }
         
+        // Store email for success handler (will be used if backend doesn't return it)
+        submittedEmail = email;
+        
         // Prepare payload
         const payload = {
             mentor_id: mentorId,
@@ -1718,6 +2003,11 @@
             end_datetime: selectedSlot.end,
             is_logged_in: isUserAuthenticated
         };
+        
+        // Add adjusted end datetime if first session length differs
+        if (selectedSlot.useAdjustedEndTime && selectedSlot.adjustedEnd) {
+            payload.adjusted_end_datetime = selectedSlot.adjustedEnd;
+        }
         
         // Add availability slot info
         if (selectedSlot.type === 'one_time' && selectedSlot.availability_slot_id) {
@@ -1764,30 +2054,20 @@
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                // Close modals
-                closeBookingModal();
+                // Close email collection modal if open
                 closeEmailCollectionModal();
                 
-                // Show success message
-                if (typeof showNotification !== 'undefined') {
-                    if (isUserAuthenticated) {
-                        showNotification('Session booked successfully! Check your session management page.', 'success');
-                        // Redirect to session management after a delay
-                        setTimeout(() => {
-                            window.location.href = '{% url "general:dashboard_user:session_management" %}';
-                        }, 1500);
-                    } else {
-                        showNotification('Session booked! Please check your email to complete registration and confirm your session.', 'success');
-                    }
-                } else {
-                    alert(isUserAuthenticated ? 
-                        'Session booked successfully! Redirecting to session management...' : 
-                        'Session booked! Please check your email to complete registration.');
-                    if (isUserAuthenticated) {
-                        setTimeout(() => {
-                            window.location.href = '{% url "general:dashboard_user:session_management" %}';
-                        }, 1500);
-                    }
+                // Show success state in booking modal
+                // For logged-in users, email should come from backend; for non-logged-in, use submittedEmail
+                const successEmail = data.email || (isUserAuthenticated ? null : submittedEmail) || '';
+                const isNewUser = data.is_new_user || false;
+                showBookingSuccess(successEmail, isNewUser);
+                
+                // Re-enable button (in case it was disabled)
+                const submitBtn = document.getElementById('submitBookingBtn');
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '<i class="fas fa-calendar-check"></i> <span>Book Session</span>';
                 }
             } else {
                 // Show error

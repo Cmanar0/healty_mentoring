@@ -380,9 +380,27 @@ def mentor_profile_detail(request, user_id):
     except:
         return render(request, "web/mentor_profile_detail.html", {"error": "Mentor profile not found"})
     
+    # Check if logged-in user has already had a session with this mentor
+    is_first_session = True
+    if request.user.is_authenticated:
+        try:
+            from accounts.models import MentorClientRelationship
+            user_profile = request.user.user_profile
+            relationship = MentorClientRelationship.objects.filter(
+                mentor=mentor_profile,
+                client=user_profile
+            ).first()
+            
+            # It's first session if no relationship exists or sessions_count is 0
+            is_first_session = relationship is None or relationship.sessions_count == 0
+        except Exception:
+            # If any error, assume it's first session
+            is_first_session = True
+    
     return render(request, "web/mentor_profile_detail.html", {
         "mentor_user": mentor_user,
         "mentor_profile": mentor_profile,
         "predefined_languages": PREDEFINED_LANGUAGES,
         "qualification_types": QUALIFICATION_TYPES,
+        "is_first_session": is_first_session,
     })
