@@ -826,39 +826,9 @@ def book_session(request):
         # Calculate duration
         duration_minutes = int((end_dt - start_dt).total_seconds() / 60)
         
-        # Handle availability slot
-        try:
-            if availability_slot_id:
-                # One-time slot: delete it
-                slots = list(mentor_profile.one_time_slots or [])
-                before_len = len(slots)
-                slots = [s for s in slots if str(s.get('id', '')) != str(availability_slot_id)]
-                if len(slots) == before_len:
-                    return JsonResponse({'success': False, 'error': 'This availability slot is no longer available. Please refresh and try again.'}, status=400)
-                mentor_profile.one_time_slots = slots
-                mentor_profile.save(update_fields=['one_time_slots'])
-            elif recurring_id and instance_date:
-                # Recurring slot: add to booked_dates
-                rules = list(mentor_profile.recurring_slots or [])
-                updated = False
-                for r in rules:
-                    if str(r.get('id', '')) == str(recurring_id):
-                        booked = r.get('booked_dates') or []
-                        if not isinstance(booked, list):
-                            booked = []
-                        if instance_date not in booked:
-                            booked.append(instance_date)
-                        r['booked_dates'] = booked
-                        updated = True
-                        break
-                if not updated:
-                    return JsonResponse({'success': False, 'error': 'This availability series is no longer available. Please refresh and try again.'}, status=400)
-                mentor_profile.recurring_slots = rules
-                mentor_profile.save(update_fields=['recurring_slots'])
-        except Exception as e:
-            return JsonResponse({'success': False, 'error': f'Could not update availability: {str(e)}'}, status=500)
-        
         # Determine user and first session status
+        # IMPORTANT: Check user/email BEFORE updating availability slots
+        # This prevents slots from being removed if booking should fail
         user = None
         user_profile = None
         is_first_session = False
@@ -917,53 +887,29 @@ def book_session(request):
             existing_user = CustomUser.objects.filter(email=email).first()
             
             if existing_user:
-                # Existing user
+                # Existing user - return special error to preserve booking info
                 if hasattr(existing_user, 'mentor_profile'):
                     return JsonResponse({'success': False, 'error': 'This email belongs to a mentor account. Please use a different email.'}, status=400)
                 
-                user = existing_user
-                try:
-                    user_profile = user.profile
-                except AttributeError:
-                    # Create user profile if missing
-                    user_profile = UserProfile.objects.create(
-                        user=user,
-                        first_name='',
-                        last_name='',
-                        role='user'
-                    )
-                
-                # Update timezone if provided and different
-                if timezone_str and timezone_str != 'UTC':
-                    try:
-                        # Validate timezone
-                        ZoneInfo(timezone_str)
-                        user_profile.selected_timezone = timezone_str
-                        user_profile.detected_timezone = timezone_str
-                        user_profile.time_zone = timezone_str
-                        user_profile.save(update_fields=['selected_timezone', 'detected_timezone', 'time_zone'])
-                    except Exception:
-                        pass  # Invalid timezone, use existing
-                
-                user_timezone = user_profile.selected_timezone or user_profile.detected_timezone or user_profile.time_zone or 'UTC'
-                
-                # Check first session free
-                relationship = MentorClientRelationship.objects.filter(
-                    mentor=mentor_profile,
-                    client=user_profile
-                ).first()
-                
-                is_first_session = relationship is None or not relationship.first_session_scheduled
-                
-                if is_first_session and mentor_profile.first_session_free:
-                    price = Decimal('0')
-                    session_length_minutes = mentor_profile.first_session_length or 30
-                    is_free_session = True
-                else:
-                    price_per_hour = mentor_profile.price_per_hour or Decimal('0')
-                    hours = Decimal(str(duration_minutes)) / Decimal('60')
-                    price = price_per_hour * hours
-                    is_free_session = False
+                # Return error indicating account exists, with preserved booking info
+                # IMPORTANT: Return early - do NOT proceed with booking or remove availability slot
+                return JsonResponse({
+                    'success': False,
+                    'error': 'account_exists',
+                    'message': 'Account with this email already exists',
+                    'preserved_data': {
+                        'email': email,
+                        'note': note,
+                        'start_datetime': start_datetime_str,
+                        'end_datetime': end_datetime_str,
+                        'adjusted_end_datetime': adjusted_end_datetime_str,
+                        'availability_slot_id': availability_slot_id,
+                        'recurring_id': recurring_id,
+                        'instance_date': instance_date,
+                        'mentor_id': mentor_id,
+                        'timezone': timezone_str
+                    }
+                }, status=400)
             else:
                 # New user
                 # Validate timezone
@@ -1009,12 +955,54 @@ def book_session(request):
                 is_first_session = True
                 is_new_user_account = True
         
+        # NOW handle availability slot - only after we've confirmed the booking can proceed
+        # This ensures slots aren't removed if the booking should fail
+        try:
+            if availability_slot_id:
+                # One-time slot: delete it
+                slots = list(mentor_profile.one_time_slots or [])
+                before_len = len(slots)
+                slots = [s for s in slots if str(s.get('id', '')) != str(availability_slot_id)]
+                if len(slots) == before_len:
+                    return JsonResponse({'success': False, 'error': 'This availability slot is no longer available. Please refresh and try again.'}, status=400)
+                mentor_profile.one_time_slots = slots
+                mentor_profile.save(update_fields=['one_time_slots'])
+            elif recurring_id and instance_date:
+                # Recurring slot: add to booked_dates
+                rules = list(mentor_profile.recurring_slots or [])
+                updated = False
+                for r in rules:
+                    if str(r.get('id', '')) == str(recurring_id):
+                        booked = r.get('booked_dates') or []
+                        if not isinstance(booked, list):
+                            booked = []
+                        if instance_date not in booked:
+                            booked.append(instance_date)
+                        r['booked_dates'] = booked
+                        updated = True
+                        break
+                if not updated:
+                    return JsonResponse({'success': False, 'error': 'This availability series is no longer available. Please refresh and try again.'}, status=400)
+                mentor_profile.recurring_slots = rules
+                mentor_profile.save(update_fields=['recurring_slots'])
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': f'Could not update availability: {str(e)}'}, status=500)
+        
         # Create session
+        # Store note in first_lesson_user_note if it's the first session, otherwise in note
+        session_note = ''
+        first_lesson_note = None
+        if is_first_session and note:
+            first_lesson_note = note
+        elif note:
+            session_note = note
+        
         session = Session.objects.create(
             start_datetime=start_dt,
             end_datetime=end_dt,
             created_by=mentor_profile.user,
-            note=note or '',
+            note=session_note,
+            first_lesson_user_note=first_lesson_note,
             session_type='individual',
             status='confirmed',
             session_price=price,

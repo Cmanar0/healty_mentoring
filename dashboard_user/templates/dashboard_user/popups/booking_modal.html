@@ -48,7 +48,7 @@
                         View My Sessions
                     </button>
                 </div>
-                <button class="booking-success-close-btn" onclick="closeBookingModal()">
+                <button class="booking-success-close-btn" onclick="closeBookingModalFromSuccess()">
                     Close
                 </button>
             </div>
@@ -196,6 +196,37 @@
                         <span>Book this slot</span>
                     </button>
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Account Exists Modal -->
+<div id="accountExistsModal" class="booking-modal-overlay" style="display: none;">
+    <div class="booking-modal-container" style="max-width: 500px;">
+        <button class="booking-close-btn" onclick="closeAccountExistsModal()"><i class="fas fa-times"></i></button>
+        
+        <div style="padding: 32px;">
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px;">
+                <div style="width: 48px; height: 48px; border-radius: 50%; background: rgba(239, 68, 68, 0.1); display: flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-exclamation-triangle" style="color: #ef4444; font-size: 1.5rem;"></i>
+                </div>
+                <h2 style="font-size: 1.5rem; color: #1e293b; margin: 0;">Account Already Exists</h2>
+            </div>
+            
+            <p style="color: #64748b; line-height: 1.6; margin-bottom: 24px;">
+                An account with this email already exists. Please log in to book this session.
+            </p>
+            
+            <div style="display: flex; gap: 12px; flex-direction: column;">
+                <button type="button" class="btn btn-primary btn-full" onclick="handleLoginToBook()" style="justify-content: center;">
+                    <i class="fas fa-sign-in-alt"></i>
+                    <span>Login to Book This Slot</span>
+                </button>
+                <button type="button" class="btn btn-secondary btn-full" onclick="handleBackToBooking()" style="justify-content: center;">
+                    <i class="fas fa-arrow-left"></i>
+                    <span>Back</span>
+                </button>
             </div>
         </div>
     </div>
@@ -922,6 +953,7 @@
     let currentDate = new Date(); // To track month view
     let selectedDate = null;
     let selectedSlot = null; // Track selected time slot
+    let preservedBookingData = null; // Store booking data when account exists
     
     // --- DOM Elements ---
     let modal, currentMonthLabel, calendarDays, slotsCol, slotsList, selectedDateLabel, prevMonthBtn, nextMonthBtn, slotsFooter, bookSlotBtn;
@@ -1019,6 +1051,62 @@
             }
         });
         
+        // Check for URL parameters to open booking modal with selected slot (after login redirect)
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('open_booking') === 'true') {
+            const slotStart = urlParams.get('slot_start');
+            const slotEnd = urlParams.get('slot_end');
+            const slotId = urlParams.get('slot_id');
+            const recurringId = urlParams.get('recurring_id');
+            const instanceDate = urlParams.get('instance_date');
+            const adjustedEnd = urlParams.get('adjusted_end');
+            
+            if (slotStart && slotEnd) {
+                // Open booking modal
+                openBookingModal();
+                
+                // Set selected slot
+                const startDt = new Date(slotStart);
+                selectedDate = startDt.toISOString().split('T')[0];
+                
+                selectedSlot = {
+                    start: slotStart,
+                    end: slotEnd,
+                    adjustedEnd: adjustedEnd || slotEnd,
+                    useAdjustedEndTime: !!adjustedEnd && adjustedEnd !== slotEnd,
+                    type: slotId ? 'one_time' : 'recurring',
+                    availability_slot_id: slotId,
+                    recurring_id: recurringId,
+                    instance_date: instanceDate
+                };
+                
+                // Update UI
+                renderCalendar();
+                if (selectedDateLabel) {
+                    const dateObj = new Date(selectedDate + 'T00:00:00');
+                    selectedDateLabel.textContent = formatDateForDisplay(dateObj);
+                }
+                if (slotsCol) slotsCol.style.display = 'block';
+                renderSlotsForDate(selectedDate);
+                
+                // Highlight the selected slot
+                setTimeout(() => {
+                    const slotElements = document.querySelectorAll('.slot-item');
+                    slotElements.forEach(el => {
+                        const slotStartAttr = el.getAttribute('data-slot-start');
+                        if (slotStartAttr === slotStart) {
+                            el.classList.add('selected');
+                            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }
+                    });
+                }, 100);
+                
+                // Clean up URL parameters
+                const newUrl = window.location.pathname;
+                window.history.replaceState({}, '', newUrl);
+            }
+        }
+        
         // Book slot button handler
         if (bookSlotBtn) {
             bookSlotBtn.addEventListener('click', function() {
@@ -1096,8 +1184,18 @@
         if (slotsFooter) slotsFooter.style.display = 'none';
         if (bookingSummary) bookingSummary.style.display = 'none';
         hideBookingError(); // Hide error state when closing
+        hideBookingSuccess(); // Hide success state when closing
         renderCalendar();
         // Refresh the page when modal is closed
+        window.location.reload();
+    }
+    
+    function closeBookingModalFromSuccess() {
+        // Close modal and refresh page when closing from success state
+        if (!modal) return;
+        modal.classList.remove('open');
+        document.body.style.overflow = '';
+        // Immediately refresh the page
         window.location.reload();
     }
     
@@ -1863,6 +1961,103 @@
         }, 300);
     }
     
+    function showAccountExistsModal() {
+        const modal = document.getElementById('accountExistsModal');
+        if (!modal) return;
+        
+        modal.style.display = 'flex';
+        setTimeout(() => {
+            modal.style.opacity = '1';
+        }, 10);
+    }
+    
+    function closeAccountExistsModal() {
+        const modal = document.getElementById('accountExistsModal');
+        if (!modal) return;
+        
+        modal.style.opacity = '0';
+        setTimeout(() => {
+            modal.style.display = 'none';
+        }, 300);
+    }
+    
+    // Close account exists modal on outside click
+    document.addEventListener('DOMContentLoaded', function() {
+        const accountExistsModal = document.getElementById('accountExistsModal');
+        if (accountExistsModal) {
+            accountExistsModal.addEventListener('click', function(e) {
+                if (e.target === accountExistsModal) {
+                    closeAccountExistsModal();
+                }
+            });
+        }
+    });
+    
+    function handleBackToBooking() {
+        // Close account exists modal
+        closeAccountExistsModal();
+        
+        // Close email collection modal if it's open
+        closeEmailCollectionModal();
+        
+        // Ensure main booking modal content is visible
+        const mainContent = document.getElementById('bookingMainContent');
+        if (mainContent) {
+            mainContent.style.display = 'grid';
+        }
+        
+        // Hide success state if visible
+        const successState = document.getElementById('bookingSuccessState');
+        if (successState) {
+            successState.style.display = 'none';
+        }
+        
+        // Restore preserved booking data for email/note (but clear slot selection so user can choose a different day)
+        if (preservedBookingData) {
+            // Store email and note for when they select a slot again
+            // But don't restore the selected slot - let them choose a new day
+            const emailInput = document.getElementById('bookingEmailInput');
+            const noteInput = document.getElementById('bookingNoteInput');
+            
+            if (emailInput) emailInput.value = preservedBookingData.email || '';
+            if (noteInput) noteInput.value = preservedBookingData.note || '';
+            
+            // Clear slot selection so user can choose a different day
+            selectedDate = null;
+            selectedSlot = null;
+            
+            // Hide slots column and footer
+            if (slotsCol) slotsCol.style.display = 'none';
+            if (slotsFooter) slotsFooter.style.display = 'none';
+            if (bookingSummary) bookingSummary.style.display = 'none';
+            if (selectedDateLabel) selectedDateLabel.textContent = 'Select a date';
+        }
+        
+        // Render calendar to show available days
+        renderCalendar();
+    }
+    
+    function handleLoginToBook() {
+        // Build login URL with booking parameters
+        if (!preservedBookingData) return;
+        
+        const params = new URLSearchParams({
+            'next': window.location.pathname,
+            'booking': 'true',
+            'mentor_id': preservedBookingData.mentor_id,
+            'start_datetime': preservedBookingData.start_datetime,
+            'end_datetime': preservedBookingData.end_datetime,
+            'availability_slot_id': preservedBookingData.availability_slot_id || '',
+            'recurring_id': preservedBookingData.recurring_id || '',
+            'instance_date': preservedBookingData.instance_date || '',
+            'adjusted_end_datetime': preservedBookingData.adjusted_end_datetime || '',
+            'note': preservedBookingData.note || ''
+        });
+        
+        // Redirect to login
+        window.location.href = '/accounts/login/?' + params.toString();
+    }
+    
     function updatePriceDisplay() {
         const priceDisplay = document.getElementById('bookingPriceDisplay');
         const priceNote = document.getElementById('bookingPriceNote');
@@ -2072,19 +2267,38 @@
                     submitBtn.innerHTML = '<i class="fas fa-calendar-check"></i> <span>Book Session</span>';
                 }
             } else {
-                // Show error
-                const errorMsg = data.error || 'Failed to book session. Please try again.';
-                if (typeof showNotification !== 'undefined') {
-                    showNotification(errorMsg, 'error');
+                // Handle account exists error specially
+                if (data.error === 'account_exists' && data.preserved_data) {
+                    // Store preserved booking data
+                    preservedBookingData = data.preserved_data;
+                    
+                    // Close email collection modal
+                    closeEmailCollectionModal();
+                    
+                    // Show account exists modal
+                    showAccountExistsModal();
+                    
+                    // Re-enable button
+                    const submitBtn = document.getElementById('submitBookingBtn');
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = '<i class="fas fa-calendar-check"></i> <span>Book Session</span>';
+                    }
                 } else {
-                    alert(errorMsg);
-                }
-                
-                // Re-enable button
-                const submitBtn = document.getElementById('submitBookingBtn');
-                if (submitBtn) {
-                    submitBtn.disabled = false;
-                    submitBtn.innerHTML = '<i class="fas fa-calendar-check"></i> <span>Book Session</span>';
+                    // Show regular error
+                    const errorMsg = data.error || data.message || 'Failed to book session. Please try again.';
+                    if (typeof showNotification !== 'undefined') {
+                        showNotification(errorMsg, 'error');
+                    } else {
+                        alert(errorMsg);
+                    }
+                    
+                    // Re-enable button
+                    const submitBtn = document.getElementById('submitBookingBtn');
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = '<i class="fas fa-calendar-check"></i> <span>Book Session</span>';
+                    }
                 }
             }
         })

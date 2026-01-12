@@ -776,7 +776,13 @@ def profile(request):
             first_session_length = request.POST.get("first_session_length", "")
             if profile.first_session_free and first_session_length:
                 try:
-                    profile.first_session_length = int(first_session_length)
+                    first_session_length_int = int(first_session_length)
+                    # Validate: first session length cannot exceed regular session length
+                    if new_session_length and first_session_length_int > new_session_length:
+                        from django.contrib import messages
+                        messages.error(request, f'The first session length ({first_session_length_int} minutes) cannot be longer than the regular session length ({new_session_length} minutes). Please increase your regular session length first.')
+                        return redirect("/dashboard/mentor/profile/")
+                    profile.first_session_length = first_session_length_int
                 except ValueError:
                     profile.first_session_length = None
             else:

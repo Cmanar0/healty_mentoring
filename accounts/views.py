@@ -322,6 +322,52 @@ class CustomLoginView(BaseLoginView):
         # If email is verified, proceed with normal login
         return super().form_valid(form)
     
+    def get_success_url(self):
+        """Handle redirect after successful login, including booking redirects"""
+        # Check if this is a booking redirect
+        booking = self.request.GET.get('booking')
+        if booking == 'true':
+            mentor_id = self.request.GET.get('mentor_id')
+            if mentor_id:
+                # Redirect to mentor profile page with booking modal open
+                from django.urls import reverse
+                mentor_url = reverse('web:mentor_profile_detail', kwargs={'mentor_id': mentor_id})
+                
+                # Build URL with booking parameters
+                params = []
+                if self.request.GET.get('start_datetime'):
+                    params.append(f"slot_start={self.request.GET.get('start_datetime')}")
+                if self.request.GET.get('end_datetime'):
+                    params.append(f"slot_end={self.request.GET.get('end_datetime')}")
+                if self.request.GET.get('availability_slot_id'):
+                    params.append(f"slot_id={self.request.GET.get('availability_slot_id')}")
+                if self.request.GET.get('recurring_id'):
+                    params.append(f"recurring_id={self.request.GET.get('recurring_id')}")
+                if self.request.GET.get('instance_date'):
+                    params.append(f"instance_date={self.request.GET.get('instance_date')}")
+                if self.request.GET.get('adjusted_end_datetime'):
+                    params.append(f"adjusted_end={self.request.GET.get('adjusted_end_datetime')}")
+                
+                if params:
+                    return f"{mentor_url}?{'&'.join(params)}&open_booking=true"
+                else:
+                    return f"{mentor_url}?open_booking=true"
+        
+        # Default redirect
+        next_url = self.request.GET.get('next')
+        if next_url:
+            return next_url
+        
+        # Check user role and redirect accordingly
+        if self.request.user.is_authenticated:
+            if hasattr(self.request.user, 'profile'):
+                if self.request.user.profile.role == 'mentor':
+                    return '/dashboard/mentor/'
+                elif self.request.user.profile.role == 'user':
+                    return '/dashboard/user/'
+        
+        return '/'
+    
     def form_invalid(self, form):
         """Handle invalid form, including unverified email case"""
         # Check if user exists but email is not verified
@@ -541,13 +587,13 @@ def complete_registration(request, uidb64, token):
             # User has set their name, check if they're logged in
             if request.user.is_authenticated and request.user.id == user.id:
                 # Already logged in and registered, redirect to my-sessions
-                return redirect('dashboard_user:my_sessions')
+                return redirect('general:dashboard_user:my_sessions')
             else:
                 # Not logged in, redirect to login with next parameter
                 from django.urls import reverse
                 from urllib.parse import quote
                 login_url = reverse('accounts:login')
-                next_url = reverse('dashboard_user:my_sessions')
+                next_url = reverse('general:dashboard_user:my_sessions')
                 return redirect(f"{login_url}?next={quote(next_url)}")
     
     # User needs to complete registration
@@ -596,7 +642,7 @@ def complete_registration(request, uidb64, token):
 
             # Redirect to my-sessions page
             messages.success(request, 'Registration completed successfully! Your email has been verified.')
-            return redirect('dashboard_user:my_sessions')
+            return redirect('general:dashboard_user:my_sessions')
     
     return render(request, 'accounts/complete_registration.html', {
         'user_email': user.email,

@@ -240,6 +240,7 @@ class Session(models.Model):
     created_by = models.ForeignKey("accounts.CustomUser", on_delete=models.CASCADE, related_name="created_sessions")
     attendees = models.ManyToManyField("accounts.CustomUser", related_name="attended_sessions", blank=True)
     note = models.TextField(blank=True)
+    first_lesson_user_note = models.TextField(blank=True, null=True, help_text="Note from user when booking their first session")
     session_type = models.CharField(max_length=20, choices=SESSION_TYPES, default='individual')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft')
     expires_at = models.DateTimeField(blank=True, null=True)

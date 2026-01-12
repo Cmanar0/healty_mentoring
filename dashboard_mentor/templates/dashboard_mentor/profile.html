@@ -844,6 +844,32 @@
     </div>
 </div>
 
+<!-- First Session Length Validation Modal -->
+<div id="firstSessionLengthModal" class="modal-overlay">
+    <div class="modal-content" style="max-width: 500px;">
+        <button type="button" class="modal-close" onclick="closeFirstSessionLengthModal()">
+            <i class="fas fa-times"></i>
+        </button>
+        <div class="modal-header">
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+                <div style="width: 48px; height: 48px; border-radius: 50%; background: rgba(239, 68, 68, 0.1); display: flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-exclamation-triangle" style="color: #ef4444; font-size: 1.5rem;"></i>
+                </div>
+                <h3 class="modal-title" style="margin: 0;">Invalid Session Length</h3>
+            </div>
+        </div>
+        <div style="padding: 0 24px 24px;">
+            <p style="color: #64748b; line-height: 1.6; margin-bottom: 20px;">
+                The first session length cannot be longer than your regular session length. Please increase your regular session length first before setting a longer first session.
+            </p>
+            <button type="button" class="btn btn-primary btn-full" onclick="closeFirstSessionLengthModal()" style="justify-content: center;">
+                <i class="fas fa-check"></i>
+                <span>Got it</span>
+            </button>
+        </div>
+    </div>
+</div>
+
 <!-- Email Verification Modal -->
 <div id="emailModal" class="modal-overlay">
     <div class="modal-content">
@@ -1461,7 +1487,94 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Form validation - prevent submission if checkbox is checked but input is empty
+    // Validation function to check if first session length exceeds regular session length
+    function validateFirstSessionLength() {
+        const sessionLengthInput = document.getElementById('sessionLength');
+        const firstSessionLengthInput = document.getElementById('firstSessionLength');
+        const firstSessionFreeCheckbox = document.getElementById('firstSessionFree');
+        
+        if (!firstSessionFreeCheckbox || !firstSessionFreeCheckbox.checked || !firstSessionLengthInput || !sessionLengthInput) {
+            return true; // No validation needed if checkbox is unchecked
+        }
+        
+        const sessionLength = parseInt(sessionLengthInput.value) || 0;
+        const firstSessionLength = parseInt(firstSessionLengthInput.value) || 0;
+        
+        if (sessionLength > 0 && firstSessionLength > 0 && firstSessionLength > sessionLength) {
+            return false;
+        }
+        
+        return true;
+    }
+    
+    // Function to show first session length validation modal
+    window.showFirstSessionLengthModal = function() {
+        const modal = document.getElementById('firstSessionLengthModal');
+        if (modal) {
+            modal.classList.add('active');
+        }
+    };
+    
+    // Function to close first session length validation modal
+    window.closeFirstSessionLengthModal = function() {
+        const modal = document.getElementById('firstSessionLengthModal');
+        if (modal) {
+            modal.classList.remove('active');
+        }
+    };
+    
+    // Real-time validation when first session length input changes
+    if (firstSessionLengthInput) {
+        firstSessionLengthInput.addEventListener('input', function() {
+            if (!validateFirstSessionLength()) {
+                window.showFirstSessionLengthModal();
+                // Reset to a valid value (set to regular session length if available)
+                const sessionLengthInput = document.getElementById('sessionLength');
+                if (sessionLengthInput && sessionLengthInput.value) {
+                    const sessionLength = parseInt(sessionLengthInput.value);
+                    if (sessionLength > 0) {
+                        this.value = sessionLength;
+                    }
+                }
+            }
+        });
+        
+        firstSessionLengthInput.addEventListener('blur', function() {
+            if (!validateFirstSessionLength()) {
+                window.showFirstSessionLengthModal();
+                // Reset to a valid value
+                const sessionLengthInput = document.getElementById('sessionLength');
+                if (sessionLengthInput && sessionLengthInput.value) {
+                    const sessionLength = parseInt(sessionLengthInput.value);
+                    if (sessionLength > 0) {
+                        this.value = sessionLength;
+                    }
+                }
+            }
+        });
+    }
+    
+    // Real-time validation when regular session length changes
+    const sessionLengthInput = document.getElementById('sessionLength');
+    if (sessionLengthInput) {
+        sessionLengthInput.addEventListener('input', function() {
+            if (firstSessionFreeCheckbox && firstSessionFreeCheckbox.checked && firstSessionLengthInput) {
+                if (!validateFirstSessionLength()) {
+                    window.showFirstSessionLengthModal();
+                    // Reset first session length to regular session length
+                    const sessionLength = parseInt(this.value) || 0;
+                    if (sessionLength > 0 && firstSessionLengthInput.value) {
+                        const firstSessionLength = parseInt(firstSessionLengthInput.value) || 0;
+                        if (firstSessionLength > sessionLength) {
+                            firstSessionLengthInput.value = sessionLength;
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    // Form validation - prevent submission if checkbox is checked but input is empty or exceeds regular length
     const profileFormElement = document.getElementById('profileForm');
     if (profileFormElement) {
         profileFormElement.addEventListener('submit', function(e) {
@@ -1469,6 +1582,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (!firstSessionLengthInput.value || firstSessionLengthInput.value.trim() === '' || parseInt(firstSessionLengthInput.value) < 1) {
                     e.preventDefault();
                     showNotification('Please enter a valid duration for the free session (minimum 1 minute).', 'error');
+                    firstSessionLengthInput.focus();
+                    return false;
+                }
+                
+                // Check if first session length exceeds regular session length
+                if (!validateFirstSessionLength()) {
+                    e.preventDefault();
+                    window.showFirstSessionLengthModal();
                     firstSessionLengthInput.focus();
                     return false;
                 }
@@ -2517,6 +2638,8 @@ document.addEventListener('DOMContentLoaded', function() {
             // Ensure first session length has a value if checkbox is checked
             const firstSessionFreeCheckbox = document.getElementById('firstSessionFree');
             const firstSessionLengthInput = document.getElementById('firstSessionLength');
+            const sessionLengthInput = document.getElementById('sessionLength');
+            
             if (firstSessionFreeCheckbox && firstSessionFreeCheckbox.checked && firstSessionLengthInput) {
                 if (!firstSessionLengthInput.value || firstSessionLengthInput.value.trim() === '' || parseInt(firstSessionLengthInput.value) < 1) {
                     // Set default value if empty
@@ -2526,6 +2649,18 @@ document.addEventListener('DOMContentLoaded', function() {
                         // If value exists but is invalid, prevent submission
                         e.preventDefault();
                         showNotification('Please enter a valid duration for the free session (minimum 1 minute).', 'error');
+                        firstSessionLengthInput.focus();
+                        return false;
+                    }
+                }
+                
+                // Validate that first session length doesn't exceed regular session length
+                if (sessionLengthInput && sessionLengthInput.value) {
+                    const sessionLength = parseInt(sessionLengthInput.value) || 0;
+                    const firstSessionLength = parseInt(firstSessionLengthInput.value) || 0;
+                    if (sessionLength > 0 && firstSessionLength > sessionLength) {
+                        e.preventDefault();
+                        window.showFirstSessionLengthModal();
                         firstSessionLengthInput.focus();
                         return false;
                     }
@@ -2760,6 +2895,37 @@ document.addEventListener('DOMContentLoaded', function() {
                 closeEmailModal();
             }
         });
+    }
+    
+    // Close first session length modal on outside click and setup button listeners
+    const firstSessionLengthModal = document.getElementById('firstSessionLengthModal');
+    if (firstSessionLengthModal) {
+        // Close on outside click
+        firstSessionLengthModal.addEventListener('click', function(e) {
+            if (e.target === firstSessionLengthModal) {
+                window.closeFirstSessionLengthModal();
+            }
+        });
+        
+        // Setup close button listener
+        const closeBtn = firstSessionLengthModal.querySelector('.modal-close');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                window.closeFirstSessionLengthModal();
+            });
+        }
+        
+        // Setup "Got it" button listener
+        const gotItBtn = firstSessionLengthModal.querySelector('.btn-primary');
+        if (gotItBtn && gotItBtn.textContent.includes('Got it')) {
+            gotItBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                window.closeFirstSessionLengthModal();
+            });
+        }
     }
 
     // Verification code input handling (already handled earlier)

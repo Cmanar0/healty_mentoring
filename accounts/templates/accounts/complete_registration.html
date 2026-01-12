@@ -29,7 +29,11 @@
       {% if messages %}
       <div class="form-errors">
         {% for message in messages %}
-          <div class="error-message">{{ message }}</div>
+          {% if message.tags == 'error' %}
+          <div class="error-message" style="color: #dc2626;">{{ message }}</div>
+          {% elif message.tags == 'success' %}
+          <div class="error-message" style="color: #059669;">{{ message }}</div>
+          {% endif %}
         {% endfor %}
       </div>
       {% endif %}
@@ -45,12 +49,12 @@
 
         <div class="form-group">
           <label for="first_name">First Name <span style="color: #ef4444;">*</span></label>
-          <input type="text" id="first_name" name="first_name" required autofocus>
+          <input type="text" id="first_name" name="first_name" value="" required autofocus>
         </div>
 
         <div class="form-group">
           <label for="last_name">Last Name <span style="color: #ef4444;">*</span></label>
-          <input type="text" id="last_name" name="last_name" required>
+          <input type="text" id="last_name" name="last_name" value="" required>
         </div>
 
         <div class="form-group">
@@ -64,7 +68,7 @@
           <input type="password" id="password2" name="password2" required minlength="8">
         </div>
 
-        <button type="submit" class="auth-btn-primary">Complete Registration</button>
+        <button type="submit" class="btn-submit" style="margin-top: 10px;">Complete Registration</button>
       </form>
 
       <div class="auth-footer">
