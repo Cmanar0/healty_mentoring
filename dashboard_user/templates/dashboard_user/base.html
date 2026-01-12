@@ -26,7 +26,7 @@
     <div class="dashboard-top-actions">
       {% if user.is_authenticated %}
         {% if user.profile and user.profile.first_name and user.profile.last_name %}
-        <div class="dashboard-top-actions-group">
+        <div class="dashboard-top-actions-group" style="display: none !important;">
           <!-- Notification Bell -->
           <div class="notification-dropdown">
             <button class="notification-bell" id="notificationBell" aria-label="Notifications">
@@ -109,7 +109,7 @@
           </div>
         </div>
           <div class="user-profile-dropdown">
-          <button class="user-profile-trigger" id="userProfileTrigger">
+          <button class="user-profile-trigger" id="userProfileTrigger" style="display: none !important;">
             <span class="user-name">{{ user.profile.first_name }} {{ user.profile.last_name }}</span>
             <div class="user-avatar">
               {% if user.profile.profile_picture %}
@@ -150,9 +150,9 @@
         </div>
         {% else %}
         <!-- Fallback: Show navbar even if profile is missing or incomplete -->
-        <div class="dashboard-top-actions-group">
+        <div class="dashboard-top-actions-group" style="display: none !important;">
           <div class="user-profile-dropdown">
-            <button class="user-profile-trigger" id="userProfileTrigger">
+            <button class="user-profile-trigger" id="userProfileTrigger" style="display: none !important;">
               <span class="user-name">{% if user.profile %}{{ user.profile.first_name|default:user.email }} {{ user.profile.last_name|default:"" }}{% else %}{{ user.email }}{% endif %}</span>
               <div class="user-avatar">
                 {% if user.profile and user.profile.profile_picture %}
@@ -727,6 +727,12 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
 
+  // Remove inline display:none immediately so CSS can control visibility (prevents flash)
+  const dashboardTopActionsGroup = document.querySelector('.dashboard-top-actions-group');
+  if (dashboardTopActionsGroup) {
+    dashboardTopActionsGroup.style.display = '';
+  }
+
   // Notification Bell Dropdown
   const notificationBell = document.getElementById('notificationBell');
   const notificationMenu = document.getElementById('notificationMenu');
@@ -772,6 +778,7 @@ document.addEventListener('DOMContentLoaded', function() {
   if (userProfileTrigger && userDropdownMenu) {
     // Remove inline display:none immediately so CSS can control visibility (prevents flash)
     userDropdownMenu.style.display = '';
+    userProfileTrigger.style.display = '';
     
     userProfileTrigger.addEventListener('click', function(e) {
       e.stopPropagation();
