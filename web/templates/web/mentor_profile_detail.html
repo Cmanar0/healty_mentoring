@@ -917,7 +917,7 @@
                 </div>
 
                 <a href="#" class="mp-btn mp-btn-primary" onclick="openBookingModal(); return false;">
-                    {% if mentor_profile.first_session_free %}
+                    {% if mentor_profile.first_session_free and is_first_session %}
                         <span class="mp-btn-badge">1st Free</span>
                     {% endif %}
                     <i class="fas fa-calendar-check"></i>
@@ -983,7 +983,10 @@
                Contact me
             {% endif %}
         </div>
-        <button class="mp-btn mp-btn-primary" style="width: auto; margin-bottom: 0;" onclick="openBookingModal()">
+        <button class="mp-btn mp-btn-primary" style="width: auto; margin-bottom: 0; position: relative;" onclick="openBookingModal()">
+            {% if mentor_profile.first_session_free and is_first_session %}
+                <span class="mp-btn-badge">1st Free</span>
+            {% endif %}
             Book Session
         </button>
     </div>

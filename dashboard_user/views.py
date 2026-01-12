@@ -388,6 +388,7 @@ def session_management(request):
         return redirect('general:index')
     
     from general.models import Session, SessionInvitation
+    from accounts.models import MentorClientRelationship
     from django.contrib.auth import logout
     
     user_email = (request.user.email or '').strip().lower()
@@ -673,6 +674,17 @@ def session_management(request):
                     session.save()
                     inv.accepted_at = timezone.now()
                     inv.save()
+                    
+                    # Mark first session as scheduled if not already
+                    if inv.mentor and user_profile:
+                        relationship = MentorClientRelationship.objects.filter(
+                            mentor=inv.mentor,
+                            client=user_profile
+                        ).first()
+                        if relationship and not relationship.first_session_scheduled:
+                            relationship.first_session_scheduled = True
+                            relationship.save(update_fields=['first_session_scheduled'])
+                    
                     messages.success(request, 'Session invitation confirmed.')
             
             elif action == 'decline_invitation' and invitation_id:
@@ -698,6 +710,17 @@ def session_management(request):
                     session.save()
                     inv.accepted_at = timezone.now()
                     inv.save()
+                    
+                    # Mark first session as scheduled if not already
+                    if inv.mentor and user_profile:
+                        relationship = MentorClientRelationship.objects.filter(
+                            mentor=inv.mentor,
+                            client=user_profile
+                        ).first()
+                        if relationship and not relationship.first_session_scheduled:
+                            relationship.first_session_scheduled = True
+                            relationship.save(update_fields=['first_session_scheduled'])
+                    
                     confirmed_count += 1
                 
                 # Confirm all changes
@@ -864,7 +887,7 @@ def book_session(request):
                 client=user_profile
             ).first()
             
-            is_first_session = relationship is None or relationship.sessions_count == 0
+            is_first_session = relationship is None or not relationship.first_session_scheduled
             
             if is_first_session and mentor_profile.first_session_free:
                 price = Decimal('0')
@@ -930,7 +953,7 @@ def book_session(request):
                     client=user_profile
                 ).first()
                 
-                is_first_session = relationship is None or relationship.sessions_count == 0
+                is_first_session = relationship is None or not relationship.first_session_scheduled
                 
                 if is_first_session and mentor_profile.first_session_free:
                     price = Decimal('0')
@@ -1016,23 +1039,34 @@ def book_session(request):
                 status='confirmed',
                 confirmed=True,
                 verified_at=timezone.now(),
-                invitation_token=None  # No invitation token needed for booking-created relationships
+                invitation_token=None,  # No invitation token needed for booking-created relationships
+                first_session_scheduled=True  # Mark that first session has been scheduled
             )
             # Add to mentor's clients ManyToMany relationship
             if user_profile not in mentor_profile.clients.all():
                 mentor_profile.clients.add(user_profile)
         else:
             # Update existing relationship to confirmed if not already
+            update_fields = []
             if not relationship.confirmed or relationship.status != 'confirmed':
                 relationship.status = 'confirmed'
                 relationship.confirmed = True
                 if not relationship.verified_at:
                     relationship.verified_at = timezone.now()
                 relationship.invitation_token = None  # Clear invitation token
-                relationship.save(update_fields=['status', 'confirmed', 'verified_at', 'invitation_token'])
-                # Ensure it's in the ManyToMany relationship
-                if user_profile not in mentor_profile.clients.all():
-                    mentor_profile.clients.add(user_profile)
+                update_fields.extend(['status', 'confirmed', 'verified_at', 'invitation_token'])
+            
+            # Mark first session as scheduled if not already
+            if not relationship.first_session_scheduled:
+                relationship.first_session_scheduled = True
+                update_fields.append('first_session_scheduled')
+            
+            if update_fields:
+                relationship.save(update_fields=update_fields)
+            
+            # Ensure it's in the ManyToMany relationship
+            if user_profile not in mentor_profile.clients.all():
+                mentor_profile.clients.add(user_profile)
         
         # Note: We don't create SessionInvitation for confirmed sessions
         # The session is already confirmed, so no invitation/confirmation needed

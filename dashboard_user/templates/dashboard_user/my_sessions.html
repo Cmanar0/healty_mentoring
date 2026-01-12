@@ -6,7 +6,7 @@
 {% block dashboard_content %}
 <div class="dashboard-content-container">
     <div class="my-sessions-header">
-        <h1 class="dashboard-page-title">My Sessions</h1>
+    <h1 class="dashboard-page-title">My Sessions</h1>
         <a href="{% url 'general:dashboard_user:session_management' %}" class="btn btn-primary" style="position: relative;">
             <i class="fas fa-inbox"></i>
             <span>Session Invitations & Changes</span>
@@ -58,7 +58,7 @@
             {% else %}
                 <div class="session-item" style="border-left: none; padding: 16px; text-align: center; color: var(--dash-text-muted);">
                     <p>No upcoming sessions</p>
-                    <a href="{% url 'web:mentors' %}" class="btn btn-primary" style="margin-top: 16px;">Find a Mentor</a>
+                <a href="{% url 'web:mentors' %}" class="btn btn-primary" style="margin-top: 16px;">Find a Mentor</a>
                 </div>
             {% endif %}
             

@@ -391,8 +391,8 @@ def mentor_profile_detail(request, user_id):
                 client=user_profile
             ).first()
             
-            # It's first session if no relationship exists or sessions_count is 0
-            is_first_session = relationship is None or relationship.sessions_count == 0
+            # It's first session if no relationship exists or first_session_scheduled is False
+            is_first_session = relationship is None or not relationship.first_session_scheduled
         except Exception:
             # If any error, assume it's first session
             is_first_session = True

@@ -1097,6 +1097,8 @@
         if (bookingSummary) bookingSummary.style.display = 'none';
         hideBookingError(); // Hide error state when closing
         renderCalendar();
+        // Refresh the page when modal is closed
+        window.location.reload();
     }
     
     function showBookingError() {

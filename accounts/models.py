@@ -292,6 +292,7 @@ class MentorClientRelationship(models.Model):
     confirmation_token = models.CharField(max_length=64, unique=True, blank=True, null=True, help_text="Token for existing user confirmation")
     sessions_count = models.PositiveIntegerField(default=0)
     total_earnings = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    first_session_scheduled = models.BooleanField(default=False, blank=True, help_text="True if the first session has been scheduled (booked) with this mentor")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     invited_at = models.DateTimeField(auto_now_add=True, help_text="When the invitation/confirmation was sent")
