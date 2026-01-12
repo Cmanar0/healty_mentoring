@@ -4,93 +4,93 @@
 {% block page_title %}Your Mentors{% endblock %}
 
 {% block dashboard_content %}
-<div class="mentors-page">
-  <div class="mentors-header">
+<div class="dash-user-mentors-page">
+  <div class="dash-user-mentors-header">
     <h1>Your Mentors</h1>
-    <a href="{% url 'web:mentors' %}" class="btn-find-new-mentor">
+    <a href="{% url 'web:mentors' %}" class="dash-user-btn-find-new-mentor">
       <i class="fas fa-search"></i> Find a New Mentor
     </a>
   </div>
 
-  <div class="mentors-container">
+  <div class="dash-user-mentors-container">
     {% if relationships %}
-      <div class="mentors-list">
+      <div class="dash-user-mentors-list">
         <!-- Table Header (Hidden on Mobile) -->
-        <div class="mentors-list-header">
-          <div class="col-mentor">Mentor</div>
-          <div class="col-email">Email</div>
-          <div class="col-status">Status</div>
-          <div class="col-sessions">Sessions</div>
-          <div class="col-actions"></div>
+        <div class="dash-user-mentors-list-header">
+          <div class="dash-user-col-mentor">Mentor</div>
+          <div class="dash-user-col-email">Email</div>
+          <div class="dash-user-col-status">Status</div>
+          <div class="dash-user-col-sessions">Sessions</div>
+          <div class="dash-user-col-actions"></div>
         </div>
 
         <!-- List Body -->
-        <div class="mentors-list-body">
+        <div class="dash-user-mentors-list-body">
           {% for relationship in relationships %}
-            <div class="mentor-entry {% if relationship.status == 'inactive' and not relationship.confirmed %}is-pending{% endif %}">
+            <div class="dash-user-mentor-entry {% if relationship.status == 'inactive' and not relationship.confirmed %}dash-user-is-pending{% endif %}">
               <!-- Name & Avatar -->
-              <div class="entry-col col-mentor">
-                <div class="mentor-profile-group">
+              <div class="dash-user-entry-col dash-user-col-mentor">
+                <div class="dash-user-mentor-profile-group">
                   {% if relationship.mentor.profile_picture %}
-                    <img src="{{ relationship.mentor.profile_picture.url }}" alt="{{ relationship.mentor.first_name }}" class="entry-avatar">
+                    <img src="{{ relationship.mentor.profile_picture.url }}" alt="{{ relationship.mentor.first_name }}" class="dash-user-entry-avatar">
                   {% else %}
-                    <div class="entry-avatar is-placeholder">
+                    <div class="dash-user-entry-avatar dash-user-is-placeholder">
                       <i class="fas fa-user"></i>
                     </div>
                   {% endif %}
-                  <div class="entry-name-info">
+                  <div class="dash-user-entry-name-info">
                     {% if relationship.mentor.first_name or relationship.mentor.last_name %}
-                      <a href="{% url 'web:mentor_profile_detail' relationship.mentor.user.id %}" class="entry-link">
+                      <a href="{% url 'web:mentor_profile_detail' relationship.mentor.user.id %}" class="dash-user-entry-link">
                         {{ relationship.mentor.first_name }} {{ relationship.mentor.last_name }}
                       </a>
                     {% else %}
-                      <span class="entry-empty">Not set</span>
+                      <span class="dash-user-entry-empty">Not set</span>
                     {% endif %}
-                    <span class="entry-label mobile-only">Mentor</span>
+                    <span class="dash-user-entry-label dash-user-mobile-only">Mentor</span>
                   </div>
                 </div>
               </div>
 
               <!-- Email -->
-              <div class="entry-col col-email">
-                <span class="entry-text">{{ relationship.mentor.user.email }}</span>
-                <span class="entry-label mobile-only">Email</span>
+              <div class="dash-user-entry-col dash-user-col-email">
+                <span class="dash-user-entry-text">{{ relationship.mentor.user.email }}</span>
+                <span class="dash-user-entry-label dash-user-mobile-only">Email</span>
               </div>
 
               <!-- Status -->
-              <div class="entry-col col-status">
-                <div class="status-badge-container">
+              <div class="dash-user-entry-col dash-user-col-status">
+                <div class="dash-user-status-badge-container">
                   {% if relationship.status == 'confirmed' and relationship.confirmed %}
-                    <span class="badge badge-success"><i class="fas fa-check-circle"></i> Confirmed</span>
+                    <span class="dash-user-badge dash-user-badge-success"><i class="fas fa-check-circle"></i> Confirmed</span>
                   {% elif relationship.status == 'active' %}
-                    <span class="badge badge-active"><i class="fas fa-play-circle"></i> Active</span>
+                    <span class="dash-user-badge dash-user-badge-active"><i class="fas fa-play-circle"></i> Active</span>
                   {% elif relationship.status == 'inactive' and not relationship.confirmed %}
                     {% if relationship.mentor.user.is_email_verified %}
-                      <span class="badge badge-warning"><i class="fas fa-clock"></i> Waiting</span>
+                      <span class="dash-user-badge dash-user-badge-warning"><i class="fas fa-clock"></i> Waiting</span>
                     {% else %}
-                      <span class="badge badge-pending"><i class="fas fa-user-clock"></i> Pending</span>
+                      <span class="dash-user-badge dash-user-badge-pending"><i class="fas fa-user-clock"></i> Pending</span>
                     {% endif %}
                   {% elif relationship.status == 'denied' %}
-                    <span class="badge badge-danger"><i class="fas fa-times-circle"></i> Denied</span>
+                    <span class="dash-user-badge dash-user-badge-danger"><i class="fas fa-times-circle"></i> Denied</span>
                   {% else %}
-                    <span class="badge badge-default"><i class="fas fa-minus-circle"></i> Inactive</span>
+                    <span class="dash-user-badge dash-user-badge-default"><i class="fas fa-minus-circle"></i> Inactive</span>
                   {% endif %}
                 </div>
-                <span class="entry-label mobile-only">Status</span>
+                <span class="dash-user-entry-label dash-user-mobile-only">Status</span>
               </div>
 
               <!-- Sessions -->
-              <div class="entry-col col-sessions">
-                <div class="sessions-info">
-                  <span class="sessions-val">{{ relationship.sessions_count }}</span>
-                  <span class="sessions-txt">sessions</span>
+              <div class="dash-user-entry-col dash-user-col-sessions">
+                <div class="dash-user-sessions-info">
+                  <span class="dash-user-sessions-val">{{ relationship.sessions_count }}</span>
+                  <span class="dash-user-sessions-txt">sessions</span>
                 </div>
-                <span class="entry-label mobile-only">Engagement</span>
+                <span class="dash-user-entry-label dash-user-mobile-only">Engagement</span>
               </div>
 
               <!-- Actions -->
-              <div class="entry-col col-actions">
-                <a href="{% url 'web:mentor_profile_detail' relationship.mentor.user.id %}" class="entry-btn">
+              <div class="dash-user-entry-col dash-user-col-actions">
+                <a href="{% url 'web:mentor_profile_detail' relationship.mentor.user.id %}" class="dash-user-entry-btn">
                   View Profile <i class="fas fa-arrow-right"></i>
                 </a>
               </div>
@@ -99,10 +99,10 @@
         </div>
       </div>
     {% else %}
-      <div class="no-mentors">
+      <div class="dash-user-no-mentors">
         <i class="fas fa-user-tie"></i>
         <p>No mentors yet</p>
-        <a href="{% url 'web:mentors' %}" class="btn-find-mentor">
+        <a href="{% url 'web:mentors' %}" class="dash-user-btn-find-mentor">
           <i class="fas fa-search"></i> Find a Mentor
         </a>
       </div>
@@ -111,7 +111,7 @@
 </div>
 
 <style>
-.mentors-page {
+.dash-user-mentors-page {
   padding: 32px;
   width: 100%;
   max-width: 1200px;
@@ -119,7 +119,7 @@
   box-sizing: border-box;
 }
 
-.mentors-header {
+.dash-user-mentors-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -128,7 +128,7 @@
   gap: 16px;
 }
 
-.mentors-header h1 {
+.dash-user-mentors-header h1 {
   font-size: 1.75rem;
   font-weight: 800;
   color: #1e293b;
@@ -136,12 +136,12 @@
   letter-spacing: -0.025em;
 }
 
-.mentors-container {
+.dash-user-mentors-container {
   width: 100%;
   /* Removed display: grid as requested */
 }
 
-.mentors-list {
+.dash-user-mentors-list {
   background: white;
   border-radius: 16px;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
@@ -150,7 +150,7 @@
 }
 
 /* Desktop Header */
-.mentors-list-header {
+.dash-user-mentors-list-header {
   display: grid;
   grid-template-columns: 1.5fr 1fr 1fr 0.8fr 180px;
   gap: 12px;
@@ -164,7 +164,7 @@
   letter-spacing: 0.05em;
 }
 
-.mentor-entry {
+.dash-user-mentor-entry {
   display: grid;
   grid-template-columns: 1.5fr 1fr 1fr 0.8fr 180px;
   gap: 12px;
@@ -174,30 +174,30 @@
   transition: background 0.2s ease;
 }
 
-.mentor-entry:last-child {
+.dash-user-mentor-entry:last-child {
   border-bottom: none;
 }
 
-.mentor-entry:hover {
+.dash-user-mentor-entry:hover {
   background: #fdfdfd;
 }
 
-.mentor-entry.is-pending {
+.dash-user-mentor-entry.dash-user-is-pending {
   background: #fffbef;
 }
 
 /* Columns */
-.entry-col {
+.dash-user-entry-col {
   min-width: 0; /* Prevents overflow in flex/grid */
 }
 
-.mentor-profile-group {
+.dash-user-mentor-profile-group {
   display: flex;
   align-items: center;
   gap: 12px;
 }
 
-.entry-avatar {
+.dash-user-entry-avatar {
   width: 40px;
   height: 40px;
   border-radius: 10px;
@@ -207,7 +207,7 @@
   border: 1px solid #e2e8f0;
 }
 
-.is-placeholder {
+.dash-user-is-placeholder {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -215,13 +215,13 @@
   font-size: 1rem;
 }
 
-.entry-name-info {
+.dash-user-entry-name-info {
   display: flex;
   flex-direction: column;
   min-width: 0;
 }
 
-.entry-link {
+.dash-user-entry-link {
   font-weight: 600;
   font-size: 0.95rem;
   color: #1e293b;
@@ -231,17 +231,17 @@
   text-overflow: ellipsis;
 }
 
-.entry-link:hover {
+.dash-user-entry-link:hover {
   color: #3b82f6;
 }
 
-.entry-empty {
+.dash-user-entry-empty {
   color: #94a3b8;
   font-style: italic;
   font-size: 0.85rem;
 }
 
-.entry-text {
+.dash-user-entry-text {
   color: #64748b;
   font-size: 0.9rem;
   display: block;
@@ -251,7 +251,7 @@
 }
 
 /* Badges */
-.badge {
+.dash-user-badge {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -261,27 +261,27 @@
   font-weight: 600;
 }
 
-.badge-success { background: #ecfdf5; color: #065f46; border: 1px solid #d1fae5; }
-.badge-active { background: #eff6ff; color: #1e40af; border: 1px solid #dbeafe; }
-.badge-warning { background: #fff7ed; color: #9a3412; border: 1px solid #ffedd5; }
-.badge-pending { background: #fefce8; color: #854d0e; border: 1px solid #fef9c3; }
-.badge-danger { background: #fef2f2; color: #991b1b; border: 1px solid #fee2e2; }
-.badge-default { background: #f8fafc; color: #475569; border: 1px solid #e2e8f0; }
+.dash-user-badge-success { background: #ecfdf5; color: #065f46; border: 1px solid #d1fae5; }
+.dash-user-badge-active { background: #eff6ff; color: #1e40af; border: 1px solid #dbeafe; }
+.dash-user-badge-warning { background: #fff7ed; color: #9a3412; border: 1px solid #ffedd5; }
+.dash-user-badge-pending { background: #fefce8; color: #854d0e; border: 1px solid #fef9c3; }
+.dash-user-badge-danger { background: #fef2f2; color: #991b1b; border: 1px solid #fee2e2; }
+.dash-user-badge-default { background: #f8fafc; color: #475569; border: 1px solid #e2e8f0; }
 
 /* Sessions */
-.sessions-info {
+.dash-user-sessions-info {
   display: flex;
   align-items: baseline;
   gap: 4px;
 }
 
-.sessions-val {
+.dash-user-sessions-val {
   font-weight: 700;
   font-size: 1.05rem;
   color: #1e293b;
 }
 
-.sessions-txt {
+.dash-user-sessions-txt {
   font-size: 0.7rem;
   color: #94a3b8;
   text-transform: uppercase;
@@ -289,12 +289,12 @@
 }
 
 /* Action Button */
-.col-actions {
+.dash-user-col-actions {
   display: flex;
   justify-content: flex-end;
 }
 
-.entry-btn {
+.dash-user-entry-btn {
   background: white;
   color: #334155;
   border: 1px solid #e2e8f0;
@@ -309,48 +309,48 @@
   transition: all 0.2s;
 }
 
-.entry-btn:hover {
+.dash-user-entry-btn:hover {
   background: #f8fafc;
   border-color: #cbd5e1;
   transform: translateX(3px);
 }
 
-.entry-btn i {
+.dash-user-entry-btn i {
   font-size: 0.7rem;
   color: #94a3b8;
 }
 
 /* Mobile Utilities */
-.mobile-only {
+.dash-user-mobile-only {
   display: none;
 }
 
 /* Responsive Redesign */
 @media (max-width: 992px) {
-  .mentors-list-header {
+  .dash-user-mentors-list-header {
     grid-template-columns: 1fr 1fr 1fr 80px 140px;
     padding: 12px 16px;
   }
-  .mentor-entry {
+  .dash-user-mentor-entry {
     grid-template-columns: 1fr 1fr 1fr 80px 140px;
     padding: 16px;
   }
-  .entry-btn {
+  .dash-user-entry-btn {
     padding: 6px 10px;
     font-size: 0.75rem;
   }
 }
 
 @media (max-width: 768px) {
-  .mentors-page {
+  .dash-user-mentors-page {
     padding: 24px 16px;
   }
   
-  .mentors-list-header {
+  .dash-user-mentors-list-header {
     display: none;
   }
   
-  .mentors-list {
+  .dash-user-mentors-list {
     background: transparent;
     box-shadow: none;
     border: none;
@@ -359,7 +359,7 @@
     gap: 16px;
   }
   
-  .mentor-entry {
+  .dash-user-mentor-entry {
     display: flex;
     flex-direction: column;
     align-items: stretch;
@@ -371,13 +371,13 @@
     gap: 20px;
   }
   
-  .entry-col {
+  .dash-user-entry-col {
     display: flex;
     justify-content: space-between;
     align-items: center;
   }
   
-  .entry-label {
+  .dash-user-entry-label {
     display: block;
     font-size: 0.7rem;
     font-weight: 700;
@@ -387,48 +387,48 @@
     order: 1;
   }
   
-  .entry-col > *:not(.entry-label) {
+  .dash-user-entry-col > *:not(.dash-user-entry-label) {
     order: 2;
   }
   
   /* Feature specific mobile styles */
-  .col-mentor {
+  .dash-user-col-mentor {
     justify-content: center;
     border-bottom: 1px solid #f1f5f9;
     padding-bottom: 16px;
     margin-bottom: 4px;
   }
   
-  .col-mentor .mentor-profile-group {
+  .dash-user-col-mentor .dash-user-mentor-profile-group {
     flex-direction: column;
     text-align: center;
   }
   
-  .col-mentor .entry-avatar {
+  .dash-user-col-mentor .dash-user-entry-avatar {
     width: 64px;
     height: 64px;
     border-radius: 50%;
   }
   
-  .col-mentor .entry-name-info {
+  .dash-user-col-mentor .dash-user-entry-name-info {
     align-items: center;
     gap: 4px;
   }
   
-  .col-mentor .entry-link {
+  .dash-user-col-mentor .dash-user-entry-link {
     font-size: 1.1rem;
   }
   
-  .col-mentor .mobile-only {
+  .dash-user-col-mentor .dash-user-mobile-only {
     display: none; /* Hide label for name because it's obvious */
   }
   
-  .col-actions {
+  .dash-user-col-actions {
     justify-content: center;
     padding-top: 8px;
   }
   
-  .entry-btn {
+  .dash-user-entry-btn {
     width: 100%;
     justify-content: center;
     padding: 12px;
@@ -438,7 +438,7 @@
 }
 
 /* Empty State Styling */
-.no-mentors {
+.dash-user-no-mentors {
   text-align: center;
   padding: 80px 32px;
   background: white;
@@ -446,20 +446,20 @@
   border: 2px dashed #e2e8f0;
 }
 
-.no-mentors i {
+.dash-user-no-mentors i {
   font-size: 3.5rem;
   color: #e2e8f0;
   margin-bottom: 24px;
 }
 
-.no-mentors p {
+.dash-user-no-mentors p {
   font-size: 1.1rem;
   font-weight: 600;
   color: #64748b;
   margin-bottom: 32px;
 }
 
-.btn-find-mentor, .btn-find-new-mentor {
+.dash-user-btn-find-mentor, .dash-user-btn-find-new-mentor {
   background: #10b981;
   color: white;
   border: none;
@@ -476,13 +476,13 @@
   box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
 }
 
-.btn-find-mentor:hover, .btn-find-new-mentor:hover {
+.dash-user-btn-find-mentor:hover, .dash-user-btn-find-new-mentor:hover {
   background: #059669;
   transform: translateY(-2px);
   box-shadow: 0 8px 20px rgba(16, 185, 129, 0.35);
 }
 
-.btn-find-mentor:active, .btn-find-new-mentor:active {
+.dash-user-btn-find-mentor:active, .dash-user-btn-find-new-mentor:active {
   transform: translateY(0);
 }
 
