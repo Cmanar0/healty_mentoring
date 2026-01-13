@@ -285,10 +285,34 @@
         const modal = document.getElementById('timeCorrectionModal');
         if (!modal) return;
         
-        // Set current time as default
+        // Get current timezone from Book Your Session modal
+        const bookingTimezoneValue = document.getElementById('bookingTimezoneValue');
+        const currentTimezone = bookingTimezoneValue && bookingTimezoneValue.value 
+            ? bookingTimezoneValue.value 
+            : Intl.DateTimeFormat().resolvedOptions().timeZone;
+        
+        // Get current time in the timezone from Book Your Session (not browser local time)
         const now = new Date();
-        const hours24 = now.getHours();
-        const minutes = now.getMinutes();
+        let hours24, minutes;
+        
+        try {
+            // Format time in the current timezone
+            const formatter = new Intl.DateTimeFormat('en', {
+                timeZone: currentTimezone,
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false
+            });
+            const parts = formatter.formatToParts(now);
+            const hourPart = parts.find(p => p.type === 'hour');
+            const minutePart = parts.find(p => p.type === 'minute');
+            hours24 = hourPart ? parseInt(hourPart.value) : now.getHours();
+            minutes = minutePart ? parseInt(minutePart.value) : now.getMinutes();
+        } catch (e) {
+            // Fallback to local time if timezone formatting fails
+            hours24 = now.getHours();
+            minutes = now.getMinutes();
+        }
         
         const timeInput = document.getElementById('correctTimeInput');
         
@@ -391,12 +415,26 @@
             tzList.innerHTML = '';
             confirmBtn.innerHTML = 'Use this Timezone';
             
+            // Get current timezone from Book Your Session modal
+            const bookingTimezoneValue = document.getElementById('bookingTimezoneValue');
+            const currentTimezone = bookingTimezoneValue ? bookingTimezoneValue.value : null;
+            
+            // Find the index of the current timezone in the matching list
+            let preselectedIndex = 0;
+            if (currentTimezone) {
+                const foundIndex = matchingTimezones.findIndex(tz => tz.id === currentTimezone);
+                if (foundIndex !== -1) {
+                    preselectedIndex = foundIndex;
+                }
+            }
+            
             // Show timezone options
             matchingTimezones.forEach((tz, index) => {
+                const isSelected = index === preselectedIndex;
                 const tzItem = document.createElement('div');
-                tzItem.className = 'tc-option-item' + (index === 0 ? ' selected' : '');
+                tzItem.className = 'tc-option-item' + (isSelected ? ' selected' : '');
                 tzItem.innerHTML = `
-                    <input type="radio" name="timezoneSelection" value="${tz.id}" id="tcOption${index}" ${index === 0 ? 'checked' : ''} class="tc-option-radio">
+                    <input type="radio" name="timezoneSelection" value="${tz.id}" id="tcOption${index}" ${isSelected ? 'checked' : ''} class="tc-option-radio">
                     <div class="tc-option-content">
                         <div class="tc-option-name">${tz.name || tz.id}</div>
                         <div class="tc-option-id">${tz.id}</div>
@@ -431,7 +469,7 @@
                 });
                 
                 // Set initial selected
-                if (index === 0) {
+                if (isSelected) {
                     selectedTimezoneFromTime = tz.id;
                     const nameEl = document.getElementById('tcSelectedTzName');
                     const infoContainer = document.getElementById('tcSelectedTzInfo');
@@ -443,6 +481,21 @@
                 
                 tzList.appendChild(tzItem);
             });
+            
+            // Scroll to the preselected timezone
+            if (preselectedIndex >= 0 && preselectedIndex < matchingTimezones.length) {
+                const selectedItem = tzList.children[preselectedIndex];
+                if (selectedItem) {
+                    // Scroll the selected item into view
+                    setTimeout(() => {
+                        selectedItem.scrollIntoView({ 
+                            behavior: 'smooth', 
+                            block: 'center',
+                            inline: 'nearest'
+                        });
+                    }, 100);
+                }
+            }
             
             confirmBtn.disabled = false;
         } else {
