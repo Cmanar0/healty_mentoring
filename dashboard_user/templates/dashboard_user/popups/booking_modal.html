@@ -203,7 +203,7 @@
 
 <!-- Account Exists Modal -->
 <div id="accountExistsModal" class="booking-modal-overlay" style="display: none;">
-    <div class="booking-modal-container" style="max-width: 500px;">
+    <div class="booking-modal-container" style="max-width: 500px; padding: 40px;">
         <button class="booking-close-btn" onclick="closeAccountExistsModal()"><i class="fas fa-times"></i></button>
         
         <div style="padding: 32px;">
@@ -237,114 +237,113 @@
     <div class="booking-modal-container" style="max-width: 900px; height: 600px; overflow-y: auto;">
         <button class="booking-close-btn" onclick="closeEmailCollectionModal()"><i class="fas fa-times"></i></button>
         
-        <div style="padding: 32px; min-height: 100%; box-sizing: border-box;">
-            <h2 style="font-size: 1.5rem; color: #1e293b; margin-bottom: 8px;">Book Your Session</h2>
-            <p style="color: #64748b; margin-bottom: 24px; font-size: 0.95rem;">Please provide your email to complete the booking</p>
-            
-            <form id="emailCollectionForm">
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start;">
-                    <!-- Left Column: Email and Message -->
-                    <div style="display: flex; flex-direction: column; gap: 16px;">
-                        <!-- Email Input -->
-                        <div>
-                            <label style="display: block; font-weight: 600; color: #1e293b; margin-bottom: 8px; font-size: 0.9rem;">
-                                Email Address <span style="color: #ef4444;">*</span>
-                            </label>
-                            <input type="email" id="bookingEmailInput" class="form-input" placeholder="your@email.com" required style="width: 100%; max-width: 100%; padding: 12px 16px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 0.95rem; box-sizing: border-box;">
-                            <div id="emailError" style="color: #ef4444; font-size: 0.85rem; margin-top: 6px; display: none;"></div>
+        <div class="booking-modal-content-wrapper">
+            <form id="emailCollectionForm" style="height: 100%;">
+                <div class="booking-modal-grid">
+                    <!-- Left Column: Session Summary -->
+                    <div class="summary-column" style="background: #f1f5f9;">
+                        <div style="margin-bottom: 32px;">
+                            <h2 class="booking-modal-title" style="font-size: 1.75rem; color: #0f172a; margin-bottom: 4px;">Book Your Session</h2>
+                            <p style="font-size: 0.9rem; color: #64748b; margin-bottom: 24px;">Review the session details below</p>
                         </div>
-                        
-                        <!-- Note Input -->
-                        <div>
-                            <label style="display: block; font-weight: 600; color: #1e293b; margin-bottom: 8px; font-size: 0.9rem;">
-                                Message (Optional)
-                            </label>
-                            <textarea id="bookingNoteInput" class="form-input" placeholder="What would you like to focus on during this session?" rows="8" style="width: 100%; max-width: 100%; max-height: 300px; padding: 12px 16px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 0.95rem; resize: none; font-family: inherit; box-sizing: border-box; overflow-y: auto;"></textarea>
-                        </div>
-                        
-                        <!-- Price Display (moved to left column) -->
-                        <div style="padding: 14px 16px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
-                                <span style="font-weight: 600; color: #1e293b; font-size: 0.95rem;">Session Price:</span>
-                                <span id="bookingPriceDisplay" style="font-size: 1.05rem; font-weight: 700; color: #10b981; text-align: right;">
-                                    {% if mentor_profile.first_session_free %}
-                                        $0 <span style="font-size: 0.85rem; font-weight: 600;">(First Session Free)</span>
-                                    {% else %}
-                                        ${{ mentor_profile.price_per_hour|floatformat:0 }}
-                                    {% endif %}
-                                </span>
-                            </div>
-                            <div id="bookingPriceNote" style="font-size: 0.8rem; color: #64748b; margin-top: 6px; display: none;">
-                                This is your first session with this mentor
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Right Column: Timezone, Price, and Button -->
-                    <div style="display: flex; flex-direction: column; gap: 16px;">
-                        <!-- Timezone Confirmation -->
-                        <div>
-                            <label style="display: block; font-weight: 600; color: #1e293b; margin-bottom: 8px; font-size: 0.9rem;">
-                                Timezone
-                            </label>
-                            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 16px;">
-                                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
-                                    <input type="checkbox" id="timezoneConfirmed" checked style="width: 18px; height: 18px; cursor: pointer; flex-shrink: 0;">
-                                    <label for="timezoneConfirmed" style="cursor: pointer; flex: 1; color: #475569; font-size: 0.9rem; line-height: 1.4;">
-                                        <span id="detectedTimezoneDisplay">We detected your timezone: <strong id="detectedTimezoneName">Loading...</strong></span>
-                                    </label>
-                                </div>
-                                <!-- Live Clock Display -->
-                                <div id="timezoneClockDisplay" style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px; padding: 8px 12px; background: white; border-radius: 6px; border: 1px solid #e2e8f0;">
-                                    <i class="far fa-clock" style="color: #3b82f6; font-size: 0.9rem;"></i>
-                                    <div style="display: flex; flex-direction: column; gap: 2px;">
-                                        <span id="timezoneCurrentTime" style="font-size: 0.95rem; font-weight: 600; color: #1e293b;">--:--</span>
-                                        <span id="timezoneCurrentDate" style="font-size: 0.75rem; color: #64748b;">--</span>
+
+                        <div style="display: flex; flex-direction: column; gap: 20px;">
+                            <!-- Session Recap -->
+                            <div id="sessionRecap" style="padding: 24px; background: white; border-radius: 14px; border: 1px solid #e2e8f0; box-shadow: 0 1px 2px rgba(0,0,0,0.05); border-left: 4px solid #3b82f6;">
+                                <span class="section-label" style="color: #3b82f6; margin-bottom: 16px; font-size: 0.8rem;">APPOINTMENT DETAILS</span>
+                                <div style="display: flex; flex-direction: column; gap: 14px;">
+                                    <div style="display: flex; align-items: center; gap: 14px;">
+                                        <i class="far fa-calendar-alt" style="color: #64748b; font-size: 1.1rem; width: 20px;"></i>
+                                        <span id="recapDate" style="font-size: 1rem; color: #1e293b; font-weight: 700;">--</span>
+                                    </div>
+                                    <div style="display: flex; align-items: center; gap: 14px;">
+                                        <i class="far fa-clock" style="color: #64748b; font-size: 1.1rem; width: 20px;"></i>
+                                        <span id="recapTime" style="font-size: 1rem; color: #1e293b; font-weight: 700;">--</span>
+                                    </div>
+                                    <div style="display: flex; align-items: center; gap: 14px;">
+                                        <i class="fas fa-hourglass-half" style="color: #64748b; font-size: 1.1rem; width: 20px;"></i>
+                                        <span id="recapLength" style="font-size: 1rem; color: #1e293b; font-weight: 700;">--</span>
                                     </div>
                                 </div>
-                                <div id="timezoneSelectorWrapper" style="display: none;">
-                                    <div class="autocomplete-container" style="position: relative;">
-                                        <input type="text" id="bookingTimezoneInput" class="form-input autocomplete-input" placeholder="Search for your timezone..." autocomplete="off" style="width: 100%; padding: 12px 16px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 0.95rem; box-sizing: border-box;">
-                                        <input type="hidden" id="bookingTimezoneValue" value="">
-                                        <div class="autocomplete-suggestions" id="bookingTimezoneSuggestions" style="max-height: 250px; overflow-y: auto; overflow-x: hidden;"></div>
-                                    </div>
-                                    <!-- Selected Timezone Clock Display -->
-                                    <div id="selectedTimezoneClockDisplay" style="display: none; margin-top: 12px; padding: 8px 12px; background: white; border-radius: 6px; border: 1px solid #e2e8f0;">
-                                        <div style="display: flex; align-items: center; gap: 8px;">
-                                            <i class="far fa-clock" style="color: #10b981; font-size: 0.9rem;"></i>
-                                            <div style="display: flex; flex-direction: column; gap: 2px;">
-                                                <span id="selectedTimezoneCurrentTime" style="font-size: 0.95rem; font-weight: 600; color: #1e293b;">--:--</span>
-                                                <span id="selectedTimezoneCurrentDate" style="font-size: 0.75rem; color: #64748b;">--</span>
-                                            </div>
+                            </div>
+
+                            <!-- Session Price -->
+                            <div style="padding: 16px 20px; background: white; border-radius: 14px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.05); margin-top: auto;">
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <span style="font-weight: 700; color: #475569; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.02em;">Total Payable</span>
+                                    <div style="text-align: right;">
+                                        <div id="bookingPriceDisplay" style="font-size: 1.5rem; font-weight: 800; color: #10b981; line-height: 1;">
+                                            {% if mentor_profile.first_session_free %}
+                                                $0
+                                            {% else %}
+                                                ${{ mentor_profile.price_per_hour|floatformat:0 }}
+                                            {% endif %}
                                         </div>
                                     </div>
                                 </div>
+                                <div id="bookingPriceNote" style="font-size: 0.8rem; color: #64748b; margin-top: 6px; font-weight: 500; display: none;">
+                                    First session is free
+                                </div>
                             </div>
                         </div>
-                        
-                        <!-- Session Recap -->
-                        <div id="sessionRecap" style="padding: 16px; background: #eff6ff; border-radius: 8px; border: 1px solid #bfdbfe; margin-bottom: 16px;">
-                            <div style="font-size: 0.85rem; font-weight: 600; color: #3b82f6; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px;">Session Details</div>
-                            <div style="display: flex; flex-direction: column; gap: 8px;">
-                                <div style="display: flex; align-items: center; gap: 10px;">
-                                    <i class="far fa-calendar-alt" style="color: #3b82f6; font-size: 0.9rem; width: 18px;"></i>
-                                    <span id="recapDate" style="font-size: 0.95rem; color: #1e293b; font-weight: 500;">--</span>
-                                </div>
-                                <div style="display: flex; align-items: center; gap: 10px;">
-                                    <i class="far fa-clock" style="color: #3b82f6; font-size: 0.9rem; width: 18px;"></i>
-                                    <span id="recapTime" style="font-size: 0.95rem; color: #1e293b; font-weight: 500;">--</span>
-                                </div>
-                                <div style="display: flex; align-items: center; gap: 10px;">
-                                    <i class="fas fa-hourglass-half" style="color: #3b82f6; font-size: 0.9rem; width: 18px;"></i>
-                                    <span id="recapLength" style="font-size: 0.95rem; color: #1e293b; font-weight: 500;">--</span>
-                                </div>
+                    </div>
+
+                    <!-- Right Column: User Input -->
+                    <div class="input-column">
+                        <div style="display: flex; flex-direction: column; gap: 20px;">
+                            <span class="section-label">Complete Your Booking</span>
+                            
+                            <!-- Email Input -->
+                            <div style="margin-top: -8px;">
+                                <label style="display: block; font-weight: 700; color: #1e293b; margin-bottom: 6px; font-size: 0.9rem;">
+                                    Email Address <span style="color: #ef4444;">*</span>
+                                </label>
+                                <input type="email" id="bookingEmailInput" class="form-input" placeholder="your@email.com" required style="width: 100%; max-width: 100%; padding: 12px 16px; border: 1px solid #e2e8f0; border-radius: 10px; font-size: 0.95rem; box-sizing: border-box;">
+                                <div id="emailError" style="color: #ef4444; font-size: 0.85rem; margin-top: 4px; display: none;"></div>
                             </div>
+                            
+                            <!-- Note Input -->
+                            <div>
+                                <label style="display: block; font-weight: 700; color: #1e293b; margin-bottom: 6px; font-size: 0.9rem;">
+                                    Message for Mentor (Optional)
+                                </label>
+                                <textarea id="bookingNoteInput" class="form-input" placeholder="What would you like to focus on?" rows="4" style="width: 100%; max-width: 100%; max-height: 200px; padding: 12px 16px; border: 1px solid #e2e8f0; border-radius: 10px; font-size: 0.95rem; resize: none; font-family: inherit; box-sizing: border-box; overflow-y: auto;"></textarea>
+                            </div>
+
+                            <div style="margin-top: 12px; padding: 16px; background: #fdf2f2; border-radius: 10px; border: 1px solid #fee2e2; display: none;" id="nonAuthBookingNotice">
+                                <p style="font-size: 0.85rem; color: #991b1b; line-height: 1.5; margin: 0;">
+                                    We'll send you an email to confirm your identity after booking.
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Timezone Confirmation (Relocated) -->
+                        <div class="timezone-section">
+                            <span class="section-label" style="margin-bottom: 4px; color: #475569; font-size: 0.85rem; text-transform: none;">
+                                Detected Timezone: <strong id="detectedTimezoneName" style="color: #1e293b; font-weight: 700;">Loading...</strong>
+                                <p style="font-size: 0.85rem; color: #64748b; margin: 0 0 0 4px; font-weight: 500;">
+                                    Make sure that the time under matches your real time.
+                                </p>
+                            </span>
+                            <div style="display: flex; align-items: center; justify-content: space-between; padding: 16px; background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+                                <div style="display: flex; align-items: center; gap: 12px;">
+                                    <div style="width: 40px; height: 40px; background: white; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                                        <i class="far fa-clock" style="color: #3b82f6; font-size: 1.2rem;"></i>
+                                    </div>
+                                    <div style="display: flex; flex-direction: column;">
+                                        <span id="timezoneCurrentTime" class="timezone-current-time" style="font-size: 1.1rem; font-family: 'JetBrains Mono', 'Roboto Mono', monospace; font-variant-numeric: tabular-nums; color: #1e293b; letter-spacing: -0.02em;">--:--:-- --</span>
+                                        <span id="timezoneCurrentDate" class="timezone-current-date" style="font-size: 0.8rem; color: #64748b; font-weight: 500;">--</span>
+                                    </div>
+                                </div>
+                                <button type="button" id="correctTimeBtn" class="btn-correct-time" style="margin-left: 0; padding: 8px 14px; background: white; border-color: #cbd5e1; font-weight: 700; color: #475569;">Change my time</button>
+                            </div>
+                            <input type="hidden" id="bookingTimezoneValue" value="">
                         </div>
                         
                         <!-- Submit Button -->
-                        <button type="submit" class="book-slot-btn" id="submitBookingBtn" style="width: 100%; margin-top: auto;">
-                            <i class="fas fa-calendar-check"></i>
-                            <span>Book Session</span>
+                        <button type="submit" class="book-slot-btn" id="submitBookingBtn" style="width: 100%; height: 50px; font-size: 1.1rem; margin-top: auto; border-radius: 10px; background: #10b981; border: none; color: white; font-weight: 700; cursor: pointer; transition: all 0.2s;">
+                            <i class="fas fa-calendar-check" style="margin-right: 8px;"></i>
+                            <span>Confirm Booking</span>
                         </button>
                     </div>
                 </div>
@@ -352,6 +351,8 @@
         </div>
     </div>
 </div>
+
+{% include "dashboard_user/popups/time_correction_modal.html" %}
 
 <style>
 /* Modal CSS */
@@ -370,6 +371,350 @@
 .booking-modal-overlay.open {
     display: flex;
     opacity: 1;
+}
+
+/* Timezone Section Styles */
+.timezone-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.timezone-label {
+    display: block;
+    font-weight: 600;
+    color: #1e293b;
+    font-size: 0.9rem;
+}
+.timezone-container {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 16px;
+    transition: all 0.2s ease;
+}
+.timezone-clock-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+    padding: 12px 16px;
+    background: white;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+.timezone-clock-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+}
+.timezone-clock-icon {
+    color: #3b82f6;
+    font-size: 1.25rem;
+    background: rgba(59, 130, 246, 0.1);
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+}
+.timezone-time-details {
+    display: flex;
+    flex-direction: column;
+}
+.timezone-current-time {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #1e293b;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+}
+.timezone-current-date {
+    font-size: 0.8rem;
+    color: #64748b;
+    font-weight: 500;
+}
+.btn-correct-time {
+    padding: 6px 12px;
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    color: #475569;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s;
+    margin-left: 8px;
+    max-width: 150px;
+}
+.btn-correct-time:hover {
+    background: #e2e8f0;
+    color: #1e293b;
+    border-color: #cbd5e1;
+}
+.timezone-detected-info {
+    font-size: 0.8rem;
+    color: #64748b;
+    padding-left: 4px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.timezone-detected-info strong {
+    color: #3b82f6;
+    font-weight: 600;
+}
+
+.booking-modal-content-wrapper {
+    padding: 0;
+    min-height: 100%;
+    box-sizing: border-box;
+}
+.booking-modal-grid {
+    display: grid;
+    grid-template-columns: 1fr 1.2fr;
+    min-height: 600px;
+    align-items: stretch;
+}
+.input-column {
+    padding: 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+.summary-column {
+    background: #f8fafc;
+    border-right: 1px solid #e2e8f0;
+    padding: 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+.section-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 8px;
+    display: block;
+}
+.timezone-placeholder-text {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #94a3b8;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    text-align: center;
+    padding: 0 20px;
+}
+.time-correction-desc {
+    color: #64748b;
+    margin-bottom: 28px;
+    font-size: 0.95rem;
+    line-height: 1.6;
+}
+.time-correction-form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+.time-input-container {
+    display: flex;
+    flex-direction: column;
+}
+.time-input-label {
+    display: block;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 10px;
+    font-size: 0.95rem;
+}
+.required-asterisk {
+    color: #ef4444;
+}
+.time-input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+.modern-time-input {
+    width: 100%;
+    padding: 14px 16px 14px 44px;
+    border: 2px solid #e2e8f0;
+    border-radius: 12px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #1e293b;
+    box-sizing: border-box;
+    transition: all 0.2s;
+    background: #f8fafc;
+}
+.modern-time-input:focus {
+    outline: none;
+    border-color: #3b82f6;
+    background: white;
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+}
+.input-icon {
+    position: absolute;
+    left: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #94a3b8;
+    font-size: 1.1rem;
+    pointer-events: none;
+}
+.modern-time-input:hover {
+    border-color: #cbd5e1;
+    background: #f1f5f9;
+}
+.time-input-helper {
+    font-size: 0.8rem;
+    color: #94a3b8;
+    margin-top: 8px;
+    font-style: italic;
+}
+.timezone-preview-section {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: transparent;
+    padding: 0;
+    border-radius: 0;
+    border: none;
+    overflow: hidden;
+}
+.preview-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+    color: #1e40af;
+    font-weight: 600;
+    margin-bottom: 12px;
+}
+.timezone-options-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-height: 200px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+.timezone-options-list::-webkit-scrollbar {
+    width: 6px;
+}
+.timezone-options-list::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 10px;
+}
+.timezone-options-list::-webkit-scrollbar-thumb {
+    background: #bfdbfe;
+    border-radius: 10px;
+}
+
+/* Dynamically injected timezone items */
+.timezone-option-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px;
+    background: white;
+    border: 2px solid #e2e8f0;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.timezone-option-item:hover {
+    border-color: #3b82f6;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+.timezone-option-item.selected {
+    border-color: #3b82f6;
+    background: #f0f7ff;
+    box-shadow: 0 0 0 1px #3b82f6;
+}
+.timezone-option-radio {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    accent-color: #3b82f6;
+}
+.timezone-option-content {
+    flex: 1;
+}
+.timezone-option-name {
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 2px;
+    font-size: 0.95rem;
+}
+.timezone-option-id {
+    font-size: 0.8rem;
+    color: #64748b;
+    font-weight: 500;
+}
+.timezone-option-offset {
+    font-size: 0.9rem;
+    color: #3b82f6;
+    font-weight: 700;
+    padding: 4px 8px;
+    background: white;
+    border-radius: 6px;
+    border: 1px solid #dbeafe;
+}
+
+.time-correction-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    margin-top: 8px;
+}
+.btn-cancel-correction {
+    padding: 12px 24px;
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    color: #64748b;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.btn-cancel-correction:hover {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+    color: #1e293b;
+}
+.btn-confirm-correction {
+    padding: 12px 24px;
+    background: #3b82f6;
+    border: none;
+    border-radius: 10px;
+    color: white;
+    font-size: 0.95rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.3);
+}
+.btn-confirm-correction:hover:not(:disabled) {
+    background: #2563eb;
+    box-shadow: 0 6px 10px -1px rgba(59, 130, 246, 0.4);
+    transform: translateY(-1px);
+}
+.btn-confirm-correction:disabled {
+    background: #94a3b8;
+    opacity: 0.6;
+    cursor: not-allowed;
+    box-shadow: none;
 }
 
 .booking-modal-container {
@@ -1172,33 +1517,11 @@
             });
         }
         
-        // Timezone confirmation checkbox
-        const timezoneConfirmed = document.getElementById('timezoneConfirmed');
-        if (timezoneConfirmed) {
-            timezoneConfirmed.addEventListener('change', function() {
-                const timezoneSelectorWrapper = document.getElementById('timezoneSelectorWrapper');
-                if (timezoneSelectorWrapper) {
-                    if (this.checked) {
-                        // Hide selector, use detected timezone
-                        timezoneSelectorWrapper.style.display = 'none';
-                        selectedTimezone = detectedTimezone;
-                        const bookingTimezoneValue = document.getElementById('bookingTimezoneValue');
-                        if (bookingTimezoneValue) {
-                            bookingTimezoneValue.value = detectedTimezone;
-                        }
-                        // Stop selected timezone clock
-                        if (selectedTimezoneClockInterval) {
-                            clearInterval(selectedTimezoneClockInterval);
-                            selectedTimezoneClockInterval = null;
-                        }
-                        const selectedClockDisplay = document.getElementById('selectedTimezoneClockDisplay');
-                        if (selectedClockDisplay) selectedClockDisplay.style.display = 'none';
-                    } else {
-                        // Show selector, initialize autocomplete
-                        timezoneSelectorWrapper.style.display = 'block';
-                        initializeBookingTimezoneAutocomplete();
-                    }
-                }
+        // Time correction button
+        const correctTimeBtn = document.getElementById('correctTimeBtn');
+        if (correctTimeBtn) {
+            correctTimeBtn.addEventListener('click', function() {
+                openTimeCorrectionModal();
             });
         }
     });
@@ -1393,19 +1716,25 @@
     function hasAvailability(date) {
         if (!availabilityData) return false;
         
-        // Get date string in local timezone (YYYY-MM-DD format)
+        // Use selectedTimezone or fallback
+        const tz = selectedTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+        
+        // Get the YYYY-MM-DD that this calendar day represents
         const year = date.getFullYear();
         const month = String(date.getMonth() + 1).padStart(2, '0');
         const day = String(date.getDate()).padStart(2, '0');
         const dateStr = `${year}-${month}-${day}`;
         
         const now = new Date();
-        // Check if it's today
-        const nowYear = now.getFullYear();
-        const nowMonth = String(now.getMonth() + 1).padStart(2, '0');
-        const nowDay = String(now.getDate()).padStart(2, '0');
-        const nowDateStr = `${nowYear}-${nowMonth}-${nowDay}`;
-        const isToday = dateStr === nowDateStr;
+        
+        // Use Intl.DateTimeFormat with a specific timezone to get the correct YYYY-MM-DD for slots
+        const slotDateFormatter = new Intl.DateTimeFormat('en-CA', { 
+            year: 'numeric', month: '2-digit', day: '2-digit', timeZone: tz 
+        });
+        
+        // Check if it's "today" in the target timezone
+        const nowDateStrInTz = slotDateFormatter.format(now);
+        const isTodayInTz = dateStr === nowDateStrInTz;
         
         // 1. One-Time Check
         const hasOneTime = availabilityData.one_time_slots.some(slot => {
@@ -1416,17 +1745,14 @@
                 const slotStart = new Date(slot.start.replace('Z', '+00:00'));
                 const slotEnd = new Date(slot.end.replace('Z', '+00:00'));
                 
-                // Convert slot date to local timezone for comparison
-                const slotYear = slotStart.getFullYear();
-                const slotMonth = String(slotStart.getMonth() + 1).padStart(2, '0');
-                const slotDay = String(slotStart.getDate()).padStart(2, '0');
-                const slotDateStr = `${slotYear}-${slotMonth}-${slotDay}`;
+                // Convert slot date to target timezone for comparison
+                const slotDateStr = slotDateFormatter.format(slotStart);
                 
                 if (slotDateStr !== dateStr) return false;
                 
                 // For today, ensure the slot end is in the future
                 // For future dates, any slot is fine
-                if (isToday) {
+                if (isTodayInTz) {
                     return slotEnd > now;
                 } else {
                     return slotEnd > now; // Still check future for safety
@@ -1438,8 +1764,9 @@
         if (hasOneTime) return true;
 
         // 2. Recurring Check
-        const weekdayMap = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-        const dayName = weekdayMap[date.getDay()];
+        // Use Intl.DateTimeFormat to get the day name and day of month in the target timezone
+        const dayName = new Intl.DateTimeFormat('en-US', { weekday: 'long', timeZone: tz }).format(date).toLowerCase();
+        const dayOfMonth = parseInt(new Intl.DateTimeFormat('en-US', { day: 'numeric', timeZone: tz }).format(date));
         
         const hasRecurring = availabilityData.recurring_slots.some(rule => {
             if (!rule || !rule.type) return false;
@@ -1458,14 +1785,14 @@
                 const weekdays = rule.weekdays || [];
                 matches = weekdays.includes(dayName);
             } else if (rule.type === 'monthly') {
-                const dayOfMonth = rule.day_of_month;
-                if (dayOfMonth !== null && dayOfMonth !== undefined) {
-                    if (date.getDate() === dayOfMonth) {
+                const targetDayOfMonthRule = rule.day_of_month;
+                if (targetDayOfMonthRule !== null && targetDayOfMonthRule !== undefined) {
+                    if (dayOfMonth === targetDayOfMonthRule) {
                         matches = true;
-                    } else if (dayOfMonth > 28) {
+                    } else if (targetDayOfMonthRule > 28) {
                         // Handle edge case: if slot is for day 31 but month doesn't have 31 days
                         const lastDayOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
-                        if (date.getDate() === lastDayOfMonth && dayOfMonth > lastDayOfMonth) {
+                        if (dayOfMonth === lastDayOfMonth && targetDayOfMonthRule > lastDayOfMonth) {
                             matches = true;
                         }
                     }
@@ -1475,7 +1802,7 @@
             if (!matches) return false;
             
             // For today, check if there are any future slots from this rule
-            if (isToday && rule.start_time && rule.end_time) {
+            if (isTodayInTz && rule.start_time && rule.end_time) {
                 try {
                     const [endH, endM] = rule.end_time.split(':').map(Number);
                     const windowEnd = new Date(date);
@@ -1496,14 +1823,25 @@
         if (!availabilityData) return [];
 
         const slots = [];
-        // Get date string in local timezone (YYYY-MM-DD format)
+        
+        // Use selectedTimezone or fallback
+        const tz = selectedTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+        
+        // Get the YYYY-MM-DD that this calendar day represents
         const year = date.getFullYear();
         const month = String(date.getMonth() + 1).padStart(2, '0');
         const day = String(date.getDate()).padStart(2, '0');
-        const dateStr = `${year}-${month}-${day}`;
+        const targetDateStr = `${year}-${month}-${day}`;
         
-        const weekdayMap = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-        const dayName = weekdayMap[date.getDay()];
+        // Formatter to project UTC slots into the target timezone
+        const slotDateFormatter = new Intl.DateTimeFormat('en-CA', { 
+            year: 'numeric', month: '2-digit', day: '2-digit', timeZone: tz 
+        });
+        
+        // Use Intl.DateTimeFormat to get the day name and day of month in the target timezone
+        const dayName = new Intl.DateTimeFormat('en-US', { weekday: 'long', timeZone: tz }).format(date).toLowerCase();
+        const dayOfMonth = parseInt(new Intl.DateTimeFormat('en-US', { day: 'numeric', timeZone: tz }).format(date));
+        
         const now = new Date();
 
         // 1. Add One-Time Slots
@@ -1515,34 +1853,27 @@
                 const slotStart = new Date(slot.start.replace('Z', '+00:00'));
                 const slotEnd = new Date(slot.end.replace('Z', '+00:00'));
                 
-                // Convert slot date to local timezone for comparison
-                const slotYear = slotStart.getFullYear();
-                const slotMonth = String(slotStart.getMonth() + 1).padStart(2, '0');
-                const slotDay = String(slotStart.getDate()).padStart(2, '0');
-                const slotDateStr = `${slotYear}-${slotMonth}-${slotDay}`;
+                // Format slot start time to YYYY-MM-DD in the target timezone
+                const slotDateStr = slotDateFormatter.format(slotStart);
                 
                 // Only include slots for this date that end in the future
-                if (slotDateStr === dateStr && slotEnd > now) {
+                if (slotDateStr === targetDateStr && slotEnd > now) {
                     // Generate time slots from this availability window
                     const windowSlots = generateTimeSlotsFromWindow(slotStart, slotEnd, sessionLengthMinutes);
+                    
                     windowSlots.forEach(slotStartTime => {
                         const slotEndTime = new Date(slotStartTime.getTime() + sessionLengthMinutes * 60000);
                         
-                        // Format times in 12-hour format with AM/PM
-                        // Use local time methods which automatically handle timezone conversion
-                        const formatTime = (date) => {
-                            // getHours() and getMinutes() already return local time
-                            let hours = date.getHours();
-                            const minutes = date.getMinutes();
-                            const ampm = hours >= 12 ? 'pm' : 'am';
-                            hours = hours % 12;
-                            hours = hours ? hours : 12; // the hour '0' should be '12'
-                            const minutesStr = minutes < 10 ? '0' + minutes : minutes;
-                            return `${hours}:${minutesStr} ${ampm}`;
-                        };
+                        // Use Intl.DateTimeFormat for robust timezone formatting
+                        const timeFormatter = new Intl.DateTimeFormat('en-US', {
+                            hour: 'numeric',
+                            minute: '2-digit',
+                            hour12: true,
+                            timeZone: tz
+                        });
                         
-                        const startTimeStr = formatTime(slotStartTime);
-                        const endTimeStr = formatTime(slotEndTime);
+                        const startTimeStr = timeFormatter.format(slotStartTime).toLowerCase();
+                        const endTimeStr = timeFormatter.format(slotEndTime).toLowerCase();
                         
                         // Check if we need to show adjusted end time for first session
                         let displayTime = `${startTimeStr} - ${endTimeStr}`;
@@ -1550,26 +1881,22 @@
                         let useAdjustedEndTime = false;
                         
                         if (mentorFirstSessionFree && isFirstSession && firstSessionLengthDiffers) {
-                            // Calculate adjusted end time based on first session length
                             adjustedEndTime = new Date(slotStartTime.getTime() + mentorFirstSessionLength * 60000);
-                            const adjustedEndTimeStr = formatTime(adjustedEndTime);
-                            // Just show the adjusted end time, hide the original
+                            const adjustedEndTimeStr = timeFormatter.format(adjustedEndTime).toLowerCase();
                             displayTime = `${startTimeStr} - ${adjustedEndTimeStr}`;
                             useAdjustedEndTime = true;
                         }
                         
-                        // Create a unique key for deduplication based on the actual start time
-                        const startTimeKey = slotStartTime.getTime(); // Use timestamp for uniqueness
+                        const slotEndToStore = slotEndTime;
                         
-                        slots.push({ 
-                            time: displayTime, 
+                        slots.push({
+                            time: displayTime,
+                            start: slotStartTime.toISOString(),
+                            end: slotEndToStore.toISOString(),
+                            adjustedEnd: adjustedEndTime.toISOString(),
+                            useAdjustedEndTime: useAdjustedEndTime,
                             raw: slot, 
                             type: 'one_time',
-                            start: slotStartTime.toISOString(),
-                            end: slotEndTime.toISOString(),
-                            adjustedEnd: useAdjustedEndTime ? adjustedEndTime.toISOString() : null,
-                            useAdjustedEndTime: useAdjustedEndTime,
-                            _startTimeKey: startTimeKey, // Internal key for deduplication
                             availability_slot_id: slot.id || null // For one-time slots
                         });
                     });
@@ -1587,7 +1914,7 @@
             const bookedDates = new Set(rule.booked_dates || []);
             
             // Skip if this date is in skip_dates or booked_dates
-            if (skipDates.has(dateStr) || bookedDates.has(dateStr)) return;
+            if (skipDates.has(targetDateStr) || bookedDates.has(targetDateStr)) return;
             
             let matches = false;
             
@@ -1597,14 +1924,14 @@
                 const weekdays = rule.weekdays || [];
                 matches = weekdays.includes(dayName);
             } else if (rule.type === 'monthly') {
-                const dayOfMonth = rule.day_of_month;
-                if (dayOfMonth !== null && dayOfMonth !== undefined) {
-                    if (date.getDate() === dayOfMonth) {
+                const targetDayOfMonthRule = rule.day_of_month;
+                if (targetDayOfMonthRule !== null && targetDayOfMonthRule !== undefined) {
+                    if (dayOfMonth === targetDayOfMonthRule) {
                         matches = true;
-                    } else if (dayOfMonth > 28) {
+                    } else if (targetDayOfMonthRule > 28) {
                         // Handle edge case: if slot is for day 31 but month doesn't have 31 days
                         const lastDayOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
-                        if (date.getDate() === lastDayOfMonth && dayOfMonth > lastDayOfMonth) {
+                        if (dayOfMonth === lastDayOfMonth && targetDayOfMonthRule > lastDayOfMonth) {
                             matches = true;
                         }
                     }
@@ -1630,19 +1957,17 @@
                         windowSlots.forEach(slotStart => {
                             const slotEnd = new Date(slotStart.getTime() + sessionLengthMinutes * 60000);
                             
-                            // Format times in 12-hour format with AM/PM
-                            const formatTime = (date) => {
-                                let hours = date.getHours();
-                                const minutes = date.getMinutes();
-                                const ampm = hours >= 12 ? 'pm' : 'am';
-                                hours = hours % 12;
-                                hours = hours ? hours : 12; // the hour '0' should be '12'
-                                const minutesStr = minutes < 10 ? '0' + minutes : minutes;
-                                return `${hours}:${minutesStr} ${ampm}`;
-                            };
+                            // Use Intl.DateTimeFormat for robust timezone formatting
+                            const tz = selectedTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+                            const timeFormatter = new Intl.DateTimeFormat('en-US', {
+                                hour: 'numeric',
+                                minute: '2-digit',
+                                hour12: true,
+                                timeZone: tz
+                            });
                             
-                            const startTimeStr = formatTime(slotStart);
-                            const endTimeStr = formatTime(slotEnd);
+                            const startTimeStr = timeFormatter.format(slotStart).toLowerCase();
+                            const endTimeStr = timeFormatter.format(slotEnd).toLowerCase();
                             
                             // Check if we need to show adjusted end time for first session
                             let displayTime = `${startTimeStr} - ${endTimeStr}`;
@@ -1650,10 +1975,8 @@
                             let useAdjustedEndTime = false;
                             
                             if (mentorFirstSessionFree && isFirstSession && firstSessionLengthDiffers) {
-                                // Calculate adjusted end time based on first session length
                                 adjustedEndTime = new Date(slotStart.getTime() + mentorFirstSessionLength * 60000);
-                                const adjustedEndTimeStr = formatTime(adjustedEndTime);
-                                // Just show the adjusted end time, hide the original
+                                const adjustedEndTimeStr = timeFormatter.format(adjustedEndTime).toLowerCase();
                                 displayTime = `${startTimeStr} - ${adjustedEndTimeStr}`;
                                 useAdjustedEndTime = true;
                             }
@@ -2146,14 +2469,58 @@
         
         if (!recapDate || !recapTime || !recapLength) return;
         
-        // Format date
-        const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-        const formattedDate = selectedDate.toLocaleDateString('en-US', dateOptions);
-        recapDate.textContent = formattedDate;
+        // Use selectedTimezone or fallback to browser default
+        const tz = selectedTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
         
-        // Format time (from selectedSlot.time which is already formatted)
-        recapTime.textContent = selectedSlot.time || '--';
+        // Format date in current timezone
+        try {
+            const dateOptions = { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric',
+                timeZone: tz
+            };
+            const slotStart = new Date(selectedSlot.start);
+            recapDate.textContent = new Intl.DateTimeFormat('en-US', dateOptions).format(slotStart);
+        } catch (e) {
+            console.error('Error formatting recap date:', e);
+            const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            recapDate.textContent = selectedDate.toLocaleDateString('en-US', dateOptions);
+        }
         
+        // Format time in current timezone
+        try {
+            const timeOptions = { 
+                hour: 'numeric', 
+                minute: '2-digit', 
+                hour12: true,
+                timeZone: tz
+            };
+            const formatter = new Intl.DateTimeFormat('en-US', timeOptions);
+            const startStr = formatter.format(new Date(selectedSlot.start)).toLowerCase();
+            
+            // End time depends on whether we use adjusted (first session) or regular end
+            const actualEnd = selectedSlot.useAdjustedEndTime && selectedSlot.adjustedEnd 
+                ? new Date(selectedSlot.adjustedEnd) 
+                : new Date(selectedSlot.end);
+                
+            const endStr = formatter.format(actualEnd).toLowerCase();
+            recapTime.textContent = `${startStr} - ${endStr}`;
+        } catch (e) {
+            console.error('Error formatting recap time:', e);
+            recapTime.textContent = selectedSlot.time || '--';
+        }
+        
+        // Visual Feedback: Flash red for a second
+        [recapDate, recapTime].forEach(el => {
+            el.style.transition = 'color 0.3s ease';
+            el.style.color = '#ef4444'; // Red
+            setTimeout(() => {
+                el.style.color = '#1e293b'; // Back to original color
+            }, 800);
+        });
+
         // Determine session length based on first session free logic
         const isFirstSessionCheck = isUserAuthenticated ? isFirstSession : true;
         let sessionLengthMinutes = mentorSessionLength;
@@ -2177,10 +2544,9 @@
                 const endDate = selectedSlot.useAdjustedEndTime && selectedSlot.adjustedEnd 
                     ? new Date(selectedSlot.adjustedEnd) 
                     : new Date(selectedSlot.end);
-                const diffMs = endDate.getTime() - startDate.getTime();
-                const calculatedMinutes = Math.round(diffMs / (1000 * 60));
-                sessionLengthMinutes = calculatedMinutes;
-                lengthDisplay = `${calculatedMinutes} minutes`;
+                const diffMs = endDate - startDate;
+                const diffMin = Math.round(diffMs / 60000);
+                lengthDisplay = `${diffMin} minutes`;
             } catch (e) {
                 lengthDisplay = `${mentorSessionLength} minutes`;
             }
@@ -2192,7 +2558,6 @@
     function handleEmailCollectionSubmit() {
         const emailInput = document.getElementById('bookingEmailInput');
         const noteInput = document.getElementById('bookingNoteInput');
-        const timezoneConfirmed = document.getElementById('timezoneConfirmed');
         const bookingTimezoneValue = document.getElementById('bookingTimezoneValue');
         const emailError = document.getElementById('emailError');
         const submitBtn = document.getElementById('submitBookingBtn');
@@ -2211,10 +2576,12 @@
             return;
         }
         
-        // Get timezone
+        // Get timezone - use selected timezone if set, otherwise use detected
         let timezone = detectedTimezone || 'UTC';
-        if (timezoneConfirmed && !timezoneConfirmed.checked && bookingTimezoneValue) {
-            timezone = bookingTimezoneValue.value || detectedTimezone || 'UTC';
+        if (bookingTimezoneValue && bookingTimezoneValue.value) {
+            timezone = bookingTimezoneValue.value;
+        } else if (selectedTimezone) {
+            timezone = selectedTimezone;
         }
         
         const note = noteInput ? noteInput.value.trim() : '';
@@ -2486,5 +2853,98 @@
             });
         }
     }
-</script>
+
+    function confirmTimeCorrection() {
+        const confirmBtn = document.getElementById('confirmTimeCorrectionBtn');
+        
+        if (!selectedTimezoneFromTime) {
+            alert('Please select a timezone from the list');
+            return;
+        }
+        
+        // Disable button
+        if (confirmBtn) {
+            confirmBtn.disabled = true;
+            confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Applying...';
+        }
+        
+        // Find the selected timezone object from the built list
+        const timezones = buildTimezoneList();
+        const selectedTz = timezones.find(tz => tz.id === selectedTimezoneFromTime);
+        
+        if (!selectedTz) {
+            alert('Error: Could not find selected timezone');
+            if (confirmBtn) {
+                confirmBtn.disabled = false;
+                confirmBtn.innerHTML = 'Use this Timezone';
+            }
+            return;
+        }
+        
+        // Update the booking form
+        const bookingTimezoneValue = document.getElementById('bookingTimezoneValue');
+        const detectedTimezoneName = document.getElementById('detectedTimezoneName');
+        const detectedTimezoneDisplay = document.getElementById('detectedTimezoneDisplay');
+        
+        if (bookingTimezoneValue) {
+            bookingTimezoneValue.value = selectedTz.id;
+            selectedTimezone = selectedTz.id;
+        }
+        
+        if (detectedTimezoneName) {
+            detectedTimezoneName.textContent = `${selectedTz.name} (${selectedTz.offset})`;
+        }
+        
+        if (detectedTimezoneDisplay) {
+            detectedTimezoneDisplay.innerHTML = `Set to: <strong>${selectedTz.name} (${selectedTz.offset})</strong>`;
+        }
+        
+        // Update and restart clocks
+        if (typeof startTimezoneClock === 'function') {
+            startTimezoneClock(selectedTz.id);
+        }
+        if (typeof startSelectedTimezoneClock === 'function') {
+            startSelectedTimezoneClock(selectedTz.id);
+        }
+        
+        // Refresh Booking UI components
+        // 1. Refresh Calendar days (to update visibility/dots if they rely on local 'now')
+        if (typeof renderCalendar === 'function') {
+            try {
+                renderCalendar();
+            } catch (e) {
+                console.error('Error rendering calendar:', e);
+            }
+        }
+        
+        // 2. Refresh Slots for the selected date
+        if (selectedDate && typeof renderSlots === 'function') {
+            try {
+                renderSlots(selectedDate);
+            } catch (e) {
+                console.error('Error rendering slots:', e);
+            }
+        }
+        
+        // 3. Refresh Session Recap (the appointment details mentioned by the user)
+        if (typeof updateSessionRecap === 'function') {
+            try {
+                updateSessionRecap();
+            } catch (e) {
+                console.error('Error updating session recap:', e);
+            }
+        }
+        
+        // Close modal
+        closeTimeCorrectionModal();
+        
+        // Re-enable button after a short delay to prevent flickers
+        setTimeout(() => {
+            if (confirmBtn) {
+                confirmBtn.disabled = false;
+                confirmBtn.innerHTML = 'Use this Timezone';
+            }
+        }, 300);
+    }
+    </script>
 
