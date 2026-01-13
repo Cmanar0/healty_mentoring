@@ -379,6 +379,31 @@
     flex-direction: column;
     gap: 8px;
 }
+
+/* Blink animation - exactly 3 blinks, slower */
+@keyframes blinkThreeTimes {
+    0%, 100% {
+        color: #1e293b;
+        background-color: transparent;
+    }
+    12.5%, 37.5%, 62.5% {
+        color: #2563eb;
+        background-color: #dbeafe;
+    }
+    25%, 50%, 75% {
+        color: #1e293b;
+        background-color: transparent;
+    }
+}
+
+.timezone-blink,
+.appointment-blink {
+    animation: blinkThreeTimes 2.4s ease-in-out;
+    animation-iteration-count: 1;
+    padding: 2px 6px;
+    border-radius: 4px;
+    display: inline-block;
+}
 .timezone-label {
     display: block;
     font-weight: 600;
@@ -2232,26 +2257,42 @@
         const emailModal = document.getElementById('emailCollectionModal');
         if (!emailModal) return;
         
+        // Check if we already have a corrected timezone from previous interaction
+        const bookingTimezoneValue = document.getElementById('bookingTimezoneValue');
+        let timezoneToUse = null;
+        
         // Detect timezone
         try {
             detectedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-            selectedTimezone = detectedTimezone;
+            
+            // Use corrected timezone if available, otherwise use detected
+            if (bookingTimezoneValue && bookingTimezoneValue.value) {
+                timezoneToUse = bookingTimezoneValue.value;
+                selectedTimezone = timezoneToUse;
+            } else {
+                timezoneToUse = detectedTimezone;
+                selectedTimezone = detectedTimezone;
+                // Set hidden timezone value to detected if not already set
+                if (bookingTimezoneValue) {
+                    bookingTimezoneValue.value = detectedTimezone;
+                }
+            }
             
             // Update timezone display using TIMEZONE_OPTIONS if available
             const detectedTimezoneName = document.getElementById('detectedTimezoneName');
             if (detectedTimezoneName) {
-                let tzDisplay = detectedTimezone;
+                let tzDisplay = timezoneToUse;
                 let offset = '';
                 
                 // Try to use TIMEZONE_OPTIONS from timezone-checker.js
                 if (window.TIMEZONE_OPTIONS && window.TIMEZONE_OPTIONS.length > 0) {
-                    const tzObj = window.TIMEZONE_OPTIONS.find(tz => tz.id === detectedTimezone);
+                    const tzObj = window.TIMEZONE_OPTIONS.find(tz => tz.id === timezoneToUse);
                     if (tzObj) {
                         tzDisplay = tzObj.name;
                         // Get current offset (handles DST)
                         const now = new Date();
                         const formatter = new Intl.DateTimeFormat('en', {
-                            timeZone: detectedTimezone,
+                            timeZone: timezoneToUse,
                             timeZoneName: 'longOffset'
                         });
                         const parts = formatter.formatToParts(now);
@@ -2260,13 +2301,13 @@
                     }
                 } else {
                     // Fallback: format manually
-                    const tzParts = detectedTimezone.split('/');
-                    const tzCity = tzParts[tzParts.length - 1] || detectedTimezone;
+                    const tzParts = timezoneToUse.split('/');
+                    const tzCity = tzParts[tzParts.length - 1] || timezoneToUse;
                     tzDisplay = tzCity.replace(/_/g, ' ');
                     
                     const now = new Date();
                     const formatter = new Intl.DateTimeFormat('en', {
-                        timeZone: detectedTimezone,
+                        timeZone: timezoneToUse,
                         timeZoneName: 'longOffset'
                     });
                     const parts = formatter.formatToParts(now);
@@ -2277,14 +2318,8 @@
                 detectedTimezoneName.textContent = offset ? `${tzDisplay} (${offset})` : tzDisplay;
             }
             
-            // Set hidden timezone value
-            const bookingTimezoneValue = document.getElementById('bookingTimezoneValue');
-            if (bookingTimezoneValue) {
-                bookingTimezoneValue.value = detectedTimezone;
-            }
-            
-            // Start live clock
-            startTimezoneClock(detectedTimezone);
+            // Start live clock with the timezone we're using (corrected or detected)
+            startTimezoneClock(timezoneToUse);
         } catch (e) {
             console.error('Error detecting timezone:', e);
             detectedTimezone = 'UTC';
@@ -2438,7 +2473,7 @@
         const isFirstSessionCheck = isUserAuthenticated ? isFirstSession : true;
         
         if (mentorFirstSessionFree && isFirstSessionCheck) {
-            priceDisplay.innerHTML = '$0 <span style="font-size: 0.85rem; font-weight: 600;">(First Session Free)</span>';
+            priceDisplay.textContent = '$0';
             if (priceNote) {
                 priceNote.style.display = 'block';
                 priceNote.textContent = 'This is your first session with this mentor';
@@ -2512,13 +2547,14 @@
             recapTime.textContent = selectedSlot.time || '--';
         }
         
-        // Visual Feedback: Flash red for a second
+        // Visual Feedback: Blink 3 times (slower animation)
         [recapDate, recapTime].forEach(el => {
-            el.style.transition = 'color 0.3s ease';
-            el.style.color = '#ef4444'; // Red
-            setTimeout(() => {
-                el.style.color = '#1e293b'; // Back to original color
-            }, 800);
+            if (el) {
+                el.classList.remove('appointment-blink');
+                // Force reflow to restart animation
+                void el.offsetWidth;
+                el.classList.add('appointment-blink');
+            }
         });
 
         // Determine session length based on first session free logic
