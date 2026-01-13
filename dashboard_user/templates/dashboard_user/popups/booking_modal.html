@@ -223,7 +223,7 @@
                     <i class="fas fa-sign-in-alt"></i>
                     <span>Login to Book This Slot</span>
                 </button>
-                <button type="button" class="btn btn-secondary btn-full" onclick="handleBackToBooking()" style="justify-content: center;">
+                <button type="button" class="btn btn-secondary btn-full" onclick="closeAccountExistsModal()" style="justify-content: center;">
                     <i class="fas fa-arrow-left"></i>
                     <span>Back</span>
                 </button>
@@ -242,7 +242,7 @@
                 <div class="booking-modal-grid">
                     <!-- Left Column: Session Summary -->
                     <div class="summary-column" style="background: #f1f5f9;">
-                        <div style="margin-bottom: 32px;">
+                        <div >
                             <h2 class="booking-modal-title" style="font-size: 1.75rem; color: #0f172a; margin-bottom: 4px;">Book Your Session</h2>
                             <p style="font-size: 0.9rem; color: #64748b; margin-bottom: 24px;">Review the session details below</p>
                         </div>
@@ -2399,11 +2399,9 @@
     });
     
     function handleBackToBooking() {
-        // Close account exists modal
+        // Close account exists modal only
+        // Keep the Book Your Session modal (emailCollectionModal) open
         closeAccountExistsModal();
-        
-        // Close email collection modal if it's open
-        closeEmailCollectionModal();
         
         // Ensure main booking modal content is visible
         const mainContent = document.getElementById('bookingMainContent');
