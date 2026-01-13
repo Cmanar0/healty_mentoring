@@ -48,9 +48,6 @@
                         View My Sessions
                     </button>
                 </div>
-                <button class="booking-success-close-btn" onclick="closeBookingModalFromSuccess()">
-                    Close
-                </button>
             </div>
         </div>
         
@@ -1095,8 +1092,9 @@
     align-items: center;
     justify-content: center;
     height: 100%;
-    padding: 40px;
+    padding: 32px 40px;
     min-height: 400px;
+    overflow-y: auto;
 }
 
 .booking-success-content {
@@ -1106,23 +1104,23 @@
 }
 
 .booking-success-icon {
-    font-size: 64px;
+    font-size: 56px;
     color: #10b981;
-    margin-bottom: 24px;
-}
-
-.booking-success-title {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: #1e293b;
     margin-bottom: 16px;
 }
 
+.booking-success-title {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 12px;
+}
+
 .booking-success-message {
-    font-size: 1rem;
+    font-size: 0.95rem;
     color: #64748b;
-    margin-bottom: 20px;
-    line-height: 1.6;
+    margin-bottom: 16px;
+    line-height: 1.5;
 }
 
 .booking-success-email {
@@ -1130,11 +1128,11 @@
     align-items: center;
     justify-content: center;
     gap: 8px;
-    padding: 12px 20px;
+    padding: 10px 18px;
     background: #f1f5f9;
     border-radius: 8px;
-    margin-bottom: 24px;
-    font-size: 0.95rem;
+    margin-bottom: 16px;
+    font-size: 0.9rem;
     color: #475569;
 }
 
@@ -1147,31 +1145,31 @@
     background: #f8fafc;
     border: 1px solid #e2e8f0;
     border-radius: 8px;
-    padding: 20px;
-    margin-bottom: 24px;
+    padding: 16px;
+    margin-bottom: 16px;
 }
 
 .booking-success-instructions h3 {
-    font-size: 1rem;
+    font-size: 0.95rem;
     font-weight: 600;
     color: #1e293b;
-    margin-bottom: 12px;
+    margin-bottom: 10px;
 }
 
 .booking-success-instructions ol {
     margin: 0;
     padding-left: 20px;
     color: #64748b;
-    font-size: 0.9rem;
-    line-height: 1.8;
+    font-size: 0.85rem;
+    line-height: 1.6;
 }
 
 .booking-success-instructions li {
-    margin-bottom: 8px;
+    margin-bottom: 6px;
 }
 
 .booking-success-actions {
-    margin-bottom: 16px;
+    margin-bottom: 0;
 }
 
 .booking-success-btn {
@@ -1192,22 +1190,6 @@
 
 .booking-success-btn:hover {
     background: #059669;
-}
-
-.booking-success-close-btn {
-    background: transparent;
-    color: #64748b;
-    border: 1px solid #e2e8f0;
-    padding: 10px 20px;
-    border-radius: 8px;
-    font-size: 0.9rem;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.booking-success-close-btn:hover {
-    background: #f1f5f9;
-    color: #475569;
 }
 
 .booking-error-title {
@@ -1414,10 +1396,10 @@
             if (e.target === modal) closeBookingModal();
         });
         
-        // Close on Escape key
+        // Close on Escape key - close only the topmost modal
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && modal && modal.classList.contains('open')) {
-                closeBookingModal();
+            if (e.key === 'Escape') {
+                handleEscapeKey();
             }
         });
         
@@ -1568,6 +1550,48 @@
         renderCalendar();
     }
 
+    // Handle ESC key - close only the topmost visible modal
+    function handleEscapeKey() {
+        // Helper function to check if modal is visible
+        function isModalVisible(modalElement) {
+            if (!modalElement) return false;
+            const display = modalElement.style.display;
+            const computedDisplay = window.getComputedStyle(modalElement).display;
+            // Modal is visible if display is not 'none' (could be 'flex', '', or other)
+            return display !== 'none' && computedDisplay !== 'none';
+        }
+        
+        // Check modals in order from highest z-index to lowest
+        // 1. Time Correction Modal (z-index: 10001) - highest
+        const timeCorrectionModal = document.getElementById('timeCorrectionModal');
+        if (isModalVisible(timeCorrectionModal)) {
+            if (typeof closeTimeCorrectionModal === 'function') {
+                closeTimeCorrectionModal();
+            }
+            return;
+        }
+        
+        // 2. Account Exists Modal (z-index: 10000)
+        const accountExistsModal = document.getElementById('accountExistsModal');
+        if (isModalVisible(accountExistsModal)) {
+            closeAccountExistsModal();
+            return;
+        }
+        
+        // 3. Email Collection Modal / Book Your Session (z-index: 10000)
+        const emailCollectionModal = document.getElementById('emailCollectionModal');
+        if (isModalVisible(emailCollectionModal)) {
+            closeEmailCollectionModal();
+            return;
+        }
+        
+        // 4. Booking Modal / Select a Date & Time (z-index: 10000) - base
+        if (modal && modal.classList.contains('open')) {
+            closeBookingModal();
+            return;
+        }
+    }
+    
     function closeBookingModal() {
         if (!modal) return;
         modal.classList.remove('open');
@@ -1622,6 +1646,62 @@
         // Show success state
         if (successState) {
             successState.style.display = 'flex';
+            
+            // Update success message with session date and time (using corrected timezone)
+            const successMessage = document.getElementById('bookingSuccessMessage');
+            if (successMessage && selectedSlot && selectedDate) {
+                // Use selectedTimezone or fallback to browser default
+                const tz = selectedTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+                
+                let dateStr = '';
+                let timeStr = '';
+                
+                // Format date in current timezone
+                try {
+                    const dateOptions = { 
+                        weekday: 'long', 
+                        year: 'numeric', 
+                        month: 'long', 
+                        day: 'numeric',
+                        timeZone: tz
+                    };
+                    const slotStart = new Date(selectedSlot.start);
+                    dateStr = new Intl.DateTimeFormat('en-US', dateOptions).format(slotStart);
+                } catch (e) {
+                    const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+                    dateStr = selectedDate.toLocaleDateString('en-US', dateOptions);
+                }
+                
+                // Format time in current timezone
+                try {
+                    const timeOptions = { 
+                        hour: 'numeric', 
+                        minute: '2-digit', 
+                        hour12: true,
+                        timeZone: tz
+                    };
+                    const formatter = new Intl.DateTimeFormat('en-US', timeOptions);
+                    const startStr = formatter.format(new Date(selectedSlot.start)).toLowerCase();
+                    
+                    // End time depends on whether we use adjusted (first session) or regular end
+                    const actualEnd = selectedSlot.useAdjustedEndTime && selectedSlot.adjustedEnd 
+                        ? new Date(selectedSlot.adjustedEnd) 
+                        : new Date(selectedSlot.end);
+                    
+                    const endStr = formatter.format(actualEnd).toLowerCase();
+                    timeStr = `${startStr} - ${endStr}`;
+                } catch (e) {
+                    timeStr = selectedSlot.time || '';
+                }
+                
+                if (dateStr && timeStr) {
+                    successMessage.innerHTML = `A confirmation email has been sent to your email address.<br><br><strong>Session Details:</strong><br>${dateStr}<br>${timeStr}`;
+                } else {
+                    successMessage.textContent = 'A confirmation email has been sent to your email address.';
+                }
+            } else if (successMessage) {
+                successMessage.textContent = 'A confirmation email has been sent to your email address.';
+            }
             
             // Set email
             const emailText = document.getElementById('bookingSuccessEmailText');
