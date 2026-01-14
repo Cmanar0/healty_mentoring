@@ -1854,7 +1854,22 @@
                 const isFirstSession = !!ev.extendedProps?.isFirstSession;
                 if (sessionSettingsPriceInput && !isFirstSession) {
                   const v = String(sessionSettingsPriceInput.value || '').trim();
-                  ev.setExtendedProp('sessionPrice', v === '' ? null : v);
+                  // Normalize price: convert to number then back to string to handle "0.00" -> "0"
+                  if (v === '') {
+                    ev.setExtendedProp('sessionPrice', null);
+                  } else {
+                    try {
+                      const num = parseFloat(v);
+                      if (isNaN(num)) {
+                        ev.setExtendedProp('sessionPrice', null);
+                      } else {
+                        // Store as string, normalized (0 -> "0", not "0.00")
+                        ev.setExtendedProp('sessionPrice', num === 0 ? '0' : num.toString());
+                      }
+                    } catch (e) {
+                      ev.setExtendedProp('sessionPrice', null);
+                    }
+                  }
                 } else if (isFirstSession) {
                   // Keep the original price for first sessions (don't allow changes)
                   const originalPrice = ev.extendedProps?.sessionPrice;
@@ -2132,79 +2147,91 @@
       last_invite_sent_at: ev.extendedProps?.lastInviteSentAt || null
     };
     
-    // Check if snapshot already exists in changedSessionsById
-    if (changedSessionsById.has(sessionDbId)) {
-      // Get original session data
-      const original = originalSessionsById.get(sessionDbId);
-      if (original) {
-        // Normalize ISO strings for comparison (handle format differences)
-        const normalizeIso = (iso) => {
-          if (!iso) return null;
-          try {
-            // Parse and re-stringify to normalize format
-            return new Date(iso).toISOString();
-          } catch (e) {
-            return String(iso);
-          }
-        };
-        
-        const normalizedStart = normalizeIso(fullSessionSnapshot.start);
-        const normalizedEnd = normalizeIso(fullSessionSnapshot.end);
-        const normalizedExpiresAt = normalizeIso(fullSessionSnapshot.expires_at);
-        const normalizedLastInviteSentAt = normalizeIso(fullSessionSnapshot.last_invite_sent_at);
-        
-        const originalNormalizedStart = normalizeIso(original.start);
-        const originalNormalizedEnd = normalizeIso(original.end);
-        const originalNormalizedExpiresAt = normalizeIso(original.expires_at);
-        const originalNormalizedLastInviteSentAt = normalizeIso(original.last_invite_sent_at);
-        
-        // Normalize session_price for comparison (handle string vs number)
-        const normalizePrice = (price) => {
-          if (price === null || price === undefined) return null;
-          return String(price);
-        };
-        
-        // Compare new snapshot with original
-        const isSame = 
-          fullSessionSnapshot.id === original.id &&
-          normalizedStart === originalNormalizedStart &&
-          normalizedEnd === originalNormalizedEnd &&
-          fullSessionSnapshot.status === original.status &&
-          normalizePrice(fullSessionSnapshot.session_price) === normalizePrice(original.session_price) &&
-          (fullSessionSnapshot.client_email === original.client_email || 
-           (fullSessionSnapshot.client_email === null && original.client_email === null)) &&
-          normalizedExpiresAt === originalNormalizedExpiresAt &&
-          fullSessionSnapshot.session_type === original.session_type &&
-          fullSessionSnapshot.invitation_sent === original.invitation_sent &&
-          fullSessionSnapshot.can_remind === original.can_remind &&
-          normalizedLastInviteSentAt === originalNormalizedLastInviteSentAt;
-        
-        // Debug logging for comparison
-        if (!isSame) {
-          console.log('[MentorCalendar] onSessionMutated - Comparison failed for session', sessionDbId, {
-            start: { snapshot: normalizedStart, original: originalNormalizedStart, match: normalizedStart === originalNormalizedStart },
-            end: { snapshot: normalizedEnd, original: originalNormalizedEnd, match: normalizedEnd === originalNormalizedEnd },
-            status: { snapshot: fullSessionSnapshot.status, original: original.status, match: fullSessionSnapshot.status === original.status },
-            price: { snapshot: normalizePrice(fullSessionSnapshot.session_price), original: normalizePrice(original.session_price), match: normalizePrice(fullSessionSnapshot.session_price) === normalizePrice(original.session_price) },
-            email: { snapshot: fullSessionSnapshot.client_email, original: original.client_email, match: fullSessionSnapshot.client_email === original.client_email }
-          });
+    // Get original session data for comparison
+    const original = originalSessionsById.get(sessionDbId);
+    
+    if (original) {
+      // Normalize ISO strings for comparison (handle format differences)
+      const normalizeIso = (iso) => {
+        if (!iso) return null;
+        try {
+          // Parse and re-stringify to normalize format
+          return new Date(iso).toISOString();
+        } catch (e) {
+          return String(iso);
         }
+      };
+      
+      const normalizedStart = normalizeIso(fullSessionSnapshot.start);
+      const normalizedEnd = normalizeIso(fullSessionSnapshot.end);
+      
+      const originalNormalizedStart = normalizeIso(original.start);
+      const originalNormalizedEnd = normalizeIso(original.end);
+      
+      // Normalize session_price for comparison (handle string vs number, null vs undefined, decimal places)
+      const normalizePrice = (price) => {
+        // Handle null, undefined, empty string
+        if (price === null || price === undefined || price === '') return null;
         
-        if (isSame) {
-          // If they are completely same, delete the snapshot
+        // Convert to string and trim
+        const priceStr = String(price).trim();
+        if (priceStr === '' || priceStr === 'null' || priceStr === 'undefined') return null;
+        
+        // Try to parse as number to normalize decimal places (e.g., "0.00" -> "0", "100.50" -> "100.5")
+        try {
+          const num = parseFloat(priceStr);
+          if (isNaN(num)) {
+            // If not a valid number, return null
+            return null;
+          }
+          // For zero values, normalize to "0" (handles "0.00", "0.0", "0")
+          if (num === 0) return '0';
+          // For non-zero, convert to string and remove trailing zeros after decimal point
+          // This handles "100.50" vs "100.5" but preserves "100.01" vs "100.1"
+          return num.toString();
+        } catch (e) {
+          // If parsing fails, return null
+          return null;
+        }
+      };
+      
+      const normalizedPrice = normalizePrice(fullSessionSnapshot.session_price);
+      const originalNormalizedPrice = normalizePrice(original.session_price);
+      
+      // Only check the three critical fields: start datetime, end datetime, and price
+      // If all three match the original, we don't track it as a change
+      const criticalFieldsMatch = 
+        normalizedStart === originalNormalizedStart &&
+        normalizedEnd === originalNormalizedEnd &&
+        normalizedPrice === originalNormalizedPrice;
+      
+      // Debug logging for comparison (always log for debugging)
+      console.log('[MentorCalendar] onSessionMutated - Price comparison for session', sessionDbId, {
+        snapshotPrice: fullSessionSnapshot.session_price,
+        originalPrice: original.session_price,
+        normalizedSnapshotPrice: normalizedPrice,
+        normalizedOriginalPrice: originalNormalizedPrice,
+        priceMatch: normalizedPrice === originalNormalizedPrice,
+        startMatch: normalizedStart === originalNormalizedStart,
+        endMatch: normalizedEnd === originalNormalizedEnd,
+        criticalFieldsMatch: criticalFieldsMatch
+      });
+      
+      if (criticalFieldsMatch) {
+        // All three critical fields (start, end, price) match the original
+        // Remove from tracking, even if other fields (status, email, etc.) changed
+        if (changedSessionsById.has(sessionDbId)) {
           changedSessionsById.delete(sessionDbId);
-          console.log('[MentorCalendar] onSessionMutated - Session', sessionDbId, 'matches original, removed from changedSessionsById');
-        } else {
-          // If they are not the same, always REWRITE the snapshot
-          changedSessionsById.set(sessionDbId, fullSessionSnapshot);
+          console.log('[MentorCalendar] onSessionMutated - Critical fields match original, removed from changedSessionsById');
         }
       } else {
-        // Original not found, but we have a change - keep it
-        console.warn('[MentorCalendar] onSessionMutated - Original not found for session', sessionDbId);
+        // At least one critical field is different - track as change
         changedSessionsById.set(sessionDbId, fullSessionSnapshot);
+        console.log('[MentorCalendar] onSessionMutated - Critical fields differ, tracking session', sessionDbId);
       }
     } else {
-      // No snapshot exists, simply add it
+      // Original not found - this shouldn't happen for saved sessions, but keep tracking to be safe
+      console.warn('[MentorCalendar] onSessionMutated - Original not found for session', sessionDbId, '- keeping change');
       changedSessionsById.set(sessionDbId, fullSessionSnapshot);
     }
     
@@ -2260,7 +2287,22 @@
     const isFirstSession = !!ev.extendedProps?.isFirstSession;
     if (sessionSettingsPriceInput && !isFirstSession) {
       const v = String(sessionSettingsPriceInput.value || '').trim();
-      ev.setExtendedProp('sessionPrice', v === '' ? null : v);
+      // Normalize price: convert to number then back to string to handle "0.00" -> "0"
+      if (v === '') {
+        ev.setExtendedProp('sessionPrice', null);
+      } else {
+        try {
+          const num = parseFloat(v);
+          if (isNaN(num)) {
+            ev.setExtendedProp('sessionPrice', null);
+          } else {
+            // Store as string, normalized (0 -> "0", not "0.00")
+            ev.setExtendedProp('sessionPrice', num === 0 ? '0' : num.toString());
+          }
+        } catch (e) {
+          ev.setExtendedProp('sessionPrice', null);
+        }
+      }
     } else if (isFirstSession) {
       // Keep the original price for first sessions (don't allow changes)
       const originalPrice = ev.extendedProps?.sessionPrice;
@@ -5233,6 +5275,33 @@
       const originalStartFormatted = original ? formatDate(original.start) : null;
       const originalEndFormatted = original ? formatTime(original.end) : null;
       
+      // Normalize price for comparison (same logic as in onSessionMutated)
+      const normalizePrice = (price) => {
+        // Handle null, undefined, empty string
+        if (price === null || price === undefined || price === '') return null;
+        
+        // Convert to string and trim
+        const priceStr = String(price).trim();
+        if (priceStr === '' || priceStr === 'null' || priceStr === 'undefined') return null;
+        
+        // Try to parse as number to normalize decimal places (e.g., "0.00" -> "0", "100.50" -> "100.5")
+        try {
+          const num = parseFloat(priceStr);
+          if (isNaN(num)) {
+            // If not a valid number, return null
+            return null;
+          }
+          // For zero values, normalize to "0" (handles "0.00", "0.0", "0")
+          if (num === 0) return '0';
+          // For non-zero, convert to string and remove trailing zeros after decimal point
+          // This handles "100.50" vs "100.5" but preserves "100.01" vs "100.1"
+          return num.toString();
+        } catch (e) {
+          // If parsing fails, return null
+          return null;
+        }
+      };
+      
       // Check which fields changed (with normalized date comparison)
       const normalizedSnapshotStart = normalizeIso(snapshot.start);
       const normalizedSnapshotEnd = normalizeIso(snapshot.end);
@@ -5242,11 +5311,12 @@
         normalizedSnapshotStart !== normalizedOriginalStart || 
         normalizedSnapshotEnd !== normalizedOriginalEnd
       );
-      const priceChanged = original && (
-        (snapshot.session_price === null && original.session_price !== null) ||
-        (snapshot.session_price !== null && original.session_price === null) ||
-        (snapshot.session_price !== null && original.session_price !== null && String(snapshot.session_price) !== String(original.session_price))
-      );
+      
+      // Use normalized price comparison (same as tracking logic)
+      const normalizedSnapshotPrice = normalizePrice(snapshot.session_price);
+      const normalizedOriginalPrice = original ? normalizePrice(original.session_price) : null;
+      const priceChanged = original && normalizedSnapshotPrice !== normalizedOriginalPrice;
+      
       const statusChanged = original && snapshot.status !== original.status;
       
       // Status badges - current and future
