@@ -73,12 +73,32 @@ def profile(request):
                 profile.first_name = first_name
             if last_name is not None:
                 profile.last_name = last_name
+            
+            # Store old timezone before updating
+            old_selected_timezone = profile.selected_timezone
+            
             if time_zone is not None:
                 profile.selected_timezone = time_zone
                 # Also update legacy time_zone field for backward compatibility
                 profile.time_zone = time_zone
             
             profile.save()
+            
+            # Send email if timezone was changed (not first time setting)
+            # Condition: old_selected_timezone was not empty AND it's different from new one
+            if old_selected_timezone and old_selected_timezone.strip() and old_selected_timezone != time_zone and time_zone:
+                try:
+                    from general.email_service import EmailService
+                    EmailService.send_timezone_change_email(
+                        user=request.user,
+                        new_timezone=time_zone,
+                        old_timezone=old_selected_timezone
+                    )
+                except Exception as e:
+                    # Log error but don't fail the request
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.error(f"Error sending timezone change email: {str(e)}")
             return redirect("/dashboard/user/profile/")
     
     # Compute profile completion percentage

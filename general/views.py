@@ -92,6 +92,9 @@ def update_timezone(request):
             if not selected_timezone:
                 return JsonResponse({'success': False, 'error': 'Timezone is required'}, status=400)
             
+            # Store old timezone before updating
+            old_selected_timezone = profile.selected_timezone
+            
             profile.selected_timezone = selected_timezone
             profile.confirmed_timezone_mismatch = confirmed_mismatch
             
@@ -100,6 +103,22 @@ def update_timezone(request):
                 profile.confirmed_timezone_mismatch = False
             
             profile.save()
+            
+            # Send email if timezone was changed (not first time setting)
+            # Condition: old_selected_timezone was not empty AND it's different from new one
+            if old_selected_timezone and old_selected_timezone.strip() and old_selected_timezone != selected_timezone:
+                try:
+                    from general.email_service import EmailService
+                    EmailService.send_timezone_change_email(
+                        user=request.user,
+                        new_timezone=selected_timezone,
+                        old_timezone=old_selected_timezone
+                    )
+                except Exception as e:
+                    # Log error but don't fail the request
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.error(f"Error sending timezone change email: {str(e)}")
             
             return JsonResponse({
                 'success': True,
@@ -114,10 +133,29 @@ def update_timezone(request):
             if not detected_timezone:
                 return JsonResponse({'success': False, 'error': 'Detected timezone is required'}, status=400)
             
+            # Store old timezone before updating
+            old_selected_timezone = profile.selected_timezone
+            
             profile.detected_timezone = detected_timezone
             profile.selected_timezone = detected_timezone
             profile.confirmed_timezone_mismatch = False
             profile.save()
+            
+            # Send email if timezone was changed (not first time setting)
+            # Condition: old_selected_timezone was not empty AND it's different from new one
+            if old_selected_timezone and old_selected_timezone.strip() and old_selected_timezone != detected_timezone:
+                try:
+                    from general.email_service import EmailService
+                    EmailService.send_timezone_change_email(
+                        user=request.user,
+                        new_timezone=detected_timezone,
+                        old_timezone=old_selected_timezone
+                    )
+                except Exception as e:
+                    # Log error but don't fail the request
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.error(f"Error sending timezone change email: {str(e)}")
             
             return JsonResponse({
                 'success': True,

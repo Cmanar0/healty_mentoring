@@ -390,4 +390,140 @@ class EmailService:
             template_name='session_booking_confirmation',
             context=context,
         )
+    
+    @staticmethod
+    def send_timezone_change_email(user, new_timezone: str, old_timezone: str) -> bool:
+        """
+        Send timezone change notification email with upcoming sessions.
+        
+        Args:
+            user: CustomUser instance
+            new_timezone: New timezone IANA string (e.g., "Europe/Prague")
+            old_timezone: Old timezone IANA string (for reference)
+            
+        Returns:
+            bool: True if email was sent successfully
+        """
+        from general.models import Session
+        from django.utils import timezone as django_timezone
+        from zoneinfo import ZoneInfo
+        from datetime import timezone as dt_timezone
+        
+        # Get user's name
+        user_name = "there"
+        if hasattr(user, 'profile') and user.profile:
+            if hasattr(user.profile, 'first_name') and user.profile.first_name:
+                user_name = user.profile.first_name
+        
+        # Get user's profile to determine role
+        profile = None
+        if hasattr(user, 'user_profile'):
+            profile = user.user_profile
+        elif hasattr(user, 'mentor_profile'):
+            profile = user.mentor_profile
+        
+        if not profile:
+            return False
+        
+        # Get upcoming sessions
+        now = django_timezone.now()
+        upcoming_sessions = []
+        
+        try:
+            # Convert new timezone string to ZoneInfo
+            try:
+                tzinfo = ZoneInfo(str(new_timezone))
+            except Exception:
+                tzinfo = dt_timezone.utc
+            
+            # Get sessions based on user role
+            if hasattr(user, 'user_profile') and user.user_profile:
+                # Regular user - get sessions where user is an attendee
+                sessions = Session.objects.filter(
+                    attendees=user,
+                    status__in=['invited', 'confirmed'],
+                    start_datetime__gte=now
+                ).order_by('start_datetime').select_related('created_by', 'created_by__mentor_profile').prefetch_related('attendees')
+            elif hasattr(user, 'mentor_profile') and user.mentor_profile:
+                # Mentor - get sessions using ManyToMany relationship
+                mentor_profile = user.mentor_profile
+                sessions = mentor_profile.sessions.filter(
+                    status__in=['invited', 'confirmed'],
+                    start_datetime__gte=now
+                ).order_by('start_datetime').select_related('created_by').prefetch_related('attendees')
+            else:
+                sessions = Session.objects.none()
+            
+            # Format sessions with new timezone
+            for session in sessions:
+                # Get mentor/client name
+                mentor_name = None
+                if hasattr(user, 'user_profile') and user.user_profile:
+                    # User viewing sessions - get mentor name
+                    if session.created_by and hasattr(session.created_by, 'mentor_profile'):
+                        mentor_profile = session.created_by.mentor_profile
+                        mentor_name = f"{mentor_profile.first_name} {mentor_profile.last_name}".strip()
+                        if not mentor_name:
+                            mentor_name = session.created_by.email.split('@')[0]
+                    else:
+                        mentor_name = session.created_by.email.split('@')[0] if session.created_by else 'Mentor'
+                elif hasattr(user, 'mentor_profile') and user.mentor_profile:
+                    # Mentor viewing sessions - get client name
+                    client = session.attendees.first() if session.attendees.exists() else None
+                    if client and hasattr(client, 'user_profile'):
+                        mentor_name = f"{client.user_profile.first_name} {client.user_profile.last_name}".strip()
+                        if not mentor_name:
+                            mentor_name = client.email.split('@')[0]
+                    else:
+                        mentor_name = client.email.split('@')[0] if client else 'Client'
+                
+                # Convert session times to new timezone
+                try:
+                    start_local = session.start_datetime.astimezone(tzinfo)
+                    end_local = session.end_datetime.astimezone(tzinfo)
+                    
+                    date_local = start_local.strftime('%A, %B %d, %Y')
+                    start_time_local = start_local.strftime('%I:%M %p').lstrip('0')
+                    end_time_local = end_local.strftime('%I:%M %p').lstrip('0')
+                except Exception:
+                    # Fallback to UTC formatting
+                    date_local = session.start_datetime.strftime('%A, %B %d, %Y')
+                    start_time_local = session.start_datetime.strftime('%I:%M %p').lstrip('0')
+                    end_time_local = session.end_datetime.strftime('%I:%M %p').lstrip('0')
+                
+                upcoming_sessions.append({
+                    'mentor_name': mentor_name or 'Session',
+                    'status': session.status,
+                    'date_local': date_local,
+                    'start_time_local': start_time_local,
+                    'end_time_local': end_time_local,
+                })
+        except Exception as e:
+            # Log error but continue
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error formatting sessions for timezone change email: {str(e)}")
+        
+        # Format timezone name for display
+        try:
+            # Try to get a friendly timezone name
+            tz_parts = new_timezone.split('/')
+            timezone_display = tz_parts[-1].replace('_', ' ') if len(tz_parts) > 1 else new_timezone
+        except Exception:
+            timezone_display = new_timezone
+        
+        context = {
+            'user': user,
+            'user_name': user_name,
+            'new_timezone': timezone_display,
+            'old_timezone': old_timezone,
+            'upcoming_sessions': upcoming_sessions,
+        }
+        
+        return EmailService.send_email(
+            subject="Your timezone has been updated",
+            recipient_email=user.email,
+            template_name='timezone_change_notification',
+            context=context,
+        )
 

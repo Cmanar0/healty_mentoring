@@ -653,6 +653,26 @@
     opacity: 0.8;
   }
 
+  /* --- First session badge - positioned to the left of X button --- */
+  .mentor-calendar-root .fc-event.event-first-session::before,
+  .mentor-calendar-root .fc-timegrid-event.event-first-session::before,
+  .mentor-calendar-root .fc-event[data-first-session="true"]::before,
+  .mentor-calendar-root .fc-timegrid-event[data-first-session="true"]::before {
+    content: '1st';
+    position: absolute;
+    top: 6px;
+    right: 36px; /* Positioned to the left of X button (X is at right: 6px, width: 20px, so right: 36px leaves more space) */
+    background: #ef4444; /* Red background */
+    color: #ffffff;
+    font-size: 9px;
+    font-weight: 700;
+    padding: 2px 4px;
+    border-radius: 3px;
+    line-height: 1;
+    z-index: 10;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  }
+
   /* --- Completed session styling (dark green) --- */
   /* IMPORTANT: FullCalendar calculates event height based on start/end time and time grid slot height (9px per 5-min slot) */
   /* The height is set via inline styles by FullCalendar - we must NOT override it or change positioning context */
@@ -2990,7 +3010,8 @@
           session_type: s.session_type || 'individual',
           invitation_sent: !!s.invitation_sent,
           can_remind: !!s.can_remind,
-          last_invite_sent_at: s.last_invite_sent_at || null
+          last_invite_sent_at: s.last_invite_sent_at || null,
+          is_first_session: !!s.is_first_session
         };
         originalSessionsById.set(s.id, sessionSnapshot);
       });
@@ -3004,6 +3025,12 @@
         // Don't display cancelled sessions in the calendar
         if (status === 'cancelled') return;
         const colors = sessionColorsForStatus(status);
+        // Add class for first session styling
+        const classNames = ['event-type-session'];
+        if (s.is_first_session) {
+          classNames.push('event-first-session');
+        }
+        
         calendar.addEvent({
           id: `session_${s.id}`,
           start: s.start,
@@ -3012,7 +3039,7 @@
           backgroundColor: colors.bg,
           borderColor: colors.border,
           textColor: colors.text,
-          classNames: ['event-type-session'],
+          classNames: classNames,
           editable: true,
           extendedProps: {
             slotMode: 'session',
@@ -3027,7 +3054,8 @@
             sessionType: s.session_type || 'individual',
             invitationSent: !!s.invitation_sent,
             canRemind: !!s.can_remind,
-            lastInviteSentAt: s.last_invite_sent_at || null
+            lastInviteSentAt: s.last_invite_sent_at || null,
+            isFirstSession: !!s.is_first_session
           }
         });
       });
@@ -3477,10 +3505,16 @@
         if (!visibleSessionIds.has(sessionId) && sessionData.start && sessionData.end) {
           // Create a calendar event object for this session so it can be included in the payload
           // This ensures past sessions are preserved even if not visible
+          const classNames = ['event-type-session'];
+          if (sessionData.is_first_session) {
+            classNames.push('event-first-session');
+          }
+          
           allSessionEvents.push({
             id: `session_${sessionId}`,
             start: new Date(sessionData.start),
             end: new Date(sessionData.end),
+            classNames: classNames,
             extendedProps: {
               slotMode: 'session',
               sessionDbId: sessionId,
@@ -3489,7 +3523,8 @@
               clientEmail: sessionData.client_email || null,
               clientFirstName: sessionData.client_first_name || null,
               clientLastName: sessionData.client_last_name || null,
-              sessionType: sessionData.session_type || 'individual'
+              sessionType: sessionData.session_type || 'individual',
+              isFirstSession: !!sessionData.is_first_session
             }
           });
         }
@@ -4034,6 +4069,10 @@
             if (mode === 'session') {
               const status = normalizeSessionStatus(info.event?.extendedProps?.status || 'draft');
               info.el.setAttribute('data-session-status', status);
+              // Set data attribute for first session styling
+              if (info.event?.extendedProps?.isFirstSession) {
+                info.el.setAttribute('data-first-session', 'true');
+              }
             }
 
           // Tag recurring instances so we can style the whole series (blink)

@@ -1290,6 +1290,9 @@
     const isFirstSession = {% if user.is_authenticated %}{% if is_first_session %}true{% else %}false{% endif %}{% else %}true{% endif %}; // For non-authenticated users, always assume first session
     const firstSessionLengthDiffers = mentorFirstSessionLength !== mentorSessionLength;
     
+    // User's selected timezone from profile (if authenticated)
+    const userSelectedTimezone = {% if user.is_authenticated and user.profile.selected_timezone %}'{{ user.profile.selected_timezone }}'{% else %}null{% endif %};
+    
     // Detected timezone (will be set on modal open)
     let detectedTimezone = null;
     let selectedTimezone = null;
@@ -1311,6 +1314,26 @@
     let modal, currentMonthLabel, calendarDays, slotsCol, slotsList, selectedDateLabel, prevMonthBtn, nextMonthBtn, slotsFooter, bookSlotBtn;
 
     document.addEventListener('DOMContentLoaded', function() {
+        // Initialize timezone from user profile if authenticated (before any other operations)
+        if (isUserAuthenticated && userSelectedTimezone) {
+            selectedTimezone = userSelectedTimezone;
+            // Also set detected timezone for consistency
+            try {
+                detectedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+            } catch (e) {
+                detectedTimezone = 'UTC';
+            }
+        } else {
+            // For non-authenticated users, detect timezone
+            try {
+                detectedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+                selectedTimezone = detectedTimezone;
+            } catch (e) {
+                detectedTimezone = 'UTC';
+                selectedTimezone = 'UTC';
+            }
+        }
+        
         // Safe access to data script
         const oneTimeData = document.getElementById('one-time-slots-data');
         const recurringData = document.getElementById('recurring-slots-data');
@@ -1536,6 +1559,26 @@
     // --- Modal Logic ---
     function openBookingModal() {
         if (!modal) return; // Guard clause
+        
+        // Initialize timezone from user profile if authenticated
+        if (isUserAuthenticated && userSelectedTimezone) {
+            selectedTimezone = userSelectedTimezone;
+            // Also set detected timezone for consistency
+            try {
+                detectedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+            } catch (e) {
+                detectedTimezone = 'UTC';
+            }
+        } else {
+            // For non-authenticated users, detect timezone
+            try {
+                detectedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+                selectedTimezone = detectedTimezone;
+            } catch (e) {
+                detectedTimezone = 'UTC';
+                selectedTimezone = 'UTC';
+            }
+        }
         
         // Reset State on Open
         currentDate = new Date(); // Reset to current month

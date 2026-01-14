@@ -56,6 +56,28 @@ def dashboard(request):
                     if not client_name:
                         client_name = client.email.split('@')[0]
                 
+                # Check if this is the first session with this client
+                is_first_session = False
+                if client:
+                    try:
+                        user_profile = client.user_profile if hasattr(client, 'user_profile') else None
+                        if user_profile:
+                            # Get all sessions with this client (excluding cancelled/expired)
+                            all_client_sessions = mentor_profile.sessions.filter(
+                                attendees=client
+                            ).exclude(status__in=['cancelled', 'expired']).exclude(id=session.id)
+                            
+                            # If there are no other sessions with this client, this is the first
+                            if not all_client_sessions.exists():
+                                is_first_session = True
+                            else:
+                                # Check if this session is the earliest one
+                                earliest_session = all_client_sessions.order_by('start_datetime').first()
+                                if earliest_session and session.start_datetime and earliest_session.start_datetime:
+                                    is_first_session = session.start_datetime <= earliest_session.start_datetime
+                    except Exception:
+                        is_first_session = False
+                
                 upcoming_sessions.append({
                     'id': session.id,
                     'start_datetime': session.start_datetime,
@@ -63,6 +85,7 @@ def dashboard(request):
                     'status': session.status,
                     'client_name': client_name or 'Client',
                     'note': session.note,
+                    'is_first_session': is_first_session,
                 })
     except Exception as e:
         # Log error but don't fail the request
@@ -682,11 +705,33 @@ def profile(request):
                 profile.first_name = first_name
             if last_name is not None:
                 profile.last_name = last_name
+            
+            # Store old timezone before updating
+            old_selected_timezone = profile.selected_timezone
+            
             profile.time_zone = time_zone
             # Also update selected_timezone and clear confirmed mismatch when user updates via profile form
             if time_zone:
                 profile.selected_timezone = time_zone
                 profile.confirmed_timezone_mismatch = False
+            
+            profile.save()
+            
+            # Send email if timezone was changed (not first time setting)
+            # Condition: old_selected_timezone was not empty AND it's different from new one
+            if old_selected_timezone and old_selected_timezone.strip() and old_selected_timezone != time_zone and time_zone:
+                try:
+                    from general.email_service import EmailService
+                    EmailService.send_timezone_change_email(
+                        user=request.user,
+                        new_timezone=time_zone,
+                        old_timezone=old_selected_timezone
+                    )
+                except Exception as e:
+                    # Log error but don't fail the request
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.error(f"Error sending timezone change email: {str(e)}")
             
             # Handle mentor type - just store as string
             if mentor_type:
@@ -1096,6 +1141,28 @@ def my_sessions(request):
                 if not client_name:
                     client_name = client.email.split('@')[0]
             
+            # Check if this is the first session with this client
+            is_first_session = False
+            if client:
+                try:
+                    user_profile = client.user_profile if hasattr(client, 'user_profile') else None
+                    if user_profile:
+                        # Get all sessions with this client (excluding cancelled/expired)
+                        all_client_sessions = mentor_profile.sessions.filter(
+                            attendees=client
+                        ).exclude(status__in=['cancelled', 'expired']).exclude(id=session.id)
+                        
+                        # If there are no other sessions with this client, this is the first
+                        if not all_client_sessions.exists():
+                            is_first_session = True
+                        else:
+                            # Check if this session is the earliest one
+                            earliest_session = all_client_sessions.order_by('start_datetime').first()
+                            if earliest_session and session.start_datetime and earliest_session.start_datetime:
+                                is_first_session = session.start_datetime <= earliest_session.start_datetime
+                except Exception:
+                    is_first_session = False
+            
             initial_sessions.append({
                 'id': session.id,
                 'start_datetime': session.start_datetime,
@@ -1103,6 +1170,7 @@ def my_sessions(request):
                 'status': session.status,
                 'client_name': client_name or 'Client',
                 'note': session.note,
+                'is_first_session': is_first_session,
             })
     except Exception as e:
         # Log error but don't fail the request
@@ -1229,6 +1297,28 @@ def get_dashboard_upcoming_sessions(request):
                 if not client_name:
                     client_name = client.email.split('@')[0]
             
+            # Check if this is the first session with this client
+            is_first_session = False
+            if client:
+                try:
+                    user_profile = client.user_profile if hasattr(client, 'user_profile') else None
+                    if user_profile:
+                        # Get all sessions with this client (excluding cancelled/expired)
+                        all_client_sessions = mentor_profile.sessions.filter(
+                            attendees=client
+                        ).exclude(status__in=['cancelled', 'expired']).exclude(id=session.id)
+                        
+                        # If there are no other sessions with this client, this is the first
+                        if not all_client_sessions.exists():
+                            is_first_session = True
+                        else:
+                            # Check if this session is the earliest one
+                            earliest_session = all_client_sessions.order_by('start_datetime').first()
+                            if earliest_session and session.start_datetime and earliest_session.start_datetime:
+                                is_first_session = session.start_datetime <= earliest_session.start_datetime
+                except Exception:
+                    is_first_session = False
+            
             sessions_data.append({
                 'id': session.id,
                 'start_datetime': session.start_datetime.isoformat(),
@@ -1236,6 +1326,7 @@ def get_dashboard_upcoming_sessions(request):
                 'status': session.status,
                 'client_name': client_name or 'Client',
                 'note': session.note or '',
+                'is_first_session': is_first_session,
             })
         
         return JsonResponse({
@@ -2322,7 +2413,37 @@ def get_availability(request):
                 exp_dt = s.expires_at
                 if exp_dt and exp_dt.tzinfo is None:
                     exp_dt = dj_timezone.make_aware(exp_dt)
-                client_email = (s.attendees.first().email if s.attendees.exists() else None)
+                client = s.attendees.first() if s.attendees.exists() else None
+                client_email = client.email if client else None
+
+                # Check if this is the first session with this client
+                is_first_session = False
+                if client:
+                    try:
+                        user_profile = client.user_profile if hasattr(client, 'user_profile') else None
+                        if user_profile:
+                            # Get all sessions with this client (excluding cancelled/expired)
+                            all_client_sessions = mentor_profile.sessions.filter(
+                                attendees=client
+                            ).exclude(status__in=['cancelled', 'expired']).exclude(id=s.id)
+                            
+                            # If there are no other sessions with this client, this is the first
+                            if not all_client_sessions.exists():
+                                is_first_session = True
+                            else:
+                                # Check if this session is the earliest one
+                                earliest_session = all_client_sessions.order_by('start_datetime').first()
+                                if earliest_session and start_dt and earliest_session.start_datetime:
+                                    # Compare with timezone awareness
+                                    if start_dt.tzinfo is None:
+                                        start_dt = dj_timezone.make_aware(start_dt)
+                                    if earliest_session.start_datetime.tzinfo is None:
+                                        earliest_dt = dj_timezone.make_aware(earliest_session.start_datetime)
+                                    else:
+                                        earliest_dt = earliest_session.start_datetime
+                                    is_first_session = start_dt <= earliest_dt
+                    except Exception:
+                        is_first_session = False
 
                 inv = invitation_by_session_id.get(s.id)
                 invitation_sent = bool(inv) and bool(client_email)
@@ -2352,6 +2473,7 @@ def get_availability(request):
                     'invitation_sent': invitation_sent,
                     'can_remind': can_remind,
                     'last_invite_sent_at': last_sent_at.isoformat() if last_sent_at else None,
+                    'is_first_session': is_first_session,
                 })
         except Exception:
             sessions = []

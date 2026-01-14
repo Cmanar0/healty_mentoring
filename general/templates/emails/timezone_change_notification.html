@@ -1,0 +1,65 @@
+{% extends "emails/base.html" %}
+
+{% block title %}Timezone Updated{% endblock %}
+
+{% block content %}
+<h1>Your Timezone Has Been Updated</h1>
+
+<p class="content-text">
+  Hi{% if user_name %} {{ user_name }}{% endif %},
+</p>
+
+<p class="content-text">
+  We've updated your timezone to <strong>{{ new_timezone }}</strong>. Below are your upcoming sessions with their updated times:
+</p>
+
+{% if upcoming_sessions %}
+<div style="background-color: #f9fafb; border-radius: 12px; padding: 24px; margin: 24px 0; border: 1px solid #e5e7eb;">
+  <h2 style="font-size: 18px; font-weight: 600; color: #111827; margin-top: 0; margin-bottom: 20px;">Upcoming Sessions</h2>
+  
+  {% for session in upcoming_sessions %}
+  <div style="background-color: #ffffff; border-radius: 8px; padding: 16px; margin-bottom: 16px; border: 1px solid #e5e7eb;">
+    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
+      <div>
+        <strong style="color: #111827; font-size: 16px;">{{ session.mentor_name }}</strong>
+        <span style="display: inline-block; padding: 4px 8px; background-color: {% if session.status == 'confirmed' %}#dbeafe{% else %}#fef3c7{% endif %}; color: {% if session.status == 'confirmed' %}#1e40af{% else %}#92400e{% endif %}; border-radius: 4px; font-size: 12px; font-weight: 600; margin-left: 8px; text-transform: capitalize;">
+          {{ session.status }}
+        </span>
+      </div>
+    </div>
+    
+    <div style="font-size: 15px; color: #374151; line-height: 1.6;">
+      <p style="margin: 0 0 8px 0;">
+        <strong style="color: #111827;">Date:</strong> {{ session.date_local }}<br>
+        <strong style="color: #111827;">Time:</strong> {{ session.start_time_local }} – {{ session.end_time_local }}
+        <span style="color: #6b7280;">({{ new_timezone }})</span>
+      </p>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<p class="content-text" style="color: #6b7280; font-style: italic;">
+  You don't have any upcoming sessions at this time.
+</p>
+{% endif %}
+
+{% if user.profile.role == 'user' %}
+<div class="btn-container">
+  <a href="{{ site_domain }}/dashboard/user/my-sessions/" class="btn">
+    View My Sessions
+  </a>
+</div>
+{% elif user.profile.role == 'mentor' %}
+<div class="btn-container">
+  <a href="{{ site_domain }}/dashboard/mentor/calendar/" class="btn">
+    View My Calendar
+  </a>
+</div>
+{% endif %}
+
+<p class="content-text" style="font-size: 14px; color: #6b7280; margin-top: 24px;">
+  All your future sessions will be displayed in your new timezone. If you have any questions, please don't hesitate to contact us.
+</p>
+{% endblock %}
+
