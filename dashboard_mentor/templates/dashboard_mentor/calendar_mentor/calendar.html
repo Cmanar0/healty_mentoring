@@ -904,6 +904,7 @@
   const sessionSettingsMinutesValueEl = document.getElementById('sessionSettingsMinutesValue');
   const sessionSettingsPriceInput = document.getElementById('sessionSettingsPrice');
   const sessionSettingsPriceWarningEl = document.getElementById('sessionSettingsPriceWarning');
+  const sessionSettingsFirstSessionPriceNote = document.getElementById('sessionSettingsFirstSessionPriceNote');
   const sessionSettingsInviteCardTitle = document.getElementById('sessionSettingsInviteCardTitle');
   const sessionSettingsClientEmailInput = document.getElementById('sessionSettingsClientEmail');
   const sessionSettingsClientSuggestionsEl = document.getElementById('sessionSettingsClientSuggestions');
@@ -1443,6 +1444,27 @@
       if (sessionSettingsPriceInput) {
         const p = fcEvent.extendedProps?.sessionPrice;
         sessionSettingsPriceInput.value = (p !== undefined && p !== null) ? String(p) : '';
+        
+        // Disable price input for first sessions
+        const isFirstSession = !!fcEvent.extendedProps?.isFirstSession;
+        sessionSettingsPriceInput.disabled = isFirstSession;
+        if (isFirstSession) {
+          sessionSettingsPriceInput.title = 'Price cannot be changed for first sessions';
+          sessionSettingsPriceInput.style.cursor = 'not-allowed';
+          sessionSettingsPriceInput.style.opacity = '0.6';
+          // Show note about first session price restriction
+          if (sessionSettingsFirstSessionPriceNote) {
+            sessionSettingsFirstSessionPriceNote.hidden = false;
+          }
+        } else {
+          sessionSettingsPriceInput.title = '';
+          sessionSettingsPriceInput.style.cursor = '';
+          sessionSettingsPriceInput.style.opacity = '';
+          // Hide note if not first session
+          if (sessionSettingsFirstSessionPriceNote) {
+            sessionSettingsFirstSessionPriceNote.hidden = true;
+          }
+        }
       }
       if (sessionSettingsClientEmailInput) {
         sessionSettingsClientEmailInput.value = fcEvent.extendedProps?.clientEmail ? String(fcEvent.extendedProps.clientEmail) : '';
@@ -1828,9 +1850,15 @@
                 ev.setEnd(endDt.toJSDate());
                 
                 // Persist overrides on the event
-                if (sessionSettingsPriceInput) {
+                // Don't allow price changes for first sessions
+                const isFirstSession = !!ev.extendedProps?.isFirstSession;
+                if (sessionSettingsPriceInput && !isFirstSession) {
                   const v = String(sessionSettingsPriceInput.value || '').trim();
                   ev.setExtendedProp('sessionPrice', v === '' ? null : v);
+                } else if (isFirstSession) {
+                  // Keep the original price for first sessions (don't allow changes)
+                  const originalPrice = ev.extendedProps?.sessionPrice;
+                  ev.setExtendedProp('sessionPrice', originalPrice !== undefined ? originalPrice : null);
                 }
                 ev.setExtendedProp('clientEmail', email || null);
                 // Look up client name from suggestions
@@ -2228,9 +2256,15 @@
     ev.setEnd(endDt.toJSDate());
 
     // Persist overrides on the event (saved to DB on Save)
-    if (sessionSettingsPriceInput) {
+    // Don't allow price changes for first sessions
+    const isFirstSession = !!ev.extendedProps?.isFirstSession;
+    if (sessionSettingsPriceInput && !isFirstSession) {
       const v = String(sessionSettingsPriceInput.value || '').trim();
       ev.setExtendedProp('sessionPrice', v === '' ? null : v);
+    } else if (isFirstSession) {
+      // Keep the original price for first sessions (don't allow changes)
+      const originalPrice = ev.extendedProps?.sessionPrice;
+      ev.setExtendedProp('sessionPrice', originalPrice !== undefined ? originalPrice : null);
     }
     if (sessionSettingsClientEmailInput) {
       const email = String(sessionSettingsClientEmailInput.value || '').trim();
