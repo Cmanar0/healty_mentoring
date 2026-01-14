@@ -516,10 +516,12 @@
 (function() {
     'use strict';
     
+    try {
     let standaloneSelectedTimezone = null;
     let standaloneCurrentTimezone = null;
     let standaloneDetectedTimezone = null;
     let standaloneSaveCallback = null;
+    let standaloneAutoSaveOnClose = false; // Flag to track if we should auto-save detected on close
 
     // Helper functions (same as booking modal version)
     if (typeof window.formatTimezoneName !== 'function') {
@@ -643,7 +645,7 @@
     }
 
     // Main modal functions
-    window.openStandaloneTimezoneModal = function(currentTimezone, detectedTimezone, callback) {
+    window.openStandaloneTimezoneModal = function(currentTimezone, detectedTimezone, callback, preSelectedTimezone, autoSaveOnClose) {
         const modal = document.getElementById('standaloneTimezoneModal');
         if (!modal) {
             console.error('Standalone timezone modal not found');
@@ -653,7 +655,8 @@
         standaloneCurrentTimezone = currentTimezone || null;
         standaloneDetectedTimezone = detectedTimezone || null;
         standaloneSaveCallback = callback || null;
-        standaloneSelectedTimezone = null;
+        standaloneSelectedTimezone = preSelectedTimezone || null;
+        standaloneAutoSaveOnClose = autoSaveOnClose === true; // Only auto-save if explicitly set to true
         
         // Update detection status badges
         updateStandaloneDetectionStatus();
@@ -686,7 +689,7 @@
             timeInput.value = `${String(hours24).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
         }
         
-        // Reset UI state
+        // Reset UI state first
         const confirmBtn = document.getElementById('standaloneConfirmTimezoneBtn');
         if (confirmBtn) {
             confirmBtn.disabled = true;
@@ -699,6 +702,24 @@
         if (nameEl && infoContainer) {
             nameEl.textContent = 'Please select...';
             infoContainer.classList.remove('has-selection');
+        }
+
+        // Handle pre-slection if provided
+        if (preSelectedTimezone) {
+            const timezones = buildTimezoneList();
+            const preSelectedTzObj = timezones.find(tz => tz.id === preSelectedTimezone);
+            if (preSelectedTzObj) {
+                if (nameEl && infoContainer) {
+                    nameEl.textContent = preSelectedTzObj.name || preSelectedTzObj.id;
+                    infoContainer.classList.add('has-selection');
+                }
+                if (confirmBtn) {
+                    confirmBtn.disabled = false;
+                }
+                // We'll let the preview update function handle the list and radio button selection
+                // just setting standaloneSelectedTimezone is enough for the logic, but we need
+                // to make sure it persists through the list rebuild
+            }
         }
         
         // Show modal - ensure it's on top
@@ -724,17 +745,111 @@
                 updateStandaloneTimezonePreview();
             }, 200);
         }
+        
+        // Set up update button handler (in case modal was loaded dynamically)
+        // Note: setupUpdateDetectedButton is defined later, but function hoisting should handle it
+        if (typeof setupUpdateDetectedButton === 'function') {
+            setupUpdateDetectedButton();
+        }
     };
     
     window.closeStandaloneTimezoneModal = function() {
         const modal = document.getElementById('standaloneTimezoneModal');
-        if (modal) {
+        if (!modal) return;
+        
+        // If auto-save on close is enabled (for timezone mismatch detection),
+        // automatically save the detected timezone when modal is closed
+        if (standaloneAutoSaveOnClose && standaloneDetectedTimezone) {
+            // Save detected timezone automatically
+            saveDetectedTimezoneOnClose(standaloneDetectedTimezone);
+        } else {
+            // Just close the modal without saving
             modal.style.opacity = '0';
             setTimeout(() => {
                 modal.style.display = 'none';
             }, 200);
         }
     };
+    
+    // Function to save detected timezone when modal is closed (old behavior)
+    function saveDetectedTimezoneOnClose(detectedTimezone) {
+        // Get CSRF token
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+        
+        // Use the 'use_detected' action which sets both detected and selected to detected
+        fetch('/dashboard/update-timezone/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                action: 'use_detected',
+                detected_timezone: detectedTimezone
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                console.log('[StandaloneTimezoneModal] Auto-saved detected timezone on close:', detectedTimezone);
+                // Update the userProfileData element
+                const userProfileData = document.getElementById('userProfileData');
+                if (userProfileData) {
+                    const profileData = JSON.parse(userProfileData.textContent);
+                    profileData.detected_timezone = data.detected_timezone || detectedTimezone;
+                    profileData.selected_timezone = data.selected_timezone || detectedTimezone;
+                    profileData.confirmed_timezone_mismatch = false;
+                    userProfileData.textContent = JSON.stringify(profileData);
+                }
+                
+                // Close modal
+                const modal = document.getElementById('standaloneTimezoneModal');
+                if (modal) {
+                    modal.style.opacity = '0';
+                    setTimeout(() => {
+                        modal.style.display = 'none';
+                    }, 200);
+                }
+                
+                // Reload page to reflect changes
+                window.location.reload();
+            } else {
+                console.error('[StandaloneTimezoneModal] Failed to auto-save detected timezone:', data.error);
+                // Still close the modal even if save failed
+                const modal = document.getElementById('standaloneTimezoneModal');
+                if (modal) {
+                    modal.style.opacity = '0';
+                    setTimeout(() => {
+                        modal.style.display = 'none';
+                    }, 200);
+                }
+            }
+        })
+        .catch(error => {
+            console.error('[StandaloneTimezoneModal] Error auto-saving detected timezone:', error);
+            // Still close the modal even if save failed
+            const modal = document.getElementById('standaloneTimezoneModal');
+            if (modal) {
+                modal.style.opacity = '0';
+                setTimeout(() => {
+                    modal.style.display = 'none';
+                }, 200);
+            }
+        });
+    }
     
     // Update detection status badges
     function updateStandaloneDetectionStatus() {
@@ -767,13 +882,17 @@
     }
     
     // Handle "Update" button to use detected timezone
-    document.addEventListener('DOMContentLoaded', function() {
+    function setupUpdateDetectedButton() {
         const updateBtn = document.getElementById('standaloneUseDetectedTimezoneBtn');
         if (updateBtn) {
-            updateBtn.addEventListener('click', function() {
+            // Remove existing listener if any
+            const newUpdateBtn = updateBtn.cloneNode(true);
+            updateBtn.parentNode.replaceChild(newUpdateBtn, updateBtn);
+            
+            newUpdateBtn.addEventListener('click', function() {
                 if (!standaloneDetectedTimezone) return;
                 
-                // Find the detected timezone in the current list
+                // Find the detected timezone in the full list
                 const timezones = buildTimezoneList();
                 const detectedTz = timezones.find(tz => tz.id === standaloneDetectedTimezone);
                 
@@ -789,11 +908,13 @@
                         infoContainer.classList.add('has-selection');
                     }
                     
-                    // Update radio buttons
+                    // Try to find and select it in the current list
                     const radioButtons = document.querySelectorAll('input[name="standaloneTimezoneSelection"]');
+                    let foundInList = false;
                     radioButtons.forEach(radio => {
                         if (radio.value === detectedTz.id) {
                             radio.checked = true;
+                            foundInList = true;
                             // Update item styling
                             const item = radio.closest('.standalone-tc-option-item');
                             if (item) {
@@ -802,6 +923,35 @@
                             }
                         }
                     });
+                    
+                    // If not in current list, calculate time for this timezone and update input
+                    if (!foundInList) {
+                        try {
+                            const now = new Date();
+                            const formatter = new Intl.DateTimeFormat('en', {
+                                timeZone: detectedTz.id,
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                hour12: false
+                            });
+                            const parts = formatter.formatToParts(now);
+                            const hourPart = parts.find(p => p.type === 'hour');
+                            const minutePart = parts.find(p => p.type === 'minute');
+                            const hours24 = hourPart ? parseInt(hourPart.value) : now.getHours();
+                            const minutes = minutePart ? parseInt(minutePart.value) : now.getMinutes();
+                            
+                            const timeInput = document.getElementById('standaloneCorrectTimeInput');
+                            if (timeInput) {
+                                timeInput.value = `${String(hours24).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+                                // Trigger preview update to show matching timezones
+                                setTimeout(() => {
+                                    updateStandaloneTimezonePreview();
+                                }, 100);
+                            }
+                        } catch (e) {
+                            console.warn('Could not calculate time for detected timezone:', e);
+                        }
+                    }
                     
                     // Enable save button
                     const confirmBtn = document.getElementById('standaloneConfirmTimezoneBtn');
@@ -814,7 +964,10 @@
                 }
             });
         }
-    });
+    }
+    
+    // Set up on DOMContentLoaded
+    document.addEventListener('DOMContentLoaded', setupUpdateDetectedButton);
     
     function updateStandaloneTimezonePreview() {
         const timeInput = document.getElementById('standaloneCorrectTimeInput');
@@ -864,12 +1017,27 @@
             confirmBtn.innerHTML = 'Save Timezone';
             
             // Find preselected index
-            let preselectedIndex = 0;
-            if (standaloneCurrentTimezone) {
+            let preselectedIndex = -1;
+            
+            // Priority 1: Specifically selected/pre-selected timezone
+            if (standaloneSelectedTimezone) {
+                const foundIndex = matchingTimezones.findIndex(tz => tz.id === standaloneSelectedTimezone);
+                if (foundIndex !== -1) {
+                    preselectedIndex = foundIndex;
+                }
+            }
+            
+            // Priority 2: Current timezone (fallback if nothing selected)
+            if (preselectedIndex === -1 && standaloneCurrentTimezone) {
                 const foundIndex = matchingTimezones.findIndex(tz => tz.id === standaloneCurrentTimezone);
                 if (foundIndex !== -1) {
                     preselectedIndex = foundIndex;
                 }
+            }
+            
+            // Priority 3: First item (default) -> Actually better to not select anything by default if no match
+            if (preselectedIndex === -1 && matchingTimezones.length > 0) {
+                 preselectedIndex = 0;
             }
             
             // Show timezone options
@@ -1046,6 +1214,24 @@
             }
         }
     });
+    
+    // Debug: Verify functions are assigned
+    console.log('[StandaloneTimezoneModal] Script loaded. Functions assigned:', {
+        openStandaloneTimezoneModal: typeof window.openStandaloneTimezoneModal,
+        closeStandaloneTimezoneModal: typeof window.closeStandaloneTimezoneModal,
+        saveStandaloneTimezone: typeof window.saveStandaloneTimezone
+    });
+    } catch (error) {
+        console.error('[StandaloneTimezoneModal] Error initializing modal:', error);
+    }
 })();
+
+// Verify functions are available after IIFE executes
+if (typeof window.openStandaloneTimezoneModal !== 'function') {
+    console.error('[StandaloneTimezoneModal] ERROR: openStandaloneTimezoneModal was not assigned to window!');
+    console.error('This usually means there was a JavaScript error in the modal script. Check the console above.');
+} else {
+    console.log('[StandaloneTimezoneModal] Successfully initialized. Function is available.');
+}
 </script>
 

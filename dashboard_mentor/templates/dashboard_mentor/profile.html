@@ -3430,8 +3430,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 </script>
 
-<!-- Include Standalone Timezone Correction Modal -->
-{% include 'general/modals/timezone_correction_modal.html' %}
+<!-- Note: Standalone Timezone Correction Modal is already included in base.html -->
 
 <script>
 (function() {
@@ -3495,23 +3494,49 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize display on page load
     document.addEventListener('DOMContentLoaded', function() {
         const currentTimezone = '{{ user.profile.selected_timezone|default:"" }}';
+        const detectedTimezone = '{{ user.profile.detected_timezone|default:"" }}';
+        const confirmedMismatch = '{{ user.profile.confirmed_timezone_mismatch|yesno:"true,false" }}' === 'true';
+        
         if (currentTimezone) {
             updateTimezoneDisplay(currentTimezone);
         }
         
-        // Button click handler
+        // Check for mismatch and show mismatch modal if needed
+        if (detectedTimezone && currentTimezone && detectedTimezone !== currentTimezone && !confirmedMismatch) {
+            // Wait a bit for modals to load
+            setTimeout(function() {
+                if (typeof window.openTimezoneMismatchModal === 'function') {
+                    window.openTimezoneMismatchModal(detectedTimezone, currentTimezone);
+                }
+            }, 500);
+        }
+        
+        // Button click handler - check for mismatch first, otherwise open standalone modal
         const changeBtn = document.getElementById('changeTimezoneBtn');
         if (changeBtn) {
             changeBtn.addEventListener('click', function() {
                 const currentTz = '{{ user.profile.selected_timezone|default:"" }}';
                 const detectedTz = '{{ user.profile.detected_timezone|default:"" }}';
-                if (typeof openStandaloneTimezoneModal === 'function') {
-                    openStandaloneTimezoneModal(currentTz, detectedTz, function(savedTimezone) {
-                        // Callback after save - update display
-                        updateTimezoneDisplay(savedTimezone);
-                    });
+                const confirmedMismatch = '{{ user.profile.confirmed_timezone_mismatch|yesno:"true,false" }}' === 'true';
+                
+                // If there's a mismatch and it's not confirmed, show mismatch modal
+                if (detectedTz && currentTz && detectedTz !== currentTz && !confirmedMismatch) {
+                    if (typeof window.openTimezoneMismatchModal === 'function') {
+                        window.openTimezoneMismatchModal(detectedTz, currentTz);
+                    }
                 } else {
-                    console.error('openStandaloneTimezoneModal function not found. Make sure the modal is included.');
+                    // Otherwise, use standalone modal for general timezone change
+                    if (typeof window.openStandaloneTimezoneModal === 'function') {
+                        window.openStandaloneTimezoneModal(currentTz, detectedTz, function(savedTimezone) {
+                            // Callback after save - update display
+                            updateTimezoneDisplay(savedTimezone);
+                            // Reload to check for new mismatches
+                            window.location.reload();
+                        });
+                    } else {
+                        console.error('openStandaloneTimezoneModal function not found. Make sure the modal is included.');
+                        console.log('Available window functions:', Object.keys(window).filter(k => k.includes('Timezone')));
+                    }
                 }
             });
         }

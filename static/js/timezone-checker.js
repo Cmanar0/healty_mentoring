@@ -249,11 +249,24 @@
     function checkTimezoneMismatch(detectedTimezone, selectedTimezone, confirmedMismatch) {
         // Note: detected_timezone is already updated in DB at this point (auto-updated)
         
-        // If no selected timezone, set it to detected and we're done
+        // If no selected timezone, set it to detected - BUT allow user to verify via modal for better UX
+        // Logic change: Instead of silently updating, let's prompt the user if it's their first time too?
+        // Original logic: silent update if empty. Let's keep it but maybe show modal for verification?
+        // Actually, if it's empty, we treat it as "not set", so we should ask them.
+        
         if (!selectedTimezone || selectedTimezone.trim() === '') {
-            updateSelectedTimezone(detectedTimezone, false, function() {
-                // All good
-            });
+            // First time setup - ask user to confirm time
+             if (window.openStandaloneTimezoneModal) {
+                window.openStandaloneTimezoneModal(
+                    detectedTimezone, // Use detected as current reference
+                    detectedTimezone, // Detected
+                    function(newTimezone) {
+                         // Callback when saved - page reloads automatically in modal logic
+                    },
+                    detectedTimezone, // Pre-select detected
+                    true // autoSaveOnClose = true: automatically save detected timezone when modal is closed
+                );
+            }
             return;
         }
 
@@ -275,397 +288,32 @@
         }
 
         // Show popup asking user to confirm which timezone to use
-        showTimezoneMismatchModal(detectedTimezone, selectedTimezone);
+        // Use the old mismatch modal with side-by-side comparison
+        if (window.openTimezoneMismatchModal) {
+            window.openTimezoneMismatchModal(detectedTimezone, selectedTimezone);
+        } else if (window.openStandaloneTimezoneModal) {
+            // Fallback to standalone modal if mismatch modal not available
+            window.openStandaloneTimezoneModal(
+                detectedTimezone, // Current (detected) time is the reference for "what time is it?"
+                detectedTimezone, 
+                function(newTimezone) {
+                     // Callback when saved
+                },
+                selectedTimezone, // Pre-select their stored choice so they see the difference
+                true // autoSaveOnClose = true: automatically save detected timezone when modal is closed
+            );
+        }
     }
 
     function showFirstTimeLoginModal(detectedTz) {
-        // Create modal overlay
-        const modalOverlay = document.createElement('div');
-        modalOverlay.className = 'timezone-modal-overlay';
-        modalOverlay.id = 'timezoneModalOverlay';
-        
-        // Create modal content
-        const modalContent = document.createElement('div');
-        modalContent.className = 'timezone-modal-content';
-        
-        let detectedTzName = detectedTz;
-        const detectedTzObj = TIMEZONE_OPTIONS.find(tz => tz.id === detectedTz);
-        if (detectedTzObj) {
-            const currentOffset = getCurrentTimezoneOffset(detectedTz);
-            detectedTzName = detectedTzObj.name + ' (' + currentOffset + ')';
-        }
-        
-        // Format current time in detected timezone
-        const now = new Date();
-        const detectedTime = formatTime(now, detectedTz);
-        const detectedDate = formatDate(now, detectedTz);
-        
-        modalContent.innerHTML = `
-            <div class="timezone-modal-header">
-                <h3 class="timezone-modal-title">
-                    <i class="fas fa-clock" style="color: var(--dash-primary); margin-right: 8px;"></i>
-                    Set Your Timezone
-                </h3>
-                <button type="button" class="timezone-modal-close" id="timezoneModalClose">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <div class="timezone-modal-body">
-                <p class="timezone-modal-text">
-                    To ensure accurate session scheduling, please set your timezone. We've detected your location timezone, but you can choose a different one if needed.
-                </p>
-                <div class="timezone-mismatch-comparison">
-                    <div class="timezone-mismatch-item timezone-detected">
-                        <div class="timezone-mismatch-label">Detected (Current Location)</div>
-                        <div class="timezone-mismatch-value">${detectedTzName}</div>
-                        <div class="timezone-mismatch-date">${detectedDate}</div>
-                        <div class="timezone-mismatch-time">${detectedTime}</div>
-                        <button type="button" class="btn btn-primary btn-timezone-action" id="useDetectedBtn">
-                            Use detected timezone
-                        </button>
-                    </div>
-                    <div class="timezone-mismatch-divider">or</div>
-                    <div class="timezone-mismatch-item timezone-selected">
-                        <div class="timezone-mismatch-label">Select Your Timezone</div>
-                        <div class="timezone-mismatch-select-wrapper">
-                            <div class="autocomplete-container" style="position: relative;">
-                                <input type="text" id="timezoneModalInput" class="form-input autocomplete-input" placeholder="Search for your timezone..." autocomplete="off" value="">
-                                <input type="hidden" id="timezoneModalValue" value="">
-                                <div class="autocomplete-suggestions" id="timezoneModalSuggestions"></div>
-                            </div>
-                        </div>
-                        <div class="timezone-mismatch-date" id="timezoneModalSelectedDate" style="display: none;"></div>
-                        <div class="timezone-mismatch-time" id="timezoneModalSelectedTime" style="display: none;"></div>
-                        <button type="button" class="btn btn-outline btn-timezone-action" id="useSelectedBtn" disabled>
-                            Select a timezone first
-                        </button>
-                    </div>
-                </div>
-            </div>
-        `;
-        
-        modalOverlay.appendChild(modalContent);
-        document.body.appendChild(modalOverlay);
-        
-        // Show modal with animation
-        setTimeout(() => {
-            modalOverlay.classList.add('active');
-        }, 100);
-        
-        // Get elements
-        const closeBtn = document.getElementById('timezoneModalClose');
-        const useDetectedBtn = document.getElementById('useDetectedBtn');
-        const useSelectedBtn = document.getElementById('useSelectedBtn');
-        const timezoneInput = document.getElementById('timezoneModalInput');
-        const timezoneValue = document.getElementById('timezoneModalValue');
-        const timezoneSuggestions = document.getElementById('timezoneModalSuggestions');
-        const selectedDateEl = document.getElementById('timezoneModalSelectedDate');
-        const selectedTimeEl = document.getElementById('timezoneModalSelectedTime');
-        
-        // Track selected timezone for button text
-        let currentSelectedTz = null;
-        
-        // Initialize timezone autocomplete
-        initializeTimezoneAutocomplete(timezoneInput, timezoneValue, timezoneSuggestions, TIMEZONE_OPTIONS, function(selectedTzObj) {
-            currentSelectedTz = selectedTzObj.id;
-            
-            // Update button text
-            useSelectedBtn.textContent = `Set timezone to ${selectedTzObj.name} (${selectedTzObj.offset})`;
-            useSelectedBtn.disabled = false;
-            
-            // Update displayed time
-            const now = new Date();
-            const newSelectedTime = formatTime(now, selectedTzObj.id);
-            const newSelectedDate = formatDate(now, selectedTzObj.id);
-            if (selectedDateEl) {
-                selectedDateEl.textContent = newSelectedDate;
-                selectedDateEl.style.display = 'block';
-            }
-            if (selectedTimeEl) {
-                selectedTimeEl.textContent = newSelectedTime;
-                selectedTimeEl.style.display = 'block';
-            }
-        });
-        
-        // Close button and overlay click - select detected timezone
-        if (closeBtn) {
-            closeBtn.addEventListener('click', function() {
-                updateToDetectedTimezone(detectedTz, true); // true = close immediately
-            });
-        }
-        
-        // Close on overlay click - select detected timezone
-        modalOverlay.addEventListener('click', function(e) {
-            if (e.target === modalOverlay) {
-                updateToDetectedTimezone(detectedTz, true); // true = close immediately
-            }
-        });
-        
-        if (useDetectedBtn) {
-            useDetectedBtn.addEventListener('click', function() {
-                updateToDetectedTimezone(detectedTz, true); // true = close immediately
-            });
-        }
-        
-        if (useSelectedBtn) {
-            useSelectedBtn.addEventListener('click', function() {
-                if (currentSelectedTz) {
-                    updateSelectedTimezone(currentSelectedTz, false, function() {
-                        closeModal();
-                        window.location.reload();
-                    });
-                }
-            });
-        }
-        
-        function closeModal() {
-            modalOverlay.classList.remove('active');
-            setTimeout(() => {
-                if (modalOverlay.parentNode) {
-                    document.body.removeChild(modalOverlay);
-                }
-            }, 300);
-        }
+        // Redirect to standard mismatch check which handles empty selected timezone now
+        checkTimezoneMismatch(detectedTz, '', false);
     }
-
-    function showTimezoneMismatchModal(detectedTz, selectedTz) {
-        // Create modal overlay
-        const modalOverlay = document.createElement('div');
-        modalOverlay.className = 'timezone-modal-overlay';
-        modalOverlay.id = 'timezoneModalOverlay';
-        
-        // Create modal content
-        const modalContent = document.createElement('div');
-        modalContent.className = 'timezone-modal-content';
-        
-        let detectedTzName = detectedTz;
-        let selectedTzName = selectedTz;
-        
-        const detectedTzObj = TIMEZONE_OPTIONS.find(tz => tz.id === detectedTz);
-        const selectedTzObj = TIMEZONE_OPTIONS.find(tz => tz.id === selectedTz);
-        
-        if (detectedTzObj) {
-            // Use dynamic offset calculation (handles DST)
-            const currentOffset = getCurrentTimezoneOffset(detectedTz);
-            detectedTzName = detectedTzObj.name + ' (' + currentOffset + ')';
-        }
-        if (selectedTzObj) {
-            // Use dynamic offset calculation (handles DST)
-            const currentOffset = getCurrentTimezoneOffset(selectedTz);
-            selectedTzName = selectedTzObj.name + ' (' + currentOffset + ')';
-        }
-        
-        // Format current time in both timezones
-        const now = new Date();
-        const detectedTime = formatTime(now, detectedTz);
-        const detectedDate = formatDate(now, detectedTz);
-        const selectedTime = formatTime(now, selectedTz);
-        const selectedDate = formatDate(now, selectedTz);
-        
-        // Build timezone options HTML
-        let timezoneOptionsHTML = '';
-        TIMEZONE_OPTIONS.forEach(tz => {
-            const selected = tz.id === selectedTz ? 'selected' : '';
-            // Use dynamic offset calculation (handles DST)
-            const currentOffset = getCurrentTimezoneOffset(tz.id);
-            timezoneOptionsHTML += `<option value="${tz.id}" ${selected}>${tz.name} (${currentOffset})</option>`;
-        });
-        
-        modalContent.innerHTML = `
-            <div class="timezone-modal-header">
-                <h3 class="timezone-modal-title">
-                    <i class="fas fa-clock" style="color: var(--dash-primary); margin-right: 8px;"></i>
-                    Timezone Mismatch Detected
-                </h3>
-                <button type="button" class="timezone-modal-close" id="timezoneModalClose">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <div class="timezone-modal-body">
-                <p class="timezone-modal-text">
-                    We detected that your current location timezone doesn't match your selected timezone.
-                </p>
-                <div class="timezone-mismatch-comparison">
-                    <div class="timezone-mismatch-item timezone-detected">
-                        <div class="timezone-mismatch-label">Detected (Current Location)</div>
-                        <div class="timezone-mismatch-value">${detectedTzName}</div>
-                        <div class="timezone-mismatch-date">${detectedDate}</div>
-                        <div class="timezone-mismatch-time">${detectedTime}</div>
-                        <button type="button" class="btn btn-primary btn-timezone-action" id="useDetectedBtn">
-                            Detected timezone is correct
-                        </button>
-                    </div>
-                    <div class="timezone-mismatch-divider">or</div>
-                    <div class="timezone-mismatch-item timezone-selected">
-                        <div class="timezone-mismatch-label">Your Selected Timezone</div>
-                        <div class="timezone-mismatch-select-wrapper">
-                            <div class="autocomplete-container" style="position: relative;">
-                                <input type="text" id="timezoneModalInput" class="form-input autocomplete-input" placeholder="Search for your timezone..." autocomplete="off" value="${selectedTzName}">
-                                <input type="hidden" id="timezoneModalValue" value="${selectedTz}">
-                                <div class="autocomplete-suggestions" id="timezoneModalSuggestions"></div>
-                            </div>
-                        </div>
-                        <div class="timezone-mismatch-date" id="timezoneModalSelectedDate">${selectedDate}</div>
-                        <div class="timezone-mismatch-time" id="timezoneModalSelectedTime">${selectedTime}</div>
-                        <button type="button" class="btn btn-outline btn-timezone-action" id="useSelectedBtn">
-                            Don't change my timezone
-                        </button>
-                    </div>
-                </div>
-            </div>
-        `;
-        
-        modalOverlay.appendChild(modalContent);
-        document.body.appendChild(modalOverlay);
-        
-        // Show modal with animation
-        setTimeout(() => {
-            modalOverlay.classList.add('active');
-        }, 100);
-        
-        // Get elements
-        const closeBtn = document.getElementById('timezoneModalClose');
-        const useDetectedBtn = document.getElementById('useDetectedBtn');
-        const useSelectedBtn = document.getElementById('useSelectedBtn');
-        const timezoneInput = document.getElementById('timezoneModalInput');
-        const timezoneValue = document.getElementById('timezoneModalValue');
-        const timezoneSuggestions = document.getElementById('timezoneModalSuggestions');
-        const selectedDateEl = document.getElementById('timezoneModalSelectedDate');
-        const selectedTimeEl = document.getElementById('timezoneModalSelectedTime');
-        
-        // Track selected timezone for button text
-        let currentSelectedTz = selectedTz;
-        const originalSelectedTz = selectedTz;
-        
-        // Initialize timezone autocomplete
-        initializeTimezoneAutocomplete(timezoneInput, timezoneValue, timezoneSuggestions, TIMEZONE_OPTIONS, function(selectedTzObj) {
-            currentSelectedTz = selectedTzObj.id;
-            
-            // Update button text - use dynamic offset (handles DST)
-            if (selectedTzObj.id === originalSelectedTz) {
-                useSelectedBtn.textContent = "Don't change my timezone";
-            } else {
-                const currentOffset = getCurrentTimezoneOffset(selectedTzObj.id);
-                useSelectedBtn.textContent = `Change my timezone to ${selectedTzObj.name} (${currentOffset})`;
-            }
-            
-            // Update displayed time
-            const now = new Date();
-            const newSelectedTime = formatTime(now, selectedTzObj.id);
-            const newSelectedDate = formatDate(now, selectedTzObj.id);
-            if (selectedDateEl) selectedDateEl.textContent = newSelectedDate;
-            if (selectedTimeEl) selectedTimeEl.textContent = newSelectedTime;
-        });
-        
-        // Close button and overlay click - select detected timezone
-        if (closeBtn) {
-            closeBtn.addEventListener('click', function() {
-                updateToDetectedTimezone(detectedTz, true); // true = close immediately
-            });
-        }
-        
-        // Close on overlay click - select detected timezone
-        modalOverlay.addEventListener('click', function(e) {
-            if (e.target === modalOverlay) {
-                updateToDetectedTimezone(detectedTz, true); // true = close immediately
-            }
-        });
-        
-        if (useDetectedBtn) {
-            useDetectedBtn.addEventListener('click', function() {
-                updateToDetectedTimezone(detectedTz, true); // true = close immediately
-            });
-        }
-        
-        if (useSelectedBtn) {
-            useSelectedBtn.addEventListener('click', function() {
-                updateSelectedTimezone(currentSelectedTz, true, function() {
-                    closeModal();
-                    window.location.reload();
-                });
-            });
-        }
-        
-        function closeModal() {
-            modalOverlay.classList.remove('active');
-            setTimeout(() => {
-                if (modalOverlay.parentNode) {
-                    document.body.removeChild(modalOverlay);
-                }
-            }, 300);
-        }
-    }
-
-    function updateToDetectedTimezone(detectedTimezone, closeImmediately) {
-        const button = document.getElementById('useDetectedBtn');
-        const modalOverlay = document.getElementById('timezoneModalOverlay');
-        
-        if (button) {
-            button.disabled = true;
-            button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Updating...';
-        }
-        
-        // Close modal immediately if requested
-        if (closeImmediately && modalOverlay) {
-            modalOverlay.classList.remove('active');
-            setTimeout(() => {
-                if (modalOverlay.parentNode) {
-                    document.body.removeChild(modalOverlay);
-                }
-            }, 300);
-        }
-        
-        fetch('/dashboard/update-timezone/', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': getCookie('csrftoken')
-            },
-            body: JSON.stringify({
-                action: 'use_detected',
-                detected_timezone: detectedTimezone
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                console.log('DB detected_timezone:', data.detected_timezone || '');
-                console.log('DB Selected timezone:', data.selected_timezone);
-                console.log('DB confirmed_mismatch:', data.confirmed_mismatch);
-                
-                if (button && !closeImmediately) {
-                    button.innerHTML = '<i class="fas fa-check"></i> Updated!';
-                    button.style.background = 'var(--dash-primary)';
-                }
-                setTimeout(() => {
-                    window.location.reload();
-                }, closeImmediately ? 100 : 500);
-            } else {
-                if (button) {
-                    button.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Error';
-                    button.style.background = '#ef4444';
-                    setTimeout(() => {
-                        button.disabled = false;
-                        button.innerHTML = 'Detected timezone is correct';
-                        button.style.background = '';
-                    }, 2000);
-                }
-            }
-        })
-        .catch(error => {
-            console.error('Error updating to detected timezone:', error);
-            if (button) {
-                button.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Error';
-                button.style.background = '#ef4444';
-                setTimeout(() => {
-                    button.disabled = false;
-                    button.innerHTML = 'Detected timezone is correct';
-                    button.style.background = '';
-                }, 2000);
-            }
-        });
-    }
-
+    
+    // updateToDetectedTimezone was only used by the old modal, removing it.
+    // updateSelectedTimezone is used by checkTimezoneMismatch logic but the new modal handles its own saving.
+    // However, we might need it for the "match" logic reset above.
+    
     function updateSelectedTimezone(selectedTimezone, confirmedMismatch, callback) {
         fetch('/dashboard/update-timezone/', {
             method: 'POST',
@@ -682,9 +330,7 @@
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                console.log('DB detected_timezone:', data.detected_timezone || '');
-                console.log('DB Selected timezone:', data.selected_timezone);
-                console.log('DB confirmed_mismatch:', data.confirmed_mismatch);
+                console.log('✓ Selected timezone updated/verified');
                 // Update the userProfileData element
                 const userProfileData = document.getElementById('userProfileData');
                 if (userProfileData) {
@@ -704,6 +350,25 @@
             if (callback) callback();
         });
     }
+
+    // Helper to get cookie for CSRF (duplicate in modal but needed here for mismatch clearing)
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    // Old Modal Functions Removed (showFirstTimeLoginModal implementation, showTimezoneMismatchModal, etc)
+
 
     function formatTime(date, timezone) {
         try {
@@ -734,7 +399,7 @@
         }
     }
 
-    function initializeTimezoneAutocomplete(input, hiddenInput, suggestionsEl, timezones, onSelect) {
+    window.initializeTimezoneAutocomplete = function(input, hiddenInput, suggestionsEl, timezones, onSelect) {
         if (!input || !suggestionsEl || !timezones || timezones.length === 0) {
             console.error('[Timezone Autocomplete] Missing required elements or timezones data');
             return;
