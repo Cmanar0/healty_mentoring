@@ -243,6 +243,37 @@ def notification_delete(request, batch_id):
 
 @login_required
 @admin_required
+@require_POST
+def notification_bulk_delete(request):
+    """Delete multiple notification batches"""
+    batch_ids = request.POST.getlist('batch_ids')
+    
+    if not batch_ids:
+        messages.error(request, 'No notifications selected.')
+        return redirect('general:dashboard_admin:notifications')
+    
+    deleted_count = 0
+    for batch_id in batch_ids:
+        try:
+            batch_uuid = uuid.UUID(batch_id)
+            notifications = Notification.objects.filter(batch_id=batch_uuid)
+            count = notifications.count()
+            if count > 0:
+                notifications.delete()
+                deleted_count += 1
+        except (ValueError, Exception):
+            continue
+            
+    if deleted_count > 0:
+        messages.success(request, f'Successfully deleted {deleted_count} notification batch(es).')
+    else:
+        messages.warning(request, 'No notifications were deleted.')
+        
+    return redirect('general:dashboard_admin:notifications')
+
+
+@login_required
+@admin_required
 def notification_search_users(request):
     """Search users for autocomplete in notification form"""
     query = request.GET.get('q', '').strip()

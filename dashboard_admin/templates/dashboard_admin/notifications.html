@@ -86,7 +86,7 @@
                 </div>
                 
                 <div class="form-grid-row">
-                    <div class="form-group">
+                    <div class="form-group current-form-group">
                         <label for="title" class="section-label">Title</label>
                         <input type="text" id="title" name="title" class="modern-input" required maxlength="200" placeholder="e.g. System Maintenance Update">
                     </div>
@@ -109,7 +109,14 @@
     <!-- History Section -->
     <div class="history-section">
         <div class="history-header">
-            <h2><i class="fas fa-history"></i> Notification History <span class="count-badge">{{ total_count }}</span></h2>
+            <div class="history-title-group">
+                <h2><i class="fas fa-history"></i> Notification History <span class="count-badge">{{ total_count }}</span></h2>
+                
+                <!-- Bulk Actions -->
+                <button type="button" id="bulkDeleteBtn" class="btn-bulk-delete" disabled onclick="confirmBulkDelete()">
+                    <i class="fas fa-trash-alt"></i> Delete Selected (<span id="selectedCount">0</span>)
+                </button>
+            </div>
             
             <!-- Compact Filters -->
             <form method="get" action="{% url 'general:dashboard_admin:notifications' %}" class="compact-filters">
@@ -122,7 +129,7 @@
                      <select name="target_type" class="filter-select" onchange="this.form.submit()">
                         <option value="">All Types</option>
                         <option value="all" {% if filters.target_type == 'all' %}selected{% endif %}>Everyone</option>
-                        <option value="all_users" {% if filters.target_type == 'all_users' %}selected{% endif %}>Mentees</option>
+                         <option value="all_users" {% if filters.target_type == 'all_users' %}selected{% endif %}>Clients</option>
                         <option value="all_mentors" {% if filters.target_type == 'all_mentors' %}selected{% endif %}>Mentors</option>
                         <option value="single" {% if filters.target_type == 'single' %}selected{% endif %}>Single</option>
                     </select>
@@ -136,56 +143,80 @@
         </div>
         
         {% if batches %}
-            <div class="batches-grid">
-                {% for batch in batches %}
-                    <div class="batch-card">
-                        <div class="batch-card-header">
-                            <div class="batch-main-info">
-                                <h3 class="batch-title">{{ batch.title }}</h3>
-                                <span class="batch-date">{{ batch.created_at|date:"M d, Y • H:i" }}</span>
-                            </div>
-                            <div class="batch-target-badge type-{{ batch.target_type }}">
-                                {% if batch.target_type == 'all' %}<i class="fas fa-globe"></i> Everyone
-                                {% elif batch.target_type == 'all_users' %}<i class="fas fa-user"></i> Mentees
-                                {% elif batch.target_type == 'all_mentors' %}<i class="fas fa-chalkboard-teacher"></i> Mentors
-                                {% elif batch.target_type == 'single' %}<i class="fas fa-fingerprint"></i> Individual
-                                {% else %}{{ batch.target_type|title }}{% endif %}
-                            </div>
-                        </div>
-                        
-                         <div class="batch-body">
-                             <div class="batch-desc">{{ batch.description|safe }}</div>
-                         </div>
-                        
-                        <div class="batch-footer">
-                            <div class="batch-stats">
-                                <div class="stat-pill neutral" title="Total Sent">
-                                    <i class="fas fa-paper-plane"></i> {{ batch.total_count }}
-                                </div>
-                                <div class="stat-pill success" title="Read">
-                                    <i class="fas fa-check-double"></i> {{ batch.read_count }}
-                                </div>
-                                {% if batch.unread_count > 0 %}
-                                <div class="stat-pill warning" title="Unread">
-                                    <i class="fas fa-clock"></i> {{ batch.unread_count }}
-                                </div>
-                                {% endif %}
-                            </div>
-                            
-                            <form method="post" action="{% url 'general:dashboard_admin:notification_delete' batch.batch_id %}" onsubmit="return confirm('Delete this batch?');">
-                                {% csrf_token %}
-                                <button type="submit" class="btn-icon-danger" title="Delete Batch">
-                                    <i class="far fa-trash-alt"></i>
-                                </button>
-                            </form>
-                        </div>
-                    </div>
-                {% endfor %}
-            </div>
+            <!-- Bulk Delete Form Wrapper -->
+            <form id="bulkDeleteForm" method="post" action="{% url 'general:dashboard_admin:notification_bulk_delete' %}">
+                {% csrf_token %}
+                
+                <div class="modern-table-container">
+                    <table class="modern-table">
+                        <thead>
+                            <tr>
+                                <th class="col-checkbox">
+                                    <input type="checkbox" id="selectAll" onclick="toggleAll(this)">
+                                </th>
+                                <th class="col-date">Date</th>
+                                <th class="col-target">Audience</th>
+                                <th class="col-message">Message</th>
+                                <th class="col-stats">Stats</th>
+                                <th class="col-actions">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for batch in batches %}
+                                <tr>
+                                    <td class="col-checkbox">
+                                        <input type="checkbox" name="batch_ids" value="{{ batch.batch_id }}" class="batch-checkbox" onchange="updateBulkActionState()">
+                                    </td>
+                                    <td class="col-date">
+                                        <div class="date-stacked">
+                                            <span class="date-main">{{ batch.created_at|date:"M d, Y" }}</span>
+                                            <span class="date-sub">{{ batch.created_at|date:"H:i" }}</span>
+                                        </div>
+                                    </td>
+                                    <td class="col-target">
+                                        <div class="target-badge-sm type-{{ batch.target_type }}">
+                                            {% if batch.target_type == 'all' %}<i class="fas fa-globe"></i> Everyone
+                                            {% elif batch.target_type == 'all_users' %}<i class="fas fa-user-circle"></i> Clients
+                                            {% elif batch.target_type == 'all_mentors' %}<i class="fas fa-chalkboard-teacher"></i> Mentors
+                                            {% elif batch.target_type == 'single' %}<i class="fas fa-fingerprint"></i> Single
+                                            {% else %}{{ batch.target_type|title }}{% endif %}
+                                        </div>
+                                    </td>
+                                    <td class="col-message">
+                                        <div class="message-preview">
+                                            <span class="message-title">{{ batch.title }}</span>
+                                            <div class="message-body">{{ batch.description|striptags|truncatechars:100 }}</div>
+                                        </div>
+                                    </td>
+                                    <td class="col-stats">
+                                        <div class="stats-row">
+                                            <span class="stat-mini neutral" title="Total Sent">
+                                                {{ batch.total_count }} <i class="fas fa-paper-plane"></i>
+                                            </span>
+                                            <span class="stat-mini success" title="Read">
+                                                {{ batch.read_count }} <i class="fas fa-check-double"></i>
+                                            </span>
+                                            {% if batch.unread_count > 0 %}
+                                            <span class="stat-mini warning" title="Unread">
+                                                {{ batch.unread_count }} <i class="fas fa-clock"></i>
+                                            </span>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                    <td class="col-actions">
+                                        <button type="button" class="btn-icon-danger-sm" title="Delete Batch" onclick="confirmSingleDelete('{{ batch.batch_id }}')">
+                                            <i class="far fa-trash-alt"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </form>
             
              <!-- Pagination -->
             {% if page_obj.has_other_pages %}
-                <!-- Simple Previous/Next Pagination for cleaner UI -->
                  <div class="pagination-container">
                     {% if page_obj.has_previous %}
                          <a href="?{% if filters.search %}search={{ filters.search }}&{% endif %}page={{ page_obj.previous_page_number }}" class="page-nav">
@@ -210,6 +241,24 @@
                 <p>Try adjusting your search or send your first broadcast.</p>
             </div>
         {% endif %}
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div id="deleteModal" class="custom-modal">
+    <div class="custom-modal-content">
+        <div class="modal-header-danger">
+            <i class="fas fa-exclamation-triangle"></i>
+            <h3>Confirm Deletion</h3>
+        </div>
+        <div class="modal-body">
+            <p id="deleteModalMessage">Are you sure you want to delete this notification?</p>
+            <p class="text-sm text-secondary">This action cannot be undone and will remove the notification from all users.</p>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-secondary-base" onclick="closeDeleteModal()">Cancel</button>
+            <button id="confirmDeleteBtn" class="btn-danger-base">Delete</button>
+        </div>
     </div>
 </div>
 
@@ -241,7 +290,7 @@
 }
 
 .dashboard-content-container {
-    max-width: 1000px;
+    max-width: 1100px;
     margin: 0 auto;
     padding: 32px 20px;
     font-family: var(--font-family);
@@ -526,6 +575,12 @@
     gap: 20px;
 }
 
+.history-title-group {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+}
+
 .history-header h2 {
     font-size: 1.5rem;
     margin: 0;
@@ -533,6 +588,7 @@
     align-items: center;
     gap: 12px;
     color: var(--text-main);
+    min-width: 340px;
 }
 
 .count-badge {
@@ -541,6 +597,305 @@
     padding: 4px 10px;
     border-radius: 20px;
     color: var(--text-secondary);
+}
+
+/* Bulk Actions */
+.btn-bulk-delete {
+    background: transparent;
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    padding: 6px 16px;
+    border-radius: var(--radius-sm);
+    font-size: 0.9rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s;
+    font-weight: 500;
+    max-width: 200px;
+}
+
+.btn-bulk-delete:hover:not(:disabled) {
+    background: #fef2f2;
+    border-color: #ef4444;
+}
+
+.btn-bulk-delete:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    border-color: var(--border-color);
+    color: var(--text-tertiary);
+}
+
+
+/* Table Styling */
+.modern-table-container {
+    background: white;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    overflow-x: auto;
+    box-shadow: var(--shadow-sm);
+}
+
+.modern-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 800px; /* Ensure content doesn't get too squashed on small screens */
+}
+
+.modern-table th, 
+.modern-table td {
+    padding: 16px 20px;
+    text-align: left;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.modern-table th {
+    background: #f8fafc;
+    font-weight: 600;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.modern-table tr:last-child td {
+    border-bottom: none;
+}
+
+.modern-table tr:hover td {
+    background: #fcfcfc;
+}
+
+/* Checkbox Column */
+.col-checkbox {
+    width: 48px;
+    text-align: center;
+}
+
+input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--primary);
+    cursor: pointer;
+}
+
+/* Date Column */
+.col-date {
+    width: 140px;
+}
+
+.date-stacked {
+    display: flex;
+    flex-direction: column;
+}
+
+.date-main {
+    font-weight: 500;
+    color: var(--text-main);
+    font-size: 0.9rem;
+}
+
+.date-sub {
+    font-size: 0.8rem;
+    color: var(--text-tertiary);
+}
+
+/* Target Column */
+.col-target {
+    width: 130px;
+}
+
+.target-badge-sm {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.target-badge-sm.type-all { background: #e0f2fe; color: #0284c7; }
+.target-badge-sm.type-all_users { background: #dcfce7; color: #16a34a; }
+.target-badge-sm.type-all_mentors { background: #dcfce7; color: #16a34a; }
+.target-badge-sm.type-single { background: #f3e8ff; color: #9333ea; }
+
+/* Message Column */
+.col-message {
+    min-width: 250px;
+}
+
+.message-preview {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.message-title {
+    font-weight: 600;
+    color: var(--text-main);
+    font-size: 0.95rem;
+}
+
+.message-body {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+/* Stats Column */
+.col-stats {
+    width: 240px;
+}
+
+.stats-row {
+    display: flex;
+    gap: 12px;
+    font-size: 0.85rem;
+}
+
+.stat-mini {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-weight: 500;
+}
+
+.stat-mini i {
+    font-size: 0.8rem;
+    opacity: 0.7;
+}
+
+.stat-mini.neutral { color: var(--text-secondary); }
+.stat-mini.success { color: #059669; }
+.stat-mini.warning { color: #d97706; }
+
+/* Actions Column */
+.col-actions {
+    width: 80px;
+    text-align: right;
+}
+
+.btn-icon-danger-sm {
+    background: transparent;
+    border: none;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    font-size: 0.95rem;
+    padding: 6px;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.btn-icon-danger-sm:hover {
+    color: #ef4444;
+    background: #fef2f2;
+}
+
+/* Modal Styling */
+.custom-modal {
+    display: none;
+    position: fixed;
+    z-index: 1000; /* High z-index to sit on top of everything */
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(2px);
+}
+
+.custom-modal-content {
+    background-color: #fff;
+    padding: 0;
+    border-radius: var(--radius-lg);
+    width: 100%;
+    max-width: 440px;
+    box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);
+    animation: modalPop 0.2s ease-out forwards;
+}
+
+@keyframes modalPop {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+.modal-header-danger {
+    padding: 24px 24px 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 16px;
+}
+
+.modal-header-danger i {
+    font-size: 2rem;
+    color: #ef4444;
+    background: #fef2f2;
+    padding: 16px;
+    border-radius: 50%;
+}
+
+.modal-header-danger h3 {
+    margin: 0;
+    font-size: 1.25rem;
+    color: var(--text-main);
+}
+
+.modal-body {
+    padding: 0 24px 24px;
+    text-align: center;
+    color: var(--text-secondary);
+}
+
+.modal-footer {
+    padding: 16px 24px 24px;
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+}
+
+.btn-secondary-base {
+    padding: 10px 20px;
+    border-radius: var(--radius-md);
+    background: white;
+    border: 1px solid var(--border-color);
+    color: var(--text-main);
+    font-weight: 500;
+    cursor: pointer;
+    font-size: 0.95rem;
+    transition: all 0.2s;
+}
+
+.btn-secondary-base:hover {
+    background: #f8fafc;
+}
+
+.btn-danger-base {
+    padding: 10px 20px;
+    border-radius: var(--radius-md);
+    background: #ef4444;
+    border: 1px solid #ef4444;
+    color: white;
+    font-weight: 500;
+    cursor: pointer;
+    font-size: 0.95rem;
+    transition: all 0.2s;
+}
+
+.btn-danger-base:hover {
+    background: #dc2626;
+    border-color: #dc2626;
 }
 
 .compact-filters {
@@ -593,163 +948,6 @@
 .btn-reset-filters:hover {
     background: #f1f5f9;
     color: var(--text-main);
-}
-
-/* Batch Cards (List View) */
-.batches-grid {
-    display: grid;
-    gap: 20px;
-}
-
-.batch-card {
-    background: white;
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-md);
-    padding: 24px;
-    transition: box-shadow 0.2s;
-    display: flex;
-    flex-direction: column;
-}
-
-.batch-card:hover {
-    box-shadow: var(--shadow-md);
-    border-color: #cbd5e1;
-}
-
-.batch-card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 12px;
-}
-
-.batch-title {
-    font-size: 1.1rem;
-    font-weight: 700;
-    margin: 0 0 6px 0;
-    color: var(--text-main);
-}
-
-.batch-date {
-    font-size: 0.85rem;
-    color: var(--text-tertiary);
-}
-
-.batch-target-badge {
-    font-size: 0.8rem;
-    font-weight: 600;
-    padding: 4px 10px;
-    border-radius: 20px;
-    background: #f1f5f9;
-    color: var(--text-secondary);
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.batch-target-badge.type-all { background: #e0f2fe; color: #0284c7; }
-.batch-target-badge.type-all_users { background: #dcfce7; color: #16a34a; }
-.batch-target-badge.type-all_mentors { background: #dcfce7; color: #16a34a; }
-.batch-target-badge.type-single { background: #f3e8ff; color: #9333ea; }
-
- .batch-desc {
-     font-size: 0.95rem;
-     color: var(--text-secondary);
-     line-height: 1.6;
-     margin: 0 0 20px 0;
- }
- 
- /* Style HTML content in batch descriptions */
- .batch-desc div,
- .batch-desc p {
-     margin: 0 0 8px 0;
- }
- 
- .batch-desc div:last-child,
- .batch-desc p:last-child {
-     margin-bottom: 0;
- }
- 
- .batch-desc a {
-     color: var(--primary);
-     text-decoration: underline;
-     transition: color 0.2s;
- }
- 
- .batch-desc a:hover {
-     color: var(--primary-dark);
- }
- 
- .batch-desc ul,
- .batch-desc ol {
-     margin: 8px 0;
-     padding-left: 20px;
- }
- 
- .batch-desc li {
-     margin-bottom: 4px;
- }
- 
- .batch-desc strong,
- .batch-desc b {
-     font-weight: 600;
- }
- 
- .batch-desc em,
- .batch-desc i {
-     font-style: italic;
- }
- 
- .batch-desc code {
-     background: rgba(0, 0, 0, 0.05);
-     padding: 2px 6px;
-     border-radius: 4px;
-     font-family: monospace;
-     font-size: 0.9em;
- }
-
-.batch-footer {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-top: 1px solid #f1f5f9;
-    padding-top: 16px;
-    margin-top: auto;
-}
-
-.batch-stats {
-    display: flex;
-    gap: 12px;
-}
-
-.stat-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 0.85rem;
-    font-weight: 600;
-    padding: 4px 10px;
-    border-radius: 6px;
-}
-
-.stat-pill.neutral { background: #f1f5f9; color: var(--text-secondary); }
-.stat-pill.success { background: #ecfdf5; color: #059669; }
-.stat-pill.warning { background: #fffbeb; color: #d97706; }
-
-.btn-icon-danger {
-    background: transparent;
-    border: none;
-    color: var(--text-tertiary);
-    cursor: pointer;
-    font-size: 1rem;
-    padding: 6px;
-    border-radius: 4px;
-    transition: all 0.2s;
-}
-
-.btn-icon-danger:hover {
-    color: #ef4444;
-    background: #fef2f2;
 }
 
 /* Empty State */
@@ -824,20 +1022,19 @@
         text-align: left;
     }
     
-    .batch-footer {
+    .history-header {
         flex-direction: column;
-        gap: 16px;
         align-items: flex-start;
     }
     
-    .btn-icon-danger {
-        align-self: flex-end;
+    .modern-table {
+        min-width: 600px;
     }
 }
 </style>
 
 <script>
-    // User search functionality script (kept largely the same but with updated classes)
+    // --- User Search Script (Previous Logic) ---
     const searchInput = document.getElementById('user_search');
     const resultsContainer = document.getElementById('user_search_results');
     const userIdInput = document.getElementById('user_id');
@@ -846,7 +1043,6 @@
     const radioButtons = document.querySelectorAll('input[name="target_type"]');
     const singleUserGroup = document.getElementById('singleUserGroup');
     
-    // Toggle Single User Input
     radioButtons.forEach(radio => {
         radio.addEventListener('change', function() {
             if (this.value === 'single') {
@@ -859,7 +1055,6 @@
         });
     });
     
-    // Debounce function
     function debounce(func, wait) {
         let timeout;
         return function executedFunction(...args) {
@@ -872,7 +1067,6 @@
         };
     }
     
-    // Search Users
     searchInput.addEventListener('input', debounce(function(e) {
         const query = e.target.value.trim();
         if (query.length < 2) {
@@ -880,11 +1074,8 @@
             return;
         }
         
-        // Use the correct endpoint for user search
         fetch(`{% url 'general:dashboard_admin:notification_search_users' %}?q=${encodeURIComponent(query)}`, {
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest'
-            }
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
         })
         .then(response => response.json())
         .then(data => {
@@ -893,18 +1084,11 @@
                 data.users.forEach(user => {
                     const div = document.createElement('div');
                     div.className = 'user-search-result-item';
-                    
-                    const textDiv = document.createElement('div');
-                    textDiv.innerHTML = `
+                    div.innerHTML = `
                         <div style="font-weight:600; font-size:0.9rem;">${user.name}</div>
                         <div style="font-size:0.8rem; color:#64748b;">${user.email} • ${user.role}</div>
                     `;
-                    
-                    div.appendChild(textDiv);
-                    
-                    div.addEventListener('click', () => {
-                        selectUser(user);
-                    });
+                    div.addEventListener('click', () => selectUser(user));
                     resultsContainer.appendChild(div);
                 });
                 resultsContainer.style.display = 'block';
@@ -926,8 +1110,6 @@
         selectedUserDiv.style.display = 'inline-flex';
         searchInput.style.display = 'none';
         resultsContainer.style.display = 'none';
-        
-        // Hide the search icon wrapper visual if needed
         document.querySelector('.user-search-wrapper .search-prefix').style.display = 'none';
     }
     
@@ -939,28 +1121,114 @@
         document.querySelector('.user-search-wrapper .search-prefix').style.display = 'block';
     }
     
-    // Close search results when clicking outside
     document.addEventListener('click', function(e) {
-        if (!document.querySelector('.user-search-wrapper').contains(e.target)) {
+        if (document.querySelector('.user-search-wrapper') && !document.querySelector('.user-search-wrapper').contains(e.target)) {
             resultsContainer.style.display = 'none';
         }
     });
-    
-    // Form validation for single user selection
+
     const notificationForm = document.getElementById('notificationForm');
     if (notificationForm) {
         notificationForm.addEventListener('submit', function(e) {
             const selectedTargetType = document.querySelector('input[name="target_type"]:checked');
             if (selectedTargetType && selectedTargetType.value === 'single') {
-                const userId = userIdInput.value;
-                if (!userId || userId.trim() === '') {
+                const userId = userIdInput.value.trim();
+                if (!userId) {
                     e.preventDefault();
-                    alert('Please select a user before submitting.');
-                    singleUserGroup.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    alert('Please select a user before sending the notification.');
+                    singleUserGroup.style.display = 'block';
+                    if (!searchInput.value.trim()) {
+                        searchInput.focus();
+                    }
                     return false;
                 }
             }
         });
+    }
+    
+    // --- Bulk Action & Modal Scripts ---
+    
+    const checkboxes = document.querySelectorAll('.batch-checkbox');
+    const selectAll = document.getElementById('selectAll');
+    const bulkDeleteBtn = document.getElementById('bulkDeleteBtn');
+    const selectedCountSpan = document.getElementById('selectedCount');
+    const bulkDeleteForm = document.getElementById('bulkDeleteForm');
+    const deleteModal = document.getElementById('deleteModal');
+    const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+    let deleteMode = 'bulk'; // 'bulk' or 'single'
+    let singleDeleteId = null;
+
+    function toggleAll(source) {
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = source.checked;
+        });
+        updateBulkActionState();
+    }
+    
+    function updateBulkActionState() {
+        const checkedCount = document.querySelectorAll('.batch-checkbox:checked').length;
+        selectedCountSpan.textContent = checkedCount;
+        
+        if (checkedCount > 0) {
+            bulkDeleteBtn.disabled = false;
+        } else {
+            bulkDeleteBtn.disabled = true;
+            selectAll.checked = false;
+        }
+    }
+    
+    // Modal Logic
+    function confirmBulkDelete() {
+        const checkedCount = document.querySelectorAll('.batch-checkbox:checked').length;
+        if (checkedCount === 0) return;
+        
+        deleteMode = 'bulk';
+        document.getElementById('deleteModalMessage').textContent = `Are you sure you want to delete ${checkedCount} selected notification(s)?`;
+        deleteModal.style.display = 'flex';
+    }
+    
+    function confirmSingleDelete(batchId) {
+        deleteMode = 'single';
+        singleDeleteId = batchId;
+        document.getElementById('deleteModalMessage').textContent = 'Are you sure you want to delete this notification?';
+        deleteModal.style.display = 'flex';
+    }
+    
+    function closeDeleteModal() {
+        deleteModal.style.display = 'none';
+        singleDeleteId = null;
+    }
+    
+    confirmDeleteBtn.addEventListener('click', function() {
+        if (deleteMode === 'bulk') {
+            bulkDeleteForm.submit();
+        } else if (deleteMode === 'single' && singleDeleteId) {
+            // Create a form dynamically to delete single item
+            const form = document.createElement('form');
+            form.method = 'POST';
+            // Use the single delete URL pattern
+            // Since we can't easily dynamically generate Django URLs in JS properly without a placeholder
+            // We'll construct it based on the expected pattern: /dashboard/admin/notifications/<id>/delete/
+            const baseUrl = "{% url 'general:dashboard_admin:notification_delete' 'PLACEHOLDER' %}";
+            form.action = baseUrl.replace('PLACEHOLDER', singleDeleteId);
+            
+            const csrfToken = document.querySelector('input[name="csrfmiddlewaretoken"]').value;
+            const csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            csrfInput.name = 'csrfmiddlewaretoken';
+            csrfInput.value = csrfToken;
+            
+            form.appendChild(csrfInput);
+            document.body.appendChild(form);
+            form.submit();
+        }
+    });
+    
+    // Close modal if clicking outside
+    window.onclick = function(event) {
+        if (event.target == deleteModal) {
+            closeDeleteModal();
+        }
     }
 </script>
 {% endblock %}

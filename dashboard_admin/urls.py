@@ -12,6 +12,7 @@ urlpatterns = [
     path('notifications/mark-all-read/', views.notification_mark_all_read, name='notification_mark_all_read'),
     path('notifications/<int:notification_id>/modal/', views.notification_modal_detail, name='notification_modal_detail'),
     path('notifications/<str:batch_id>/delete/', views.notification_delete, name='notification_delete'),
+    path('notifications/bulk-delete/', views.notification_bulk_delete, name='notification_bulk_delete'),
     path('notifications/search-users/', views.notification_search_users, name='notification_search_users'),
     path('blog/', views.blog, name='blog'),
     path('tickets/', views.tickets, name='tickets'),
