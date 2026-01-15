@@ -1,0 +1,25 @@
+{% extends "emails/base.html" %}
+
+{% block content %}
+<div class="content-block">
+    <h2 style="margin: 0 0 16px 0; color: #1f2937; font-size: 1.5rem;">New Comment on Support Ticket</h2>
+    
+    <p style="margin: 0 0 16px 0; color: #4b5563;">
+        A new comment has been added to support ticket #{{ ticket.id }}.
+    </p>
+    
+    <div style="background: #f9fafb; border-left: 4px solid #10b981; padding: 16px; margin: 20px 0; border-radius: 4px;">
+        <p style="margin: 0 0 8px 0; font-weight: 600; color: #1f2937;">Ticket: {{ ticket.title }}</p>
+        <p style="margin: 4px 0; color: #4b5563;"><strong>Commented by:</strong> {{ user_name }} ({{ user_role }})</p>
+        <p style="margin: 4px 0; color: #4b5563;"><strong>Comment:</strong></p>
+        <p style="margin: 8px 0 0 0; color: #4b5563; white-space: pre-wrap;">{{ comment.comment }}</p>
+    </div>
+    
+    <div style="text-align: center; margin: 24px 0;">
+        <a href="{{ ticket_url }}" style="display: inline-block; padding: 12px 24px; background: #10b981; color: white; text-decoration: none; border-radius: 8px; font-weight: 600;">
+            View Ticket & Reply
+        </a>
+    </div>
+</div>
+{% endblock %}
+

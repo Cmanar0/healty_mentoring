@@ -16,6 +16,7 @@ urlpatterns = [
     path('notifications/search-users/', views.notification_search_users, name='notification_search_users'),
     path('blog/', views.blog, name='blog'),
     path('tickets/', views.tickets, name='tickets'),
+    path('tickets/<int:ticket_id>/', views.ticket_detail, name='ticket_detail'),
     path('statistics/', views.statistics, name='statistics'),
 ]
 

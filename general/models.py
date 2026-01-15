@@ -434,3 +434,62 @@ class Notification(models.Model):
 
     def __str__(self):
         return f"{self.title} - {self.user.email}"
+
+
+class Ticket(models.Model):
+    """Support ticket model for users and mentors to submit issues"""
+    STATUS_CHOICES = [
+        ('submitted', 'Submitted'),
+        ('in_progress', 'In Progress'),
+        ('resolved', 'Resolved'),
+        ('closed', 'Closed'),
+    ]
+    
+    user = models.ForeignKey("accounts.CustomUser", on_delete=models.CASCADE, related_name="tickets")
+    title = models.CharField(max_length=200)
+    description = models.TextField()
+    image = models.ImageField(upload_to="tickets/", blank=True, null=True, help_text="Optional image attachment (max 5MB)")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='submitted', db_index=True)
+    created_at = models.DateTimeField(default=timezone.now, db_index=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = "Support Ticket"
+        verbose_name_plural = "Support Tickets"
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['user', '-created_at']),
+            models.Index(fields=['status', '-created_at']),
+        ]
+    
+    def __str__(self):
+        return f"Ticket #{self.id} - {self.title} ({self.get_status_display()})"
+    
+    @property
+    def is_resolved(self):
+        """Check if ticket is resolved or closed"""
+        return self.status in ['resolved', 'closed']
+    
+    @property
+    def is_unresolved(self):
+        """Check if ticket is unresolved"""
+        return self.status in ['submitted', 'in_progress']
+
+
+class TicketComment(models.Model):
+    """Comments on support tickets for communication between users/mentors and admins"""
+    ticket = models.ForeignKey(Ticket, on_delete=models.CASCADE, related_name="comments")
+    user = models.ForeignKey("accounts.CustomUser", on_delete=models.CASCADE, related_name="ticket_comments")
+    comment = models.TextField()
+    created_at = models.DateTimeField(default=timezone.now)
+    
+    class Meta:
+        verbose_name = "Ticket Comment"
+        verbose_name_plural = "Ticket Comments"
+        ordering = ['created_at']
+        indexes = [
+            models.Index(fields=['ticket', 'created_at']),
+        ]
+    
+    def __str__(self):
+        return f"Comment on Ticket #{self.ticket.id} by {self.user.email}"

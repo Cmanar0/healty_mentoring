@@ -20,5 +20,6 @@ urlpatterns = [
     path('notifications/<int:notification_id>/mark-read/', views.notification_mark_read, name='notification_mark_read'),
     path('notifications/mark-all-read/', views.notification_mark_all_read, name='notification_mark_all_read'),
     path('notifications/<int:notification_id>/modal/', views.notification_modal_detail, name='notification_modal_detail'),
+    path('tickets/<int:ticket_id>/', views.ticket_detail, name='ticket_detail'),
 ]
 

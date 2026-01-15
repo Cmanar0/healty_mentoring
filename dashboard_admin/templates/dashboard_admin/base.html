@@ -82,9 +82,12 @@
           </a>
         </li>
         <li>
-          <a href="/dashboard/admin/tickets/" class="sidebar-link {% if request.resolver_match.url_name == 'tickets' %}active{% endif %}" title="Tickets">
+          <a href="/dashboard/admin/tickets/" class="sidebar-link {% if request.resolver_match.url_name == 'tickets' or request.resolver_match.url_name == 'ticket_detail' %}active{% endif %}" title="Tickets">
             <i class="fas fa-ticket-alt"></i>
             <span class="sidebar-text">Tickets</span>
+            {% if unresolved_tickets_count > 0 %}
+              <span class="sidebar-badge">{{ unresolved_tickets_count }}</span>
+            {% endif %}
           </a>
         </li>
         <li>
@@ -480,6 +483,27 @@
 .view-all-notifications:hover {
   color: var(--dash-primary-hover);
   text-decoration: underline;
+}
+
+/* Sidebar Badge */
+.sidebar-link {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.sidebar-badge {
+  background: #ef4444;
+  color: white;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 10px;
+  min-width: 18px;
+  text-align: center;
+  margin-left: auto;
+  line-height: 1.4;
 }
 </style>
 <script>

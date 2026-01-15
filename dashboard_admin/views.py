@@ -419,9 +419,171 @@ def blog(request):
 @login_required
 @admin_required
 def tickets(request):
-    """Admin tickets/support page"""
+    """Admin tickets management page"""
+    from general.models import Ticket
+    from django.db.models import Q
+    
+    # Get all tickets
+    tickets_list = Ticket.objects.all().select_related('user').order_by('-created_at')
+    
+    # Search functionality
+    search_query = request.GET.get('search', '').strip()
+    if search_query:
+        tickets_list = tickets_list.filter(
+            Q(title__icontains=search_query) |
+            Q(description__icontains=search_query) |
+            Q(user__email__icontains=search_query) |
+            Q(user__user_profile__first_name__icontains=search_query) |
+            Q(user__user_profile__last_name__icontains=search_query) |
+            Q(user__mentor_profile__first_name__icontains=search_query) |
+            Q(user__mentor_profile__last_name__icontains=search_query)
+        )
+    
+    # Filter by status
+    status_filter = request.GET.get('status', '')
+    if status_filter:
+        tickets_list = tickets_list.filter(status=status_filter)
+    else:
+        # Default: show unresolved tickets
+        tickets_list = tickets_list.filter(status__in=['submitted', 'in_progress'])
+    
+    # Pagination
+    from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+    paginator = Paginator(tickets_list, 20)  # 20 tickets per page
+    page_number = request.GET.get('page')
+    try:
+        page_obj = paginator.get_page(page_number)
+    except PageNotAnInteger:
+        page_obj = paginator.get_page(1)
+    except EmptyPage:
+        page_obj = paginator.get_page(paginator.num_pages)
+    
+    # Get counts for filters
+    total_count = Ticket.objects.count()
+    unresolved_count = Ticket.objects.filter(status__in=['submitted', 'in_progress']).count()
+    resolved_count = Ticket.objects.filter(status='resolved').count()
+    closed_count = Ticket.objects.filter(status='closed').count()
+    
     return render(request, 'dashboard_admin/tickets.html', {
         'debug': settings.DEBUG,
+        'tickets': page_obj,
+        'page_obj': page_obj,
+        'total_count': total_count,
+        'unresolved_count': unresolved_count,
+        'resolved_count': resolved_count,
+        'closed_count': closed_count,
+        'filters': {
+            'search': search_query,
+            'status': status_filter,
+        },
+    })
+
+
+@login_required
+@admin_required
+def ticket_detail(request, ticket_id):
+    """Admin ticket detail page with comments"""
+    from general.models import Ticket, TicketComment
+    from general.forms import TicketCommentForm
+    from general.email_service import EmailService
+    from accounts.models import CustomUser
+    
+    ticket = get_object_or_404(Ticket, id=ticket_id)
+    
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        
+        if action == 'add_comment':
+            form = TicketCommentForm(request.POST)
+            if form.is_valid():
+                comment = form.save(commit=False)
+                comment.ticket = ticket
+                comment.user = request.user
+                comment.save()
+                
+                # Send email to ticket creator and create notification
+                try:
+                    EmailService.send_ticket_comment_email(ticket, comment, request.user)
+                    
+                    # Create notification for ticket creator
+                    from general.models import Notification
+                    from django.urls import reverse
+                    import uuid
+                    # Determine the correct URL based on ticket creator's role
+                    if hasattr(ticket.user, 'profile') and ticket.user.profile:
+                        if ticket.user.profile.role == 'mentor':
+                            ticket_url = f"{EmailService.get_site_domain()}{reverse('general:dashboard_mentor:ticket_detail', args=[ticket.id])}"
+                        elif ticket.user.profile.role == 'user':
+                            ticket_url = f"{EmailService.get_site_domain()}{reverse('general:dashboard_user:ticket_detail', args=[ticket.id])}"
+                        else:
+                            ticket_url = f"{EmailService.get_site_domain()}{reverse('general:dashboard_admin:ticket_detail', args=[ticket.id])}"
+                    else:
+                        ticket_url = f"{EmailService.get_site_domain()}{reverse('general:dashboard_admin:ticket_detail', args=[ticket.id])}"
+                    
+                    Notification.objects.create(
+                        user=ticket.user,
+                        batch_id=uuid.uuid4(),
+                        target_type='single',
+                        title=f"Update on your ticket #{ticket.id}",
+                        description=f"An admin added a comment to your ticket: {ticket.title}. <a href=\"{ticket_url}\" style=\"color: #10b981; text-decoration: underline;\">View ticket</a>"
+                    )
+                except Exception as e:
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.error(f'Error sending ticket comment email: {str(e)}')
+                
+                messages.success(request, 'Your comment has been added.')
+                return redirect('general:dashboard_admin:ticket_detail', ticket_id=ticket.id)
+        
+        elif action == 'update_status':
+            new_status = request.POST.get('status')
+            if new_status in dict(Ticket.STATUS_CHOICES):
+                old_status = ticket.status
+                ticket.status = new_status
+                ticket.save()
+                
+                # If marked as resolved, send email and notification
+                if new_status == 'resolved' and old_status != 'resolved':
+                    try:
+                        EmailService.send_ticket_resolved_email(ticket)
+                        
+                        # Create notification for ticket creator
+                        from general.models import Notification
+                        from django.urls import reverse
+                        import uuid
+                        # Determine the correct URL based on ticket creator's role
+                        if hasattr(ticket.user, 'profile') and ticket.user.profile:
+                            if ticket.user.profile.role == 'mentor':
+                                ticket_url = f"{EmailService.get_site_domain()}{reverse('general:dashboard_mentor:ticket_detail', args=[ticket.id])}"
+                            elif ticket.user.profile.role == 'user':
+                                ticket_url = f"{EmailService.get_site_domain()}{reverse('general:dashboard_user:ticket_detail', args=[ticket.id])}"
+                            else:
+                                ticket_url = f"{EmailService.get_site_domain()}{reverse('general:dashboard_admin:ticket_detail', args=[ticket.id])}"
+                        else:
+                            ticket_url = f"{EmailService.get_site_domain()}{reverse('general:dashboard_admin:ticket_detail', args=[ticket.id])}"
+                        
+                        Notification.objects.create(
+                            user=ticket.user,
+                            batch_id=uuid.uuid4(),
+                            target_type='single',
+                            title=f"Your ticket has been resolved",
+                            description=f"Ticket #{ticket.id}: {ticket.title} has been marked as resolved. <a href=\"{ticket_url}\" style=\"color: #10b981; text-decoration: underline;\">View ticket</a>"
+                        )
+                    except Exception as e:
+                        import logging
+                        logger = logging.getLogger(__name__)
+                        logger.error(f'Error sending ticket resolved email: {str(e)}')
+                
+                messages.success(request, f'Ticket status updated to {ticket.get_status_display()}.')
+                return redirect('general:dashboard_admin:ticket_detail', ticket_id=ticket.id)
+    
+    form = TicketCommentForm()
+    comments = ticket.comments.all().select_related('user').order_by('created_at')
+    
+    return render(request, 'dashboard_admin/ticket_detail.html', {
+        'ticket': ticket,
+        'form': form,
+        'comments': comments,
     })
 
 @login_required

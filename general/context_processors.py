@@ -77,3 +77,15 @@ def pending_sessions_count(request):
         'pending_sessions_count': 0,
     }
 
+def unresolved_tickets_count(request):
+    """Context processor to provide unresolved tickets count for admin dashboard"""
+    if request.user.is_authenticated and hasattr(request.user, 'profile') and request.user.profile.role == 'admin':
+        from .models import Ticket
+        unresolved_count = Ticket.objects.filter(status__in=['submitted', 'in_progress']).count()
+        return {
+            'unresolved_tickets_count': unresolved_count,
+        }
+    return {
+        'unresolved_tickets_count': 0,
+    }
+

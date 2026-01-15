@@ -1109,11 +1109,152 @@ def support_view(request):
     if request.user.profile.role != 'mentor':
         return redirect('general:index')
     
+    from general.forms import TicketForm
+    from general.models import Ticket
+    
+    if request.method == 'POST':
+        form = TicketForm(request.POST, request.FILES)
+        if form.is_valid():
+            ticket = form.save(commit=False)
+            ticket.user = request.user
+            ticket.save()
+            
+            # Send email to admin
+            from general.email_service import EmailService
+            try:
+                EmailService.send_ticket_created_email(ticket)
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f'Error sending ticket created email: {str(e)}')
+            
+            messages.success(request, 'Your support ticket has been submitted successfully. We will get back to you soon!')
+            return redirect('general:dashboard_mentor:support')
+    else:
+        form = TicketForm()
+    
+    # Get user's tickets
+    user_tickets = Ticket.objects.filter(user=request.user).order_by('-created_at')[:10]
+    
     return render(
         request,
         'dashboard_mentor/support.html',
         {
             'debug': settings.DEBUG,
+            'form': form,
+            'user_tickets': user_tickets,
+        },
+    )
+
+
+@login_required
+def ticket_detail(request, ticket_id):
+    """View ticket details and add comments"""
+    if not hasattr(request.user, 'profile'):
+        return redirect('general:index')
+    
+    # Prevent admin users from accessing mentor dashboard
+    if request.user.profile.role == 'admin':
+        from django.contrib.auth import logout
+        logout(request)
+        messages.error(request, "You do not have permission to access this page.")
+        return redirect('accounts:login')
+    
+    if request.user.profile.role != 'mentor':
+        return redirect('general:index')
+    
+    from general.models import Ticket, TicketComment
+    from general.forms import TicketCommentForm
+    from general.email_service import EmailService
+    from accounts.models import CustomUser
+    
+    ticket = get_object_or_404(Ticket, id=ticket_id, user=request.user)
+    
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        
+        if action == 'add_comment':
+            form = TicketCommentForm(request.POST)
+            if form.is_valid():
+                comment = form.save(commit=False)
+                comment.ticket = ticket
+                comment.user = request.user
+                comment.save()
+                
+                # Send email to admin and create notification for all admins
+                try:
+                    EmailService.send_ticket_comment_email(ticket, comment, request.user)
+                    
+                    # Create notification for all admin users
+                    admin_users = CustomUser.objects.filter(
+                        is_active=True,
+                        admin_profile__isnull=False
+                    )
+                    from general.models import Notification
+                    from django.urls import reverse
+                    import uuid
+                    batch_id = uuid.uuid4()
+                    
+                    user_name = ticket.user.profile.first_name if hasattr(ticket.user, 'profile') and ticket.user.profile and ticket.user.profile.first_name else ticket.user.email.split('@')[0]
+                    ticket_url = f"{EmailService.get_site_domain()}{reverse('general:dashboard_admin:ticket_detail', args=[ticket.id])}"
+                    for admin_user in admin_users:
+                        Notification.objects.create(
+                            user=admin_user,
+                            batch_id=batch_id,
+                            target_type='single',
+                            title=f"New comment on ticket #{ticket.id}",
+                            description=f"{user_name} added a comment to ticket: {ticket.title}. <a href=\"{ticket_url}\" style=\"color: #10b981; text-decoration: underline;\">View ticket</a>"
+                        )
+                except Exception as e:
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.error(f'Error sending ticket comment email: {str(e)}')
+                
+                messages.success(request, 'Your comment has been added.')
+                return redirect('general:dashboard_mentor:ticket_detail', ticket_id=ticket.id)
+        elif action == 'update_status' and request.user.profile.role == 'admin':
+            # Only admins can update status
+            new_status = request.POST.get('status')
+            if new_status in dict(Ticket.STATUS_CHOICES):
+                old_status = ticket.status
+                ticket.status = new_status
+                ticket.save()
+                
+                # If marked as resolved, send email and notification
+                if new_status == 'resolved' and old_status != 'resolved':
+                    try:
+                        EmailService.send_ticket_resolved_email(ticket)
+                        
+                        # Create notification for ticket creator
+                        from general.models import Notification
+                        from django.urls import reverse
+                        import uuid
+                        ticket_url = f"{EmailService.get_site_domain()}{reverse('general:dashboard_mentor:ticket_detail', args=[ticket.id])}"
+                        Notification.objects.create(
+                            user=ticket.user,
+                            batch_id=uuid.uuid4(),
+                            target_type='single',
+                            title=f"Your ticket has been resolved",
+                            description=f"Ticket #{ticket.id}: {ticket.title} has been marked as resolved. <a href=\"{ticket_url}\" style=\"color: #10b981; text-decoration: underline;\">View ticket</a>"
+                        )
+                    except Exception as e:
+                        import logging
+                        logger = logging.getLogger(__name__)
+                        logger.error(f'Error sending ticket resolved email: {str(e)}')
+                
+                messages.success(request, f'Ticket status updated to {ticket.get_status_display()}.')
+                return redirect('general:dashboard_mentor:ticket_detail', ticket_id=ticket.id)
+    
+    form = TicketCommentForm()
+    comments = ticket.comments.all().order_by('created_at')
+    
+    return render(
+        request,
+        'dashboard_mentor/ticket_detail.html',
+        {
+            'ticket': ticket,
+            'form': form,
+            'comments': comments,
         },
     )
 

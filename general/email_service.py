@@ -392,6 +392,138 @@ class EmailService:
         )
     
     @staticmethod
+    def send_ticket_created_email(ticket) -> bool:
+        """
+        Send email to admin when a new ticket is created.
+        
+        Args:
+            ticket: Ticket instance
+            
+        Returns:
+            bool: True if email was sent successfully
+        """
+        from general.models import Ticket
+        
+        user_name = "Unknown User"
+        user_email = "unknown@example.com"
+        user_role = "Unknown"
+        
+        if hasattr(ticket.user, 'profile') and ticket.user.profile:
+            user_name = f"{ticket.user.profile.first_name} {ticket.user.profile.last_name}".strip()
+            user_role = ticket.user.profile.role
+        user_email = ticket.user.email
+        
+        has_image = "Yes" if ticket.image else "No"
+        
+        context = {
+            'ticket': ticket,
+            'user_name': user_name,
+            'user_email': user_email,
+            'user_role': user_role,
+            'has_image': has_image,
+            'ticket_url': f"{EmailService.get_site_domain()}/dashboard/admin/tickets/{ticket.id}/",
+        }
+        
+        return EmailService.send_email(
+            subject=f"New Support Ticket: {ticket.title}",
+            recipient_email="info@healthymentoring.com",
+            template_name='ticket_created',
+            context=context,
+        )
+    
+    @staticmethod
+    def send_ticket_comment_email(ticket, comment, commenter) -> bool:
+        """
+        Send email when a comment is added to a ticket.
+        If admin comments, notify the ticket creator.
+        If user/mentor comments, notify all admins.
+        
+        Args:
+            ticket: Ticket instance
+            comment: TicketComment instance
+            commenter: User who made the comment
+            
+        Returns:
+            bool: True if email was sent successfully
+        """
+        from accounts.models import CustomUser
+        
+        is_admin = hasattr(commenter, 'profile') and commenter.profile and commenter.profile.role == 'admin'
+        
+        if is_admin:
+            # Admin commented - notify ticket creator
+            user_name = "there"
+            if hasattr(ticket.user, 'profile') and ticket.user.profile:
+                if hasattr(ticket.user.profile, 'first_name') and ticket.user.profile.first_name:
+                    user_name = ticket.user.profile.first_name
+            
+            context = {
+                'ticket': ticket,
+                'comment': comment,
+                'user_name': user_name,
+                'ticket_url': f"{EmailService.get_site_domain()}/dashboard/{ticket.user.profile.role}/tickets/{ticket.id}/",
+            }
+            
+            return EmailService.send_email(
+                subject=f"Update on your support ticket: {ticket.title}",
+                recipient_email=ticket.user.email,
+                template_name='ticket_comment_user',
+                context=context,
+            )
+        else:
+            # User/Mentor commented - notify admin
+            user_name = "Unknown User"
+            user_role = "Unknown"
+            
+            if hasattr(commenter, 'profile') and commenter.profile:
+                user_name = f"{commenter.profile.first_name} {commenter.profile.last_name}".strip()
+                user_role = commenter.profile.role
+            
+            context = {
+                'ticket': ticket,
+                'comment': comment,
+                'user_name': user_name,
+                'user_role': user_role,
+                'ticket_url': f"{EmailService.get_site_domain()}/dashboard/admin/tickets/{ticket.id}/",
+            }
+            
+            return EmailService.send_email(
+                subject=f"New comment on ticket #{ticket.id}: {ticket.title}",
+                recipient_email="info@healthymentoring.com",
+                template_name='ticket_comment_admin',
+                context=context,
+            )
+    
+    @staticmethod
+    def send_ticket_resolved_email(ticket) -> bool:
+        """
+        Send email when a ticket is marked as resolved.
+        
+        Args:
+            ticket: Ticket instance
+            
+        Returns:
+            bool: True if email was sent successfully
+        """
+        user_name = "there"
+        if hasattr(ticket.user, 'profile') and ticket.user.profile:
+            if hasattr(ticket.user.profile, 'first_name') and ticket.user.profile.first_name:
+                user_name = ticket.user.profile.first_name
+        
+        context = {
+            'ticket': ticket,
+            'user_name': user_name,
+            'ticket_url': f"{EmailService.get_site_domain()}/dashboard/{ticket.user.profile.role}/tickets/{ticket.id}/",
+        }
+        
+        return EmailService.send_email(
+            subject=f"Your support ticket has been resolved: {ticket.title}",
+            recipient_email=ticket.user.email,
+            template_name='ticket_resolved',
+            context=context,
+        )
+    
+    @staticmethod
     def send_timezone_change_email(user, new_timezone: str, old_timezone: str) -> bool:
         """
         Send timezone change notification email with upcoming sessions.

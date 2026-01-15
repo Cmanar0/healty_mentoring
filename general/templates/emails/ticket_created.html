@@ -1,0 +1,27 @@
+{% extends "emails/base.html" %}
+
+{% block content %}
+<div class="content-block">
+    <h2 style="margin: 0 0 16px 0; color: #1f2937; font-size: 1.5rem;">New Support Ticket Submitted</h2>
+    
+    <p style="margin: 0 0 16px 0; color: #4b5563;">
+        A new support ticket has been submitted and requires your attention.
+    </p>
+    
+    <div style="background: #f9fafb; border-left: 4px solid #10b981; padding: 16px; margin: 20px 0; border-radius: 4px;">
+        <p style="margin: 0 0 8px 0; font-weight: 600; color: #1f2937;">Ticket Details:</p>
+        <p style="margin: 4px 0; color: #4b5563;"><strong>Title:</strong> {{ ticket.title }}</p>
+        <p style="margin: 4px 0; color: #4b5563;"><strong>Description:</strong> {{ ticket.description|truncatewords:50 }}</p>
+        <p style="margin: 4px 0; color: #4b5563;"><strong>Submitted by:</strong> {{ user_name }} ({{ user_role }})</p>
+        <p style="margin: 4px 0; color: #4b5563;"><strong>Email:</strong> {{ user_email }}</p>
+        <p style="margin: 4px 0; color: #4b5563;"><strong>Image attached:</strong> {{ has_image }}</p>
+    </div>
+    
+    <div style="text-align: center; margin: 24px 0;">
+        <a href="{{ ticket_url }}" style="display: inline-block; padding: 12px 24px; background: #10b981; color: white; text-decoration: none; border-radius: 8px; font-weight: 600;">
+            View Ticket
+        </a>
+    </div>
+</div>
+{% endblock %}
+

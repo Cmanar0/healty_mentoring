@@ -1,0 +1,236 @@
+{% extends "dashboard_user/base.html" %}
+{% load static %}
+
+{% block page_title %}Ticket #{{ ticket.id }}{% endblock %}
+
+{% block dashboard_content %}
+<div class="dashboard-content-container">
+    <div class="ticket-detail-header">
+        <a href="{% url 'general:dashboard_user:support' %}" class="btn-back">
+            <i class="fas fa-arrow-left"></i> Back to Support
+        </a>
+        <div class="ticket-header-info">
+            <h1>Ticket #{{ ticket.id }}: {{ ticket.title }}</h1>
+            <div class="ticket-meta">
+                <span class="status-badge status-{{ ticket.status }}">{{ ticket.get_status_display }}</span>
+                <span class="meta-item">
+                    <i class="fas fa-calendar"></i>
+                    {{ ticket.created_at|date:"M d, Y H:i" }}
+                </span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="ticket-content-section">
+        <div class="ticket-description">
+            <h3>Description</h3>
+            <p>{{ ticket.description|linebreaks }}</p>
+            {% if ticket.image %}
+                <div class="ticket-image">
+                    <img src="{{ ticket.image.url }}" alt="Ticket attachment" style="max-width: 100%; border-radius: 8px; margin-top: 16px;">
+                </div>
+            {% endif %}
+        </div>
+        
+        <!-- Comments Section -->
+        <div class="comments-section">
+            <h3>Comments ({{ comments.count }})</h3>
+            
+            <div class="comments-list">
+                {% for comment in comments %}
+                <div class="comment-item">
+                    <div class="comment-header">
+                        <span class="comment-author">
+                            {% if comment.user.profile %}
+                                {{ comment.user.profile.first_name }} {{ comment.user.profile.last_name }}
+                            {% else %}
+                                {{ comment.user.email }}
+                            {% endif %}
+                            {% if comment.user.profile.role == 'admin' %}
+                                <span class="admin-badge">Admin</span>
+                            {% endif %}
+                        </span>
+                        <span class="comment-date">{{ comment.created_at|date:"M d, Y H:i" }}</span>
+                    </div>
+                    <div class="comment-body">{{ comment.comment|linebreaks }}</div>
+                </div>
+                {% empty %}
+                <p style="color: var(--text-light); padding: 20px; text-align: center;">No comments yet.</p>
+                {% endfor %}
+            </div>
+            
+            <!-- Add Comment Form -->
+            <div class="add-comment-section">
+                <h4>Add Comment</h4>
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="add_comment">
+                    {{ form.comment }}
+                    <button type="submit" class="btn btn-primary" style="margin-top: 12px;">Add Comment</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.ticket-detail-header {
+    margin-bottom: 32px;
+}
+
+.btn-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    color: var(--text-secondary);
+    text-decoration: none;
+    margin-bottom: 16px;
+    transition: all 0.2s;
+}
+
+.btn-back:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.ticket-header-info h1 {
+    font-size: 1.5rem;
+    margin: 0 0 12px 0;
+    color: var(--text-dark);
+}
+
+.ticket-meta {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.meta-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-light);
+    font-size: 0.9rem;
+}
+
+.ticket-content-section {
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.ticket-description {
+    margin-bottom: 32px;
+    padding-bottom: 32px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.ticket-description h3 {
+    margin: 0 0 12px 0;
+    color: var(--text-dark);
+    font-size: 1.1rem;
+}
+
+.ticket-description p {
+    color: var(--text-secondary);
+    line-height: 1.6;
+}
+
+.comments-section h3 {
+    margin: 0 0 20px 0;
+    color: var(--text-dark);
+    font-size: 1.1rem;
+}
+
+.comments-list {
+    margin-bottom: 32px;
+}
+
+.comment-item {
+    padding: 16px;
+    background: #f8fafc;
+    border-radius: 8px;
+    margin-bottom: 12px;
+}
+
+.comment-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.comment-author {
+    font-weight: 600;
+    color: var(--text-dark);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.admin-badge {
+    background: var(--primary);
+    color: white;
+    font-size: 0.7rem;
+    padding: 2px 8px;
+    border-radius: 12px;
+}
+
+.comment-date {
+    color: var(--text-light);
+    font-size: 0.85rem;
+}
+
+.comment-body {
+    color: var(--text-secondary);
+    line-height: 1.6;
+}
+
+.add-comment-section {
+    padding-top: 24px;
+    border-top: 1px solid #e2e8f0;
+}
+
+.add-comment-section h4 {
+    margin: 0 0 12px 0;
+    color: var(--text-dark);
+    font-size: 1rem;
+}
+
+.status-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: capitalize;
+}
+
+.status-badge.status-submitted {
+    background: #fef3c7;
+    color: #d97706;
+}
+
+.status-badge.status-in_progress {
+    background: #dbeafe;
+    color: #2563eb;
+}
+
+.status-badge.status-resolved {
+    background: #d1fae5;
+    color: #059669;
+}
+
+.status-badge.status-closed {
+    background: #e5e7eb;
+    color: #6b7280;
+}
+</style>
+{% endblock %}
+

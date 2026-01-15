@@ -1,0 +1,31 @@
+{% extends "emails/base.html" %}
+
+{% block content %}
+<div class="content-block">
+    <h2 style="margin: 0 0 16px 0; color: #1f2937; font-size: 1.5rem;">Your Support Ticket Has Been Resolved</h2>
+    
+    <p style="margin: 0 0 16px 0; color: #4b5563;">
+        Hi {{ user_name }},
+    </p>
+    
+    <p style="margin: 0 0 16px 0; color: #4b5563;">
+        Great news! Your support ticket has been marked as resolved.
+    </p>
+    
+    <div style="background: #f9fafb; border-left: 4px solid #10b981; padding: 16px; margin: 20px 0; border-radius: 4px;">
+        <p style="margin: 0 0 8px 0; font-weight: 600; color: #1f2937;">Ticket: {{ ticket.title }}</p>
+        <p style="margin: 4px 0; color: #4b5563;">Ticket #{{ ticket.id }}</p>
+    </div>
+    
+    <p style="margin: 16px 0; color: #4b5563;">
+        You can view the ticket and any comments by clicking the button below.
+    </p>
+    
+    <div style="text-align: center; margin: 24px 0;">
+        <a href="{{ ticket_url }}" style="display: inline-block; padding: 12px 24px; background: #10b981; color: white; text-decoration: none; border-radius: 8px; font-weight: 600;">
+            View Ticket
+        </a>
+    </div>
+</div>
+{% endblock %}
+

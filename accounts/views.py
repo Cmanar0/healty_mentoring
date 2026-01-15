@@ -369,10 +369,16 @@ class CustomLoginView(BaseLoginView):
                 else:
                     return f"{mentor_url}?open_booking=true"
         
-        # Default redirect
+        # Default redirect - check for 'next' parameter (from @login_required redirect)
         next_url = self.request.GET.get('next')
         if next_url:
-            return next_url
+            # Validate that next_url is safe (relative URL or same domain)
+            # Django's LoginRequiredMixin already validates this, but we'll double-check
+            from django.utils.http import url_has_allowed_host_and_scheme
+            from django.conf import settings
+            allowed_hosts = settings.ALLOWED_HOSTS
+            if url_has_allowed_host_and_scheme(next_url, allowed_hosts=allowed_hosts):
+                return next_url
         
         # Check user role and redirect accordingly
         if self.request.user.is_authenticated:

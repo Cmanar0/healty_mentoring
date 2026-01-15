@@ -62,6 +62,7 @@ TEMPLATES = [{
         "django.contrib.messages.context_processors.messages",
         "general.context_processors.notifications",
         "general.context_processors.pending_sessions_count",
+        "general.context_processors.unresolved_tickets_count",
     ]},
 }]
 
