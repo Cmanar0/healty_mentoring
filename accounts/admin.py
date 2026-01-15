@@ -4,9 +4,9 @@ from django.contrib.auth.models import Group
 from django import forms
 from django.utils import timezone
 from .models import (
-    CustomUser, UserProfile, MentorProfile, MentorClientRelationship
+    CustomUser, UserProfile, MentorProfile, AdminProfile, MentorClientRelationship
 )
-from .forms import CustomUserCreationForm, CustomUserChangeForm
+from .forms import CustomUserCreationForm, CustomUserChangeForm, AdminUserCreationForm
 from dashboard_mentor.models import MentorProfileQualification
 
 # Hide Authentication and Authorization groups
@@ -14,10 +14,10 @@ admin.site.unregister(Group)
 
 # User Admin (no inline profiles since we have separate models)
 class UserAdmin(BaseUserAdmin):
-    add_form = CustomUserCreationForm
+    add_form = AdminUserCreationForm
     form = CustomUserChangeForm
     model = CustomUser
-    list_display = ("email", "is_email_verified", "is_staff", "is_superuser")
+    list_display = ("email", "is_email_verified", "is_staff", "is_superuser", "get_role")
     list_filter = ("is_email_verified", "is_staff", "is_superuser")
     ordering = ("email",)
     actions = ["verify_emails", "unverify_emails"]
@@ -28,8 +28,119 @@ class UserAdmin(BaseUserAdmin):
         ("Important dates", {"fields": ("last_login",)}),
     )
     add_fieldsets = (
-        (None, {"classes": ("wide",), "fields": ("email", "password1", "password2")}),
+        (None, {
+            "classes": ("wide",),
+            "fields": ("email", "password1", "password2", "role", "first_name", "last_name"),
+        }),
     )
+    
+    def get_role(self, obj):
+        """Display user's role"""
+        if hasattr(obj, 'admin_profile'):
+            return 'Admin'
+        elif hasattr(obj, 'mentor_profile'):
+            return 'Mentor'
+        elif hasattr(obj, 'user_profile'):
+            return 'User'
+        return 'No Profile'
+    get_role.short_description = 'Role'
+    
+    def get_form(self, request, obj=None, **kwargs):
+        """Handle form creation, allowing non-model fields in fieldsets for new users"""
+        # For new users, ensure we use AdminUserCreationForm which has the extra fields
+        if obj is None:
+            kwargs['form'] = self.add_form
+        # Call parent to get the form class
+        try:
+            form = super().get_form(request, obj, **kwargs)
+        except Exception as e:
+            # If validation fails due to fieldsets containing non-model fields,
+            # Django should still accept them if they're in the form class.
+            # If it doesn't, we'll need to handle it differently.
+            # For now, let's see if setting the form class before calling super() helps
+            raise
+        
+        # For existing users, add read-only fields to show current role and profile info
+        if obj is not None:  # Editing existing user
+            # Show current role as read-only
+            if hasattr(obj, 'admin_profile'):
+                current_role = 'admin'
+                profile = obj.admin_profile
+            elif hasattr(obj, 'mentor_profile'):
+                current_role = 'mentor'
+                profile = obj.mentor_profile
+            elif hasattr(obj, 'user_profile'):
+                current_role = 'user'
+                profile = obj.user_profile
+            else:
+                current_role = None
+                profile = None
+            
+            if current_role:
+                form.base_fields['role'] = forms.CharField(
+                    initial=current_role,
+                    required=False,
+                    widget=forms.TextInput(attrs={'readonly': 'readonly'}),
+                    help_text="Current role (cannot be changed after creation)"
+                )
+                if profile:
+                    form.base_fields['first_name'] = forms.CharField(
+                        initial=profile.first_name,
+                        required=False,
+                        widget=forms.TextInput(attrs={'readonly': 'readonly'}),
+                        help_text="First name (edit in profile section)"
+                    )
+                    form.base_fields['last_name'] = forms.CharField(
+                        initial=profile.last_name,
+                        required=False,
+                        widget=forms.TextInput(attrs={'readonly': 'readonly'}),
+                        help_text="Last name (edit in profile section)"
+                    )
+        
+        return form
+    
+    def save_model(self, request, obj, form, change):
+        """
+        Override save to create appropriate profile based on role.
+        Only creates profiles for NEW users (not when editing existing ones).
+        """
+        # Save the user first
+        super().save_model(request, obj, form, change)
+        
+        # Only create profile if this is a NEW user (not editing)
+        if not change:
+            # Get role, first_name, and last_name from request.POST (since they're not model fields)
+            role = request.POST.get('role', '').strip()
+            first_name = request.POST.get('first_name', '').strip() or 'User'
+            last_name = request.POST.get('last_name', '').strip() or 'User'
+            
+            # Create appropriate profile based on role
+            if role == 'admin':
+                if not hasattr(obj, 'admin_profile'):
+                    AdminProfile.objects.create(
+                        user=obj,
+                        first_name=first_name,
+                        last_name=last_name,
+                        role='admin'
+                    )
+            elif role == 'mentor':
+                if not hasattr(obj, 'mentor_profile'):
+                    MentorProfile.objects.create(
+                        user=obj,
+                        first_name=first_name,
+                        last_name=last_name,
+                        role='mentor'
+                    )
+            elif role == 'user':
+                if not hasattr(obj, 'user_profile'):
+                    UserProfile.objects.create(
+                        user=obj,
+                        first_name=first_name,
+                        last_name=last_name,
+                        role='user'
+                    )
+            # If no role provided or role is invalid, don't create any profile
+            # (same as current behavior - admin-created users don't get profiles)
     
     def verify_emails(self, request, queryset):
         """Admin action to verify selected users' emails"""
@@ -175,6 +286,44 @@ class MentorProfileAdmin(admin.ModelAdmin):
         verbose_name = "Mentor Profile"
         verbose_name_plural = "Mentor Profiles"
 
+# Admin Profile Admin
+class AdminProfileAdmin(admin.ModelAdmin):
+    list_display = ('first_name', 'last_name', 'email_display', 'role')
+    list_filter = ('role',)
+    search_fields = ('first_name', 'last_name', 'user__email')
+    readonly_fields = ('role', 'user_email_display')
+    exclude = ('user',)
+    
+    fieldsets = (
+        ('User Information', {
+            'fields': ('user_email_display', 'role')
+        }),
+        ('Personal Information', {
+            'fields': ('first_name', 'last_name', 'profile_picture')
+        }),
+        ('Timezone Settings', {
+            'fields': ('detected_timezone', 'selected_timezone', 'confirmed_timezone_mismatch'),
+            'description': 'Detected timezone is updated automatically. Selected timezone is user\'s preference. Confirmed mismatch indicates user wants to keep a different timezone than detected.'
+        }),
+        ('Legacy Timezone', {
+            'fields': ('time_zone',),
+            'classes': ('collapse',),
+            'description': 'Legacy field - kept for backward compatibility. Use selected_timezone instead.'
+        }),
+    )
+    
+    def email_display(self, obj):
+        return obj.user.email
+    email_display.short_description = 'Email'
+    
+    def user_email_display(self, obj):
+        return obj.user.email
+    user_email_display.short_description = 'User Email'
+    
+    class Meta:
+        verbose_name = "Admin Profile"
+        verbose_name_plural = "Admin Profiles"
+
 # Mentor-Client Relationship Admin
 class MentorClientRelationshipAdmin(admin.ModelAdmin):
     list_display = ('mentor_name', 'client_name', 'client_email', 'status', 'confirmed', 'created_at', 'invited_at', 'verified_at')
@@ -273,6 +422,9 @@ admin.site.register(UserProfile, UserProfileAdmin)
 
 # Group Mentor Profile related models
 admin.site.register(MentorProfile, MentorProfileAdmin)
+
+# Group Admin Profile related models
+admin.site.register(AdminProfile, AdminProfileAdmin)
 
 # Register Mentor-Client Relationship
 admin.site.register(MentorClientRelationship, MentorClientRelationshipAdmin)

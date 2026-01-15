@@ -402,8 +402,22 @@ class SessionInvitation(models.Model):
 
 class Notification(models.Model):
     """Notification model for user notifications"""
+    TARGET_TYPE_CHOICES = [
+        ('all', 'All Users'),
+        ('all_users', 'All User Role'),
+        ('all_mentors', 'All Mentor Role'),
+        ('single', 'Single User'),
+    ]
+    
     user = models.ForeignKey("accounts.CustomUser", on_delete=models.CASCADE, related_name="notifications")
     batch_id = models.UUIDField(default=uuid.uuid4, editable=False, db_index=True, help_text="Groups notifications created in the same admin action")
+    target_type = models.CharField(
+        max_length=20,
+        choices=TARGET_TYPE_CHOICES,
+        default='all',
+        db_index=True,
+        help_text="Target audience type when notification was created"
+    )
     title = models.CharField(max_length=200)
     description = models.TextField()
     created_at = models.DateTimeField(default=timezone.now)

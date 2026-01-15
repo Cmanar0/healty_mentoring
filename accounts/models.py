@@ -52,14 +52,17 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
 
     @property
     def profile(self):
-        """Return the appropriate profile (UserProfile or MentorProfile) for backward compatibility"""
+        """Return the appropriate profile (UserProfile, MentorProfile, or AdminProfile) for backward compatibility"""
         try:
             return self.mentor_profile
         except MentorProfile.DoesNotExist:
             try:
                 return self.user_profile
             except UserProfile.DoesNotExist:
-                return None
+                try:
+                    return self.admin_profile
+                except AdminProfile.DoesNotExist:
+                    return None
 
 # Profile Models
 class UserProfile(models.Model):
@@ -261,6 +264,31 @@ class MentorProfile(models.Model):
     class Meta:
         verbose_name = "Mentor Profile"
         verbose_name_plural = "Mentor Profiles"
+
+    def __str__(self):
+        return f"{self.first_name} {self.last_name} ({self.user.email})"
+
+class AdminProfile(models.Model):
+    """Profile for admin users"""
+    ROLE_CHOICES = [
+        ('admin', 'Admin'),
+    ]
+    
+    user = models.OneToOneField("accounts.CustomUser", on_delete=models.CASCADE, related_name="admin_profile")
+    first_name = models.CharField(max_length=150)
+    last_name = models.CharField(max_length=150)
+    role = models.CharField(max_length=10, choices=ROLE_CHOICES, default='admin', editable=False)  # Not changeable
+    # Timezone fields (same as other profiles)
+    detected_timezone = models.CharField(max_length=64, blank=True, null=True, help_text="Browser-detected timezone, updated on each page load")
+    selected_timezone = models.CharField(max_length=64, blank=True, null=True, help_text="User's selected/preferred timezone")
+    confirmed_timezone_mismatch = models.BooleanField(default=False, help_text="True if user confirmed they want to keep a different timezone than detected")
+    # Legacy field (kept for backward compatibility)
+    time_zone = models.CharField(max_length=64, blank=True, null=True)
+    profile_picture = models.ImageField(upload_to="profiles/", blank=True, null=True)
+
+    class Meta:
+        verbose_name = "Admin Profile"
+        verbose_name_plural = "Admin Profiles"
 
     def __str__(self):
         return f"{self.first_name} {self.last_name} ({self.user.email})"

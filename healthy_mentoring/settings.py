@@ -32,6 +32,7 @@ INSTALLED_APPS = [
     "general",
     "dashboard_mentor",
     "dashboard_user",
+    "dashboard_admin",
     "web",
     "crispy_forms",
     "widget_tweaks",

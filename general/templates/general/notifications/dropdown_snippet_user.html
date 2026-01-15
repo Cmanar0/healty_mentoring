@@ -1,0 +1,91 @@
+{% load static %}
+
+<div class="notification-dropdown">
+  <button class="notification-bell" id="notificationBell" aria-label="Notifications">
+    <i class="fas fa-bell"></i>
+    {% if unread_count > 0 %}
+      <span class="notification-badge">{{ unread_count }}</span>
+    {% endif %}
+  </button>
+  <div class="notification-menu" id="notificationMenu" style="display: none !important;">
+    <div class="notification-menu-header">
+      <h3>Notifications</h3>
+      {% if unread_count > 0 %}
+        <form method="post" action="{% url 'general:dashboard_user:notification_mark_all_read' %}" style="display: inline;" class="mark-all-read-form">
+          {% csrf_token %}
+          <button class="mark-all-read-btn" type="submit">Mark all as read</button>
+        </form>
+      {% endif %}
+    </div>
+    <div class="notification-list">
+      {% if latest_notifications %}
+        {% for notification in latest_notifications %}
+          <div class="notification-item {% if not notification.is_opened %}unread{% endif %}" 
+               data-notification-id="{{ notification.id }}"
+               data-notification-click="true">
+            <div class="notification-icon">
+              <i class="fas fa-bell"></i>
+            </div>
+            <div class="notification-content">
+              <p class="notification-title">{{ notification.title }}</p>
+              <p class="notification-time">{{ notification.created_at|timesince }} ago</p>
+            </div>
+          </div>
+        {% endfor %}
+      {% else %}
+        <div class="notification-empty">
+          <p>No notifications</p>
+        </div>
+      {% endif %}
+    </div>
+    <div class="notification-footer">
+      <a href="{% url 'general:dashboard_user:notification_list' %}" class="view-all-notifications">View all</a>
+    </div>
+  </div>
+</div>
+
+<!-- Modal -->
+<div id="notificationModal" class="modal-overlay">
+  <div class="modal-content">
+    <button type="button" class="modal-close" onclick="closeNotificationModal()">
+      <i class="fas fa-times"></i>
+    </button>
+    <div id="notificationModalContent"></div>
+  </div>
+</div>
+
+<script>
+  // Handle notification item clicks
+  document.addEventListener('DOMContentLoaded', function() {
+    const notificationItems = document.querySelectorAll('.notification-item[data-notification-click="true"]');
+    notificationItems.forEach(item => {
+      item.addEventListener('click', function() {
+        const notificationId = this.getAttribute('data-notification-id');
+        if (notificationId && typeof window.openNotificationModal === 'function') {
+          window.openNotificationModal(parseInt(notificationId));
+        }
+      });
+    });
+  });
+</script>
+
+<style>
+  .notification-empty {
+    padding: 40px 20px;
+    text-align: center;
+    color: var(--text-light);
+  }
+
+  /* Use the same modal styling as email modal */
+  #notificationModal.modal-overlay {
+    z-index: 10000;
+  }
+
+  #notificationModal.modal-overlay .modal-content {
+    max-width: 600px;
+    min-width: 400px;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+</style>
+

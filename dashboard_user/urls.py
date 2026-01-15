@@ -15,5 +15,10 @@ urlpatterns = [
     path('session-invitation/<str:token>/', views.session_invitation, name='session_invitation'),
     path('session-management/', views.session_management, name='session_management'),
     path('book-session/', views.book_session, name='book_session'),
+    path('notifications/', views.notification_list, name='notification_list'),
+    path('notifications/<int:notification_id>/', views.notification_detail, name='notification_detail'),
+    path('notifications/<int:notification_id>/mark-read/', views.notification_mark_read, name='notification_mark_read'),
+    path('notifications/mark-all-read/', views.notification_mark_all_read, name='notification_mark_all_read'),
+    path('notifications/<int:notification_id>/modal/', views.notification_modal_detail, name='notification_modal_detail'),
 ]
 

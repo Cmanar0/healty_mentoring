@@ -376,11 +376,14 @@ class CustomLoginView(BaseLoginView):
         
         # Check user role and redirect accordingly
         if self.request.user.is_authenticated:
-            if hasattr(self.request.user, 'profile'):
-                if self.request.user.profile.role == 'mentor':
+            profile = getattr(self.request.user, 'profile', None)
+            if profile:
+                if profile.role == 'mentor':
                     return '/dashboard/mentor/'
-                elif self.request.user.profile.role == 'user':
+                elif profile.role == 'user':
                     return '/dashboard/user/'
+                elif profile.role == 'admin':
+                    return '/dashboard/admin/'
         
         return '/'
     
@@ -784,7 +787,7 @@ def welcome_redirect(request, uidb64, token):
         elif user.profile.role == 'user':
             return redirect('/dashboard/user/')
         elif user.profile.role == 'admin':
-            return redirect('/admin/')
+            return redirect('/dashboard/admin/')
     
     # Fallback to general index
     return redirect('general:index')

@@ -22,6 +22,33 @@ class CustomUserChangeForm(UserChangeForm):
         model = CustomUser
         fields = ("email",)
 
+class AdminUserCreationForm(CustomUserCreationForm):
+    """Custom form for admin to create users with role selection"""
+    ROLE_CHOICES = [
+        ('user', 'User'),
+        ('mentor', 'Mentor'),
+        ('admin', 'Admin'),
+    ]
+    
+    role = forms.ChoiceField(
+        choices=ROLE_CHOICES,
+        required=True,
+        help_text="Select the role for this user. The appropriate profile will be created automatically."
+    )
+    first_name = forms.CharField(
+        max_length=150,
+        required=False,
+        help_text="First name for the profile (optional, defaults to 'User' if not provided)"
+    )
+    last_name = forms.CharField(
+        max_length=150,
+        required=False,
+        help_text="Last name for the profile (optional, defaults to 'User' if not provided)"
+    )
+    
+    class Meta(CustomUserCreationForm.Meta):
+        fields = ("email", "password1", "password2", "role", "first_name", "last_name")
+
 class RegisterForm(forms.Form):
     ROLE_CHOICES = [
         ('user', 'User'),

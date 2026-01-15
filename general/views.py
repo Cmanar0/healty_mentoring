@@ -16,8 +16,8 @@ def index(request):
         elif request.user.profile.role == 'user':
             return redirect('/dashboard/user/')
         elif request.user.profile.role == 'admin':
-            # Admin might go to Django admin or a specific admin dashboard
-            return redirect('/admin/') 
+            # Redirect to custom admin dashboard
+            return redirect('/dashboard/admin/') 
     
     # Fallback if no profile or role
     return redirect('web:landing')

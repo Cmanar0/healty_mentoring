@@ -28,85 +28,7 @@
         {% if user.profile and user.profile.first_name and user.profile.last_name %}
         <div class="dashboard-top-actions-group" style="display: none !important;">
           <!-- Notification Bell -->
-          <div class="notification-dropdown">
-            <button class="notification-bell" id="notificationBell" aria-label="Notifications">
-              <i class="fas fa-bell"></i>
-              <span class="notification-badge">5</span>
-            </button>
-            <div class="notification-menu" id="notificationMenu" style="display: none !important;">
-            <div class="notification-menu-header">
-              <h3>Notifications</h3>
-              <button class="mark-all-read-btn" style="width: auto;" type="button">Mark all as read</button>
-            </div>
-            <div class="notification-list">
-              <div class="notification-item unread">
-                <div class="notification-icon">
-                  <i class="fas fa-calendar-check"></i>
-                </div>
-                <div class="notification-content">
-                  <p class="notification-title">New session scheduled</p>
-                  <p class="notification-time">2 minutes ago</p>
-                </div>
-              </div>
-              <div class="notification-item unread">
-                <div class="notification-icon">
-                  <i class="fas fa-user-plus"></i>
-                </div>
-                <div class="notification-content">
-                  <p class="notification-title">Mentor accepted your request</p>
-                  <p class="notification-time">15 minutes ago</p>
-                </div>
-              </div>
-              <div class="notification-item">
-                <div class="notification-icon">
-                  <i class="fas fa-comment"></i>
-                </div>
-                <div class="notification-content">
-                  <p class="notification-title">New message from mentor</p>
-                  <p class="notification-time">1 hour ago</p>
-                </div>
-              </div>
-              <div class="notification-item unread">
-                <div class="notification-icon">
-                  <i class="fas fa-check-circle"></i>
-                </div>
-                <div class="notification-content">
-                  <p class="notification-title">Task completed</p>
-                  <p class="notification-time">2 hours ago</p>
-                </div>
-              </div>
-              <div class="notification-item">
-                <div class="notification-icon">
-                  <i class="fas fa-file-alt"></i>
-                </div>
-                <div class="notification-content">
-                  <p class="notification-title">New project document</p>
-                  <p class="notification-time">3 hours ago</p>
-                </div>
-              </div>
-              <div class="notification-item unread">
-                <div class="notification-icon">
-                  <i class="fas fa-exclamation-circle"></i>
-                </div>
-                <div class="notification-content">
-                  <p class="notification-title">Session reminder</p>
-                  <p class="notification-time">5 hours ago</p>
-                </div>
-              </div>
-              <div class="notification-item">
-                <div class="notification-icon">
-                  <i class="fas fa-bullhorn"></i>
-                </div>
-                <div class="notification-content">
-                  <p class="notification-title">Platform update</p>
-                  <p class="notification-time">1 day ago</p>
-                </div>
-              </div>
-            </div>
-            <div class="notification-footer">
-              <a href="#" class="view-all-notifications">View all</a>
-            </div>
-          </div>
+          {% include "general/notifications/dropdown_snippet_user.html" %}
         </div>
           <div class="user-profile-dropdown">
           <button class="user-profile-trigger" id="userProfileTrigger" style="display: none !important;">
@@ -457,8 +379,8 @@
   color: #ef4444;
 }
 
-/* Dashboard Top Actions Group */
-.dashboard-top-actions-group {
+/* Dashboard Top Actions */
+.dashboard-top-actions {
   display: flex;
   align-items: center;
   gap: 16px;
@@ -754,21 +676,31 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     });
 
-    // Mark all as read button
-    const markAllReadBtn = document.querySelector('.mark-all-read-btn');
-    if (markAllReadBtn) {
-      markAllReadBtn.addEventListener('click', function(e) {
+    // Mark all as read button - handle form submission
+    const markAllReadForm = document.querySelector('.mark-all-read-form');
+    if (markAllReadForm) {
+      markAllReadForm.addEventListener('submit', function(e) {
+        e.preventDefault();
         e.stopPropagation();
-        const unreadItems = notificationMenu.querySelectorAll('.notification-item.unread');
-        unreadItems.forEach(item => {
-          item.classList.remove('unread');
+        const formData = new FormData(this);
+        
+        fetch(this.action, {
+          method: 'POST',
+          body: formData,
+          headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+          },
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            // Reload the page to refresh notifications
+            window.location.reload();
+          }
+        })
+        .catch(error => {
+          console.error('Error:', error);
         });
-        // Update badge count (mockup - set to 0)
-        const badge = notificationBell.querySelector('.notification-badge');
-        if (badge) {
-          badge.textContent = '0';
-          badge.style.display = 'none';
-        }
       });
     }
   }
@@ -1005,6 +937,71 @@ document.addEventListener('DOMContentLoaded', function() {
     tutorialOverlay.addEventListener('click', function(e) {
       if (e.target === tutorialOverlay) {
         closeTutorial();
+      }
+    });
+  }
+
+  // Notification Modal Functions (for dropdown snippet)
+  window.openNotificationModal = function(notificationId) {
+    const modal = document.getElementById('notificationModal');
+    const content = document.getElementById('notificationModalContent');
+    
+    if (!modal || !content) {
+      console.error('Notification modal elements not found');
+      return;
+    }
+    
+    // Show loading state
+    content.innerHTML = '<div style="text-align: center; padding: 40px;"><i class="fas fa-spinner fa-spin"></i></div>';
+    modal.classList.add('active');
+    
+    // Fetch notification details
+    const url = `/dashboard/user/notifications/${notificationId}/modal/`;
+    fetch(url, {
+      method: 'GET',
+      headers: {
+        'X-Requested-With': 'XMLHttpRequest',
+      },
+    })
+    .then(response => response.text())
+    .then(html => {
+      content.innerHTML = html;
+      // Close dropdown
+      if (notificationDropdown) {
+        notificationDropdown.classList.remove('active');
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      content.innerHTML = '<div style="text-align: center; padding: 40px; color: #ef4444;">Error loading notification</div>';
+    });
+  };
+  
+  window.closeNotificationModal = function() {
+    const modal = document.getElementById('notificationModal');
+    if (modal) {
+      modal.classList.remove('active');
+      // Reload the page to refresh notifications
+      window.location.reload();
+    }
+  };
+  
+  // Close modal on Escape key
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      const modal = document.getElementById('notificationModal');
+      if (modal && modal.classList.contains('active')) {
+        window.closeNotificationModal();
+      }
+    }
+  });
+  
+  // Close modal when clicking on overlay
+  const notificationModal = document.getElementById('notificationModal');
+  if (notificationModal) {
+    notificationModal.addEventListener('click', function(e) {
+      if (e.target === notificationModal) {
+        window.closeNotificationModal();
       }
     });
   }
