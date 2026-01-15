@@ -27,7 +27,7 @@
               <i class="fas fa-bell"></i>
             </div>
             <div class="notification-content">
-              <p class="notification-title">{{ notification.title }}</p>
+              <div class="notification-title">{{ notification.title|safe }}</div>
               <p class="notification-time">{{ notification.created_at|timesince }} ago</p>
             </div>
           </div>
@@ -86,6 +86,52 @@
     min-width: 400px;
     max-height: 90vh;
     overflow-y: auto;
+  }
+  
+  /* Red close button styling matching booking modal */
+  #notificationModal .modal-close {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    background: rgba(15, 23, 42, 0.1);
+    border: 1px solid rgba(15, 23, 42, 0.1);
+    color: #64748b;
+    font-size: 1rem;
+    cursor: pointer;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 20;
+    padding: 0;
+  }
+  
+  #notificationModal .modal-close:hover {
+    background: #ef4444;
+    border-color: #ef4444;
+    color: white;
+    transform: rotate(90deg) scale(1.1);
+    box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
+  }
+  
+  /* Style HTML content in notification titles */
+  .notification-title div,
+  .notification-title p {
+    margin: 0;
+    display: inline;
+  }
+  
+  .notification-title a {
+    color: inherit;
+    text-decoration: none;
+  }
+  
+  .notification-title strong,
+  .notification-title b {
+    font-weight: 600;
   }
 </style>
 

@@ -5,874 +5,853 @@
 
 {% block dashboard_content %}
 <div class="dashboard-content-container">
-    <!-- Create Notification Form -->
-    <div class="dashboard-card">
-        <div class="dashboard-card-header">
-            <h1 class="dashboard-card-title">
-                <i class="fas fa-plus-circle"></i> Create Notification
-            </h1>
+    
+    <!-- New Notification Creator -->
+    <div class="modern-card create-card">
+        <div class="card-header-styled">
+            <div class="header-icon-box">
+                <i class="fas fa-paper-plane"></i>
+            </div>
+            <div>
+                <h1 class="card-title">Send Notification</h1>
+                <p class="card-subtitle">Broadcast a message to your users or mentors</p>
+            </div>
         </div>
         
-        <div class="dashboard-card-body">
+        <div class="card-body-styled">
             <form method="post" action="{% url 'general:dashboard_admin:notifications' %}" id="notificationForm">
                 {% csrf_token %}
                 <input type="hidden" name="action" value="create">
                 
-                <div class="form-group">
-                    <label for="target_type" class="form-label">Target Audience</label>
-                    <div class="radio-group">
-                        <label class="radio-option">
+                <section class="form-section">
+                    <label class="section-label">Who is this for?</label>
+                    <div class="audience-grid">
+                        <label class="audience-card">
                             <input type="radio" name="target_type" value="all" checked>
-                            <span class="radio-label">
-                                <strong>All Users</strong>
-                                <small>({{ total_users }} users)</small>
-                            </span>
+                            <div class="audience-content">
+                                <div class="audience-icon"><i class="fas fa-globe-americas"></i></div>
+                                <span class="audience-title">Everyone</span>
+                                <span class="audience-count">{{ total_users }} Users</span>
+                            </div>
                         </label>
-                        <label class="radio-option">
+
+                        <label class="audience-card">
                             <input type="radio" name="target_type" value="all_users">
-                            <span class="radio-label">
-                                <strong>All User Role</strong>
-                                <small>({{ user_count }} users)</small>
-                            </span>
+                            <div class="audience-content">
+                                <div class="audience-icon"><i class="fas fa-user"></i></div>
+                                <span class="audience-title">All Clients</span>
+                                <span class="audience-count">{{ user_count }} Users</span>
+                            </div>
                         </label>
-                        <label class="radio-option">
+
+                        <label class="audience-card">
                             <input type="radio" name="target_type" value="all_mentors">
-                            <span class="radio-label">
-                                <strong>All Mentor Role</strong>
-                                <small>({{ mentor_count }} users)</small>
-                            </span>
+                            <div class="audience-content">
+                                <div class="audience-icon"><i class="fas fa-chalkboard-teacher"></i></div>
+                                <span class="audience-title">All Mentors</span>
+                                <span class="audience-count">{{ mentor_count }} Users</span>
+                            </div>
                         </label>
-                        <label class="radio-option">
+
+                        <label class="audience-card">
                             <input type="radio" name="target_type" value="single">
-                            <span class="radio-label">
-                                <strong>Single User</strong>
-                                <small>(Select specific user)</small>
-                            </span>
+                            <div class="audience-content">
+                                <div class="audience-icon"><i class="fas fa-fingerprint"></i></div>
+                                <span class="audience-title">Specific User</span>
+                                <span class="audience-count">Select One</span>
+                            </div>
                         </label>
                     </div>
-                </div>
+                </section>
                 
-                <div class="form-group" id="singleUserGroup" style="display: none;">
-                    <label for="user_search" class="form-label">Search User</label>
-                    <div class="user-search-container">
-                        <input type="text" id="user_search" class="form-control" placeholder="Type to search users by email or name..." autocomplete="off">
+                <div id="singleUserGroup" style="display: none;" class="single-user-section">
+                    <label for="user_search" class="section-label">Find User</label>
+                    <div class="user-search-wrapper">
+                        <i class="fas fa-search search-prefix"></i>
+                        <input type="text" id="user_search" class="modern-input" placeholder="Search by email or name..." autocomplete="off">
                         <input type="hidden" name="user_id" id="user_id">
-                        <div id="user_search_results" class="user-search-results"></div>
-                        <div id="selected_user" class="selected-user" style="display: none;">
-                            <span id="selected_user_name"></span>
-                            <button type="button" class="btn-remove-user" onclick="clearSelectedUser()">
+                        
+                        <div id="user_search_results" class="search-dropdown-results"></div>
+                        
+                        <div id="selected_user" class="selected-user-pill" style="display: none;">
+                            <div class="user-pill-info">
+                                <i class="fas fa-check-circle"></i>
+                                <span id="selected_user_name"></span>
+                            </div>
+                            <button type="button" class="btn-clear-user" onclick="clearSelectedUser()">
                                 <i class="fas fa-times"></i>
                             </button>
                         </div>
                     </div>
                 </div>
                 
-                <div class="form-group">
-                    <label for="title" class="form-label">Title <span class="required">*</span></label>
-                    <input type="text" id="title" name="title" class="form-control" required maxlength="200" placeholder="Enter notification title">
+                <div class="form-grid-row">
+                    <div class="form-group">
+                        <label for="title" class="section-label">Title</label>
+                        <input type="text" id="title" name="title" class="modern-input" required maxlength="200" placeholder="e.g. System Maintenance Update">
+                    </div>
                 </div>
                 
                 <div class="form-group">
-                    <label for="description" class="form-label">Description <span class="required">*</span></label>
-                    <textarea id="description" name="description" class="form-control" rows="5" required placeholder="Enter notification description"></textarea>
+                    <label for="description" class="section-label">Message</label>
+                    <textarea id="description" name="description" class="modern-textarea" rows="4" required placeholder="Type your message here..."></textarea>
                 </div>
                 
-                <div class="form-actions">
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-paper-plane"></i> Send Notification
+                <div class="form-actions-right">
+                    <button type="submit" class="btn-modern-primary">
+                        <i class="fas fa-paper-plane"></i> Send Broadcast
                     </button>
                 </div>
             </form>
         </div>
     </div>
     
-    <!-- Notifications List -->
-    <div class="dashboard-card">
-        <div class="dashboard-card-header">
-            <h1 class="dashboard-card-title">
-                <i class="fas fa-bell"></i> All Notifications
-                <span class="badge">{{ total_count }}</span>
-            </h1>
+    <!-- History Section -->
+    <div class="history-section">
+        <div class="history-header">
+            <h2><i class="fas fa-history"></i> Notification History <span class="count-badge">{{ total_count }}</span></h2>
+            
+            <!-- Compact Filters -->
+            <form method="get" action="{% url 'general:dashboard_admin:notifications' %}" class="compact-filters">
+                <div class="filter-wrapper">
+                    <i class="fas fa-search"></i>
+                    <input type="text" name="search" value="{{ filters.search }}" class="filter-input" placeholder="Search history...">
+                </div>
+                
+                <div class="filter-wrapper">
+                     <select name="target_type" class="filter-select" onchange="this.form.submit()">
+                        <option value="">All Types</option>
+                        <option value="all" {% if filters.target_type == 'all' %}selected{% endif %}>Everyone</option>
+                        <option value="all_users" {% if filters.target_type == 'all_users' %}selected{% endif %}>Mentees</option>
+                        <option value="all_mentors" {% if filters.target_type == 'all_mentors' %}selected{% endif %}>Mentors</option>
+                        <option value="single" {% if filters.target_type == 'single' %}selected{% endif %}>Single</option>
+                    </select>
+                </div>
+                 {% if filters.search or filters.target_type %}
+                    <a href="{% url 'general:dashboard_admin:notifications' %}" class="btn-reset-filters" title="Reset Filters">
+                        <i class="fas fa-undo"></i>
+                    </a>
+                {% endif %}
+            </form>
         </div>
         
-        <div class="dashboard-card-body">
-            <!-- Search and Filters -->
-            <form method="get" action="{% url 'general:dashboard_admin:notifications' %}" class="search-filters-form">
-                <div class="search-filters-row">
-                    <div class="search-group">
-                        <i class="fas fa-search search-icon"></i>
-                        <input type="text" name="search" value="{{ filters.search }}" class="search-input" placeholder="Search by title, description, or user email/name...">
-                        {% if filters.search %}
-                            <a href="?{% if filters.target_type %}target_type={{ filters.target_type }}&{% endif %}page=1" class="clear-search" title="Clear search">
-                                <i class="fas fa-times"></i>
-                            </a>
-                        {% endif %}
-                    </div>
-                    
-                    <div class="filters-group">
-                        <select name="target_type" class="filter-select">
-                            <option value="">All Target Types</option>
-                            <option value="all" {% if filters.target_type == 'all' %}selected{% endif %}>All Users</option>
-                            <option value="all_users" {% if filters.target_type == 'all_users' %}selected{% endif %}>All User Role</option>
-                            <option value="all_mentors" {% if filters.target_type == 'all_mentors' %}selected{% endif %}>All Mentor Role</option>
-                            <option value="single" {% if filters.target_type == 'single' %}selected{% endif %}>Single User</option>
-                        </select>
-                        
-                        <button type="submit" class="btn btn-primary btn-sm">
-                            <i class="fas fa-filter"></i> Apply Filters
-                        </button>
-                        
-                        {% if filters.search or filters.target_type %}
-                            <a href="{% url 'general:dashboard_admin:notifications' %}" class="btn btn-secondary btn-sm">
-                                <i class="fas fa-times"></i> Clear All
-                            </a>
-                        {% endif %}
-                    </div>
-                </div>
-            </form>
-            
-            {% if filters.search or filters.target_type %}
-                <div class="active-filters">
-                    <span class="active-filters-label">Active filters:</span>
-                    {% if filters.search %}
-                        <span class="filter-tag">
-                            Search: "{{ filters.search }}"
-                            <a href="?{% if filters.target_type %}target_type={{ filters.target_type }}&{% endif %}page=1" class="filter-tag-remove">×</a>
-                        </span>
-                    {% endif %}
-                    {% if filters.target_type %}
-                        <span class="filter-tag">
-                            Target: 
-                            {% if filters.target_type == 'all' %}All Users
-                            {% elif filters.target_type == 'all_users' %}All User Role
-                            {% elif filters.target_type == 'all_mentors' %}All Mentor Role
-                            {% elif filters.target_type == 'single' %}Single User
-                            {% else %}{{ filters.target_type|title }}{% endif %}
-                            <a href="?{% if filters.search %}search={{ filters.search }}&{% endif %}page=1" class="filter-tag-remove">×</a>
-                        </span>
-                    {% endif %}
-                </div>
-            {% endif %}
-            
-            {% if batches %}
-                <div class="notifications-list">
-                    {% for batch in batches %}
-                        <div class="notification-item">
-                            <div class="notification-item-header">
-                                <div class="notification-info">
-                                    <h3 class="notification-title">{{ batch.title }}</h3>
-                                    <div class="notification-meta">
-                                        <span class="notification-date">
-                                            <i class="fas fa-clock"></i> {{ batch.created_at|date:"M d, Y H:i" }}
-                                        </span>
-                                        <span class="notification-batch-id">
-                                            <i class="fas fa-hashtag"></i> Batch: {{ batch.batch_id|truncatechars:8 }}
-                                        </span>
-                                        <span class="notification-target-type">
-                                            <i class="fas fa-users"></i> 
-                                            {% if batch.target_type == 'all' %}All Users
-                                            {% elif batch.target_type == 'all_users' %}All User Role
-                                            {% elif batch.target_type == 'all_mentors' %}All Mentor Role
-                                            {% elif batch.target_type == 'single' %}Single User
-                                            {% else %}{{ batch.target_type|default:"Unknown" }}
-                                            {% endif %}
-                                        </span>
-                                    </div>
-                                </div>
-                                <div class="notification-actions">
-                                    <form method="post" action="{% url 'general:dashboard_admin:notification_delete' batch.batch_id %}" class="delete-form" onsubmit="return confirm('Are you sure you want to delete this notification batch? This will delete {{ batch.total_count }} notification(s) from all users.');">
-                                        {% csrf_token %}
-                                        <button type="submit" class="btn btn-danger btn-sm">
-                                            <i class="fas fa-trash"></i> Delete Batch
-                                        </button>
-                                    </form>
-                                </div>
+        {% if batches %}
+            <div class="batches-grid">
+                {% for batch in batches %}
+                    <div class="batch-card">
+                        <div class="batch-card-header">
+                            <div class="batch-main-info">
+                                <h3 class="batch-title">{{ batch.title }}</h3>
+                                <span class="batch-date">{{ batch.created_at|date:"M d, Y • H:i" }}</span>
                             </div>
-                            <div class="notification-description">
-                                {{ batch.description|linebreaks }}
+                            <div class="batch-target-badge type-{{ batch.target_type }}">
+                                {% if batch.target_type == 'all' %}<i class="fas fa-globe"></i> Everyone
+                                {% elif batch.target_type == 'all_users' %}<i class="fas fa-user"></i> Mentees
+                                {% elif batch.target_type == 'all_mentors' %}<i class="fas fa-chalkboard-teacher"></i> Mentors
+                                {% elif batch.target_type == 'single' %}<i class="fas fa-fingerprint"></i> Individual
+                                {% else %}{{ batch.target_type|title }}{% endif %}
                             </div>
-                            <div class="notification-stats">
-                                <div class="stat-item">
-                                    <span class="stat-label">Total Sent:</span>
-                                    <span class="stat-value">{{ batch.total_count }} notification(s)</span>
+                        </div>
+                        
+                         <div class="batch-body">
+                             <div class="batch-desc">{{ batch.description|safe }}</div>
+                         </div>
+                        
+                        <div class="batch-footer">
+                            <div class="batch-stats">
+                                <div class="stat-pill neutral" title="Total Sent">
+                                    <i class="fas fa-paper-plane"></i> {{ batch.total_count }}
                                 </div>
-                                <div class="stat-item">
-                                    <span class="stat-label">Recipients:</span>
-                                    <span class="stat-value">{{ batch.user_count }} user(s)</span>
+                                <div class="stat-pill success" title="Read">
+                                    <i class="fas fa-check-double"></i> {{ batch.read_count }}
                                 </div>
-                                <div class="stat-item">
-                                    <span class="stat-label">Read:</span>
-                                    <span class="stat-value read">{{ batch.read_count }}</span>
-                                </div>
-                                <div class="stat-item">
-                                    <span class="stat-label">Unread:</span>
-                                    <span class="stat-value unread">{{ batch.unread_count }}</span>
-                                </div>
-                                {% if batch.user_role_count > 0 or batch.mentor_role_count > 0 %}
-                                <div class="stat-item">
-                                    <span class="stat-label">By Role:</span>
-                                    <span class="stat-value">
-                                        {% if batch.user_role_count > 0 %}
-                                            <span class="role-badge user-role">{{ batch.user_role_count }} User{% if batch.user_role_count != 1 %}s{% endif %}</span>
-                                        {% endif %}
-                                        {% if batch.mentor_role_count > 0 %}
-                                            <span class="role-badge mentor-role">{{ batch.mentor_role_count }} Mentor{% if batch.mentor_role_count != 1 %}s{% endif %}</span>
-                                        {% endif %}
-                                    </span>
+                                {% if batch.unread_count > 0 %}
+                                <div class="stat-pill warning" title="Unread">
+                                    <i class="fas fa-clock"></i> {{ batch.unread_count }}
                                 </div>
                                 {% endif %}
                             </div>
+                            
+                            <form method="post" action="{% url 'general:dashboard_admin:notification_delete' batch.batch_id %}" onsubmit="return confirm('Delete this batch?');">
+                                {% csrf_token %}
+                                <button type="submit" class="btn-icon-danger" title="Delete Batch">
+                                    <i class="far fa-trash-alt"></i>
+                                </button>
+                            </form>
                         </div>
-                    {% endfor %}
-                </div>
-                
-                <!-- Pagination -->
-                {% if page_obj.has_other_pages %}
-                    <div class="pagination">
-                        {% if page_obj.has_previous %}
-                            <a href="?{% if filters.search %}search={{ filters.search }}&{% endif %}{% if filters.target_type %}target_type={{ filters.target_type }}&{% endif %}page={{ page_obj.previous_page_number }}" class="pagination-link">
-                                <i class="fas fa-chevron-left"></i> Previous
-                            </a>
-                        {% endif %}
-                        
-                        <span class="pagination-info">
-                            Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
-                        </span>
-                        
-                        {% if page_obj.has_next %}
-                            <a href="?{% if filters.search %}search={{ filters.search }}&{% endif %}{% if filters.target_type %}target_type={{ filters.target_type }}&{% endif %}page={{ page_obj.next_page_number }}" class="pagination-link">
-                                Next <i class="fas fa-chevron-right"></i>
-                            </a>
-                        {% endif %}
                     </div>
-                {% endif %}
-            {% else %}
-                <div class="empty-state">
-                    <i class="fas fa-bell-slash"></i>
-                    <p>{% if filters.search or filters.target_type %}No notifications found matching your filters{% else %}No notifications yet{% endif %}</p>
-                    {% if filters.search or filters.target_type %}
-                        <a href="{% url 'general:dashboard_admin:notifications' %}" class="btn btn-primary" style="margin-top: 16px;">
-                            Clear Filters
+                {% endfor %}
+            </div>
+            
+             <!-- Pagination -->
+            {% if page_obj.has_other_pages %}
+                <!-- Simple Previous/Next Pagination for cleaner UI -->
+                 <div class="pagination-container">
+                    {% if page_obj.has_previous %}
+                         <a href="?{% if filters.search %}search={{ filters.search }}&{% endif %}page={{ page_obj.previous_page_number }}" class="page-nav">
+                            <i class="fas fa-chevron-left"></i> Newer
                         </a>
                     {% endif %}
-                </div>
+                    
+                    {% if page_obj.has_next %}
+                         <a href="?{% if filters.search %}search={{ filters.search }}&{% endif %}page={{ page_obj.next_page_number }}" class="page-nav">
+                            Older <i class="fas fa-chevron-right"></i>
+                        </a>
+                    {% endif %}
+                 </div>
             {% endif %}
-        </div>
+            
+        {% else %}
+            <div class="empty-state-modern">
+                <div class="empty-icon-circle">
+                    <i class="far fa-bell"></i>
+                </div>
+                <h3>No notifications found</h3>
+                <p>Try adjusting your search or send your first broadcast.</p>
+            </div>
+        {% endif %}
     </div>
 </div>
 
 <style>
+/* Root & Variables */
+:root {
+    --primary: #10b981;
+    --primary-dark: #059669;
+    --primary-light: #d1fae5;
+    --primary-soft: rgba(16, 185, 129, 0.1);
+    
+    --text-main: #1e293b;
+    --text-secondary: #64748b;
+    --text-tertiary: #94a3b8;
+    
+    --bg-page: #f8fafc;
+    --bg-card: #ffffff;
+    --border-color: #e2e8f0;
+    
+    --radius-lg: 16px;
+    --radius-md: 10px;
+    --radius-sm: 6px;
+    
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03);
+    --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.05), 0 4px 6px -2px rgba(0,0,0,0.03);
+    
+    --font-family: 'Inter', system-ui, sans-serif;
+}
+
 .dashboard-content-container {
-    padding: 24px;
-    max-width: 1200px;
+    max-width: 1000px;
     margin: 0 auto;
+    padding: 32px 20px;
+    font-family: var(--font-family);
+    color: var(--text-main);
 }
 
-.dashboard-card {
-    background: white;
-    border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    margin-bottom: 24px;
+/* Modern Card */
+.modern-card {
+    background: var(--bg-card);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
     overflow: hidden;
+    margin-bottom: 48px;
+    border: 1px solid var(--border-color);
 }
 
-.dashboard-card-header {
-    padding: 20px 24px;
-    border-bottom: 1px solid rgba(0,0,0,0.1);
+.card-header-styled {
+    padding: 24px 32px;
+    border-bottom: 1px solid var(--border-color);
     display: flex;
-    justify-content: space-between;
     align-items: center;
+    gap: 20px;
+    background: linear-gradient(to right, #ffffff, #fcfcfc);
 }
 
-.dashboard-card-title {
+.header-icon-box {
+    width: 48px;
+    height: 48px;
+    background: var(--primary-light);
+    color: var(--primary-dark);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+}
+
+.card-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--text-main);
     margin: 0;
-    font-size: 1.5rem;
-    font-weight: 600;
-    color: var(--text-dark);
-    display: flex;
-    align-items: center;
-    gap: 12px;
 }
 
-.dashboard-card-title i {
+.card-subtitle {
+    margin: 4px 0 0;
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+}
+
+.card-body-styled {
+    padding: 32px;
+}
+
+/* Form Sections */
+.form-section {
+    margin-bottom: 32px;
+}
+
+.section-label {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-main);
+    margin-bottom: 12px;
+    letter-spacing: 0.01em;
+    text-transform: uppercase;
+    opacity: 0.8;
+}
+
+/* Audience Grid - The Card Selector */
+.audience-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+}
+
+.audience-card {
+    position: relative;
+    cursor: pointer;
+}
+
+.audience-card input[type="radio"] {
+    position: absolute;
+    opacity: 0;
+}
+
+.audience-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 20px 16px;
+    border: 2px solid var(--border-color);
+    border-radius: var(--radius-md);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    background: white;
+    height: 100%;
+}
+
+.audience-icon {
+    font-size: 1.5rem;
+    color: var(--text-tertiary);
+    margin-bottom: 12px;
+    transition: color 0.2s;
+}
+
+.audience-title {
+    font-weight: 600;
+    color: var(--text-main);
+    font-size: 0.95rem;
+    margin-bottom: 4px;
+}
+
+.audience-count {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+/* Selected State */
+.audience-card input:checked + .audience-content {
+    border-color: var(--primary);
+    background: var(--primary-light);
+    background: rgba(16, 185, 129, 0.03);
+    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.1);
+}
+
+.audience-card input:checked + .audience-content .audience-icon {
     color: var(--primary);
 }
 
-.badge {
-    background: var(--primary);
-    color: white;
-    padding: 4px 12px;
-    border-radius: 12px;
-    font-size: 0.85rem;
-    font-weight: 600;
-    margin-left: 8px;
+.audience-card:hover .audience-content {
+    border-color: #cbd5e1;
+    transform: translateY(-2px);
 }
 
-.dashboard-card-body {
-    padding: 24px;
+/* Form Inputs */
+.modern-input, .modern-textarea {
+    width: 100%;
+    padding: 12px 16px;
+    border: 2px solid var(--border-color);
+    border-radius: var(--radius-md);
+    font-size: 0.95rem;
+    font-family: inherit;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    background: #fcfcfc;
+}
+
+.modern-input:focus, .modern-textarea:focus {
+    outline: none;
+    border-color: var(--primary);
+    background: white;
+    box-shadow: 0 0 0 4px var(--primary-soft);
+}
+
+.modern-textarea {
+    resize: vertical;
+    min-height: 120px;
 }
 
 .form-group {
     margin-bottom: 24px;
 }
 
-.form-label {
-    display: block;
-    margin-bottom: 8px;
-    font-weight: 500;
-    color: var(--text-dark);
-    font-size: 0.95rem;
-}
-
-.required {
-    color: #ef4444;
-}
-
-.radio-group {
+.form-actions-right {
     display: flex;
-    flex-direction: column;
-    gap: 12px;
+    justify-content: flex-end;
+    margin-top: 32px;
 }
 
-.radio-option {
-    display: flex;
-    align-items: center;
-    padding: 12px 16px;
-    border: 2px solid rgba(0,0,0,0.1);
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.radio-option:hover {
-    border-color: var(--primary);
-    background: rgba(16, 185, 129, 0.05);
-}
-
-.radio-option input[type="radio"] {
-    margin-right: 12px;
-    cursor: pointer;
-}
-
-.radio-option input[type="radio"]:checked + .radio-label {
-    color: var(--primary);
-}
-
-.radio-label {
-    display: flex;
-    flex-direction: column;
-    flex: 1;
-}
-
-.radio-label strong {
+.btn-modern-primary {
+    background: var(--primary);
+    color: white;
+    border: none;
+    padding: 12px 28px;
+    border-radius: var(--radius-md);
     font-weight: 600;
-    color: var(--text-dark);
+    font-size: 1rem;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    transition: all 0.2s;
+    box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.3);
 }
 
-.radio-label small {
-    color: var(--text-light);
-    font-size: 0.85rem;
-    margin-top: 2px;
+.btn-modern-primary:hover {
+    background: var(--primary-dark);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 8px -2px rgba(16, 185, 129, 0.4);
 }
 
-.user-search-container {
+/* Styling for specific user search */
+.user-search-wrapper {
     position: relative;
+    max-width: 500px;
 }
 
-.form-control {
-    width: 100%;
-    padding: 10px 16px;
-    border: 2px solid rgba(0,0,0,0.1);
-    border-radius: 8px;
-    font-size: 0.95rem;
-    transition: border-color 0.2s ease;
-}
-
-.form-control:focus {
-    outline: none;
-    border-color: var(--primary);
-}
-
-.user-search-results {
+.search-prefix {
     position: absolute;
-    top: 100%;
+    left: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-tertiary);
+}
+
+.user-search-wrapper .modern-input {
+    padding-left: 44px;
+}
+
+.search-dropdown-results {
+    position: absolute;
+    top: calc(100% + 8px);
     left: 0;
     right: 0;
     background: white;
-    border: 2px solid rgba(0,0,0,0.1);
-    border-top: none;
-    border-radius: 0 0 8px 8px;
-    max-height: 300px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    max-height: 280px;
     overflow-y: auto;
-    z-index: 1000;
+    z-index: 50;
     display: none;
 }
 
 .user-search-result-item {
     padding: 12px 16px;
     cursor: pointer;
-    border-bottom: 1px solid rgba(0,0,0,0.05);
-    transition: background 0.2s ease;
-}
-
-.user-search-result-item:hover {
-    background: rgba(16, 185, 129, 0.05);
-}
-
-.user-search-result-item:last-child {
-    border-bottom: none;
-}
-
-.user-result-name {
-    font-weight: 500;
-    color: var(--text-dark);
-}
-
-.user-result-email {
-    font-size: 0.85rem;
-    color: var(--text-light);
-}
-
-.user-result-role {
-    display: inline-block;
-    padding: 2px 8px;
-    background: rgba(16, 185, 129, 0.1);
-    color: var(--primary);
-    border-radius: 4px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    margin-left: 8px;
-}
-
-.selected-user {
-    margin-top: 12px;
-    padding: 12px 16px;
-    background: rgba(16, 185, 129, 0.1);
-    border: 2px solid var(--primary);
-    border-radius: 8px;
+    border-bottom: 1px solid #f1f5f9;
     display: flex;
     justify-content: space-between;
     align-items: center;
 }
 
-.selected-user span {
-    font-weight: 500;
-    color: var(--text-dark);
+.user-search-result-item:hover {
+    background: #f8fafc;
 }
 
-.btn-remove-user {
-    background: transparent;
-    border: none;
-    color: #ef4444;
-    cursor: pointer;
-    padding: 4px 8px;
-    border-radius: 4px;
-    transition: background 0.2s ease;
-}
-
-.btn-remove-user:hover {
-    background: rgba(239, 68, 68, 0.1);
-}
-
-.form-actions {
-    margin-top: 24px;
-    display: flex;
-    justify-content: flex-end;
-}
-
-.btn {
-    padding: 10px 20px;
-    border: none;
-    border-radius: 8px;
-    font-size: 0.95rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s ease;
+.selected-user-pill {
+    margin-top: 12px;
     display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 16px;
+    background: var(--primary-light);
+    color: var(--primary-dark);
+    border-radius: 50px;
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+.user-pill-info {
+    display: flex;
     align-items: center;
     gap: 8px;
 }
 
-.btn-primary {
-    background: var(--primary);
-    color: white;
+.btn-clear-user {
+    background: none;
+    border: none;
+    color: var(--primary-dark);
+    cursor: pointer;
+    padding: 2px;
+    opacity: 0.7;
 }
 
-.btn-primary:hover {
-    background: #059669;
+.btn-clear-user:hover {
+    opacity: 1;
 }
 
-.btn-danger {
-    background: #ef4444;
-    color: white;
+/* History Section */
+.history-section {
+    margin-top: 40px;
 }
 
-.btn-danger:hover {
-    background: #dc2626;
+.history-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    gap: 20px;
 }
 
-.btn-sm {
-    padding: 6px 12px;
+.history-header h2 {
+    font-size: 1.5rem;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: var(--text-main);
+}
+
+.count-badge {
+    font-size: 0.9rem;
+    background: var(--border-color);
+    padding: 4px 10px;
+    border-radius: 20px;
+    color: var(--text-secondary);
+}
+
+.compact-filters {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.filter-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.filter-wrapper i {
+    position: absolute;
+    left: 12px;
+    color: var(--text-tertiary);
     font-size: 0.85rem;
+    pointer-events: none;
 }
 
-.notifications-list {
+.filter-input, .filter-select {
+    padding: 8px 12px 8px 36px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    background: white;
+}
+
+.filter-select {
+    padding-left: 12px; /* reduced for select since we might not have icon */
+    min-width: 140px;
+}
+
+.btn-reset-filters {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    background: white;
+    transition: all 0.2s;
+}
+
+.btn-reset-filters:hover {
+    background: #f1f5f9;
+    color: var(--text-main);
+}
+
+/* Batch Cards (List View) */
+.batches-grid {
+    display: grid;
+    gap: 20px;
+}
+
+.batch-card {
+    background: white;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 24px;
+    transition: box-shadow 0.2s;
     display: flex;
     flex-direction: column;
-    gap: 16px;
 }
 
-.notification-item {
-    padding: 20px;
-    border: 2px solid rgba(0,0,0,0.05);
-    border-radius: 8px;
-    transition: all 0.2s ease;
+.batch-card:hover {
+    box-shadow: var(--shadow-md);
+    border-color: #cbd5e1;
 }
 
-.notification-item:hover {
-    border-color: rgba(16, 185, 129, 0.3);
-    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-}
-
-.notification-item-header {
+.batch-card-header {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
     margin-bottom: 12px;
 }
 
-.notification-info {
-    flex: 1;
-}
-
-.notification-title {
-    margin: 0 0 8px 0;
+.batch-title {
     font-size: 1.1rem;
-    font-weight: 600;
-    color: var(--text-dark);
+    font-weight: 700;
+    margin: 0 0 6px 0;
+    color: var(--text-main);
 }
 
-.notification-meta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 16px;
+.batch-date {
     font-size: 0.85rem;
-    color: var(--text-light);
+    color: var(--text-tertiary);
 }
 
-.notification-meta span {
+.batch-target-badge {
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 20px;
+    background: #f1f5f9;
+    color: var(--text-secondary);
     display: flex;
     align-items: center;
     gap: 6px;
 }
 
-.notification-status.unread {
-    color: var(--primary);
-    font-weight: 600;
-}
+.batch-target-badge.type-all { background: #e0f2fe; color: #0284c7; }
+.batch-target-badge.type-all_users { background: #dcfce7; color: #16a34a; }
+.batch-target-badge.type-all_mentors { background: #dcfce7; color: #16a34a; }
+.batch-target-badge.type-single { background: #f3e8ff; color: #9333ea; }
 
-.notification-status.read {
-    color: var(--text-light);
-}
+ .batch-desc {
+     font-size: 0.95rem;
+     color: var(--text-secondary);
+     line-height: 1.6;
+     margin: 0 0 20px 0;
+ }
+ 
+ /* Style HTML content in batch descriptions */
+ .batch-desc div,
+ .batch-desc p {
+     margin: 0 0 8px 0;
+ }
+ 
+ .batch-desc div:last-child,
+ .batch-desc p:last-child {
+     margin-bottom: 0;
+ }
+ 
+ .batch-desc a {
+     color: var(--primary);
+     text-decoration: underline;
+     transition: color 0.2s;
+ }
+ 
+ .batch-desc a:hover {
+     color: var(--primary-dark);
+ }
+ 
+ .batch-desc ul,
+ .batch-desc ol {
+     margin: 8px 0;
+     padding-left: 20px;
+ }
+ 
+ .batch-desc li {
+     margin-bottom: 4px;
+ }
+ 
+ .batch-desc strong,
+ .batch-desc b {
+     font-weight: 600;
+ }
+ 
+ .batch-desc em,
+ .batch-desc i {
+     font-style: italic;
+ }
+ 
+ .batch-desc code {
+     background: rgba(0, 0, 0, 0.05);
+     padding: 2px 6px;
+     border-radius: 4px;
+     font-family: monospace;
+     font-size: 0.9em;
+ }
 
-.notification-description {
-    color: var(--text-dark);
-    line-height: 1.6;
-    white-space: pre-wrap;
-    margin-bottom: 16px;
-}
-
-.notification-stats {
+.batch-footer {
     display: flex;
-    flex-wrap: wrap;
-    gap: 16px;
-    padding: 16px;
-    background: rgba(0,0,0,0.02);
-    border-radius: 8px;
-    margin-top: 12px;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid #f1f5f9;
+    padding-top: 16px;
+    margin-top: auto;
 }
 
-.stat-item {
+.batch-stats {
     display: flex;
-    flex-direction: column;
-    gap: 4px;
+    gap: 12px;
 }
 
-.stat-label {
+.stat-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
     font-size: 0.85rem;
-    color: var(--text-light);
-    font-weight: 500;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 6px;
 }
 
-.stat-value {
+.stat-pill.neutral { background: #f1f5f9; color: var(--text-secondary); }
+.stat-pill.success { background: #ecfdf5; color: #059669; }
+.stat-pill.warning { background: #fffbeb; color: #d97706; }
+
+.btn-icon-danger {
+    background: transparent;
+    border: none;
+    color: var(--text-tertiary);
+    cursor: pointer;
     font-size: 1rem;
-    color: var(--text-dark);
-    font-weight: 600;
-}
-
-.stat-value.read {
-    color: var(--primary);
-}
-
-.stat-value.unread {
-    color: #f59e0b;
-}
-
-.role-badge {
-    display: inline-block;
-    padding: 4px 8px;
+    padding: 6px;
     border-radius: 4px;
-    font-size: 0.85rem;
-    font-weight: 600;
-    margin-right: 8px;
+    transition: all 0.2s;
 }
 
-.role-badge.user-role {
-    background: rgba(59, 130, 246, 0.1);
-    color: #3b82f6;
+.btn-icon-danger:hover {
+    color: #ef4444;
+    background: #fef2f2;
 }
 
-.role-badge.mentor-role {
-    background: rgba(16, 185, 129, 0.1);
-    color: var(--primary);
-}
-
-.notification-batch-id {
-    font-family: monospace;
-    font-size: 0.85rem;
-    color: var(--text-light);
-}
-
-.notification-actions {
-    margin-left: 16px;
-}
-
-.delete-form {
-    display: inline;
-}
-
-.pagination {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 16px;
-    margin-top: 24px;
-    padding-top: 24px;
-    border-top: 1px solid rgba(0,0,0,0.1);
-}
-
-.pagination-link {
-    color: var(--primary);
-    text-decoration: none;
-    padding: 8px 16px;
-    border-radius: 8px;
-    transition: background 0.2s ease;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.pagination-link:hover {
-    background: rgba(16, 185, 129, 0.1);
-}
-
-.pagination-info {
-    color: var(--text-light);
-    font-size: 0.9rem;
-}
-
-.empty-state {
+/* Empty State */
+.empty-state-modern {
     text-align: center;
-    padding: 60px 20px;
-    color: var(--text-light);
+    padding: 60px 0;
+    background: white;
+    border: 1px dashed var(--border-color);
+    border-radius: var(--radius-lg);
 }
 
-.empty-state i {
-    font-size: 3rem;
-    margin-bottom: 16px;
-    opacity: 0.3;
+.empty-icon-circle {
+    width: 64px;
+    height: 64px;
+    background: #f8fafc;
+    border-radius: 50%;
+    margin: 0 auto 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    color: var(--text-tertiary);
 }
 
-.empty-state p {
-    font-size: 1.1rem;
+.empty-state-modern h3 {
+    margin: 0 0 8px 0;
+    color: var(--text-main);
+}
+
+.empty-state-modern p {
+    color: var(--text-secondary);
     margin: 0;
 }
 
-/* Search and Filters */
-.search-filters-form {
-    margin-bottom: 24px;
-    padding-bottom: 24px;
-    border-bottom: 1px solid rgba(0,0,0,0.1);
-}
-
-.search-filters-row {
+/* Pagination */
+.pagination-container {
     display: flex;
+    justify-content: center;
     gap: 16px;
-    flex-wrap: wrap;
-    align-items: center;
+    margin-top: 32px;
 }
 
-.search-group {
-    flex: 1;
-    min-width: 300px;
-    position: relative;
-    display: flex;
-    align-items: center;
-}
-
-.search-icon {
-    position: absolute;
-    left: 16px;
-    color: var(--text-light);
-    pointer-events: none;
-}
-
-.search-input {
-    width: 100%;
-    padding: 10px 16px 10px 44px;
-    border: 2px solid rgba(0,0,0,0.1);
-    border-radius: 8px;
-    font-size: 0.95rem;
-    transition: border-color 0.2s ease;
-}
-
-.search-input:focus {
-    outline: none;
-    border-color: var(--primary);
-}
-
-.clear-search {
-    position: absolute;
-    right: 12px;
-    color: var(--text-light);
-    text-decoration: none;
-    padding: 4px;
-    border-radius: 4px;
-    transition: all 0.2s ease;
-}
-
-.clear-search:hover {
-    color: #ef4444;
-    background: rgba(239, 68, 68, 0.1);
-}
-
-.filters-group {
-    display: flex;
-    gap: 12px;
-    align-items: center;
-    flex-wrap: wrap;
-}
-
-.filter-select {
-    padding: 10px 16px;
-    border: 2px solid rgba(0,0,0,0.1);
-    border-radius: 8px;
-    font-size: 0.95rem;
-    background: white;
-    cursor: pointer;
-    transition: border-color 0.2s ease;
-    min-width: 150px;
-}
-
-.filter-select:focus {
-    outline: none;
-    border-color: var(--primary);
-}
-
-.btn-secondary {
-    background: #6b7280;
-    color: white;
-}
-
-.btn-secondary:hover {
-    background: #4b5563;
-}
-
-.active-filters {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    align-items: center;
-    margin-bottom: 16px;
-    padding: 12px 16px;
-    background: rgba(16, 185, 129, 0.05);
-    border-radius: 8px;
-}
-
-.active-filters-label {
-    font-weight: 500;
-    color: var(--text-dark);
-    font-size: 0.9rem;
-}
-
-.filter-tag {
+.page-nav {
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    padding: 6px 12px;
+    padding: 8px 16px;
+    border-radius: var(--radius-sm);
     background: white;
-    border: 1px solid var(--primary);
-    border-radius: 6px;
-    font-size: 0.85rem;
-    color: var(--text-dark);
-}
-
-.filter-tag-remove {
-    color: #ef4444;
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    font-weight: 500;
+    font-size: 0.9rem;
+    transition: all 0.2s;
     text-decoration: none;
-    font-weight: bold;
-    font-size: 1.1rem;
-    line-height: 1;
-    transition: color 0.2s ease;
 }
 
-.filter-tag-remove:hover {
-    color: #dc2626;
+.page-nav:hover {
+    border-color: var(--primary);
+    color: var(--primary);
 }
 
-@media (max-width: 768px) {
-    .search-filters-row {
+/* Mobile Adjustments */
+@media (max-width: 640px) {
+    .audience-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .card-header-styled {
         flex-direction: column;
+        align-items: flex-start;
+        text-align: left;
     }
     
-    .search-group {
-        width: 100%;
-        min-width: auto;
-    }
-    
-    .filters-group {
-        width: 100%;
+    .batch-footer {
         flex-direction: column;
+        gap: 16px;
+        align-items: flex-start;
     }
     
-    .filter-select {
-        width: 100%;
-    }
-    
-    .filters-group .btn {
-        width: 100%;
-        justify-content: center;
+    .btn-icon-danger {
+        align-self: flex-end;
     }
 }
 </style>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const targetTypeRadios = document.querySelectorAll('input[name="target_type"]');
-    const singleUserGroup = document.getElementById('singleUserGroup');
-    const userSearch = document.getElementById('user_search');
-    const userSearchResults = document.getElementById('user_search_results');
+    // User search functionality script (kept largely the same but with updated classes)
+    const searchInput = document.getElementById('user_search');
+    const resultsContainer = document.getElementById('user_search_results');
     const userIdInput = document.getElementById('user_id');
-    const selectedUser = document.getElementById('selected_user');
+    const selectedUserDiv = document.getElementById('selected_user');
     const selectedUserName = document.getElementById('selected_user_name');
+    const radioButtons = document.querySelectorAll('input[name="target_type"]');
+    const singleUserGroup = document.getElementById('singleUserGroup');
     
-    let searchTimeout;
-    
-    // Show/hide single user search based on target type
-    targetTypeRadios.forEach(radio => {
+    // Toggle Single User Input
+    radioButtons.forEach(radio => {
         radio.addEventListener('change', function() {
             if (this.value === 'single') {
                 singleUserGroup.style.display = 'block';
+                searchInput.focus();
             } else {
                 singleUserGroup.style.display = 'none';
                 clearSelectedUser();
@@ -880,111 +859,108 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
-    // User search with debounce
-    userSearch.addEventListener('input', function() {
-        const query = this.value.trim();
-        
-        clearTimeout(searchTimeout);
-        
-        if (query.length < 2) {
-            userSearchResults.style.display = 'none';
-            return;
-        }
-        
-        searchTimeout = setTimeout(() => {
-            fetch(`{% url 'general:dashboard_admin:notification_search_users' %}?q=${encodeURIComponent(query)}`)
-                .then(response => response.json())
-                .then(data => {
-                    displaySearchResults(data.users);
-                })
-                .catch(error => {
-                    console.error('Error searching users:', error);
-                });
-        }, 300);
-    });
-    
-    function displaySearchResults(users) {
-        if (users.length === 0) {
-            userSearchResults.innerHTML = '<div class="user-search-result-item">No users found</div>';
-            userSearchResults.style.display = 'block';
-            return;
-        }
-        
-        userSearchResults.innerHTML = users.map(user => `
-            <div class="user-search-result-item" onclick="selectUser(${user.id}, '${user.name}', '${user.email}', '${user.role}')">
-                <div class="user-result-name">${user.name} <span class="user-result-role">${user.role}</span></div>
-                <div class="user-result-email">${user.email}</div>
-            </div>
-        `).join('');
-        
-        userSearchResults.style.display = 'block';
+    // Debounce function
+    function debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
     }
     
-    window.selectUser = function(userId, name, email, role) {
-        userIdInput.value = userId;
-        selectedUserName.textContent = `${name} (${email}) - ${role}`;
-        selectedUser.style.display = 'flex';
-        userSearch.value = '';
-        userSearchResults.style.display = 'none';
-    };
+    // Search Users
+    searchInput.addEventListener('input', debounce(function(e) {
+        const query = e.target.value.trim();
+        if (query.length < 2) {
+            resultsContainer.style.display = 'none';
+            return;
+        }
+        
+        // Use the correct endpoint for user search
+        fetch(`{% url 'general:dashboard_admin:notification_search_users' %}?q=${encodeURIComponent(query)}`, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            resultsContainer.innerHTML = '';
+            if (data.users && data.users.length > 0) {
+                data.users.forEach(user => {
+                    const div = document.createElement('div');
+                    div.className = 'user-search-result-item';
+                    
+                    const textDiv = document.createElement('div');
+                    textDiv.innerHTML = `
+                        <div style="font-weight:600; font-size:0.9rem;">${user.name}</div>
+                        <div style="font-size:0.8rem; color:#64748b;">${user.email} • ${user.role}</div>
+                    `;
+                    
+                    div.appendChild(textDiv);
+                    
+                    div.addEventListener('click', () => {
+                        selectUser(user);
+                    });
+                    resultsContainer.appendChild(div);
+                });
+                resultsContainer.style.display = 'block';
+            } else {
+                resultsContainer.innerHTML = '<div style="padding:12px; font-size:0.9rem; color:#64748b; text-align:center;">No users found</div>';
+                resultsContainer.style.display = 'block';
+            }
+        })
+        .catch(error => {
+            console.error('Error searching users:', error);
+            resultsContainer.innerHTML = '<div style="padding:12px; font-size:0.9rem; color:#ef4444; text-align:center;">Error searching users</div>';
+            resultsContainer.style.display = 'block';
+        });
+    }, 300));
     
-    window.clearSelectedUser = function() {
+    function selectUser(user) {
+        userIdInput.value = user.id;
+        selectedUserName.textContent = `${user.name} (${user.email})`;
+        selectedUserDiv.style.display = 'inline-flex';
+        searchInput.style.display = 'none';
+        resultsContainer.style.display = 'none';
+        
+        // Hide the search icon wrapper visual if needed
+        document.querySelector('.user-search-wrapper .search-prefix').style.display = 'none';
+    }
+    
+    function clearSelectedUser() {
         userIdInput.value = '';
-        selectedUser.style.display = 'none';
-        userSearch.value = '';
-        userSearchResults.style.display = 'none';
-    };
+        searchInput.value = '';
+        selectedUserDiv.style.display = 'none';
+        searchInput.style.display = 'block';
+        document.querySelector('.user-search-wrapper .search-prefix').style.display = 'block';
+    }
     
     // Close search results when clicking outside
     document.addEventListener('click', function(e) {
-        if (!userSearch.contains(e.target) && !userSearchResults.contains(e.target)) {
-            userSearchResults.style.display = 'none';
+        if (!document.querySelector('.user-search-wrapper').contains(e.target)) {
+            resultsContainer.style.display = 'none';
         }
     });
     
-    // Form validation
-    document.getElementById('notificationForm').addEventListener('submit', function(e) {
-        const targetType = document.querySelector('input[name="target_type"]:checked').value;
-        
-        if (targetType === 'single' && !userIdInput.value) {
-            e.preventDefault();
-            alert('Please select a user.');
-            return false;
-        }
-    });
-    
-    // Search form auto-submit on Enter key
-    const searchInput = document.querySelector('.search-input');
-    const searchForm = document.querySelector('.search-filters-form');
-    
-    if (searchInput && searchForm) {
-        searchInput.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                // Reset to page 1 when searching
-                const pageInput = document.createElement('input');
-                pageInput.type = 'hidden';
-                pageInput.name = 'page';
-                pageInput.value = '1';
-                searchForm.appendChild(pageInput);
-                searchForm.submit();
+    // Form validation for single user selection
+    const notificationForm = document.getElementById('notificationForm');
+    if (notificationForm) {
+        notificationForm.addEventListener('submit', function(e) {
+            const selectedTargetType = document.querySelector('input[name="target_type"]:checked');
+            if (selectedTargetType && selectedTargetType.value === 'single') {
+                const userId = userIdInput.value;
+                if (!userId || userId.trim() === '') {
+                    e.preventDefault();
+                    alert('Please select a user before submitting.');
+                    singleUserGroup.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    return false;
+                }
             }
         });
-        
-        // Auto-submit when target_type filter changes
-        const targetTypeSelect = document.querySelector('select[name="target_type"]');
-        if (targetTypeSelect) {
-            targetTypeSelect.addEventListener('change', function() {
-                // Reset to page 1 when filtering
-                const pageInput = document.createElement('input');
-                pageInput.type = 'hidden';
-                pageInput.name = 'page';
-                pageInput.value = '1';
-                searchForm.appendChild(pageInput);
-                searchForm.submit();
-            });
-        }
     }
-});
 </script>
 {% endblock %}

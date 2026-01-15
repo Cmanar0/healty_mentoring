@@ -17,7 +17,17 @@ from decimal import Decimal
 @login_required
 def dashboard(request):
     # Ensure only users can access
-    if not hasattr(request.user, 'profile') or request.user.profile.role != 'user':
+    if not hasattr(request.user, 'profile'):
+        return redirect('general:index')
+    
+    # Prevent admin users from accessing user dashboard
+    if request.user.profile.role == 'admin':
+        from django.contrib.auth import logout
+        logout(request)
+        messages.error(request, "You do not have permission to access this page.")
+        return redirect('accounts:login')
+    
+    if request.user.profile.role != 'user':
         return redirect('general:index')
     
     # Get pending invitations for verified users (not confirmed yet, status is inactive)
@@ -40,7 +50,17 @@ def dashboard(request):
 @login_required
 def profile(request):
     """User profile page - for editing profile information (first name, last name, profile picture)"""
-    if not hasattr(request.user, 'profile') or request.user.profile.role != 'user':
+    if not hasattr(request.user, 'profile'):
+        return redirect('general:index')
+    
+    # Prevent admin users from accessing user dashboard
+    if request.user.profile.role == 'admin':
+        from django.contrib.auth import logout
+        logout(request)
+        messages.error(request, "You do not have permission to access this page.")
+        return redirect('accounts:login')
+    
+    if request.user.profile.role != 'user':
         return redirect('general:index')
     
     user = request.user
@@ -136,7 +156,17 @@ def profile(request):
 @login_required
 def account(request):
     """User account page - for account settings (email change with verification, password change, name updates)"""
-    if not hasattr(request.user, 'profile') or request.user.profile.role != 'user':
+    if not hasattr(request.user, 'profile'):
+        return redirect('general:index')
+    
+    # Prevent admin users from accessing user dashboard
+    if request.user.profile.role == 'admin':
+        from django.contrib.auth import logout
+        logout(request)
+        messages.error(request, "You do not have permission to access this page.")
+        return redirect('accounts:login')
+    
+    if request.user.profile.role != 'user':
         return redirect('general:index')
 
     user = request.user
@@ -190,7 +220,17 @@ def account(request):
 
 @login_required
 def settings_view(request):
-    if not hasattr(request.user, 'profile') or request.user.profile.role != 'user':
+    if not hasattr(request.user, 'profile'):
+        return redirect('general:index')
+    
+    # Prevent admin users from accessing user dashboard
+    if request.user.profile.role == 'admin':
+        from django.contrib.auth import logout
+        logout(request)
+        messages.error(request, "You do not have permission to access this page.")
+        return redirect('accounts:login')
+    
+    if request.user.profile.role != 'user':
         return redirect('general:index')
     
     user = request.user
@@ -242,7 +282,17 @@ def settings_view(request):
 
 @login_required
 def support_view(request):
-    if not hasattr(request.user, 'profile') or request.user.profile.role != 'user':
+    if not hasattr(request.user, 'profile'):
+        return redirect('general:index')
+    
+    # Prevent admin users from accessing user dashboard
+    if request.user.profile.role == 'admin':
+        from django.contrib.auth import logout
+        logout(request)
+        messages.error(request, "You do not have permission to access this page.")
+        return redirect('accounts:login')
+    
+    if request.user.profile.role != 'user':
         return redirect('general:index')
     
     return render(
@@ -255,7 +305,17 @@ def support_view(request):
 
 @login_required
 def my_sessions(request):
-    if not hasattr(request.user, 'profile') or request.user.profile.role != 'user':
+    if not hasattr(request.user, 'profile'):
+        return redirect('general:index')
+    
+    # Prevent admin users from accessing user dashboard
+    if request.user.profile.role == 'admin':
+        from django.contrib.auth import logout
+        logout(request)
+        messages.error(request, "You do not have permission to access this page.")
+        return redirect('accounts:login')
+    
+    if request.user.profile.role != 'user':
         return redirect('general:index')
     
     from general.models import Session
@@ -416,7 +476,17 @@ def get_sessions_paginated(request):
 @login_required
 def mentors_list(request):
     """Display list of all mentors for the logged-in user"""
-    if not hasattr(request.user, 'profile') or request.user.profile.role != 'user':
+    if not hasattr(request.user, 'profile'):
+        return redirect('general:index')
+    
+    # Prevent admin users from accessing user dashboard
+    if request.user.profile.role == 'admin':
+        from django.contrib.auth import logout
+        logout(request)
+        messages.error(request, "You do not have permission to access this page.")
+        return redirect('accounts:login')
+    
+    if request.user.profile.role != 'user':
         return redirect('general:index')
     
     from accounts.models import MentorClientRelationship
@@ -437,7 +507,17 @@ def session_invitation(request, token: str):
     Validates session invitation token and redirects to session management page
     which shows all pending invitations and changes.
     """
-    if not hasattr(request.user, 'profile') or request.user.profile.role != 'user':
+    if not hasattr(request.user, 'profile'):
+        return redirect('general:index')
+    
+    # Prevent admin users from accessing user dashboard
+    if request.user.profile.role == 'admin':
+        from django.contrib.auth import logout
+        logout(request)
+        messages.error(request, "You do not have permission to access this page.")
+        return redirect('accounts:login')
+    
+    if request.user.profile.role != 'user':
         return redirect('general:index')
 
     from general.models import SessionInvitation
@@ -472,7 +552,17 @@ def session_management(request):
     Page for clients to manage all session invitations and changes.
     Shows invitations and changes separately, allows confirm/decline for each.
     """
-    if not hasattr(request.user, 'profile') or request.user.profile.role != 'user':
+    if not hasattr(request.user, 'profile'):
+        return redirect('general:index')
+    
+    # Prevent admin users from accessing user dashboard
+    if request.user.profile.role == 'admin':
+        from django.contrib.auth import logout
+        logout(request)
+        messages.error(request, "You do not have permission to access this page.")
+        return redirect('accounts:login')
+    
+    if request.user.profile.role != 'user':
         return redirect('general:index')
     
     from general.models import Session, SessionInvitation
@@ -1205,7 +1295,17 @@ def book_session(request):
 @login_required
 def notification_list(request):
     """List all notifications for the logged-in user with pagination"""
-    if not hasattr(request.user, 'profile') or request.user.profile.role != 'user':
+    if not hasattr(request.user, 'profile'):
+        return redirect('general:index')
+    
+    # Prevent admin users from accessing user dashboard
+    if request.user.profile.role == 'admin':
+        from django.contrib.auth import logout
+        logout(request)
+        messages.error(request, "You do not have permission to access this page.")
+        return redirect('accounts:login')
+    
+    if request.user.profile.role != 'user':
         return redirect('general:index')
     
     notifications = Notification.objects.filter(user=request.user).order_by('-created_at')
@@ -1226,7 +1326,17 @@ def notification_list(request):
 @login_required
 def notification_detail(request, notification_id):
     """Display notification detail and mark as opened"""
-    if not hasattr(request.user, 'profile') or request.user.profile.role != 'user':
+    if not hasattr(request.user, 'profile'):
+        return redirect('general:index')
+    
+    # Prevent admin users from accessing user dashboard
+    if request.user.profile.role == 'admin':
+        from django.contrib.auth import logout
+        logout(request)
+        messages.error(request, "You do not have permission to access this page.")
+        return redirect('accounts:login')
+    
+    if request.user.profile.role != 'user':
         return redirect('general:index')
     
     notification = get_object_or_404(Notification, id=notification_id, user=request.user)
@@ -1236,7 +1346,7 @@ def notification_detail(request, notification_id):
         notification.is_opened = True
         notification.save()
     
-    return render(request, 'general/notifications/detail.html', {
+    return render(request, 'dashboard_user/notification_detail.html', {
         'notification': notification,
     })
 
@@ -1245,7 +1355,17 @@ def notification_detail(request, notification_id):
 @require_POST
 def notification_mark_read(request, notification_id):
     """Mark a single notification as read"""
-    if not hasattr(request.user, 'profile') or request.user.profile.role != 'user':
+    if not hasattr(request.user, 'profile'):
+        return redirect('general:index')
+    
+    # Prevent admin users from accessing user dashboard
+    if request.user.profile.role == 'admin':
+        from django.contrib.auth import logout
+        logout(request)
+        messages.error(request, "You do not have permission to access this page.")
+        return redirect('accounts:login')
+    
+    if request.user.profile.role != 'user':
         return redirect('general:index')
     
     notification = get_object_or_404(Notification, id=notification_id, user=request.user)
@@ -1262,7 +1382,17 @@ def notification_mark_read(request, notification_id):
 @require_POST
 def notification_mark_all_read(request):
     """Mark all notifications as read for the logged-in user"""
-    if not hasattr(request.user, 'profile') or request.user.profile.role != 'user':
+    if not hasattr(request.user, 'profile'):
+        return redirect('general:index')
+    
+    # Prevent admin users from accessing user dashboard
+    if request.user.profile.role == 'admin':
+        from django.contrib.auth import logout
+        logout(request)
+        messages.error(request, "You do not have permission to access this page.")
+        return redirect('accounts:login')
+    
+    if request.user.profile.role != 'user':
         return redirect('general:index')
     
     Notification.objects.filter(user=request.user, is_opened=False).update(is_opened=True)
@@ -1279,7 +1409,17 @@ def notification_mark_all_read(request):
 @require_http_methods(["GET", "POST"])
 def notification_modal_detail(request, notification_id):
     """View for modal popup - returns notification details and marks as opened"""
-    if not hasattr(request.user, 'profile') or request.user.profile.role != 'user':
+    if not hasattr(request.user, 'profile'):
+        return redirect('general:index')
+    
+    # Prevent admin users from accessing user dashboard
+    if request.user.profile.role == 'admin':
+        from django.contrib.auth import logout
+        logout(request)
+        messages.error(request, "You do not have permission to access this page.")
+        return redirect('accounts:login')
+    
+    if request.user.profile.role != 'user':
         return redirect('general:index')
     
     notification = get_object_or_404(Notification, id=notification_id, user=request.user)

@@ -1,4 +1,4 @@
-{% extends "dashboard_mentor/base.html" %}
+{% extends "dashboard_user/base.html" %}
 {% load static %}
 
 {% block page_title %}{{ notification.title }}{% endblock %}
@@ -6,7 +6,7 @@
 {% block dashboard_content %}
 <div class="notification-detail-page">
   <div class="notification-detail-header">
-    <a href="{% url 'general:dashboard_mentor:notification_list' %}" class="back-link">
+    <a href="{% url 'general:dashboard_user:notification_list' %}" class="back-link">
       <i class="fas fa-arrow-left"></i> Back to Notifications
     </a>
   </div>
@@ -27,7 +27,7 @@
 
       <div class="notification-detail-actions">
         {% if not notification.is_opened %}
-          <form method="post" action="{% url 'general:dashboard_mentor:notification_mark_read' notification.id %}" style="display: inline;">
+          <form method="post" action="{% url 'general:dashboard_user:notification_mark_read' notification.id %}" style="display: inline;">
             {% csrf_token %}
             <button type="submit" class="btn-mark-read">Mark as read</button>
           </form>
@@ -99,6 +99,12 @@
     font-weight: 700;
     color: var(--text-dark);
     margin: 0 0 12px 0;
+  }
+  
+  .notification-detail-title div,
+  .notification-detail-title p {
+    margin: 0;
+    display: inline;
   }
 
   .notification-detail-time {

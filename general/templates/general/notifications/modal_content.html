@@ -9,7 +9,7 @@
   </div>
   
   <div class="notification-modal-description">
-    {{ notification.description|linebreaks }}
+    {{ notification.description|safe }}
   </div>
 </div>
 
@@ -54,6 +54,55 @@
     line-height: 1.6;
     color: var(--text-dark);
     text-align: left;
+  }
+  
+  /* Style HTML content in notifications */
+  .notification-modal-description div,
+  .notification-modal-description p {
+    margin: 0 0 12px 0;
+  }
+  
+  .notification-modal-description div:last-child,
+  .notification-modal-description p:last-child {
+    margin-bottom: 0;
+  }
+  
+  .notification-modal-description a {
+    color: var(--primary);
+    text-decoration: underline;
+    transition: color 0.2s ease;
+  }
+  
+  .notification-modal-description a:hover {
+    color: #059669;
+  }
+  
+  .notification-modal-description ul,
+  .notification-modal-description ol {
+    margin: 12px 0;
+    padding-left: 24px;
+  }
+  
+  .notification-modal-description li {
+    margin-bottom: 6px;
+  }
+  
+  .notification-modal-description strong,
+  .notification-modal-description b {
+    font-weight: 600;
+  }
+  
+  .notification-modal-description em,
+  .notification-modal-description i {
+    font-style: italic;
+  }
+  
+  .notification-modal-description code {
+    background: rgba(0, 0, 0, 0.05);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 0.9em;
   }
 </style>
 

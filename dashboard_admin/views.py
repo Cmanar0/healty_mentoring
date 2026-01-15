@@ -280,6 +280,103 @@ def notification_search_users(request):
     
     return JsonResponse({'users': results})
 
+
+@login_required
+@admin_required
+def notification_list(request):
+    """List all notifications for the admin user with pagination"""
+    notifications = Notification.objects.filter(user=request.user).order_by('-created_at')
+    
+    paginator = Paginator(notifications, 20)  # 20 notifications per page
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    unread_count = Notification.objects.filter(user=request.user, is_opened=False).count()
+    
+    return render(request, 'dashboard_admin/notification_list.html', {
+        'page_obj': page_obj,
+        'notifications': page_obj,
+        'unread_count': unread_count,
+    })
+
+
+@login_required
+@admin_required
+def notification_detail(request, notification_id):
+    """Display notification detail and mark as opened"""
+    notification = get_object_or_404(Notification, id=notification_id, user=request.user)
+    
+    # Mark as opened when viewing detail page
+    if not notification.is_opened:
+        notification.is_opened = True
+        notification.save()
+    
+    return render(request, 'dashboard_admin/notification_detail.html', {
+        'notification': notification,
+    })
+
+
+@login_required
+@admin_required
+@require_POST
+def notification_mark_read(request, notification_id):
+    """Mark a single notification as read"""
+    notification = get_object_or_404(Notification, id=notification_id, user=request.user)
+    notification.is_opened = True
+    notification.save()
+    
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return JsonResponse({'success': True})
+    
+    return redirect('general:dashboard_admin:notification_detail', notification_id=notification_id)
+
+
+@login_required
+@admin_required
+@require_POST
+def notification_mark_all_read(request):
+    """Mark all notifications as read for the admin user"""
+    Notification.objects.filter(user=request.user, is_opened=False).update(is_opened=True)
+    
+    messages.success(request, 'All notifications marked as read.')
+    
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return JsonResponse({'success': True})
+    
+    return redirect('general:dashboard_admin:notification_list')
+
+
+@login_required
+@admin_required
+@require_http_methods(["GET", "POST"])
+def notification_modal_detail(request, notification_id):
+    """View for modal popup - returns notification details and marks as opened"""
+    notification = get_object_or_404(Notification, id=notification_id, user=request.user)
+    
+    # Mark as opened when viewing in modal
+    if not notification.is_opened:
+        notification.is_opened = True
+        notification.save()
+    
+    if request.method == 'POST':
+        # If POST, return JSON for AJAX requests
+        return JsonResponse({
+            'success': True,
+            'notification': {
+                'id': notification.id,
+                'title': notification.title,
+                'description': notification.description,
+                'created_at': notification.created_at.isoformat(),
+                'is_opened': notification.is_opened,
+            }
+        })
+    
+    # If GET, return HTML template for modal content
+    return render(request, 'general/notifications/modal_content.html', {
+        'notification': notification,
+    })
+
+
 @login_required
 @admin_required
 def blog(request):

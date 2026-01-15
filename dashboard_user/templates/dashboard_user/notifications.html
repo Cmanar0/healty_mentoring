@@ -25,8 +25,8 @@
                 <i class="fas fa-bell"></i>
               </div>
               <div class="notification-content">
-                <p class="notification-title">{{ notification.title }}</p>
-                <p class="notification-description">{{ notification.description|truncatewords:30 }}</p>
+                <div class="notification-title">{{ notification.title|safe }}</div>
+                <div class="notification-description">{{ notification.description|safe }}</div>
                 <p class="notification-time">{{ notification.created_at|timesince }} ago</p>
               </div>
               {% if not notification.is_opened %}
@@ -164,11 +164,48 @@
   line-height: 1.4;
 }
 
+.notification-title div,
+.notification-title p {
+  margin: 0;
+  display: inline;
+}
+
 .notification-description {
   margin: 0 0 8px 0;
   font-size: 0.9rem;
   color: var(--text-light);
   line-height: 1.5;
+}
+
+/* Style HTML content in notifications */
+.notification-description div,
+.notification-description p {
+  margin: 0 0 6px 0;
+  display: inline;
+}
+
+.notification-description div:last-child,
+.notification-description p:last-child {
+  margin-bottom: 0;
+}
+
+.notification-description a {
+  color: var(--primary);
+  text-decoration: underline;
+}
+
+.notification-description a:hover {
+  color: var(--dash-primary-hover, #059669);
+}
+
+.notification-description strong,
+.notification-description b {
+  font-weight: 600;
+}
+
+.notification-description em,
+.notification-description i {
+  font-style: italic;
 }
 
 .notification-time {

@@ -20,7 +20,17 @@ from datetime import datetime, timedelta, timezone as dt_timezone
 @login_required
 def dashboard(request):
     # Ensure only mentors can access
-    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+    if not hasattr(request.user, 'profile'):
+        return redirect('general:index')
+    
+    # Prevent admin users from accessing mentor dashboard
+    if request.user.profile.role == 'admin':
+        from django.contrib.auth import logout
+        logout(request)
+        messages.error(request, "You do not have permission to access this page.")
+        return redirect('accounts:login')
+    
+    if request.user.profile.role != 'mentor':
         return redirect('general:index')
     
     # Fetch upcoming sessions (invited and confirmed only, future dates, max 4)
@@ -101,7 +111,17 @@ def dashboard(request):
 
 @login_required
 def account(request):
-    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+    if not hasattr(request.user, 'profile'):
+        return redirect('general:index')
+    
+    # Prevent admin users from accessing mentor dashboard
+    if request.user.profile.role == 'admin':
+        from django.contrib.auth import logout
+        logout(request)
+        messages.error(request, "You do not have permission to access this page.")
+        return redirect('accounts:login')
+    
+    if request.user.profile.role != 'mentor':
         return redirect('general:index')
 
     user = request.user
@@ -644,7 +664,17 @@ def update_slots_for_session_length(mentor_profile, old_length, new_length):
 
 @login_required
 def profile(request):
-    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+    if not hasattr(request.user, 'profile'):
+        return redirect('general:index')
+    
+    # Prevent admin users from accessing mentor dashboard
+    if request.user.profile.role == 'admin':
+        from django.contrib.auth import logout
+        logout(request)
+        messages.error(request, "You do not have permission to access this page.")
+        return redirect('accounts:login')
+    
+    if request.user.profile.role != 'mentor':
         return redirect('general:index')
     
     user = request.user
@@ -1004,7 +1034,17 @@ def profile(request):
 
 @login_required
 def settings_view(request):
-    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+    if not hasattr(request.user, 'profile'):
+        return redirect('general:index')
+    
+    # Prevent admin users from accessing mentor dashboard
+    if request.user.profile.role == 'admin':
+        from django.contrib.auth import logout
+        logout(request)
+        messages.error(request, "You do not have permission to access this page.")
+        return redirect('accounts:login')
+    
+    if request.user.profile.role != 'mentor':
         return redirect('general:index')
     
     user = request.user
@@ -1056,7 +1096,17 @@ def settings_view(request):
 
 @login_required
 def support_view(request):
-    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+    if not hasattr(request.user, 'profile'):
+        return redirect('general:index')
+    
+    # Prevent admin users from accessing mentor dashboard
+    if request.user.profile.role == 'admin':
+        from django.contrib.auth import logout
+        logout(request)
+        messages.error(request, "You do not have permission to access this page.")
+        return redirect('accounts:login')
+    
+    if request.user.profile.role != 'mentor':
         return redirect('general:index')
     
     return render(
@@ -1069,7 +1119,17 @@ def support_view(request):
 
 @login_required
 def billing(request):
-    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+    if not hasattr(request.user, 'profile'):
+        return redirect('general:index')
+    
+    # Prevent admin users from accessing mentor dashboard
+    if request.user.profile.role == 'admin':
+        from django.contrib.auth import logout
+        logout(request)
+        messages.error(request, "You do not have permission to access this page.")
+        return redirect('accounts:login')
+    
+    if request.user.profile.role != 'mentor':
         return redirect('general:index')
     
     profile = request.user.profile
@@ -1098,7 +1158,17 @@ def billing(request):
 
 @login_required
 def my_sessions(request):
-    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+    if not hasattr(request.user, 'profile'):
+        return redirect('general:index')
+    
+    # Prevent admin users from accessing mentor dashboard
+    if request.user.profile.role == 'admin':
+        from django.contrib.auth import logout
+        logout(request)
+        messages.error(request, "You do not have permission to access this page.")
+        return redirect('accounts:login')
+    
+    if request.user.profile.role != 'mentor':
         return redirect('general:index')
     
     # Get existing availability for the mentor from JSON fields
@@ -3470,7 +3540,17 @@ def remind_session(request):
 @login_required
 def session_detail(request, session_id: int):
     """Mentor-only dedicated session detail page."""
-    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+    if not hasattr(request.user, 'profile'):
+        return redirect('general:index')
+    
+    # Prevent admin users from accessing mentor dashboard
+    if request.user.profile.role == 'admin':
+        from django.contrib.auth import logout
+        logout(request)
+        messages.error(request, "You do not have permission to access this page.")
+        return redirect('accounts:login')
+    
+    if request.user.profile.role != 'mentor':
         return redirect('general:index')
 
     mentor_profile = request.user.mentor_profile
@@ -3513,7 +3593,17 @@ def session_detail(request, session_id: int):
 @login_required
 def clients_list(request):
     """Display list of all clients for the logged-in mentor"""
-    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+    if not hasattr(request.user, 'profile'):
+        return redirect('general:index')
+    
+    # Prevent admin users from accessing mentor dashboard
+    if request.user.profile.role == 'admin':
+        from django.contrib.auth import logout
+        logout(request)
+        messages.error(request, "You do not have permission to access this page.")
+        return redirect('accounts:login')
+    
+    if request.user.profile.role != 'mentor':
         return redirect('general:index')
     
     mentor_profile = request.user.mentor_profile

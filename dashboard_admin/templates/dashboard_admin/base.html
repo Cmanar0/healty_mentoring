@@ -25,7 +25,7 @@
       {% if user.is_authenticated and user.profile.first_name and user.profile.last_name %}
         <div class="dashboard-top-actions-group" style="display: none !important;">
           <!-- Notification Bell -->
-          {% include "general/notifications/dropdown_snippet.html" %}
+          {% include "general/notifications/dropdown_snippet_admin.html" %}
         </div>
           <div class="user-profile-dropdown">
           <button class="user-profile-trigger" id="userProfileTrigger" style="display: none !important;">
@@ -597,7 +597,148 @@ document.addEventListener('DOMContentLoaded', function() {
       notificationDropdown.classList.remove('active');
     }
   });
+  
+  // Notification Modal Functions (for dropdown snippet)
+  window.openNotificationModal = function(notificationId) {
+    const modal = document.getElementById('notificationModal');
+    const content = document.getElementById('notificationModalContent');
+    
+    if (!modal || !content) {
+      console.error('Notification modal elements not found', { modal: !!modal, content: !!content });
+      return;
+    }
+    
+    // Show loading state
+    content.innerHTML = '<div style="text-align: center; padding: 40px;"><i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: var(--primary);"></i><p style="margin-top: 16px;">Loading...</p></div>';
+    
+    // Show modal - use both class and style to ensure it displays
+    modal.style.display = 'flex';
+    modal.style.opacity = '1';
+    modal.style.visibility = 'visible';
+    
+    // Fetch notification details
+    const url = `/dashboard/admin/notifications/${notificationId}/modal/`;
+    fetch(url, {
+      method: 'GET',
+      headers: {
+        'X-Requested-With': 'XMLHttpRequest',
+      },
+    })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Network response was not ok');
+        }
+        return response.text();
+      })
+      .then(html => {
+        content.innerHTML = html;
+        // Close dropdown when modal opens
+        if (notificationDropdown) {
+          notificationDropdown.classList.remove('active');
+        }
+      })
+      .catch(error => {
+        console.error('Error loading notification:', error);
+        content.innerHTML = '<div style="text-align: center; padding: 40px;"><p style="color: #ef4444;">Error loading notification</p></div>';
+      });
+  };
+  
+  window.closeNotificationModal = function() {
+    const modal = document.getElementById('notificationModal');
+    if (modal) {
+      modal.style.display = 'none';
+      modal.style.opacity = '0';
+      modal.style.visibility = 'hidden';
+      // Reload the page to refresh notifications
+      window.location.reload();
+    }
+  };
+  
+  // Close modal on Escape key
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      const modal = document.getElementById('notificationModal');
+      if (modal && (modal.style.display === 'flex' || modal.style.display === '')) {
+        window.closeNotificationModal();
+      }
+    }
+  });
+  
+  // Close modal when clicking outside - initialize after DOM is ready
+  setTimeout(function() {
+    const modal = document.getElementById('notificationModal');
+    if (modal) {
+      modal.addEventListener('click', function(e) {
+        if (e.target === modal || e.target.classList.contains('modal-overlay')) {
+          window.closeNotificationModal();
+        }
+      });
+    }
+  }, 100);
 });
 </script>
+<style>
+  /* Notification Modal Styles */
+  #notificationModal,
+  #notificationModal.modal-overlay {
+    display: none !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    background: rgba(0, 0, 0, 0.5) !important;
+    z-index: 10000 !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+  
+  /* When modal is shown via JavaScript */
+  #notificationModal[style*="display: flex"],
+  #notificationModal.modal-overlay[style*="display: flex"] {
+    display: flex !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+  }
+  
+  #notificationModal .modal-content {
+    background: white;
+    border-radius: 12px;
+    max-width: 600px;
+    min-width: 400px;
+    max-height: 90vh;
+    overflow-y: auto;
+    position: relative;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  }
+  
+  #notificationModal .modal-close {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    background: rgba(15, 23, 42, 0.1);
+    border: 1px solid rgba(15, 23, 42, 0.1);
+    color: #64748b;
+    font-size: 1rem;
+    cursor: pointer;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 20;
+    padding: 0;
+  }
+  
+  #notificationModal .modal-close:hover {
+    background: #ef4444;
+    border-color: #ef4444;
+    color: white;
+    transform: rotate(90deg) scale(1.1);
+    box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
+  }
+</style>
 {% endblock %}
 
