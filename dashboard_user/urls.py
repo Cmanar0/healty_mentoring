@@ -7,6 +7,7 @@ urlpatterns = [
     path('', views.dashboard, name='dashboard'),
     path('account/', views.account, name='account'),
     path('profile/', views.profile, name='profile'),
+    path('settings/', views.settings_view, name='settings'),
     path('my-sessions/', views.my_sessions, name='my_sessions'),
     path('my-sessions/get-sessions/', views.get_sessions_paginated, name='get_sessions_paginated'),
     path('mentors/', views.mentors_list, name='mentors_list'),

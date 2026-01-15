@@ -2,6 +2,7 @@ from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.contrib.auth import logout
+from django.conf import settings
 from accounts.models import MentorClientRelationship, MentorProfile, UserProfile, CustomUser
 from django.utils import timezone
 from datetime import timedelta
@@ -184,6 +185,58 @@ def account(request):
         'user': user,
         'profile': profile,
     })
+
+@login_required
+def settings_view(request):
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'user':
+        return redirect('general:index')
+    
+    user = request.user
+    profile = user.profile
+    
+    if request.method == "POST":
+        action = request.POST.get("action")
+        
+        if action == "update_timezone":
+            time_zone = request.POST.get("time_zone", "")
+            
+            # Store old timezone before updating
+            old_selected_timezone = profile.selected_timezone
+            
+            if time_zone:
+                profile.selected_timezone = time_zone
+                # Also update legacy time_zone field for backward compatibility
+                profile.time_zone = time_zone
+                profile.confirmed_timezone_mismatch = False
+            
+            profile.save()
+            
+            # Send email if timezone was changed (not first time setting)
+            # Condition: old_selected_timezone was not empty AND it's different from new one
+            if old_selected_timezone and old_selected_timezone.strip() and old_selected_timezone != time_zone and time_zone:
+                try:
+                    from general.email_service import EmailService
+                    EmailService.send_timezone_change_email(
+                        user=request.user,
+                        new_timezone=time_zone,
+                        old_timezone=old_selected_timezone
+                    )
+                except Exception as e:
+                    # Log error but don't fail the request
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.error(f"Error sending timezone change email: {str(e)}")
+            
+            messages.success(request, "Timezone updated successfully.")
+            return redirect("/dashboard/user/settings/")
+    
+    return render(
+        request,
+        'dashboard_user/settings.html',
+        {
+            'debug': settings.DEBUG,
+        },
+    )
 
 @login_required
 def my_sessions(request):

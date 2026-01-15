@@ -1,0 +1,310 @@
+{% extends "dashboard_mentor/base.html" %}
+{% load static %}
+
+{% block page_title %}Settings{% endblock %}
+
+{% block dashboard_content %}
+<div class="dashboard-content-container">
+    <div class="dashboard-card" style="max-width: 800px; margin: 0 auto;">
+        <div class="dashboard-card-header">
+            <h1 class="dashboard-card-title">
+                <i class="fas fa-cog"></i> Settings
+            </h1>
+            <p class="dashboard-card-subtitle">Manage your account settings and preferences</p>
+        </div>
+        
+        <div class="dashboard-card-body">
+            <form method="post" id="settingsForm">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="update_timezone">
+                
+                <!-- Time Zone Section -->
+                <div class="compact-form-group form-grid-full" id="timezone-section">
+                    <label><i class="fas fa-clock"></i> Time Zone</label>
+                    
+                    <div class="timezone-settings-card">
+                        <!-- Display & Change Button -->
+                        <div class="timezone-card-body">
+                            <div class="timezone-display-row" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; padding: 12px 16px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;">
+                                <div class="timezone-display-value" style="display: flex; align-items: center; gap: 12px; flex: 1;">
+                                    <i class="fas fa-globe" style="color: #3b82f6; font-size: 1.1rem;"></i>
+                                    <div style="display: flex; flex-direction: column; gap: 2px;">
+                                        <span id="timezoneDisplayName" style="font-size: 0.95rem; font-weight: 600; color: #1e293b;">
+                                            {% if user.profile.selected_timezone %}
+                                                {{ user.profile.selected_timezone }}
+                                            {% else %}
+                                                Not set
+                                            {% endif %}
+                                        </span>
+                                        <span id="timezoneDisplayOffset" class="timezone-offset-badge" style="font-size: 0.75rem; color: #64748b;"></span>
+                                    </div>
+                                </div>
+                                <button type="button" id="changeTimezoneBtn" class="btn-change-timezone" style="padding: 8px 16px; background: white; border: 1px solid #cbd5e1; border-radius: 6px; color: #475569; font-size: 0.875rem; font-weight: 600; cursor: pointer; transition: all 0.2s; white-space: nowrap;">
+                                    <i class="fas fa-edit" style="margin-right: 6px;"></i> Change Timezone
+                                </button>
+                            </div>
+                            
+                            <!-- Live Clock & Status -->
+                            <div class="timezone-status-row">
+                                <!-- Current Time (Left) -->
+                                <div id="timezoneInfo" class="timezone-live-clock" style="display: none;">
+                                    <i class="far fa-clock"></i>
+                                    <span id="timezoneCurrentTime">--:--</span>
+                                    <span id="timezoneCurrentDate" class="timezone-date-small"></span>
+                                </div>
+
+                                <!-- Detection Status (Right) -->
+                                <div class="timezone-detection-status">
+                                    <!-- Match State -->
+                                    <div id="timezoneMatchBadge" class="status-badge status-match" style="display: none;">
+                                        <i class="fas fa-check-circle"></i> Matches your location
+                                    </div>
+                                    
+                                    <!-- Mismatch State -->
+                                    <div id="timezoneMismatchBadge" class="status-badge status-mismatch" style="display: none;">
+                                        <span class="mismatch-text">Detected: <span id="detectedTimezoneName"></span></span>
+                                        <button type="button" id="useDetectedTimezoneBtn" class="btn-update-timezone">
+                                            Update
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Hidden fields for compatibility -->
+                    <input type="hidden" id="timezoneValue" name="time_zone" value="{{ user.profile.selected_timezone|default:'' }}">
+                    <input type="hidden" id="detectedTimezoneValue" value="{{ user.profile.detected_timezone|default:'' }}">
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Note: Standalone Timezone Correction Modal is already included in base.html -->
+
+<script>
+(function() {
+    'use strict';
+    
+    // Format timezone name for display
+    function formatTimezoneDisplayName(tzId) {
+        if (!tzId) return 'Not set';
+        try {
+            const parts = tzId.split('/');
+            const city = parts[parts.length - 1] || tzId;
+            return city.replace(/_/g, ' ');
+        } catch (e) {
+            return tzId;
+        }
+    }
+    
+    // Get timezone offset for display
+    function getTimezoneOffset(tzId) {
+        if (!tzId) return '';
+        try {
+            const now = new Date();
+            const formatter = new Intl.DateTimeFormat('en', {
+                timeZone: tzId,
+                timeZoneName: 'longOffset'
+            });
+            const parts = formatter.formatToParts(now);
+            const offsetPart = parts.find(p => p.type === 'timeZoneName');
+            if (offsetPart && offsetPart.value) {
+                const match = offsetPart.value.match(/GMT([+-]\d{1,2})(:?(\d{2}))?/);
+                if (match) {
+                    const sign = match[1].startsWith('-') ? '-' : '+';
+                    const hours = match[1].replace('+', '').replace('-', '');
+                    const minutes = match[3] ? match[3] : '00';
+                    return `UTC${sign}${hours.padStart(2, '0')}${minutes !== '00' ? ':' + minutes : ''}`;
+                }
+            }
+        } catch (e) {
+            console.warn('Could not get timezone offset:', e);
+        }
+        return '';
+    }
+    
+    // Update timezone display
+    function updateTimezoneDisplay(tzId) {
+        const nameEl = document.getElementById('timezoneDisplayName');
+        const offsetEl = document.getElementById('timezoneDisplayOffset');
+        const hiddenInput = document.getElementById('timezoneValue');
+        
+        if (nameEl) {
+            nameEl.textContent = formatTimezoneDisplayName(tzId);
+        }
+        if (offsetEl) {
+            offsetEl.textContent = getTimezoneOffset(tzId);
+        }
+        if (hiddenInput) {
+            hiddenInput.value = tzId || '';
+        }
+    }
+    
+    // Initialize display on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        const currentTimezone = '{{ user.profile.selected_timezone|default:"" }}';
+        const detectedTimezone = '{{ user.profile.detected_timezone|default:"" }}';
+        const confirmedMismatch = '{{ user.profile.confirmed_timezone_mismatch|yesno:"true,false" }}' === 'true';
+        
+        if (currentTimezone) {
+            updateTimezoneDisplay(currentTimezone);
+        }
+        
+        // Check for mismatch and show mismatch modal if needed
+        if (detectedTimezone && currentTimezone && detectedTimezone !== currentTimezone && !confirmedMismatch) {
+            // Wait a bit for modals to load
+            setTimeout(function() {
+                if (typeof window.openTimezoneMismatchModal === 'function') {
+                    window.openTimezoneMismatchModal(detectedTimezone, currentTimezone);
+                }
+            }, 500);
+        }
+        
+        // Button click handler - check for mismatch first, otherwise open standalone modal
+        const changeBtn = document.getElementById('changeTimezoneBtn');
+        if (changeBtn) {
+            changeBtn.addEventListener('click', function() {
+                const currentTz = '{{ user.profile.selected_timezone|default:"" }}';
+                const detectedTz = '{{ user.profile.detected_timezone|default:"" }}';
+                const confirmedMismatch = '{{ user.profile.confirmed_timezone_mismatch|yesno:"true,false" }}' === 'true';
+                
+                // If there's a mismatch and it's not confirmed, show mismatch modal
+                if (detectedTz && currentTz && detectedTz !== currentTz && !confirmedMismatch) {
+                    if (typeof window.openTimezoneMismatchModal === 'function') {
+                        window.openTimezoneMismatchModal(detectedTz, currentTz);
+                    }
+                } else {
+                    // Otherwise, use standalone modal for general timezone change
+                    if (typeof window.openStandaloneTimezoneModal === 'function') {
+                        window.openStandaloneTimezoneModal(currentTz, detectedTz, function(savedTimezone) {
+                            // Callback after save - update display
+                            updateTimezoneDisplay(savedTimezone);
+                            // Reload to check for new mismatches
+                            window.location.reload();
+                        });
+                    } else {
+                        console.error('openStandaloneTimezoneModal function not found. Make sure the modal is included.');
+                        console.log('Available window functions:', Object.keys(window).filter(k => k.includes('Timezone')));
+                    }
+                }
+            });
+        }
+    });
+})();
+</script>
+
+<style>
+/* Timezone Section Styles */
+.timezone-settings-card {
+    background: white;
+    border-radius: 8px;
+}
+
+.timezone-card-body {
+    padding: 0;
+}
+
+.timezone-status-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.timezone-live-clock {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9rem;
+    color: var(--dash-text-main);
+}
+
+.timezone-live-clock i {
+    color: var(--dash-primary);
+}
+
+.timezone-date-small {
+    font-size: 0.85rem;
+    color: var(--dash-text-muted);
+    margin-left: 4px;
+}
+
+.timezone-detection-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.status-match {
+    background: rgba(16, 185, 129, 0.1);
+    color: #10b981;
+}
+
+.status-mismatch {
+    background: rgba(251, 191, 36, 0.1);
+    color: #f59e0b;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.mismatch-text {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.btn-update-timezone {
+    padding: 4px 12px;
+    background: #f59e0b;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.btn-update-timezone:hover {
+    background: #d97706;
+}
+
+.btn-change-timezone:hover {
+    background: #f1f5f9;
+    border-color: #94a3b8;
+}
+
+.compact-form-group {
+    margin-bottom: 24px;
+}
+
+.compact-form-group label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    color: var(--dash-text-main);
+    margin-bottom: 12px;
+    font-size: 0.95rem;
+}
+
+.compact-form-group label i {
+    color: var(--dash-primary);
+}
+</style>
+{% endblock %}
+
