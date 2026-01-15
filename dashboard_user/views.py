@@ -239,6 +239,19 @@ def settings_view(request):
     )
 
 @login_required
+def support_view(request):
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'user':
+        return redirect('general:index')
+    
+    return render(
+        request,
+        'dashboard_user/support.html',
+        {
+            'debug': settings.DEBUG,
+        },
+    )
+
+@login_required
 def my_sessions(request):
     if not hasattr(request.user, 'profile') or request.user.profile.role != 'user':
         return redirect('general:index')

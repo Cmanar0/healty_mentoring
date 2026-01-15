@@ -1,0 +1,129 @@
+{% extends "dashboard_mentor/base.html" %}
+{% load static %}
+
+{% block page_title %}Support{% endblock %}
+
+{% block dashboard_content %}
+<div class="dashboard-content-container">
+    <div class="dashboard-card" style="max-width: 900px; margin: 0 auto;">
+        <div class="dashboard-card-header">
+            <h1 class="dashboard-card-title">
+                <i class="fas fa-headset"></i> Support
+            </h1>
+            <p class="dashboard-card-subtitle">Get help and support for your mentoring journey</p>
+        </div>
+        
+        <div class="dashboard-card-body">
+            <div style="display: flex; flex-direction: column; gap: 32px;">
+                <!-- Support Options -->
+                <div>
+                    <h2 style="font-size: 1.25rem; font-weight: 600; color: var(--dash-text-main); margin-bottom: 20px;">
+                        <i class="fas fa-question-circle" style="color: var(--dash-primary); margin-right: 8px;"></i>
+                        How can we help you?
+                    </h2>
+                    
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px;">
+                        <!-- FAQ Card -->
+                        <div style="padding: 24px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; transition: all 0.2s;">
+                            <div style="font-size: 2rem; color: var(--dash-primary); margin-bottom: 12px;">
+                                <i class="fas fa-book"></i>
+                            </div>
+                            <h3 style="font-size: 1.1rem; font-weight: 600; color: var(--dash-text-main); margin-bottom: 8px;">
+                                Frequently Asked Questions
+                            </h3>
+                            <p style="font-size: 0.9rem; color: var(--dash-text-muted); margin-bottom: 16px;">
+                                Find answers to common questions about using the platform
+                            </p>
+                            <button type="button" class="btn btn-outline" style="width: 100%;">
+                                View FAQ
+                            </button>
+                        </div>
+                        
+                        <!-- Contact Support Card -->
+                        <div style="padding: 24px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; transition: all 0.2s;">
+                            <div style="font-size: 2rem; color: var(--dash-primary); margin-bottom: 12px;">
+                                <i class="fas fa-envelope"></i>
+                            </div>
+                            <h3 style="font-size: 1.1rem; font-weight: 600; color: var(--dash-text-main); margin-bottom: 8px;">
+                                Contact Support
+                            </h3>
+                            <p style="font-size: 0.9rem; color: var(--dash-text-muted); margin-bottom: 16px;">
+                                Reach out to our support team for personalized assistance
+                            </p>
+                            <button type="button" class="btn btn-outline" style="width: 100%;">
+                                Contact Us
+                            </button>
+                        </div>
+                        
+                        <!-- Documentation Card -->
+                        <div style="padding: 24px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; transition: all 0.2s;">
+                            <div style="font-size: 2rem; color: var(--dash-primary); margin-bottom: 12px;">
+                                <i class="fas fa-file-alt"></i>
+                            </div>
+                            <h3 style="font-size: 1.1rem; font-weight: 600; color: var(--dash-text-main); margin-bottom: 8px;">
+                                Documentation
+                            </h3>
+                            <p style="font-size: 0.9rem; color: var(--dash-text-muted); margin-bottom: 16px;">
+                                Browse guides and tutorials to get the most out of the platform
+                            </p>
+                            <button type="button" class="btn btn-outline" style="width: 100%;">
+                                View Docs
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Quick Links -->
+                <div>
+                    <h2 style="font-size: 1.25rem; font-weight: 600; color: var(--dash-text-main); margin-bottom: 20px;">
+                        <i class="fas fa-link" style="color: var(--dash-primary); margin-right: 8px;"></i>
+                        Quick Links
+                    </h2>
+                    
+                    <div style="display: flex; flex-direction: column; gap: 12px;">
+                        <a href="/dashboard/mentor/profile/" class="support-link" style="display: flex; align-items: center; gap: 12px; padding: 16px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; text-decoration: none; transition: all 0.2s;">
+                            <i class="fas fa-id-badge" style="color: var(--dash-primary); font-size: 1.2rem;"></i>
+                            <div style="flex: 1;">
+                                <div style="font-weight: 600; color: var(--dash-text-main);">Profile Setup</div>
+                                <div style="font-size: 0.85rem; color: var(--dash-text-muted);">Learn how to set up your mentor profile</div>
+                            </div>
+                            <i class="fas fa-chevron-right" style="color: var(--dash-text-muted);"></i>
+                        </a>
+                        
+                        <a href="/dashboard/mentor/my-sessions/" class="support-link" style="display: flex; align-items: center; gap: 12px; padding: 16px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; text-decoration: none; transition: all 0.2s;">
+                            <i class="fas fa-calendar" style="color: var(--dash-primary); font-size: 1.2rem;"></i>
+                            <div style="flex: 1;">
+                                <div style="font-weight: 600; color: var(--dash-text-main);">Session Management</div>
+                                <div style="font-size: 0.85rem; color: var(--dash-text-muted);">Manage your sessions and availability</div>
+                            </div>
+                            <i class="fas fa-chevron-right" style="color: var(--dash-text-muted);"></i>
+                        </a>
+                        
+                        <a href="/dashboard/mentor/settings/" class="support-link" style="display: flex; align-items: center; gap: 12px; padding: 16px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; text-decoration: none; transition: all 0.2s;">
+                            <i class="fas fa-cog" style="color: var(--dash-primary); font-size: 1.2rem;"></i>
+                            <div style="flex: 1;">
+                                <div style="font-weight: 600; color: var(--dash-text-main);">Account Settings</div>
+                                <div style="font-size: 0.85rem; color: var(--dash-text-muted);">Configure your account preferences</div>
+                            </div>
+                            <i class="fas fa-chevron-right" style="color: var(--dash-text-muted);"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.support-link:hover {
+    background: #f1f5f9 !important;
+    border-color: var(--dash-primary) !important;
+    transform: translateX(4px);
+}
+
+.support-link:hover .fa-chevron-right {
+    color: var(--dash-primary) !important;
+}
+</style>
+{% endblock %}
+
