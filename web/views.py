@@ -4,6 +4,7 @@ from django.db.models import Q, Min, Max
 from django.db.models.functions import Coalesce
 from django.db import models
 from django.core.paginator import Paginator
+from django.templatetags.static import static
 from accounts.models import CustomUser, MentorProfile
 from general.models import BlogPost
 from dashboard_mentor.constants import PREDEFINED_CATEGORIES, PREDEFINED_LANGUAGES, QUALIFICATION_TYPES
@@ -479,10 +480,14 @@ def blog_detail(request, slug):
         related_posts = list(related_posts) + list(recent_posts[:3 - related_posts.count()])
     
     # Build absolute URL for cover image (for SEO)
-    cover_image_url = None
+    # If no cover image, use logo as default
     if post.cover_image:
         # Use request.build_absolute_uri to get the full URL
         cover_image_url = request.build_absolute_uri(post.cover_image.url)
+    else:
+        # Use logo as default image for SEO
+        logo_path = static('images/logo.png')
+        cover_image_url = request.build_absolute_uri(logo_path)
     
     # Get author info
     author_name = post.author_name

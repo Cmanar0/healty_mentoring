@@ -103,15 +103,6 @@ class BlogPostForm(forms.ModelForm):
         })
     )
     
-    cover_color = forms.ChoiceField(
-        choices=BLOG_COVER_COLORS,
-        required=True,
-        help_text="Color for cover placeholder (used when no image is uploaded)",
-        widget=forms.HiddenInput(attrs={
-            'id': 'cover-color-input',
-        })
-    )
-    
     categories = forms.MultipleChoiceField(
         choices=[(cat['id'], cat['name']) for cat in PREDEFINED_CATEGORIES],
         required=False,
@@ -123,7 +114,7 @@ class BlogPostForm(forms.ModelForm):
     
     class Meta:
         model = BlogPost
-        fields = ['title', 'excerpt', 'content', 'cover_image', 'cover_color', 'categories', 'status']
+        fields = ['title', 'excerpt', 'content', 'cover_image', 'categories', 'status']
         widgets = {
             'title': forms.TextInput(attrs={
                 'class': 'form-control',
@@ -151,10 +142,6 @@ class BlogPostForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Set initial cover color if it's a new post (randomly select from colors)
-        if not self.instance.pk:
-            import random
-            self.fields['cover_color'].initial = random.choice([color[0] for color in BLOG_COVER_COLORS])
-        
         # Set initial categories if editing
         if self.instance.pk and self.instance.categories:
             self.fields['categories'].initial = self.instance.categories

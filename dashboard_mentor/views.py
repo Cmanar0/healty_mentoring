@@ -3939,6 +3939,11 @@ def blog_edit(request, post_id):
     if request.method == 'POST':
         form = BlogPostForm(request.POST, request.FILES, instance=post)
         if form.is_valid():
+            # Check if cover image should be removed
+            if request.POST.get('remove_cover_image') == '1':
+                if post.cover_image:
+                    post.cover_image.delete(save=False)
+                    post.cover_image = None
             form.save()
             messages.success(request, 'Blog post updated successfully!')
             return redirect('general:dashboard_mentor:blog_list')

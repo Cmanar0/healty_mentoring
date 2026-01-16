@@ -56,50 +56,25 @@
         {% endif %}
       </div>
 
-      <div class="form-row">
-        <div class="form-section">
-          <label for="{{ form.cover_image.id_for_label }}" class="form-label">
-            Cover Image (Optional)
-          </label>
-          {{ form.cover_image }}
-          {% if post and post.cover_image %}
-            <div class="current-cover-image">
-              <img src="{{ post.cover_image.url }}" alt="Current cover">
-              <small>Current cover image</small>
-            </div>
-          {% endif %}
-          <small class="form-help">Upload a cover image (max 5MB, JPG/PNG/WEBP)</small>
-          {% if form.cover_image.errors %}
-            <div class="form-error">{{ form.cover_image.errors }}</div>
-          {% endif %}
-        </div>
-
-        <div class="form-section">
-          <label class="form-label">
-            Cover Color
-          </label>
-          {{ form.cover_color }}
-          <div class="color-picker-grid">
-            {% for color_value, color_name in form.cover_color.field.choices %}
-              <button 
-                type="button" 
-                class="color-picker-item {% if form.cover_color.value == color_value %}selected{% endif %}"
-                data-color="{{ color_value }}"
-                style="background-color: {{ color_value }};"
-                title="{{ color_name }}"
-                aria-label="{{ color_name }}"
-              >
-                {% if form.cover_color.value == color_value %}
-                  <i class="fas fa-check"></i>
-                {% endif %}
-              </button>
-            {% endfor %}
+      <div class="form-section">
+        <label for="{{ form.cover_image.id_for_label }}" class="form-label">
+          Cover Image (Optional)
+        </label>
+        {{ form.cover_image }}
+        {% if post and post.cover_image %}
+          <div class="current-cover-image" id="current-cover-container">
+            <button type="button" class="remove-cover-btn" onclick="removeCoverImage()" title="Remove cover image">
+              <i class="fas fa-times"></i>
+            </button>
+            <img src="{{ post.cover_image.url }}" alt="Current cover">
+            <small>Current cover image</small>
           </div>
-          <small class="form-help">Color used when no cover image is uploaded</small>
-          {% if form.cover_color.errors %}
-            <div class="form-error">{{ form.cover_color.errors }}</div>
-          {% endif %}
-        </div>
+          <input type="hidden" name="remove_cover_image" id="remove-cover-input" value="0">
+        {% endif %}
+        <small class="form-help">Upload a cover image (max 5MB, JPG/PNG/WEBP)</small>
+        {% if form.cover_image.errors %}
+          <div class="form-error">{{ form.cover_image.errors }}</div>
+        {% endif %}
       </div>
 
       <div class="form-section">
@@ -368,50 +343,36 @@ if (typeof window.blogQuillInitialized === 'undefined') {
       console.error('Error initializing Quill editor:', error);
     }
     
-    // Cover color picker
-    const colorInput = document.getElementById('cover-color-input') || 
-                       document.getElementById('id_cover_color') ||
-                       document.querySelector('input[name="cover_color"]');
-    const colorItems = document.querySelectorAll('.color-picker-item');
-    
-    if (colorInput && colorItems.length > 0) {
-      // Set initial value if not set
-      if (!colorInput.value) {
-        const firstColor = colorItems[0].getAttribute('data-color');
-        if (firstColor) {
-          colorInput.value = firstColor;
-          // Mark first color as selected
-          colorItems[0].classList.add('selected');
-          colorItems[0].innerHTML = '<i class="fas fa-check"></i>';
+    // Remove cover image function
+    window.removeCoverImage = function() {
+      if (confirm('Are you sure you want to remove the cover image?')) {
+        const container = document.getElementById('current-cover-container');
+        const removeInput = document.getElementById('remove-cover-input');
+        const coverImageInput = document.getElementById('cover-image-input');
+        
+        if (container) {
+          container.style.opacity = '0.5';
+          container.style.pointerEvents = 'none';
         }
-      } else {
-        // Mark the current value as selected
-        colorItems.forEach(item => {
-          if (item.getAttribute('data-color') === colorInput.value) {
-            item.classList.add('selected');
-            item.innerHTML = '<i class="fas fa-check"></i>';
-          }
-        });
+        
+        if (removeInput) {
+          removeInput.value = '1';
+        }
+        
+        if (coverImageInput) {
+          coverImageInput.value = '';
+        }
+        
+        // Show a message
+        const message = document.createElement('div');
+        message.style.cssText = 'margin-top: 8px; padding: 8px; background: #fef3c7; color: #92400e; border-radius: 6px; font-size: 0.85rem;';
+        message.textContent = 'Cover image will be removed when you save the post.';
+        if (container) {
+          container.parentNode.insertBefore(message, container.nextSibling);
+        }
       }
-      
-      // Handle color selection
-      colorItems.forEach(item => {
-        item.addEventListener('click', function() {
-          const selectedColor = this.getAttribute('data-color');
-          
-          // Update hidden input
-          colorInput.value = selectedColor;
-          
-          // Update visual selection
-          colorItems.forEach(i => {
-            i.classList.remove('selected');
-            i.innerHTML = '';
-          });
-          this.classList.add('selected');
-          this.innerHTML = '<i class="fas fa-check"></i>';
-        });
-      });
-    }
+    };
+    
   }
   
   // Start initialization when DOM is ready
@@ -581,6 +542,7 @@ if (typeof window.blogQuillInitialized === 'undefined') {
   background: #f9fafb;
   border-radius: 8px;
   text-align: center;
+  position: relative;
 }
 
 .current-cover-image img {
@@ -596,48 +558,35 @@ if (typeof window.blogQuillInitialized === 'undefined') {
   font-size: 0.85rem;
 }
 
-.color-picker-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(50px, 1fr));
-  gap: 12px;
-  margin-top: 12px;
-  max-width: 400px;
-}
-
-.color-picker-item {
-  width: 50px;
-  height: 50px;
-  border-radius: 8px;
-  border: 3px solid #e5e7eb;
+.remove-cover-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(239, 68, 68, 0.9);
+  color: white;
+  border: none;
   cursor: pointer;
-  transition: all 0.2s;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0;
-  position: relative;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  transition: all 0.2s;
+  z-index: 10;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
 }
 
-.color-picker-item:hover {
+.remove-cover-btn:hover {
+  background: #ef4444;
   transform: scale(1.1);
-  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-  border-color: #cbd5e1;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
 }
 
-.color-picker-item.selected {
-  border-color: #10b981;
-  border-width: 4px;
-  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2), 0 4px 8px rgba(0,0,0,0.2);
-  transform: scale(1.05);
+.remove-cover-btn i {
+  font-size: 0.9rem;
 }
 
-.color-picker-item i {
-  color: white;
-  font-size: 1.2rem;
-  text-shadow: 0 1px 3px rgba(0,0,0,0.5);
-  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.8));
-}
 
 .categories-grid {
   display: grid;

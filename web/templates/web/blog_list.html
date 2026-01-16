@@ -201,7 +201,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: rgba(255, 255, 255, 0.7);
+  background: #f1f5f9;
+  color: #64748b;
   font-size: 3rem;
 }
 
@@ -458,7 +459,7 @@
       <div class="blog-posts-grid">
         {% for post in posts %}
           <a href="{% url 'web:blog_detail' post.slug %}" class="blog-post-card">
-            <div class="post-cover" style="background-color: {{ post.cover_color }};">
+            <div class="post-cover">
               {% if post.cover_image %}
                 <img src="{{ post.cover_image.url }}" alt="{{ post.title }}">
               {% else %}
