@@ -19,8 +19,8 @@
     {% if notifications %}
       <div class="notifications-list">
         {% for notification in notifications %}
-          <a href="{% url 'general:dashboard_user:notification_detail' notification.id %}" class="notification-item-link">
-            <div class="notification-item {% if not notification.is_opened %}unread{% endif %}">
+          <div class="notification-item-wrapper {% if not notification.is_opened %}unread{% endif %}" data-notification-url="{% url 'general:dashboard_user:notification_detail' notification.id %}">
+            <div class="notification-item">
               <div class="notification-icon">
                 <i class="fas fa-bell"></i>
               </div>
@@ -33,7 +33,8 @@
                 <div class="notification-unread-indicator"></div>
               {% endif %}
             </div>
-          </a>
+            <div class="notification-click-overlay"></div>
+          </div>
         {% endfor %}
       </div>
 
@@ -54,219 +55,288 @@
         </div>
       {% endif %}
     {% else %}
-      <div class="notifications-empty">
+      <div class="no-notifications">
         <i class="fas fa-bell-slash"></i>
-        <p>No notifications</p>
+        <p>No notifications yet</p>
       </div>
     {% endif %}
   </div>
 </div>
 
 <style>
-.notifications-page {
-  padding: 24px;
-}
+  .notifications-page {
+    padding: 40px;
+    min-width: 600px;
+    width: 100%;
+    margin: 0 auto;
+  }
 
-.notifications-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24px;
-}
+  .notifications-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+  }
 
-.notifications-header h1 {
-  margin: 0;
-  font-size: 1.75rem;
-  font-weight: 600;
-  color: var(--text-dark);
-}
+  .notifications-header h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--text-dark);
+    margin: 0;
+  }
 
-.btn-mark-all-read {
-  background: var(--primary);
-  color: white;
-  border: none;
-  padding: 8px 16px;
-  border-radius: 8px;
-  font-size: 0.9rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background 0.2s ease;
-}
+  .btn-mark-all-read {
+    background: var(--primary);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s ease;
+  }
 
-.btn-mark-all-read:hover {
-  background: var(--dash-primary-hover, #059669);
-}
+  .btn-mark-all-read:hover {
+    background: #059669;
+  }
 
-.notifications-container {
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  overflow: hidden;
-}
+  .notifications-container {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    overflow: hidden;
+  }
 
-.notifications-list {
-  display: flex;
-  flex-direction: column;
-}
+  .notifications-list {
+    display: flex;
+    flex-direction: column;
+  }
 
-.notification-item-link {
-  text-decoration: none;
-  color: inherit;
-  display: block;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-  transition: background 0.2s ease;
-}
+  .notification-item-wrapper {
+    position: relative;
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+    transition: background 0.2s ease;
+  }
+  
+  .notification-item-wrapper:last-child {
+    border-bottom: none;
+  }
+  
+  .notification-item-wrapper:hover {
+    background: rgba(0,0,0,0.02);
+  }
+  
+  .notification-item-wrapper.unread {
+    background: rgba(16, 185, 129, 0.05);
+    border-left: 3px solid var(--primary);
+  }
+  
+  .notification-item-wrapper.unread:hover {
+    background: rgba(16, 185, 129, 0.08);
+  }
 
-.notification-item-link:last-child {
-  border-bottom: none;
-}
+  .notification-item {
+    display: flex;
+    gap: 16px;
+    padding: 20px;
+    position: relative;
+  }
+  
+  /* Transparent clickable overlay */
+  .notification-click-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1;
+    cursor: pointer;
+  }
+  
+  /* Make links inside clickable independently - they sit above the overlay */
+  .notification-content a {
+    position: relative;
+    z-index: 2;
+    pointer-events: auto;
+    cursor: pointer;
+  }
 
-.notification-item-link:hover {
-  background: rgba(0, 0, 0, 0.02);
-}
+  .notification-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: rgba(16, 185, 129, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: var(--primary);
+    font-size: 1.2rem;
+  }
 
-.notification-item {
-  display: flex;
-  gap: 16px;
-  padding: 20px;
-  position: relative;
-  border-left: 3px solid transparent;
-}
+  .notification-content {
+    flex: 1;
+    min-width: 0;
+  }
 
-.notification-item.unread {
-  background: rgba(16, 185, 129, 0.05);
-  border-left-color: var(--primary);
-}
+  .notification-title {
+    margin: 0 0 8px 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-dark);
+  }
+  
+  .notification-title div,
+  .notification-title p {
+    margin: 0;
+    display: inline;
+  }
 
-.notification-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  background: rgba(16, 185, 129, 0.1);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  color: var(--primary);
-  font-size: 1.2rem;
-}
+  .notification-description {
+    margin: 0 0 8px 0;
+    font-size: 0.9rem;
+    color: var(--text-light);
+    line-height: 1.5;
+  }
+  
+  /* Style HTML content in notifications */
+  .notification-description > div,
+  .notification-description > p {
+    margin: 0 0 6px 0;
+  }
+  
+  .notification-description > div:last-child,
+  .notification-description > p:last-child {
+    margin-bottom: 0;
+  }
+  
+  /* Only style actual anchor tags, not text inside paragraphs */
+  .notification-description a {
+    color: var(--primary) !important;
+    text-decoration: underline;
+  }
+  
+  .notification-description a:hover {
+    color: #059669 !important;
+  }
+  
+  /* Ensure regular text doesn't look like links */
+  .notification-description p {
+    color: var(--text-light);
+  }
+  
+  .notification-description p a {
+    color: var(--primary) !important;
+    text-decoration: underline;
+  }
+  
+  /* Ensure divs and paragraphs don't inherit link styles */
+  .notification-description div.notification,
+  .notification-description div.notification p {
+    color: var(--text-light);
+  }
+  
+  .notification-description div.notification a {
+    color: var(--primary) !important;
+    text-decoration: underline;
+  }
+  
+  .notification-description strong,
+  .notification-description b {
+    font-weight: 600;
+  }
+  
+  .notification-description em,
+  .notification-description i {
+    font-style: italic;
+  }
 
-.notification-content {
-  flex: 1;
-  min-width: 0;
-}
+  .notification-time {
+    margin: 0;
+    font-size: 0.8rem;
+    color: var(--text-light);
+  }
 
-.notification-title {
-  margin: 0 0 8px 0;
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--text-dark);
-  line-height: 1.4;
-}
+  .notification-unread-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--primary);
+    position: absolute;
+    top: 20px;
+    right: 20px;
+  }
 
-.notification-title div,
-.notification-title p {
-  margin: 0;
-  display: inline;
-}
+  .no-notifications {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-light);
+  }
 
-.notification-description {
-  margin: 0 0 8px 0;
-  font-size: 0.9rem;
-  color: var(--text-light);
-  line-height: 1.5;
-}
+  .no-notifications i {
+    font-size: 3rem;
+    margin-bottom: 20px;
+    opacity: 0.3;
+  }
 
-/* Style HTML content in notifications */
-.notification-description div,
-.notification-description p {
-  margin: 0 0 6px 0;
-  display: inline;
-}
+  .no-notifications p {
+    font-size: 1.1rem;
+    margin: 0;
+  }
 
-.notification-description div:last-child,
-.notification-description p:last-child {
-  margin-bottom: 0;
-}
+  .pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 20px;
+    padding: 20px;
+    border-top: 1px solid rgba(0,0,0,0.05);
+  }
 
-.notification-description a {
-  color: var(--primary);
-  text-decoration: underline;
-}
+  .pagination-link {
+    color: var(--primary);
+    text-decoration: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    transition: background 0.2s ease;
+  }
 
-.notification-description a:hover {
-  color: var(--dash-primary-hover, #059669);
-}
+  .pagination-link:hover {
+    background: rgba(16, 185, 129, 0.1);
+  }
 
-.notification-description strong,
-.notification-description b {
-  font-weight: 600;
-}
-
-.notification-description em,
-.notification-description i {
-  font-style: italic;
-}
-
-.notification-time {
-  margin: 0;
-  font-size: 0.85rem;
-  color: var(--text-light);
-}
-
-.notification-unread-indicator {
-  position: absolute;
-  top: 20px;
-  right: 20px;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--primary);
-}
-
-.notifications-empty {
-  padding: 60px 20px;
-  text-align: center;
-  color: var(--text-light);
-}
-
-.notifications-empty i {
-  font-size: 3rem;
-  margin-bottom: 16px;
-  opacity: 0.5;
-}
-
-.notifications-empty p {
-  margin: 0;
-  font-size: 1.1rem;
-}
-
-.pagination {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 16px;
-  padding: 20px;
-  border-top: 1px solid rgba(0, 0, 0, 0.05);
-}
-
-.pagination-link {
-  color: var(--primary);
-  text-decoration: none;
-  font-weight: 500;
-  padding: 8px 16px;
-  border-radius: 8px;
-  transition: background 0.2s ease;
-}
-
-.pagination-link:hover {
-  background: rgba(16, 185, 129, 0.1);
-}
-
-.pagination-info {
-  color: var(--text-light);
-  font-size: 0.9rem;
-}
+  .pagination-info {
+    color: var(--text-light);
+    font-size: 0.9rem;
+  }
 </style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Handle clicks on notification items via transparent overlay
+  const notificationWrappers = document.querySelectorAll('.notification-item-wrapper');
+  
+  notificationWrappers.forEach(function(wrapper) {
+    const overlay = wrapper.querySelector('.notification-click-overlay');
+    const notificationUrl = wrapper.getAttribute('data-notification-url');
+    
+    if (overlay && notificationUrl) {
+      overlay.addEventListener('click', function(e) {
+        window.location.href = notificationUrl;
+      });
+    }
+  });
+  
+  // Ensure links inside notifications work independently - they should stop propagation
+  const notificationLinks = document.querySelectorAll('.notification-content a');
+  notificationLinks.forEach(function(link) {
+    link.addEventListener('click', function(e) {
+      e.stopPropagation(); // Prevent the overlay click from firing
+      // Allow the link to work normally
+    });
+  });
+});
+</script>
 {% endblock %}
 

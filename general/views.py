@@ -231,7 +231,18 @@ def notification_mark_all_read(request):
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         return JsonResponse({'success': True})
     
-    return redirect('general:notification_list')
+    # Redirect to the appropriate notification list based on user role
+    profile = getattr(request.user, 'profile', None)
+    if profile:
+        if profile.role == 'mentor':
+            return redirect('general:dashboard_mentor:notification_list')
+        elif profile.role == 'user':
+            return redirect('general:dashboard_user:notification_list')
+        elif profile.role == 'admin':
+            return redirect('general:dashboard_admin:notifications')
+    
+    # Fallback to general index
+    return redirect('general:index')
 
 
 @login_required
