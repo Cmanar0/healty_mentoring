@@ -488,6 +488,22 @@ def blog_detail(request, slug):
     author_name = post.author_name
     author_is_mentor = post.author_is_mentor
     author_user_id = post.author.id if author_is_mentor else None
+    author_mentor_profile = None
+    
+    # Get mentor profile if author is a mentor
+    if author_is_mentor and author_user_id:
+        try:
+            author_user = CustomUser.objects.get(id=author_user_id)
+            if hasattr(author_user, 'mentor_profile'):
+                author_mentor_profile = author_user.mentor_profile
+        except CustomUser.DoesNotExist:
+            pass
+    
+    # Get other articles by the same author
+    author_other_posts = BlogPost.objects.filter(
+        author=post.author,
+        status='published'
+    ).exclude(id=post.id).order_by('-published_at')[:5]
     
     return render(request, "web/blog_detail.html", {
         "post": post,
@@ -496,5 +512,7 @@ def blog_detail(request, slug):
         "author_name": author_name,
         "author_is_mentor": author_is_mentor,
         "author_user_id": author_user_id,
+        "author_mentor_profile": author_mentor_profile,
+        "author_other_posts": author_other_posts,
         "predefined_categories": PREDEFINED_CATEGORIES,
     })

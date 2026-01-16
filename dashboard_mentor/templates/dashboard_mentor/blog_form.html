@@ -188,28 +188,149 @@ if (typeof window.blogQuillInitialized === 'undefined') {
     
       // Initialize Quill only once
       try {
+        // Custom video handler for YouTube URLs
+        const Video = Quill.import('formats/video');
+        
+        class CustomVideo extends Video {
+          static create(value) {
+            let node = super.create(value);
+            
+            // Check if it's a YouTube URL
+            const youtubeRegex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
+            const match = value.match(youtubeRegex);
+            
+            if (match) {
+              const videoId = match[1];
+              const embedUrl = `https://www.youtube.com/embed/${videoId}`;
+              node.setAttribute('src', embedUrl);
+              node.setAttribute('frameborder', '0');
+              node.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share');
+              node.setAttribute('allowfullscreen', 'true');
+            } else {
+              // Regular video URL
+              node.setAttribute('src', value);
+            }
+            
+            return node;
+          }
+          
+          static value(node) {
+            return node.getAttribute('src');
+          }
+        }
+        
+        Quill.register(CustomVideo, true);
+        
         const quill = new Quill('#contentEditor', {
           theme: 'snow',
           modules: {
-            toolbar: [
-              [{ 'header': [1, 2, 3, false] }],
-              ['bold', 'italic', 'underline', 'strike'],
-              [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-              [{ 'script': 'sub'}, { 'script': 'super' }],
-              [{ 'indent': '-1'}, { 'indent': '+1' }],
-              [{ 'direction': 'rtl' }],
-              [{ 'color': [] }, { 'background': [] }],
-              [{ 'font': [] }],
-              [{ 'align': [] }],
-              ['link', 'image', 'video'],
-              ['clean']
-            ]
+            toolbar: {
+              container: [
+                [{ 'header': [1, 2, 3, false] }],
+                ['bold', 'italic', 'underline', 'strike'],
+                [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                [{ 'script': 'sub'}, { 'script': 'super' }],
+                [{ 'indent': '-1'}, { 'indent': '+1' }],
+                [{ 'direction': 'rtl' }],
+                [{ 'color': [] }, { 'background': [] }],
+                [{ 'font': [] }],
+                [{ 'align': [] }],
+                ['link', 'image', 'video'],
+                ['clean']
+              ],
+              handlers: {
+                'video': function() {
+                  const url = prompt('Enter video URL (YouTube supported):');
+                  if (url) {
+                    // Extract YouTube video ID if it's a YouTube URL
+                    const youtubeRegex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
+                    const match = url.match(youtubeRegex);
+                    
+                    if (match) {
+                      const videoId = match[1];
+                      const embedUrl = `https://www.youtube.com/embed/${videoId}`;
+                      const range = quill.getSelection(true);
+                      quill.insertEmbed(range.index, 'video', embedUrl, 'user');
+                    } else {
+                      // Regular video URL
+                      const range = quill.getSelection(true);
+                      quill.insertEmbed(range.index, 'video', url, 'user');
+                    }
+                  }
+                }
+              }
+            }
           },
           placeholder: 'Write your blog post content here...'
         });
         
         // Mark as initialized
         window.blogQuillInitialized = true;
+        
+        // Process existing video embeds when loading content
+        function processVideoEmbeds() {
+          // Process all iframes (not just YouTube ones)
+          const allIframes = quill.root.querySelectorAll('iframe');
+          allIframes.forEach(iframe => {
+            const src = iframe.getAttribute('src');
+            if (!src) return;
+            
+            // Check if it's a YouTube URL (any format)
+            const youtubeRegex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
+            const match = src.match(youtubeRegex);
+            
+            if (match) {
+              const videoId = match[1];
+              const embedUrl = `https://www.youtube.com/embed/${videoId}`;
+              
+              // Only update if different to prevent reloading
+              if (iframe.getAttribute('src') !== embedUrl) {
+                iframe.setAttribute('src', embedUrl);
+              }
+              
+              iframe.setAttribute('frameborder', '0');
+              iframe.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share');
+              iframe.setAttribute('allowfullscreen', 'true');
+              iframe.style.width = '100%';
+              iframe.style.maxWidth = '100%';
+              iframe.style.aspectRatio = '16 / 9';
+              iframe.style.height = 'auto';
+              iframe.style.minHeight = '300px';
+            }
+          });
+          
+          // Also check for video tags that might need conversion
+          const videoTags = quill.root.querySelectorAll('video');
+          videoTags.forEach(video => {
+            const src = video.getAttribute('src');
+            if (!src) return;
+            
+            const youtubeRegex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
+            const match = src.match(youtubeRegex);
+            
+            if (match) {
+              const videoId = match[1];
+              const embedUrl = `https://www.youtube.com/embed/${videoId}`;
+              
+              // Replace video tag with iframe
+              const iframe = document.createElement('iframe');
+              iframe.setAttribute('src', embedUrl);
+              iframe.setAttribute('frameborder', '0');
+              iframe.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture');
+              iframe.setAttribute('allowfullscreen', 'true');
+              iframe.style.width = '100%';
+              iframe.style.maxWidth = '100%';
+              iframe.style.aspectRatio = '16 / 9';
+              iframe.style.height = 'auto';
+              iframe.style.minHeight = '300px';
+              
+              video.parentNode.replaceChild(iframe, video);
+            }
+          });
+          
+          // Update textarea after processing
+          contentTextarea.value = quill.root.innerHTML;
+        }
         
         // Make the editor container clickable to focus
         editorContainer.addEventListener('click', function(e) {
@@ -219,20 +340,30 @@ if (typeof window.blogQuillInitialized === 'undefined') {
           }
         });
         
-        // Set initial content
+        // Set initial content and process videos
         if (initialContent) {
           quill.root.innerHTML = initialContent;
+          // Process any existing video embeds - try multiple times to catch all cases
+          setTimeout(processVideoEmbeds, 100);
+          setTimeout(processVideoEmbeds, 500);
+          setTimeout(processVideoEmbeds, 1000);
         }
         
-        // Update textarea on content change
+        // Process videos after content changes
         quill.on('text-change', function() {
           contentTextarea.value = quill.root.innerHTML;
+          // Process any new video embeds
+          setTimeout(processVideoEmbeds, 100);
         });
+        
+        // Also process on editor ready
+        setTimeout(processVideoEmbeds, 200);
         
         // Update textarea before form submission (as backup)
         const form = document.getElementById('blogPostForm');
         if (form) {
           form.addEventListener('submit', function(e) {
+            processVideoEmbeds();
             contentTextarea.value = quill.root.innerHTML;
           });
         }
@@ -428,6 +559,23 @@ if (typeof window.blogQuillInitialized === 'undefined') {
 .quill-editor-wrapper .ql-editor.ql-blank::before {
   font-style: normal;
   color: #9ca3af;
+}
+
+.quill-editor-wrapper .ql-editor iframe,
+.quill-editor-wrapper .ql-editor video {
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  min-height: 300px;
+  border-radius: 8px;
+  margin: 16px 0;
+  border: none;
+}
+
+.quill-editor-wrapper .ql-editor iframe[src*="youtube.com"],
+.quill-editor-wrapper .ql-editor iframe[src*="youtu.be"] {
+  aspect-ratio: 16 / 9;
+  min-height: 0;
 }
 
 .current-cover-image {

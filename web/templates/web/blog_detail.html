@@ -46,9 +46,21 @@
 }
 
 .blog-detail-container {
-  max-width: 800px;
+  max-width: 1280px;
   margin: 0 auto;
   padding: 0 20px;
+}
+
+/* Grid Layout with Sidebar */
+.blog-detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 40px;
+  align-items: start;
+}
+
+.blog-detail-main {
+  min-width: 0; /* Prevent grid overflow */
 }
 
 .blog-post-header {
@@ -412,12 +424,243 @@
   margin: 24px 0;
 }
 
+.post-content-body iframe,
+.post-content-body video {
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  min-height: 400px;
+  border-radius: 8px;
+  margin: 32px 0;
+  border: none;
+}
+
+/* Responsive YouTube/video embeds */
+.post-content-body iframe[src*="youtube.com"],
+.post-content-body iframe[src*="youtu.be"] {
+  aspect-ratio: 16 / 9;
+  min-height: 0;
+}
+
 .post-content-body blockquote {
   border-left: 4px solid #10b981;
   padding-left: 20px;
   margin: 24px 0;
   font-style: italic;
   color: #64748b;
+}
+
+/* Sidebar Styles */
+.blog-sidebar-wrapper {
+  position: sticky;
+  top: calc(70px + 24px); /* Header height + gap */
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.blog-sidebar-card {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  padding: 24px;
+}
+
+.blog-author-card {
+  text-align: center;
+}
+
+.blog-author-avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+  color: white;
+  font-size: 2rem;
+  font-weight: 700;
+}
+
+.blog-author-name {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 8px 0;
+}
+
+.blog-author-role {
+  font-size: 0.9rem;
+  color: #64748b;
+  margin-bottom: 20px;
+}
+
+.blog-sidebar-btn {
+  width: 100%;
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-weight: 600;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.2s;
+  border: none;
+  cursor: pointer;
+  margin-bottom: 12px;
+  font-size: 0.95rem;
+}
+
+.blog-sidebar-btn-primary {
+  background: #10b981;
+  color: white;
+}
+
+.blog-sidebar-btn-primary:hover {
+  background: #059669;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.blog-sidebar-btn-accent {
+  background: #3b82f6;
+  color: white;
+}
+
+.blog-sidebar-btn-accent:hover {
+  background: #2563eb;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.blog-sidebar-btn-quiz {
+  background: #f59e0b;
+  color: white;
+}
+
+.blog-sidebar-btn-quiz:hover {
+  background: #d97706;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+}
+
+.blog-sidebar-btn-secondary {
+  background: #f3f4f6;
+  color: #0f172a;
+}
+
+.blog-sidebar-btn-secondary:hover {
+  background: #e5e7eb;
+}
+
+.blog-btn-badge {
+  background: rgba(255, 255, 255, 0.3);
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  margin-left: 8px;
+}
+
+.blog-other-articles {
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.blog-other-articles h4 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 16px 0;
+}
+
+.blog-other-articles-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.blog-other-article-item {
+  display: block;
+  padding: 12px;
+  background: #f8fafc;
+  border-radius: 8px;
+  text-decoration: none;
+  color: #0f172a;
+  transition: all 0.2s;
+}
+
+.blog-other-article-item:hover {
+  background: #f1f5f9;
+  transform: translateX(4px);
+}
+
+.blog-other-article-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin: 0 0 4px 0;
+  line-height: 1.4;
+}
+
+.blog-other-article-date {
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.blog-inner-circle {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  padding: 24px;
+  border-radius: 12px;
+}
+
+.blog-inner-circle-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 0 0 12px 0;
+}
+
+.blog-inner-circle-text {
+  font-size: 0.9rem;
+  opacity: 0.9;
+  margin-bottom: 16px;
+  line-height: 1.6;
+}
+
+.blog-inner-circle-btn {
+  width: 100%;
+  padding: 12px 20px;
+  background: white;
+  color: #10b981;
+  border-radius: 8px;
+  font-weight: 700;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.blog-inner-circle-btn:hover {
+  background: #f8fafc;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.2);
+  transform: translateY(-2px);
+}
+
+@media (max-width: 1024px) {
+  .blog-detail-grid {
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
+  
+  .blog-sidebar-wrapper {
+    position: static;
+  }
 }
 
 .related-posts {
@@ -525,8 +768,11 @@
 {% block content %}
 <div class="blog-detail-page">
   <div class="blog-detail-container">
-    <!-- Blog Post Header -->
-    <article class="blog-post-header">
+    <div class="blog-detail-grid">
+      <!-- Main Content -->
+      <div class="blog-detail-main">
+        <!-- Blog Post Header -->
+        <article class="blog-post-header">
       <div class="post-cover-large" style="background-color: {{ post.cover_color }};">
         {% if post.cover_image %}
           <img src="{{ post.cover_image.url }}" alt="{{ post.title }}">
@@ -606,40 +852,114 @@
             {% endfor %}
           </div>
         {% endif %}
-      </div>
-    </article>
+        </div>
+      </article>
 
-    <!-- Blog Post Content -->
-    <div class="blog-post-content">
-      <div class="post-content-body">
-        {{ post.content|safe }}
-      </div>
-    </div>
-
-    <!-- Related Posts -->
-    {% if related_posts %}
-      <div class="related-posts">
-        <h2>Related Articles</h2>
-        <div class="related-posts-grid">
-          {% for related_post in related_posts %}
-            <a href="{% url 'web:blog_detail' related_post.slug %}" class="related-post-card">
-              <div class="related-post-cover" style="background-color: {{ related_post.cover_color }};">
-                {% if related_post.cover_image %}
-                  <img src="{{ related_post.cover_image.url }}" alt="{{ related_post.title }}">
-                {% else %}
-                  <div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: rgba(255,255,255,0.7);">
-                    <i class="fas fa-image"></i>
-                  </div>
-                {% endif %}
-              </div>
-              <div class="related-post-content">
-                <h3 class="related-post-title">{{ related_post.title }}</h3>
-              </div>
-            </a>
-          {% endfor %}
+      <!-- Blog Post Content -->
+      <div class="blog-post-content">
+        <div class="post-content-body">
+          {{ post.content|safe }}
         </div>
       </div>
-    {% endif %}
+
+        <!-- Related Posts -->
+        {% if related_posts %}
+          <div class="related-posts">
+            <h2>Related Articles</h2>
+            <div class="related-posts-grid">
+              {% for related_post in related_posts %}
+                <a href="{% url 'web:blog_detail' related_post.slug %}" class="related-post-card">
+                  <div class="related-post-cover" style="background-color: {{ related_post.cover_color }};">
+                    {% if related_post.cover_image %}
+                      <img src="{{ related_post.cover_image.url }}" alt="{{ related_post.title }}">
+                    {% else %}
+                      <div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: rgba(255,255,255,0.7);">
+                        <i class="fas fa-image"></i>
+                      </div>
+                    {% endif %}
+                  </div>
+                  <div class="related-post-content">
+                    <h3 class="related-post-title">{{ related_post.title }}</h3>
+                  </div>
+                </a>
+              {% endfor %}
+            </div>
+          </div>
+        {% endif %}
+      </div>
+
+      <!-- Sidebar -->
+      {% if author_is_mentor and author_mentor_profile %}
+        <div class="blog-sidebar-wrapper">
+          <!-- Author Card -->
+          <div class="blog-sidebar-card blog-author-card">
+            <div class="blog-author-avatar">
+              {% if author_mentor_profile.profile_picture %}
+                <img src="{{ author_mentor_profile.profile_picture.url }}" alt="{{ author_name }}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
+              {% else %}
+                {{ author_mentor_profile.first_name|first }}{{ author_mentor_profile.last_name|first }}
+              {% endif %}
+            </div>
+            <h3 class="blog-author-name">{{ author_mentor_profile.first_name }} {{ author_mentor_profile.last_name }}</h3>
+            <div class="blog-author-role">{{ author_mentor_profile.role|default:"Mentor" }}</div>
+            <a href="{% url 'web:mentor_profile_detail' author_user_id %}" class="blog-sidebar-btn blog-sidebar-btn-primary">
+              <i class="fas fa-user"></i>
+              View Mentor Profile
+            </a>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="blog-sidebar-card">
+            <a href="#" class="blog-sidebar-btn blog-sidebar-btn-accent">
+              <span class="blog-btn-badge">Free</span>
+              <i class="fas fa-user-plus"></i>
+              Join Community
+            </a>
+
+            {% if author_mentor_profile.marketing_quiz_url %}
+              <a href="{{ author_mentor_profile.marketing_quiz_url }}" target="_blank" class="blog-sidebar-btn blog-sidebar-btn-quiz">
+                <span class="blog-btn-badge">Free</span>
+                <i class="fas fa-magic"></i>
+                Take My Quiz
+              </a>
+            {% endif %}
+
+            {% if author_other_posts %}
+              <a href="{% url 'web:blog' %}?mentor={{ author_user_id }}" class="blog-sidebar-btn blog-sidebar-btn-secondary">
+                <i class="fas fa-book"></i>
+                See Other Articles
+              </a>
+            {% endif %}
+          </div>
+
+          <!-- Other Articles by Author -->
+          {% if author_other_posts %}
+            <div class="blog-sidebar-card blog-other-articles">
+              <h4>More from {{ author_mentor_profile.first_name }}</h4>
+              <div class="blog-other-articles-list">
+                {% for other_post in author_other_posts|slice:":3" %}
+                  <a href="{% url 'web:blog_detail' other_post.slug %}" class="blog-other-article-item">
+                    <div class="blog-other-article-title">{{ other_post.title }}</div>
+                    <div class="blog-other-article-date">{{ other_post.published_at|date:"M d, Y" }}</div>
+                  </a>
+                {% endfor %}
+              </div>
+            </div>
+          {% endif %}
+
+          <!-- Inner Circle -->
+          <div class="blog-inner-circle">
+            <h3 class="blog-inner-circle-title">Inner Circle</h3>
+            <p class="blog-inner-circle-text">
+              Join my private community for exclusive content, weekly Q&A, and network access.
+            </p>
+            <a href="#" class="blog-inner-circle-btn">
+              Visit Community Page
+            </a>
+          </div>
+        </div>
+      {% endif %}
+    </div>
   </div>
 </div>
 
