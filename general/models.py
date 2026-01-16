@@ -481,6 +481,7 @@ class TicketComment(models.Model):
     ticket = models.ForeignKey(Ticket, on_delete=models.CASCADE, related_name="comments")
     user = models.ForeignKey("accounts.CustomUser", on_delete=models.CASCADE, related_name="ticket_comments")
     comment = models.TextField()
+    image = models.ImageField(upload_to="ticket_comments/", blank=True, null=True, help_text="Optional image attachment (max 5MB)")
     created_at = models.DateTimeField(default=timezone.now)
     
     class Meta:

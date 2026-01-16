@@ -441,7 +441,11 @@ def tickets(request):
     
     # Filter by status
     status_filter = request.GET.get('status', '')
-    if status_filter:
+    if status_filter == 'all':
+        # Show all tickets - no status filter
+        pass
+    elif status_filter:
+        # Filter by specific status
         tickets_list = tickets_list.filter(status=status_filter)
     else:
         # Default: show unresolved tickets
@@ -494,7 +498,7 @@ def ticket_detail(request, ticket_id):
         action = request.POST.get('action')
         
         if action == 'add_comment':
-            form = TicketCommentForm(request.POST)
+            form = TicketCommentForm(request.POST, request.FILES)
             if form.is_valid():
                 comment = form.save(commit=False)
                 comment.ticket = ticket
@@ -509,17 +513,24 @@ def ticket_detail(request, ticket_id):
                     from general.models import Notification
                     from django.urls import reverse
                     import uuid
+                    
                     # Determine the correct URL based on ticket creator's role
-                    if hasattr(ticket.user, 'profile') and ticket.user.profile:
-                        if ticket.user.profile.role == 'mentor':
+                    # The profile property returns mentor_profile, user_profile, or admin_profile
+                    ticket_url = None
+                    profile = getattr(ticket.user, 'profile', None)
+                    
+                    if profile:
+                        if profile.role == 'mentor':
                             ticket_url = f"{EmailService.get_site_domain()}{reverse('general:dashboard_mentor:ticket_detail', args=[ticket.id])}"
-                        elif ticket.user.profile.role == 'user':
+                        elif profile.role == 'user':
                             ticket_url = f"{EmailService.get_site_domain()}{reverse('general:dashboard_user:ticket_detail', args=[ticket.id])}"
                         else:
                             ticket_url = f"{EmailService.get_site_domain()}{reverse('general:dashboard_admin:ticket_detail', args=[ticket.id])}"
                     else:
+                        # Fallback if no profile exists
                         ticket_url = f"{EmailService.get_site_domain()}{reverse('general:dashboard_admin:ticket_detail', args=[ticket.id])}"
                     
+                    # Create notification for ticket creator (works for both mentors and users)
                     Notification.objects.create(
                         user=ticket.user,
                         batch_id=uuid.uuid4(),
@@ -530,7 +541,7 @@ def ticket_detail(request, ticket_id):
                 except Exception as e:
                     import logging
                     logger = logging.getLogger(__name__)
-                    logger.error(f'Error sending ticket comment email: {str(e)}')
+                    logger.error(f'Error sending ticket comment email/notification: {str(e)}', exc_info=True)
                 
                 messages.success(request, 'Your comment has been added.')
                 return redirect('general:dashboard_admin:ticket_detail', ticket_id=ticket.id)
@@ -542,37 +553,54 @@ def ticket_detail(request, ticket_id):
                 ticket.status = new_status
                 ticket.save()
                 
-                # If marked as resolved, send email and notification
-                if new_status == 'resolved' and old_status != 'resolved':
+                # Send email and notification for any status change
+                if new_status != old_status:
                     try:
-                        EmailService.send_ticket_resolved_email(ticket)
-                        
-                        # Create notification for ticket creator
                         from general.models import Notification
                         from django.urls import reverse
                         import uuid
+                        
                         # Determine the correct URL based on ticket creator's role
-                        if hasattr(ticket.user, 'profile') and ticket.user.profile:
-                            if ticket.user.profile.role == 'mentor':
+                        # The profile property returns mentor_profile, user_profile, or admin_profile
+                        ticket_url = None
+                        profile = getattr(ticket.user, 'profile', None)
+                        
+                        if profile:
+                            if profile.role == 'mentor':
                                 ticket_url = f"{EmailService.get_site_domain()}{reverse('general:dashboard_mentor:ticket_detail', args=[ticket.id])}"
-                            elif ticket.user.profile.role == 'user':
+                            elif profile.role == 'user':
                                 ticket_url = f"{EmailService.get_site_domain()}{reverse('general:dashboard_user:ticket_detail', args=[ticket.id])}"
                             else:
                                 ticket_url = f"{EmailService.get_site_domain()}{reverse('general:dashboard_admin:ticket_detail', args=[ticket.id])}"
                         else:
+                            # Fallback if no profile exists
                             ticket_url = f"{EmailService.get_site_domain()}{reverse('general:dashboard_admin:ticket_detail', args=[ticket.id])}"
                         
-                        Notification.objects.create(
-                            user=ticket.user,
-                            batch_id=uuid.uuid4(),
-                            target_type='single',
-                            title=f"Your ticket has been resolved",
-                            description=f"Ticket #{ticket.id}: {ticket.title} has been marked as resolved. <a href=\"{ticket_url}\" style=\"color: #10b981; text-decoration: underline;\">View ticket</a>"
-                        )
+                        # If marked as resolved, send resolved email
+                        if new_status == 'resolved' and old_status != 'resolved':
+                            EmailService.send_ticket_resolved_email(ticket)
+                            
+                            Notification.objects.create(
+                                user=ticket.user,
+                                batch_id=uuid.uuid4(),
+                                target_type='single',
+                                title=f"Your ticket has been resolved",
+                                description=f"Ticket #{ticket.id}: {ticket.title} has been marked as resolved. <a href=\"{ticket_url}\" style=\"color: #10b981; text-decoration: underline;\">View ticket</a>"
+                            )
+                        else:
+                            # For other status changes, send a general update notification
+                            status_display = dict(Ticket.STATUS_CHOICES).get(new_status, new_status)
+                            Notification.objects.create(
+                                user=ticket.user,
+                                batch_id=uuid.uuid4(),
+                                target_type='single',
+                                title=f"Ticket status updated",
+                                description=f"Ticket #{ticket.id}: {ticket.title} status has been changed to {status_display}. <a href=\"{ticket_url}\" style=\"color: #10b981; text-decoration: underline;\">View ticket</a>"
+                            )
                     except Exception as e:
                         import logging
                         logger = logging.getLogger(__name__)
-                        logger.error(f'Error sending ticket resolved email: {str(e)}')
+                        logger.error(f'Error sending ticket status update email/notification: {str(e)}')
                 
                 messages.success(request, f'Ticket status updated to {ticket.get_status_display()}.')
                 return redirect('general:dashboard_admin:ticket_detail', ticket_id=ticket.id)
@@ -591,5 +619,13 @@ def ticket_detail(request, ticket_id):
 def statistics(request):
     """Admin statistics page"""
     return render(request, 'dashboard_admin/statistics.html', {
+        'debug': settings.DEBUG,
+    })
+
+@login_required
+@admin_required
+def billing(request):
+    """Admin billing page"""
+    return render(request, 'dashboard_admin/billing.html', {
         'debug': settings.DEBUG,
     })

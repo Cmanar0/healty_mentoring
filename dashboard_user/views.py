@@ -360,7 +360,7 @@ def ticket_detail(request, ticket_id):
         action = request.POST.get('action')
         
         if action == 'add_comment':
-            form = TicketCommentForm(request.POST)
+            form = TicketCommentForm(request.POST, request.FILES)
             if form.is_valid():
                 comment = form.save(commit=False)
                 comment.ticket = ticket

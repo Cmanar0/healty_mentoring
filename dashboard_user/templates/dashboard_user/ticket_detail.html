@@ -12,7 +12,7 @@
         <div class="ticket-header-info">
             <h1>Ticket #{{ ticket.id }}: {{ ticket.title }}</h1>
             <div class="ticket-meta">
-                <span class="status-badge status-{{ ticket.status }}">{{ ticket.get_status_display }}</span>
+                <span class="status-badge status-{{ ticket.status }}" style="margin-right: 8px;">{{ ticket.get_status_display }}</span>
                 <span class="meta-item">
                     <i class="fas fa-calendar"></i>
                     {{ ticket.created_at|date:"M d, Y H:i" }}
@@ -32,41 +32,88 @@
             {% endif %}
         </div>
         
-        <!-- Comments Section -->
-        <div class="comments-section">
-            <h3>Comments ({{ comments.count }})</h3>
+        <!-- Conversation Section -->
+        <div class="conversation-section">
+            <h3 class="conversation-title">Conversation ({{ comments.count }})</h3>
             
-            <div class="comments-list">
+            <div class="conversation-feed">
                 {% for comment in comments %}
-                <div class="comment-item">
-                    <div class="comment-header">
-                        <span class="comment-author">
-                            {% if comment.user.profile %}
-                                {{ comment.user.profile.first_name }} {{ comment.user.profile.last_name }}
+                <div class="message-wrapper {% if comment.user == request.user %}message-own{% else %}message-other{% endif %}">
+                    {% if comment.user != request.user %}
+                        <div class="message-avatar">
+                            {% if comment.user.profile.profile_picture %}
+                                <img src="{{ comment.user.profile.profile_picture.url }}" alt="User">
                             {% else %}
-                                {{ comment.user.email }}
+                                <div class="avatar-placeholder">{{ comment.user.profile.first_name|first|default:comment.user.email|first|upper }}</div>
                             {% endif %}
-                            {% if comment.user.profile.role == 'admin' %}
-                                <span class="admin-badge">Admin</span>
-                            {% endif %}
-                        </span>
-                        <span class="comment-date">{{ comment.created_at|date:"M d, Y H:i" }}</span>
+                        </div>
+                    {% endif %}
+                    
+                    <div class="message-bubble">
+                        <div class="message-header">
+                            <span class="message-author">
+                                {% if comment.user == request.user %}
+                                    You
+                                {% else %}
+                                    {% if comment.user.profile %}
+                                        {{ comment.user.profile.first_name }} {{ comment.user.profile.last_name }}
+                                    {% else %}
+                                        {{ comment.user.email }}
+                                    {% endif %}
+                                {% endif %}
+                            </span>
+                            <span class="message-time">{{ comment.created_at|date:"M d, H:i" }}</span>
+                        </div>
+                        
+                        <div class="message-content">
+                            {{ comment.comment|linebreaks }}
+                        </div>
+
+                        {% if comment.image %}
+                            <div class="message-attachment">
+                                <a href="{{ comment.image.url }}" target="_blank" class="attachment-link">
+                                    <img src="{{ comment.image.url }}" alt="Attachment">
+                                </a>
+                            </div>
+                        {% endif %}
                     </div>
-                    <div class="comment-body">{{ comment.comment|linebreaks }}</div>
                 </div>
                 {% empty %}
-                <p style="color: var(--text-light); padding: 20px; text-align: center;">No comments yet.</p>
+                <div class="empty-conversation">
+                    <div class="empty-icon"><i class="far fa-comments"></i></div>
+                    <p>No messages yet. Start the conversation!</p>
+                </div>
                 {% endfor %}
             </div>
             
-            <!-- Add Comment Form -->
-            <div class="add-comment-section">
-                <h4>Add Comment</h4>
-                <form method="post">
+            <!-- Reply Area -->
+            <div class="reply-area">
+                <form method="post" enctype="multipart/form-data" class="reply-form" id="reply-form">
                     {% csrf_token %}
                     <input type="hidden" name="action" value="add_comment">
-                    {{ form.comment }}
-                    <button type="submit" class="btn btn-primary" style="margin-top: 12px;">Add Comment</button>
+                    
+                    <div class="reply-input-wrapper">
+                        {{ form.comment }}
+                        <div class="reply-actions">
+                            <label for="comment-image-input" class="reply-attach-btn" title="Attach Image">
+                                <i class="fas fa-paperclip"></i>
+                            </label>
+                            <button type="submit" class="reply-send-btn" id="submit-btn">
+                                <i class="fas fa-paper-plane" id="submit-icon"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="file-pick-hidden">
+                        {{ form.image }}
+                    </div>
+                    
+                    <div class="image-preview-container" id="image-preview-container" style="display: none;">
+                        <img id="image-preview" src="" alt="Preview">
+                        <button type="button" class="remove-image-btn" id="remove-image-btn">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
                 </form>
             </div>
         </div>
@@ -74,163 +121,469 @@
 </div>
 
 <style>
+/* Layout & Container */
 .ticket-detail-header {
-    margin-bottom: 32px;
+    margin-bottom: 24px;
 }
 
+.ticket-meta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+}
+
+.ticket-content-section {
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.ticket-description {
+    padding: 32px;
+    border-bottom: 1px solid #f1f5f9;
+    background: #fff;
+    font-size: 1rem;
+    line-height: 1.7;
+    color: var(--text-dark);
+}
+
+.ticket-image img {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s;
+}
+
+.ticket-image img:hover {
+    transform: scale(1.01);
+}
+
+.conversation-section {
+    background: #f8fafc;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+.conversation-title {
+    padding: 20px 32px;
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    border-bottom: 1px solid #e2e8f0;
+    background: #fff;
+}
+
+.conversation-feed {
+    padding: 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+/* Messages */
+.message-wrapper {
+    display: flex;
+    align-items: flex-end;
+    gap: 12px;
+    max-width: 80%;
+}
+
+.message-wrapper.message-own {
+    align-self: flex-end;
+    flex-direction: row-reverse;
+}
+
+.message-wrapper.message-other {
+    align-self: flex-start;
+}
+
+.message-avatar {
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
+}
+
+.message-avatar img, 
+.avatar-placeholder {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.avatar-placeholder {
+    background: #e2e8f0;
+    color: #64748b;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.message-bubble {
+    background: white;
+    padding: 16px 20px;
+    border-radius: 16px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    position: relative;
+    min-width: 330px;
+}
+
+.message-wrapper.message-other .message-bubble {
+    border-bottom-left-radius: 4px;
+    background: white;
+    border: 1px solid #e2e8f0;
+}
+
+.message-wrapper.message-own .message-bubble {
+    background: #334155; /* Dark grey */
+    color: white;
+    border-bottom-right-radius: 4px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.message-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+    font-size: 0.8rem;
+}
+
+.message-wrapper.message-other .message-header {
+    color: var(--text-light);
+}
+
+.message-wrapper.message-own .message-header {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.message-author {
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.badge-admin {
+    background: #0f172a;
+    color: white;
+    font-size: 0.65rem;
+    padding: 1px 6px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.message-content {
+    line-height: 1.6;
+    font-size: 0.95rem;
+}
+
+.message-wrapper.message-own .message-content {
+    color: white;
+}
+
+.message-wrapper.message-other .message-content {
+    color: var(--text-dark);
+}
+
+.message-attachment {
+    margin-top: 12px;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.message-attachment img {
+    max-width: 100%;
+    max-height: 300px;
+    display: block;
+    border-radius: 8px;
+}
+
+/* Reply Area */
+.reply-area {
+    padding: 24px 32px;
+    background: white;
+    border-top: 1px solid #e2e8f0;
+}
+
+.reply-form {
+    position: relative;
+}
+
+.reply-input-wrapper {
+    position: relative;
+    border: 2px solid #e2e8f0; /* Default border color */
+    border-radius: 12px;
+    background: white;
+    transition: all 0.2s;
+    padding: 0;
+    overflow: hidden; /* Ensures content stays inside border radius */
+}
+
+.reply-input-wrapper:focus-within {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.1);
+}
+
+/* Target the actual textarea generated by Django form */
+.reply-input-wrapper textarea {
+    width: 100%;
+    border: none;
+    padding: 16px;
+    padding-right: 100px; /* Space for actions */
+    resize: none;
+    min-height: 60px; /* Or whatever height looks good */
+    max-height: 150px;
+    outline: none;
+    background: transparent;
+    font-family: inherit;
+    font-size: 0.95rem;
+    display: block; /* Removes bottom spacing issues */
+    box-sizing: border-box; 
+    margin: 0; /* Reset margins */
+}
+/* Ensure the form control class (if applied by Django) doesn't override our resets */
+.reply-input-wrapper textarea.form-control {
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+}
+
+.reply-actions {
+    position: absolute;
+    bottom: 8px;
+    right: 8px;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    background: white; /* Cover text behind if necessary */
+    padding-left: 8px;
+}
+
+.reply-attach-btn {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    color: var(--text-light);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.reply-attach-btn:hover {
+    background: #f1f5f9;
+    color: var(--text-dark);
+}
+
+.reply-attach-btn.has-file {
+    color: var(--primary);
+    background: #ecfdf5; /* Light green/primary bg */
+}
+
+.reply-send-btn {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: var(--primary);
+    color: white;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.reply-send-btn:hover {
+    transform: scale(1.05);
+    background: var(--primary-dark);
+}
+
+.reply-send-btn:disabled {
+    background: #94a3b8;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.file-pick-hidden {
+    display: none;
+}
+
+.image-preview-container {
+    margin-top: 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    position: relative;
+    border: 1px solid #e2e8f0;
+    padding: 8px;
+    border-radius: 8px;
+    background: #f8fafc;
+    /* Ensure room for the internal button */
+    padding-right: 40px; 
+}
+
+.image-preview-container img {
+    height: 60px;
+    width: 60px;
+    object-fit: cover;
+    border-radius: 4px;
+    display: block;
+}
+
+.file-name {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    max-width: 200px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.remove-image-btn {
+    position: absolute;
+    top: 10px;
+    right: 8px;
+    transform: none;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #475569; /* Dark grey */
+    color: white;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.remove-image-btn:hover {
+    background: #ef4444; /* Red on hover */
+    transform: scale(1.1);
+}
+
+/* Empty State */
+.empty-conversation {
+    text-align: center;
+    padding: 40px;
+    color: var(--text-light);
+}
+
+.empty-icon {
+    font-size: 3rem;
+    margin-bottom: 16px;
+    color: #e2e8f0;
+}
+
+/* Back button tweaks */
 .btn-back {
     display: inline-flex;
     align-items: center;
     gap: 8px;
     padding: 8px 16px;
-    background: white;
-    border: 1px solid #e2e8f0;
-    border-radius: 8px;
+    background: transparent;
     color: var(--text-secondary);
     text-decoration: none;
-    margin-bottom: 16px;
+    margin-bottom: 24px;
     transition: all 0.2s;
+    font-weight: 500;
 }
 
 .btn-back:hover {
-    border-color: var(--primary);
     color: var(--primary);
+    transform: translateX(-4px);
 }
 
 .ticket-header-info h1 {
-    font-size: 1.5rem;
-    margin: 0 0 12px 0;
+    font-size: 1.75rem;
+    margin: 0 0 16px 0;
     color: var(--text-dark);
-}
-
-.ticket-meta {
-    display: flex;
-    gap: 16px;
-    align-items: center;
-    flex-wrap: wrap;
+    font-weight: 700;
 }
 
 .meta-item {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
     color: var(--text-light);
     font-size: 0.9rem;
-}
-
-.ticket-content-section {
     background: white;
-    border-radius: 12px;
-    padding: 24px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-}
-
-.ticket-description {
-    margin-bottom: 32px;
-    padding-bottom: 32px;
-    border-bottom: 1px solid #e2e8f0;
-}
-
-.ticket-description h3 {
-    margin: 0 0 12px 0;
-    color: var(--text-dark);
-    font-size: 1.1rem;
-}
-
-.ticket-description p {
-    color: var(--text-secondary);
-    line-height: 1.6;
-}
-
-.comments-section h3 {
-    margin: 0 0 20px 0;
-    color: var(--text-dark);
-    font-size: 1.1rem;
-}
-
-.comments-list {
-    margin-bottom: 32px;
-}
-
-.comment-item {
-    padding: 16px;
-    background: #f8fafc;
-    border-radius: 8px;
-    margin-bottom: 12px;
-}
-
-.comment-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 8px;
-}
-
-.comment-author {
-    font-weight: 600;
-    color: var(--text-dark);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.admin-badge {
-    background: var(--primary);
-    color: white;
-    font-size: 0.7rem;
-    padding: 2px 8px;
-    border-radius: 12px;
-}
-
-.comment-date {
-    color: var(--text-light);
-    font-size: 0.85rem;
-}
-
-.comment-body {
-    color: var(--text-secondary);
-    line-height: 1.6;
-}
-
-.add-comment-section {
-    padding-top: 24px;
-    border-top: 1px solid #e2e8f0;
-}
-
-.add-comment-section h4 {
-    margin: 0 0 12px 0;
-    color: var(--text-dark);
-    font-size: 1rem;
-}
-
-.status-badge {
-    display: inline-block;
     padding: 4px 12px;
-    border-radius: 12px;
-    font-size: 0.8rem;
-    font-weight: 600;
-    text-transform: capitalize;
-}
-
-.status-badge.status-submitted {
-    background: #fef3c7;
-    color: #d97706;
-}
-
-.status-badge.status-in_progress {
-    background: #dbeafe;
-    color: #2563eb;
-}
-
-.status-badge.status-resolved {
-    background: #d1fae5;
-    color: #059669;
-}
-
-.status-badge.status-closed {
-    background: #e5e7eb;
-    color: #6b7280;
+    border-radius: 20px;
+    border: 1px solid #f1f5f9;
 }
 </style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const imageInput = document.getElementById('comment-image-input');
+    const previewContainer = document.getElementById('image-preview-container');
+    const preview = document.getElementById('image-preview');
+    const removeBtn = document.getElementById('remove-image-btn');
+    const label = document.querySelector('.reply-attach-btn');
+    const replyForm = document.getElementById('reply-form');
+    const submitBtn = document.getElementById('submit-btn');
+    const submitIcon = document.getElementById('submit-icon');
+    
+    if (imageInput && previewContainer && preview && removeBtn) {
+        // Show preview when image is selected
+        imageInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    preview.src = e.target.result;
+                    previewContainer.style.display = 'flex'; // Changed to flex for alignment
+                    
+                    // Add filename if not present
+                    let nameDisplay = previewContainer.querySelector('.file-name');
+                    if (!nameDisplay) {
+                        nameDisplay = document.createElement('span');
+                        nameDisplay.className = 'file-name';
+                        previewContainer.appendChild(nameDisplay);
+                    }
+                    nameDisplay.textContent = file.name;
+                    
+                    if (label) label.classList.add('has-file');
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+        
+        // Remove image
+        removeBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            imageInput.value = '';
+            previewContainer.style.display = 'none';
+            preview.src = '';
+            if (label) label.classList.remove('has-file');
+        });
+    }
+
+    // Handle form submission - disable button and show spinner
+    if (replyForm && submitBtn && submitIcon) {
+        replyForm.addEventListener('submit', function(e) {
+            // Disable button and show spinner
+            submitBtn.disabled = true;
+            submitBtn.style.cursor = 'not-allowed';
+            submitIcon.className = 'fas fa-spinner fa-spin';
+            // Prevent double submission
+        });
+    }
+});
+</script>
 {% endblock %}
 

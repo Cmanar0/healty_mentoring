@@ -40,10 +40,19 @@ class TicketForm(forms.ModelForm):
 
 class TicketCommentForm(forms.ModelForm):
     """Form for adding comments to tickets"""
+    image = forms.ImageField(
+        required=False,
+        help_text="Optional: Upload an image (max 5MB)",
+        widget=forms.FileInput(attrs={
+            'accept': 'image/*',
+            'class': 'form-control',
+            'id': 'comment-image-input',
+        })
+    )
     
     class Meta:
         model = TicketComment
-        fields = ['comment']
+        fields = ['comment', 'image']
         widgets = {
             'comment': forms.Textarea(attrs={
                 'class': 'form-control',
@@ -51,4 +60,13 @@ class TicketCommentForm(forms.ModelForm):
                 'placeholder': 'Add your comment...',
             }),
         }
+    
+    def clean_image(self):
+        image = self.cleaned_data.get('image')
+        if image:
+            # Check file size (5MB = 5 * 1024 * 1024 bytes)
+            max_size = 5 * 1024 * 1024
+            if image.size > max_size:
+                raise forms.ValidationError("Image size must be less than 5MB.")
+        return image
 

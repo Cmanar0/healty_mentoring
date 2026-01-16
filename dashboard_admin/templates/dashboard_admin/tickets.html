@@ -25,28 +25,30 @@
         </div>
         
         <!-- Filters -->
-        <form method="get" action="{% url 'general:dashboard_admin:tickets' %}" class="compact-filters">
+        <form method="get" action="{% url 'general:dashboard_admin:tickets' %}" class="compact-filters" id="filter-form">
             <div class="filter-wrapper">
                 <i class="fas fa-search"></i>
                 <input type="text" name="search" value="{{ filters.search }}" class="filter-input" placeholder="Search tickets...">
             </div>
             
             <div class="filter-wrapper">
-                <select name="status" class="filter-select" onchange="this.form.submit()">
-                    <option value="">Unresolved (Default)</option>
-                    <option value="submitted" {% if filters.status == 'submitted' %}selected{% endif %}>Submitted</option>
-                    <option value="in_progress" {% if filters.status == 'in_progress' %}selected{% endif %}>In Progress</option>
-                    <option value="resolved" {% if filters.status == 'resolved' %}selected{% endif %}>Resolved</option>
-                    <option value="closed" {% if filters.status == 'closed' %}selected{% endif %}>Closed</option>
-                    <option value="all" {% if filters.status == 'all' %}selected{% endif %}>All Tickets</option>
-                </select>
+                <input type="hidden" name="status" id="status-filter-input" value="{{ filters.status }}">
+                <div class="custom-dropdown-container" id="statusFilterDropdown">
+                    <button type="button" class="custom-dropdown-trigger" id="statusFilterTrigger">
+                        <span class="dropdown-selected-text" id="statusFilterSelectedText">{% if filters.status == 'submitted' %}Submitted{% elif filters.status == 'in_progress' %}In Progress{% elif filters.status == 'resolved' %}Resolved{% elif filters.status == 'closed' %}Closed{% elif filters.status == 'all' %}All Tickets{% else %}Unresolved{% endif %}</span>
+                        <i class="fas fa-chevron-down dropdown-chevron"></i>
+                    </button>
+                    <div class="custom-dropdown-menu" id="statusFilterMenu">
+                        <button type="button" class="dropdown-item first-item {% if not filters.status %}active{% endif %}" data-value=""><span>Unresolved</span></button>
+                        <button type="button" class="dropdown-item {% if filters.status == 'submitted' %}active{% endif %}" data-value="submitted"><span>Submitted</span></button>
+                        <button type="button" class="dropdown-item {% if filters.status == 'in_progress' %}active{% endif %}" data-value="in_progress"><span>In Progress</span></button>
+                        <button type="button" class="dropdown-item {% if filters.status == 'resolved' %}active{% endif %}" data-value="resolved"><span>Resolved</span></button>
+                        <button type="button" class="dropdown-item {% if filters.status == 'closed' %}active{% endif %}" data-value="closed"><span>Closed</span></button>
+                        <button type="button" class="dropdown-item last-item {% if filters.status == 'all' %}active{% endif %}" data-value="all"><span>All Tickets</span></button>
+                    </div>
+                </div>
             </div>
             
-            {% if filters.search or filters.status %}
-                <a href="{% url 'general:dashboard_admin:tickets' %}" class="btn-reset-filters" title="Reset Filters">
-                    <i class="fas fa-undo"></i>
-                </a>
-            {% endif %}
         </form>
     </div>
     
@@ -65,15 +67,15 @@
                 </thead>
                 <tbody>
                     {% for ticket in tickets %}
-                    <tr class="ticket-row {% if ticket.is_unresolved %}unresolved-row{% endif %}">
+                    <tr class="ticket-row {% if ticket.is_unresolved %}unresolved-row{% endif %}" onclick="window.location='{% url 'general:dashboard_admin:ticket_detail' ticket.id %}'" style="cursor: pointer;">
                         <td class="col-id">
                             <span class="ticket-id">#{{ ticket.id }}</span>
                         </td>
                         <td class="col-title">
                             <div class="ticket-title-cell">
-                                <a href="{% url 'general:dashboard_admin:ticket_detail' ticket.id %}" class="ticket-title-link">
+                                <span class="ticket-title-text">
                                     {{ ticket.title|truncatechars:60 }}
-                                </a>
+                                </span>
                                 {% if ticket.image %}
                                     <span class="has-attachment" title="Has image attachment">
                                         <i class="fas fa-image"></i>
@@ -107,7 +109,7 @@
                             </div>
                         </td>
                         <td class="col-actions">
-                            <a href="{% url 'general:dashboard_admin:ticket_detail' ticket.id %}" class="btn-action-view" title="View Ticket">
+                            <a href="{% url 'general:dashboard_admin:ticket_detail' ticket.id %}" class="btn-action-view" title="View Ticket" onclick="event.stopPropagation();">
                                 <i class="fas fa-eye"></i>
                             </a>
                         </td>
@@ -140,7 +142,7 @@
     {% else %}
         <div class="empty-state-modern">
             <div class="empty-icon-circle">
-                <i class="far fa-ticket-alt"></i>
+                <i class="fas fa-ticket-alt"></i>
             </div>
             <h3>No tickets found</h3>
             <p>{% if filters.search or filters.status %}Try adjusting your filters{% else %}No support tickets have been submitted yet{% endif %}</p>
@@ -149,6 +151,13 @@
 </div>
 
 <style>
+:root {
+  --dash-primary: #10b981;
+  --dash-text-main: #1e293b;
+  --dash-text-light: #94a3b8;
+  --dash-border: #e2e8f0;
+}
+
 .dashboard-content-container {
     max-width: 1400px;
     margin: 0 auto;
@@ -187,50 +196,56 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 12px 20px;
-    border-radius: 10px;
-    min-width: 80px;
+    padding: 10px 16px;
+    border-radius: 12px;
+    min-width: 90px;
+    transition: transform 0.2s;
+}
+
+.stat-box:hover {
+    transform: translateY(-2px);
 }
 
 .stat-box.unresolved {
-    background: #fef2f2;
-    border: 1px solid #fecaca;
+    background: #fff1f2;
+    border: 1px solid #ffe4e6;
 }
 
 .stat-box.resolved {
     background: #ecfdf5;
-    border: 1px solid #a7f3d0;
+    border: 1px solid #d1fae5;
 }
 
 .stat-box.total {
-    background: #f1f5f9;
-    border: 1px solid #cbd5e1;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
 }
 
 .stat-value {
-    font-size: 1.5rem;
+    font-size: 1.25rem;
     font-weight: 700;
     color: var(--text-dark);
+    line-height: 1.2;
 }
 
-.stat-box.unresolved .stat-value {
-    color: #dc2626;
-}
-
-.stat-box.resolved .stat-value {
-    color: #059669;
-}
+.stat-box.unresolved .stat-value { color: #e11d48; }
+.stat-box.resolved .stat-value { color: #059669; }
 
 .stat-label {
-    font-size: 0.85rem;
+    font-size: 0.75rem;
     color: var(--text-light);
-    margin-top: 4px;
+    margin-top: 2px;
+    font-weight: 500;
 }
 
 .compact-filters {
     display: flex;
     gap: 12px;
     align-items: center;
+    background: white;
+    padding: 16px 20px;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 }
 
 .filter-wrapper {
@@ -243,278 +258,380 @@
     position: absolute;
     left: 12px;
     color: var(--text-light);
+    font-size: 0.9rem;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.filter-input {
+    padding: 10px 12px 10px 36px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    color: var(--text-dark);
+    background: white;
+    width: 250px;
+    transition: all 0.2s;
+    margin-bottom: 0px !important;
+}
+
+.filter-input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+    outline: none;
+}
+
+/* Custom Dropdown Styling - Following Style Guide */
+.custom-dropdown-container {
+    position: relative;
+    width: 220px;
+    min-width: 220px;
+}
+
+.custom-dropdown-trigger {
+    display: flex;
+    flex-direction: row; /* Explicitly set row */
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    min-width: 220px;
+    padding: 10px 16px;
+    background: white;
+    border: 1px solid var(--dash-border);
+    border-radius: 8px;
+    color: var(--dash-text-main);
+    font-size: 0.95rem;
+    font-weight: 400;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: left;
+}
+
+.custom-dropdown-trigger .dropdown-selected-text {
+    flex: 1;
+    text-align: left;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+}
+
+.custom-dropdown-trigger:hover {
+    border-color: var(--dash-primary);
+}
+
+.custom-dropdown-trigger .dropdown-chevron {
+    position: static; /* Important: Override absolute positioning from .filter-wrapper i */
+    color: var(--dash-text-light);
     font-size: 0.85rem;
+    transition: transform 0.2s ease;
+    flex-shrink: 0;
+    margin-left: 12px;
+}
+
+.custom-dropdown-container.active .custom-dropdown-trigger .dropdown-chevron {
+    transform: rotate(180deg);
+}
+
+.custom-dropdown-menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    width: 100%;
+    min-width: 220px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    padding: 0;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: all 0.2s ease;
+    z-index: 1000;
     pointer-events: none;
 }
 
-.filter-input, .filter-select {
-    padding: 8px 12px 8px 36px;
-    border: 1px solid #e2e8f0;
-    border-radius: 6px;
-    font-size: 0.9rem;
-    color: var(--text-secondary);
-    background: white;
+.custom-dropdown-container.active .custom-dropdown-menu {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+    pointer-events: auto;
 }
 
-.filter-select {
-    padding-left: 12px;
-    min-width: 180px;
-}
-
-.btn-reset-filters {
+.custom-dropdown-menu .dropdown-item {
     display: flex;
     align-items: center;
-    justify-content: center;
-    width: 34px;
-    height: 34px;
-    border: 1px solid #e2e8f0;
-    border-radius: 6px;
-    color: var(--text-secondary);
-    background: white;
-    transition: all 0.2s;
+    gap: 12px;
+    padding: 12px 20px;
+    color: var(--dash-text-main);
     text-decoration: none;
+    transition: background 0.2s ease;
+    border: none;
+    background: transparent;
+    width: 100%;
+    cursor: pointer;
+    font-size: 0.95rem;
+    font-weight: 400;
+    text-align: left;
 }
 
-.btn-reset-filters:hover {
-    background: #f1f5f9;
-    color: var(--text-main);
+.custom-dropdown-menu .dropdown-item.first-item {
+    border-radius: 12px 12px 0 0;
 }
+
+.custom-dropdown-menu .dropdown-item.last-item {
+    border-radius: 0 0 12px 12px;
+}
+
+.custom-dropdown-menu .dropdown-item:hover {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--dash-primary);
+}
+
+.custom-dropdown-menu .dropdown-item.first-item:hover {
+    border-radius: 12px 12px 0 0;
+}
+
+.custom-dropdown-menu .dropdown-item.last-item:hover {
+    border-radius: 0 0 12px 12px;
+}
+
+.custom-dropdown-menu .dropdown-item.active {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--dash-primary);
+    font-weight: 500;
+}
+
 
 .tickets-table-container {
     background: white;
-    border-radius: 12px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    border-radius: 16px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
     overflow: hidden;
+    margin-top: 24px;
 }
 
 .modern-table {
     width: 100%;
-    border-collapse: collapse;
+    border-collapse: separate;
+    border-spacing: 0;
 }
 
 .modern-table thead {
     background: #f8fafc;
-    border-bottom: 2px solid #e2e8f0;
 }
 
 .modern-table th {
-    padding: 16px;
+    padding: 16px 24px;
     text-align: left;
     font-weight: 600;
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     color: var(--text-secondary);
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    border-bottom: 1px solid #e2e8f0;
 }
 
 .modern-table td {
-    padding: 16px;
+    padding: 16px 24px;
     border-bottom: 1px solid #f1f5f9;
+    vertical-align: middle;
+}
+
+.modern-table tbody tr {
+    transition: background 0.15s;
 }
 
 .modern-table tbody tr:hover {
     background: #f8fafc;
 }
 
-.modern-table tbody tr.unresolved-row {
-    border-left: 3px solid #f59e0b;
+.modern-table tbody tr:last-child td {
+    border-bottom: none;
 }
 
 .ticket-id {
-    font-family: monospace;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.9rem;
     font-weight: 600;
     color: var(--text-secondary);
-}
-
-.ticket-title-cell {
-    display: flex;
-    align-items: center;
-    gap: 8px;
+    background: #f1f5f9;
+    padding: 2px 6px;
+    border-radius: 4px;
 }
 
 .ticket-title-link {
     color: var(--text-dark);
     text-decoration: none;
     font-weight: 500;
-    transition: color 0.2s;
-}
-
-.ticket-title-link:hover {
-    color: var(--primary);
+    font-size: 0.95rem;
 }
 
 .has-attachment {
-    color: var(--primary);
-    font-size: 0.9rem;
-}
-
-.user-cell {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
+    color: var(--text-light);
+    margin-left: 8px;
+    font-size: 0.85rem;
 }
 
 .user-name {
-    font-weight: 500;
+    font-weight: 600;
     color: var(--text-dark);
-    font-size: 0.9rem;
+    font-size: 0.95rem;
 }
 
 .user-role-badge {
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     padding: 2px 8px;
     border-radius: 12px;
+    font-weight: 600;
     display: inline-block;
     width: fit-content;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 .user-role-badge.role-user {
-    background: #dbeafe;
-    color: #2563eb;
+    background: #eff6ff;
+    color: #3b82f6;
 }
 
 .user-role-badge.role-mentor {
-    background: #dcfce7;
+    background: #f0fdf4;
     color: #16a34a;
 }
 
 .user-role-badge.role-admin {
-    background: #f3e8ff;
+    background: #faf5ff;
     color: #9333ea;
 }
 
 .status-badge {
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
     padding: 4px 12px;
-    border-radius: 12px;
-    font-size: 0.8rem;
-    font-weight: 600;
-    text-transform: capitalize;
-}
-
-.status-badge.status-submitted {
-    background: #fef3c7;
-    color: #d97706;
-}
-
-.status-badge.status-in_progress {
-    background: #dbeafe;
-    color: #2563eb;
-}
-
-.status-badge.status-resolved {
-    background: #d1fae5;
-    color: #059669;
-}
-
-.status-badge.status-closed {
-    background: #e5e7eb;
-    color: #6b7280;
-}
-
-.date-stacked {
-    display: flex;
-    flex-direction: column;
-}
-
-.date-main {
-    font-size: 0.9rem;
-    color: var(--text-dark);
+    border-radius: 20px;
+    font-size: 0.85rem;
     font-weight: 500;
 }
 
-.date-sub {
-    font-size: 0.75rem;
-    color: var(--text-light);
+.status-badge::before {
+    content: '';
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    margin-right: 8px;
 }
+
+.status-badge.status-submitted {
+    background: #fffbeb;
+    color: #d97706;
+}
+.status-badge.status-submitted::before { background: #d97706; }
+
+.status-badge.status-in_progress {
+    background: #eff6ff;
+    color: #2563eb;
+}
+.status-badge.status-in_progress::before { background: #2563eb; }
+
+.status-badge.status-resolved {
+    background: #ecfdf5;
+    color: #059669;
+}
+.status-badge.status-resolved::before { background: #059669; }
+
+.status-badge.status-closed {
+    background: #f3f4f6;
+    color: #6b7280;
+}
+.status-badge.status-closed::before { background: #6b7280; }
 
 .btn-action-view {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 32px;
-    height: 32px;
-    border-radius: 6px;
-    background: #f1f5f9;
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    background: white;
+    border: 1px solid #e2e8f0;
     color: var(--text-secondary);
-    text-decoration: none;
     transition: all 0.2s;
 }
 
 .btn-action-view:hover {
     background: var(--primary);
-    color: white;
-}
-
-.pagination-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 16px;
-    margin-top: 32px;
-}
-
-.page-nav {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 16px;
-    border-radius: 6px;
-    background: white;
-    border: 1px solid #e2e8f0;
-    color: var(--text-secondary);
-    font-weight: 500;
-    font-size: 0.9rem;
-    transition: all 0.2s;
-    text-decoration: none;
-}
-
-.page-nav:hover {
     border-color: var(--primary);
-    color: var(--primary);
-}
-
-.pagination-info {
-    color: var(--text-light);
-    font-size: 0.9rem;
-}
-
-.empty-state-modern {
-    text-align: center;
-    padding: 60px 0;
-    background: white;
-    border: 1px dashed #e2e8f0;
-    border-radius: 12px;
-}
-
-.empty-icon-circle {
-    width: 64px;
-    height: 64px;
-    background: #f8fafc;
-    border-radius: 50%;
-    margin: 0 auto 16px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.5rem;
-    color: var(--text-light);
-}
-
-.empty-state-modern h3 {
-    margin: 0 0 8px 0;
-    color: var(--text-dark);
-}
-
-.empty-state-modern p {
-    color: var(--text-secondary);
-    margin: 0;
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);
 }
 
 .col-id { width: 80px; }
-.col-title { width: auto; min-width: 200px; }
-.col-user { width: 180px; }
-.col-status { width: 120px; }
-.col-date { width: 140px; }
-.col-actions { width: 80px; text-align: center; }
+.col-title { width: auto; min-width: 100px; }
+.col-user { width: 330px; }
+.col-status { width: 200px; }
+.col-date { width: 200px; }
+.col-actions { width: 80px; text-align: right; }
+
 </style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Dropdown Logic - Following Style Guide Pattern
+    const dropdown = document.querySelector('.custom-dropdown-container#statusFilterDropdown');
+    const trigger = document.getElementById('statusFilterTrigger');
+    const menu = document.getElementById('statusFilterMenu');
+    const input = document.getElementById('status-filter-input');
+    const selectedText = document.getElementById('statusFilterSelectedText');
+    const form = document.getElementById('filter-form');
+    
+    if (trigger && menu) {
+        // Toggle dropdown
+        trigger.addEventListener('click', function(e) {
+            e.stopPropagation();
+            dropdown.classList.toggle('active');
+        });
+        
+        // Handle item selection
+        const dropdownItems = menu.querySelectorAll('.dropdown-item');
+        dropdownItems.forEach(item => {
+            item.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const value = this.getAttribute('data-value');
+                const text = this.querySelector('span').textContent;
+                
+                if (input) input.value = value;
+                if (selectedText) selectedText.textContent = text;
+                
+                // Update active state
+                dropdownItems.forEach(i => i.classList.remove('active'));
+                this.classList.add('active');
+                
+                // Close dropdown and submit form
+                dropdown.classList.remove('active');
+                if (form) {
+                    form.submit();
+                }
+            });
+        });
+        
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(event) {
+            if (dropdown && !dropdown.contains(event.target)) {
+                dropdown.classList.remove('active');
+            }
+        });
+        
+        // Mark current selection as active
+        const currentValue = input ? input.value : '';
+        dropdownItems.forEach(item => {
+            if (item.getAttribute('data-value') === currentValue) {
+                item.classList.add('active');
+            }
+        });
+    }
+});
+</script>
 {% endblock %}

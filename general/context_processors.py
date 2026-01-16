@@ -88,4 +88,3 @@ def unresolved_tickets_count(request):
     return {
         'unresolved_tickets_count': 0,
     }
-
