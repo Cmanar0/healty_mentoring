@@ -32,6 +32,34 @@
       </div>
 
       <div class="form-section">
+        <label for="{{ form.cover_image.id_for_label }}" class="form-label">
+          Cover Image
+        </label>
+        <div class="file-input-wrapper" id="cover-image-wrapper">
+          {{ form.cover_image }}
+          <div class="file-input-label">
+            <i class="fas fa-cloud-upload-alt"></i>
+            <span class="file-input-text">Click to select or drag and drop an image</span>
+            <span class="file-input-hint">JPG, PNG or WEBP (max 5MB)</span>
+          </div>
+        </div>
+        {% if post and post.cover_image %}
+          <div class="current-cover-image" id="current-cover-container">
+            <button type="button" class="remove-cover-btn" onclick="removeCoverImage()" title="Remove cover image">
+              <i class="fas fa-times"></i>
+            </button>
+            <img src="{{ post.cover_image.url }}" alt="Current cover">
+            <small>Current cover image</small>
+          </div>
+          <input type="hidden" name="remove_cover_image" id="remove-cover-input" value="0">
+        {% endif %}
+        <small class="form-help">Upload a cover image (max 5MB, JPG/PNG/WEBP)</small>
+        {% if form.cover_image.errors %}
+          <div class="form-error">{{ form.cover_image.errors }}</div>
+        {% endif %}
+      </div>
+
+      <div class="form-section">
         <label for="{{ form.excerpt.id_for_label }}" class="form-label">
           Excerpt (Optional)
         </label>
@@ -57,27 +85,6 @@
       </div>
 
       <div class="form-section">
-        <label for="{{ form.cover_image.id_for_label }}" class="form-label">
-          Cover Image (Optional)
-        </label>
-        {{ form.cover_image }}
-        {% if post and post.cover_image %}
-          <div class="current-cover-image" id="current-cover-container">
-            <button type="button" class="remove-cover-btn" onclick="removeCoverImage()" title="Remove cover image">
-              <i class="fas fa-times"></i>
-            </button>
-            <img src="{{ post.cover_image.url }}" alt="Current cover">
-            <small>Current cover image</small>
-          </div>
-          <input type="hidden" name="remove_cover_image" id="remove-cover-input" value="0">
-        {% endif %}
-        <small class="form-help">Upload a cover image (max 5MB, JPG/PNG/WEBP)</small>
-        {% if form.cover_image.errors %}
-          <div class="form-error">{{ form.cover_image.errors }}</div>
-        {% endif %}
-      </div>
-
-      <div class="form-section">
         <label class="form-label">Categories</label>
         <div class="categories-grid">
           {% for choice in form.categories %}
@@ -93,10 +100,56 @@
       </div>
 
       <div class="form-section">
+        <label class="form-label">
+          SEO Tags
+        </label>
+        <div class="seo-tags-container">
+          <div class="seo-tags-input-wrapper">
+            <input 
+              type="text" 
+              id="seo-tags-input" 
+              class="form-control seo-tags-input" 
+              placeholder="Type a tag and press Enter"
+              autocomplete="off"
+            >
+            <button type="button" id="seo-tags-add-btn" class="btn-add-tag">
+              Add Tag
+            </button>
+          </div>
+          <input type="hidden" name="seo_tags" id="seo-tags-hidden" value="{% if post and post.seo_tags %}{{ post.seo_tags|safe }}{% elif form.seo_tags.value %}{{ form.seo_tags.value }}{% else %}[]{% endif %}">
+          <div class="seo-tags-display" id="seo-tags-display">
+            {% if post and post.seo_tags %}
+              {% for tag in post.seo_tags %}
+                <span class="seo-tag-item">
+                  <span>{{ tag }}</span>
+                  <button type="button" class="seo-tag-remove" data-tag="{{ tag }}">
+                    <i class="fas fa-times"></i>
+                  </button>
+                </span>
+              {% endfor %}
+            {% endif %}
+          </div>
+        </div>
+        <small class="form-help">Add SEO tags/keywords for better search engine visibility</small>
+        {% if form.seo_tags.errors %}
+          <div class="form-error">{{ form.seo_tags.errors }}</div>
+        {% endif %}
+      </div>
+
+      <div class="form-section">
         <label for="{{ form.status.id_for_label }}" class="form-label">
           Status
         </label>
-        {{ form.status }}
+        <div class="status-radio-group">
+          <label class="status-radio-option {% if form.status.value == 'draft' or not form.status.value %}active{% endif %}">
+            <input type="radio" name="status" value="draft" {% if form.status.value == 'draft' or not form.status.value %}checked{% endif %}>
+            <span class="status-radio-label">Draft</span>
+          </label>
+          <label class="status-radio-option {% if form.status.value == 'published' %}active{% endif %}">
+            <input type="radio" name="status" value="published" {% if form.status.value == 'published' %}checked{% endif %}>
+            <span class="status-radio-label">Published</span>
+          </label>
+        </div>
         <small class="form-help">Draft posts are only visible in your management page, not in public blog</small>
         {% if form.status.errors %}
           <div class="form-error">{{ form.status.errors }}</div>
@@ -345,35 +398,294 @@ if (typeof window.blogQuillInitialized === 'undefined') {
     
     // Remove cover image function
     window.removeCoverImage = function() {
-      if (confirm('Are you sure you want to remove the cover image?')) {
-        const container = document.getElementById('current-cover-container');
-        const removeInput = document.getElementById('remove-cover-input');
-        const coverImageInput = document.getElementById('cover-image-input');
-        
-        if (container) {
-          container.style.opacity = '0.5';
-          container.style.pointerEvents = 'none';
-        }
-        
-        if (removeInput) {
-          removeInput.value = '1';
-        }
-        
-        if (coverImageInput) {
-          coverImageInput.value = '';
-        }
-        
-        // Show a message
-        const message = document.createElement('div');
-        message.style.cssText = 'margin-top: 8px; padding: 8px; background: #fef3c7; color: #92400e; border-radius: 6px; font-size: 0.85rem;';
-        message.textContent = 'Cover image will be removed when you save the post.';
-        if (container) {
-          container.parentNode.insertBefore(message, container.nextSibling);
-        }
+      const container = document.getElementById('current-cover-container');
+      const removeInput = document.getElementById('remove-cover-input');
+      const coverImageInput = document.getElementById('cover-image-input');
+      
+      // Remove the old image container entirely
+      if (container) {
+        container.remove();
+      }
+      
+      // Set remove flag
+      if (removeInput) {
+        removeInput.value = '1';
+      }
+      
+      // Clear file input
+      if (coverImageInput) {
+        coverImageInput.value = '';
+      }
+      
+      // Remove any existing new preview if it exists
+      const newPreview = document.getElementById('new-cover-preview');
+      if (newPreview) {
+        newPreview.remove();
+      }
+      
+      // Show notification
+      if (typeof showNotification === 'function') {
+        showNotification('Cover image will be removed when you save the post.', 'warning');
       }
     };
     
   }
+  
+  // Preview newly uploaded image and handle drag & drop
+  document.addEventListener('DOMContentLoaded', function() {
+    const coverImageInput = document.getElementById('cover-image-input');
+    const coverImageWrapper = document.getElementById('cover-image-wrapper');
+    
+    // Function to handle file selection
+    function handleFile(file) {
+      if (!file) return;
+      
+      // Validate file type
+      const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+      if (!validTypes.includes(file.type)) {
+        if (typeof showNotification === 'function') {
+          showNotification('Please select a valid image file (JPG, PNG, or WEBP)', 'error');
+        } else {
+          alert('Please select a valid image file (JPG, PNG, or WEBP)');
+        }
+        if (coverImageInput) coverImageInput.value = '';
+        return;
+      }
+      
+      // Validate file size (5MB)
+      const maxSize = 5 * 1024 * 1024; // 5MB in bytes
+      if (file.size > maxSize) {
+        if (typeof showNotification === 'function') {
+          showNotification('Image size must be less than 5MB', 'error');
+        } else {
+          alert('Image size must be less than 5MB');
+        }
+        if (coverImageInput) coverImageInput.value = '';
+        return;
+      }
+      
+      // Create a FileList-like object and set it to the input
+      const dataTransfer = new DataTransfer();
+      dataTransfer.items.add(file);
+      coverImageInput.files = dataTransfer.files;
+      
+      // Trigger change event
+      const event = new Event('change', { bubbles: true });
+      coverImageInput.dispatchEvent(event);
+    }
+    
+    // Drag and drop functionality
+    if (coverImageWrapper) {
+      // Prevent default drag behaviors only on the file input wrapper
+      ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        coverImageWrapper.addEventListener(eventName, preventDefaults, false);
+      });
+      
+      function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+      
+      // Highlight drop area when item is dragged over it
+      ['dragenter', 'dragover'].forEach(eventName => {
+        coverImageWrapper.addEventListener(eventName, function() {
+          coverImageWrapper.classList.add('drag-over');
+        }, false);
+      });
+      
+      ['dragleave', 'drop'].forEach(eventName => {
+        coverImageWrapper.addEventListener(eventName, function() {
+          coverImageWrapper.classList.remove('drag-over');
+        }, false);
+      });
+      
+      // Handle dropped files
+      coverImageWrapper.addEventListener('drop', function(e) {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+        
+        if (files.length > 0) {
+          handleFile(files[0]);
+        }
+      }, false);
+    }
+    
+    // Preview logic - triggered after file is selected (via click or drag & drop)
+    if (coverImageInput) {
+      coverImageInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+          
+          // Create preview
+          const reader = new FileReader();
+          reader.onload = function(e) {
+            const previewUrl = e.target.result;
+            
+            // Remove old preview if exists
+            const oldPreview = document.getElementById('new-cover-preview');
+            if (oldPreview) {
+              oldPreview.remove();
+            }
+            
+            // Remove old image container if it exists
+            const currentContainer = document.getElementById('current-cover-container');
+            if (currentContainer) {
+              currentContainer.remove();
+            }
+            
+            // Reset remove flag since we're uploading a new image
+            const removeInput = document.getElementById('remove-cover-input');
+            if (removeInput) {
+              removeInput.value = '0';
+            }
+            
+            // Create new preview container
+            const previewContainer = document.createElement('div');
+            previewContainer.id = 'new-cover-preview';
+            previewContainer.className = 'current-cover-image';
+            previewContainer.style.cssText = 'margin-top: 12px; padding: 12px; background: #f0fdf4; border: 2px solid #10b981; border-radius: 8px; text-align: center; position: relative;';
+            
+            const previewImg = document.createElement('img');
+            previewImg.src = previewUrl;
+            previewImg.style.cssText = 'max-width: 100%; max-height: 200px; border-radius: 8px; margin-bottom: 8px;';
+            previewImg.alt = 'New cover image preview';
+            
+            const previewLabel = document.createElement('small');
+            previewLabel.style.cssText = 'display: block; color: #059669; font-size: 0.85rem; font-weight: 600;';
+            previewLabel.textContent = 'New cover image (will be saved when you submit)';
+            
+            previewContainer.appendChild(previewImg);
+            previewContainer.appendChild(previewLabel);
+            
+            // Insert after the file input
+            const formSection = coverImageInput.closest('.form-section');
+            if (formSection) {
+              const helpText = formSection.querySelector('.form-help');
+              if (helpText) {
+                formSection.insertBefore(previewContainer, helpText);
+              } else {
+                formSection.appendChild(previewContainer);
+              }
+            }
+          };
+          
+          reader.readAsDataURL(file);
+        }
+      });
+    }
+  });
+  
+  // SEO Tags functionality
+  document.addEventListener('DOMContentLoaded', function() {
+    const seoTagsInput = document.getElementById('seo-tags-input');
+    const seoTagsHidden = document.getElementById('seo-tags-hidden');
+    const seoTagsDisplay = document.getElementById('seo-tags-display');
+    const seoTagsAddBtn = document.getElementById('seo-tags-add-btn');
+    
+    function updateSeoTagsHidden() {
+      const tags = Array.from(seoTagsDisplay.querySelectorAll('.seo-tag-item')).map(item => {
+        return item.querySelector('span:not(.seo-tag-remove)')?.textContent.trim() || 
+               item.textContent.replace(/×/g, '').trim();
+      }).filter(tag => tag);
+      seoTagsHidden.value = JSON.stringify(tags);
+    }
+    
+    function addSeoTag(tagText) {
+      if (!tagText || !tagText.trim()) return;
+      
+      const tag = tagText.trim();
+      const existingTags = Array.from(seoTagsDisplay.querySelectorAll('.seo-tag-item')).map(item => {
+        return item.querySelector('span:not(.seo-tag-remove)')?.textContent.trim() || 
+               item.textContent.replace(/×/g, '').trim();
+      });
+      
+      if (existingTags.includes(tag)) return; // Don't add duplicates
+      
+      const tagElement = document.createElement('span');
+      tagElement.className = 'seo-tag-item';
+      tagElement.innerHTML = `
+        <span>${tag}</span>
+        <button type="button" class="seo-tag-remove" data-tag="${tag}">
+          <i class="fas fa-times"></i>
+        </button>
+      `;
+      
+      seoTagsDisplay.appendChild(tagElement);
+      updateSeoTagsHidden();
+      
+      // Add remove functionality
+      tagElement.querySelector('.seo-tag-remove').addEventListener('click', function() {
+        tagElement.remove();
+        updateSeoTagsHidden();
+      });
+    }
+    
+    function handleAddTag() {
+      if (seoTagsInput) {
+        const value = seoTagsInput.value.trim();
+        if (value) {
+          // Split by comma and add each tag
+          value.split(',').forEach(tag => {
+            if (tag.trim()) {
+              addSeoTag(tag.trim());
+            }
+          });
+          seoTagsInput.value = '';
+        }
+      }
+    }
+    
+    if (seoTagsInput && seoTagsDisplay) {
+      // Load existing tags
+      if (seoTagsHidden.value) {
+        try {
+          const existingTags = JSON.parse(seoTagsHidden.value);
+          existingTags.forEach(tag => addSeoTag(tag));
+        } catch (e) {
+          console.error('Error parsing SEO tags:', e);
+        }
+      }
+      
+      // Handle Enter key
+      seoTagsInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          handleAddTag();
+        }
+      });
+      
+      // Handle Add Tag button click
+      if (seoTagsAddBtn) {
+        seoTagsAddBtn.addEventListener('click', function(e) {
+          e.preventDefault();
+          handleAddTag();
+        });
+      }
+      
+      // Handle comma separation on blur
+      seoTagsInput.addEventListener('blur', function() {
+        handleAddTag();
+      });
+      
+      // Initialize remove buttons for existing tags
+      seoTagsDisplay.querySelectorAll('.seo-tag-remove').forEach(btn => {
+        btn.addEventListener('click', function() {
+          this.closest('.seo-tag-item').remove();
+          updateSeoTagsHidden();
+        });
+      });
+    }
+    
+    // Status radio buttons - update active state on change
+    document.querySelectorAll('input[name="status"]').forEach(radio => {
+      radio.addEventListener('change', function() {
+        document.querySelectorAll('.status-radio-option').forEach(option => {
+          option.classList.remove('active');
+        });
+        this.closest('.status-radio-option').classList.add('active');
+      });
+    });
+  });
   
   // Start initialization when DOM is ready
   if (document.readyState === 'loading') {
@@ -381,6 +693,80 @@ if (typeof window.blogQuillInitialized === 'undefined') {
   } else {
     initQuillEditor();
   }
+  
+  // Ensure navbar dropdowns work - reinitialize if needed
+  setTimeout(function() {
+    // User Profile Dropdown
+    const userProfileTrigger = document.getElementById('userProfileTrigger');
+    const userDropdownMenu = document.getElementById('userDropdownMenu');
+    const userProfileDropdown = document.querySelector('.user-profile-dropdown');
+    
+    if (userProfileTrigger && userDropdownMenu && userProfileDropdown) {
+      // Remove inline display:none if still present
+      if (userDropdownMenu.style.display === 'none') {
+        userDropdownMenu.style.display = '';
+      }
+      if (userProfileTrigger.style.display === 'none') {
+        userProfileTrigger.style.display = '';
+      }
+      
+      // Re-attach click handler if not already attached
+      const existingHandler = userProfileTrigger.getAttribute('data-dropdown-initialized');
+      if (!existingHandler) {
+        userProfileTrigger.setAttribute('data-dropdown-initialized', 'true');
+        userProfileTrigger.addEventListener('click', function(e) {
+          e.stopPropagation();
+          userProfileDropdown.classList.toggle('active');
+          // Close notification dropdown if open
+          const notificationDropdown = document.querySelector('.notification-dropdown');
+          if (notificationDropdown) {
+            notificationDropdown.classList.remove('active');
+          }
+        });
+      }
+    }
+    
+    // Notification Dropdown
+    const notificationBell = document.getElementById('notificationBell');
+    const notificationMenu = document.getElementById('notificationMenu');
+    const notificationDropdown = document.querySelector('.notification-dropdown');
+    const dashboardTopActionsGroup = document.querySelector('.dashboard-top-actions-group');
+    
+    if (dashboardTopActionsGroup && dashboardTopActionsGroup.style.display === 'none') {
+      dashboardTopActionsGroup.style.display = '';
+    }
+    
+    if (notificationBell && notificationMenu && notificationDropdown) {
+      // Remove inline display:none if still present
+      if (notificationMenu.style.display === 'none') {
+        notificationMenu.style.display = '';
+      }
+      
+      // Re-attach click handler if not already attached
+      const existingNotificationHandler = notificationBell.getAttribute('data-dropdown-initialized');
+      if (!existingNotificationHandler) {
+        notificationBell.setAttribute('data-dropdown-initialized', 'true');
+        notificationBell.addEventListener('click', function(e) {
+          e.stopPropagation();
+          notificationDropdown.classList.toggle('active');
+          // Close user profile dropdown if open
+          if (userProfileDropdown) {
+            userProfileDropdown.classList.remove('active');
+          }
+        });
+      }
+    }
+    
+    // Ensure click-outside handler works for both dropdowns
+    document.addEventListener('click', function(event) {
+      if (userProfileDropdown && !userProfileDropdown.contains(event.target)) {
+        userProfileDropdown.classList.remove('active');
+      }
+      if (notificationDropdown && !notificationDropdown.contains(event.target)) {
+        notificationDropdown.classList.remove('active');
+      }
+    });
+  }, 100);
 })();
 </script>
 {% endblock %}
@@ -466,6 +852,77 @@ if (typeof window.blogQuillInitialized === 'undefined') {
   outline: none;
   border-color: var(--primary);
   box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+}
+
+/* File input styling */
+.file-input-wrapper {
+  position: relative;
+  min-height: 120px;
+  border: 2px dashed #cbd5e1;
+  border-radius: 8px;
+  background: white;
+  transition: all 0.2s;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.file-input-wrapper:hover {
+  border-color: #3b82f6;
+  background: #eff6ff;
+}
+
+.file-input-wrapper.drag-over {
+  border-color: #3b82f6;
+  border-style: solid;
+  background: #eff6ff;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+#cover-image-input {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  z-index: 2;
+}
+
+.file-input-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 20px;
+  text-align: center;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.file-input-label i {
+  font-size: 2rem;
+  color: #3b82f6;
+  margin-bottom: 4px;
+}
+
+.file-input-text {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.file-input-hint {
+  font-size: 0.85rem;
+  color: #64748b;
+}
+
+#cover-image-input:focus + .file-input-label,
+.file-input-wrapper:has(#cover-image-input:focus) {
+  border-color: #3b82f6;
 }
 
 .form-help {
@@ -627,21 +1084,29 @@ if (typeof window.blogQuillInitialized === 'undefined') {
 
 .form-actions {
   display: flex;
-  justify-content: flex-end;
-  gap: 12px;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
   padding-top: 30px;
   border-top: 1px solid #e5e7eb;
   margin-top: 30px;
 }
 
 .btn-cancel {
-  padding: 12px 24px;
+  padding: 16px 24px;
   background: #f3f4f6;
   color: var(--text-dark);
   border-radius: 8px;
   text-decoration: none;
-  font-weight: 500;
+  font-weight: 700;
+  font-size: 0.95rem;
   transition: background 0.2s;
+  flex: 1;
+  width: 100%;
+  text-align: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .btn-cancel:hover {
@@ -649,21 +1114,216 @@ if (typeof window.blogQuillInitialized === 'undefined') {
 }
 
 .btn-submit {
-  padding: 12px 24px;
+  padding: 16px 24px;
   background: var(--primary);
   color: white;
   border: none;
   border-radius: 8px;
-  font-weight: 500;
+  font-weight: 700;
+  font-size: 0.95rem;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
   transition: background 0.2s;
+  flex: 1;
+  width: 100%;
 }
 
 .btn-submit:hover {
   background: #059669;
+}
+
+/* SEO Tags */
+.seo-tags-container {
+  margin-bottom: 8px;
+}
+
+.seo-tags-input-wrapper {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.seo-tags-input {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+.btn-add-tag {
+  padding: 8px 16px;
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+  white-space: nowrap;
+  max-width: 120px;
+  flex-shrink: 0;
+}
+
+.btn-add-tag:hover {
+  background: #2563eb;
+}
+
+.btn-add-tag:active {
+  background: #1d4ed8;
+}
+
+.seo-tags-display {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-height: 32px;
+}
+
+.seo-tag-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: #f0fdf4;
+  border: 1px solid #10b981;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  color: #059669;
+  font-weight: 500;
+}
+
+.seo-tag-remove {
+  background: none;
+  border: none;
+  color: #059669;
+  cursor: pointer;
+  padding: 0;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background 0.2s;
+  font-size: 0.75rem;
+}
+
+.seo-tag-remove:hover {
+  background: rgba(5, 150, 105, 0.2);
+}
+
+/* Status Radio Buttons */
+.status-radio-group {
+  display: flex;
+  gap: 12px;
+}
+
+.status-radio-option {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 24px;
+  background: white;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+}
+
+.status-radio-option input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.status-radio-label {
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: #64748b;
+  transition: color 0.2s;
+}
+
+.status-radio-option:hover {
+  border-color: #3b82f6;
+  background: #eff6ff;
+}
+
+.status-radio-option.active {
+  background: #3b82f6;
+  border-color: #3b82f6;
+}
+
+.status-radio-option.active .status-radio-label {
+  color: white;
+  font-weight: 600;
+}
+
+/* Ensure navbar dropdown is not affected by blog form styles - use higher specificity */
+header nav .user-profile-dropdown {
+  position: relative !important;
+  z-index: 1000 !important;
+}
+
+header nav .user-dropdown-menu {
+  position: absolute !important;
+  top: calc(100% + 8px) !important;
+  right: 0 !important;
+  background: white !important;
+  border-radius: 12px !important;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.15) !important;
+  min-width: 200px !important;
+  padding: 0 !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  transform: translateY(-10px) !important;
+  transition: all 0.2s ease !important;
+  z-index: 1001 !important;
+  display: block !important;
+  pointer-events: none !important;
+}
+
+header nav .user-profile-dropdown.active .user-dropdown-menu {
+  opacity: 1 !important;
+  visibility: visible !important;
+  transform: translateY(0) !important;
+  pointer-events: auto !important;
+}
+
+/* Ensure notification dropdown is not affected by blog form styles */
+header nav .notification-dropdown {
+  position: relative !important;
+  z-index: 1000 !important;
+}
+
+header nav .notification-menu {
+  position: absolute !important;
+  top: calc(100% + 8px) !important;
+  right: 0 !important;
+  background: white !important;
+  border-radius: 12px !important;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.15) !important;
+  width: 380px !important;
+  max-width: 90vw !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  transform: translateY(-10px) !important;
+  transition: all 0.2s ease !important;
+  z-index: 1001 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  height: 500px !important;
+  pointer-events: none !important;
+}
+
+header nav .notification-dropdown.active .notification-menu {
+  opacity: 1 !important;
+  visibility: visible !important;
+  transform: translateY(0) !important;
+  pointer-events: auto !important;
 }
 
 @media (max-width: 768px) {

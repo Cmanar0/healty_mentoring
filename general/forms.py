@@ -114,7 +114,7 @@ class BlogPostForm(forms.ModelForm):
     
     class Meta:
         model = BlogPost
-        fields = ['title', 'excerpt', 'content', 'cover_image', 'categories', 'status']
+        fields = ['title', 'excerpt', 'content', 'cover_image', 'categories', 'seo_tags', 'status']
         widgets = {
             'title': forms.TextInput(attrs={
                 'class': 'form-control',
@@ -145,6 +145,11 @@ class BlogPostForm(forms.ModelForm):
         # Set initial categories if editing
         if self.instance.pk and self.instance.categories:
             self.fields['categories'].initial = self.instance.categories
+        
+        # Set initial SEO tags if editing
+        if self.instance.pk and self.instance.seo_tags:
+            import json
+            self.fields['seo_tags'].initial = json.dumps(self.instance.seo_tags)
     
     def clean_cover_image(self):
         cover_image = self.cleaned_data.get('cover_image')
@@ -163,4 +168,20 @@ class BlogPostForm(forms.ModelForm):
         if invalid_categories:
             raise forms.ValidationError(f"Invalid categories: {', '.join(invalid_categories)}")
         return list(categories)  # Return as list for JSONField
+    
+    def clean_seo_tags(self):
+        seo_tags = self.cleaned_data.get('seo_tags', '[]')
+        # The hidden input sends a JSON string, so parse it
+        import json
+        try:
+            if isinstance(seo_tags, str):
+                seo_tags = json.loads(seo_tags) if seo_tags else []
+            # Ensure it's a list of strings
+            if not isinstance(seo_tags, list):
+                seo_tags = [seo_tags] if seo_tags else []
+            # Filter out empty strings and ensure all are strings
+            seo_tags = [str(tag).strip() for tag in seo_tags if tag and str(tag).strip()]
+            return seo_tags
+        except (json.JSONDecodeError, TypeError):
+            return []
 

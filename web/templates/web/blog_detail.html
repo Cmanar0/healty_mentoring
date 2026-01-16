@@ -7,6 +7,9 @@
 <!-- SEO Meta Tags -->
 <meta name="description" content="{% if post.excerpt %}{{ post.excerpt|truncatewords:30 }}{% else %}{{ post.content|striptags|truncatewords:30 }}{% endif %}">
 <meta name="author" content="{{ author_name }}">
+{% if post.seo_tags %}
+<meta name="keywords" content="{% for tag in post.seo_tags %}{{ tag }}{% if not forloop.last %}, {% endif %}{% endfor %}">
+{% endif %}
 
 <!-- Open Graph / Facebook -->
 <meta property="og:type" content="article">

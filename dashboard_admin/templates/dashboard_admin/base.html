@@ -477,6 +477,14 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  color: inherit;
+}
+
+.notification-footer:hover {
+  background: rgba(16, 185, 129, 0.05);
 }
 
 .view-all-notifications {
@@ -487,9 +495,8 @@
   transition: color 0.2s ease;
 }
 
-.view-all-notifications:hover {
+.notification-footer:hover .view-all-notifications {
   color: var(--dash-primary-hover);
-  text-decoration: underline;
 }
 
 /* Sidebar Badge */

@@ -553,6 +553,13 @@ class BlogPost(models.Model):
         help_text="Array of category IDs from predefined categories"
     )
     
+    # SEO tags (array of strings for meta keywords)
+    seo_tags = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="Array of SEO tags/keywords for meta tags"
+    )
+    
     # Status
     status = models.CharField(
         max_length=20,
