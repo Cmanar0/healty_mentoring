@@ -34,5 +34,9 @@ urlpatterns = [
     path('notifications/mark-all-read/', general_views.notification_mark_all_read, name='notification_mark_all_read'),
     path('notifications/<int:notification_id>/modal/', general_views.notification_modal_detail, name='notification_modal_detail'),
     path('tickets/<int:ticket_id>/', views.ticket_detail, name='ticket_detail'),
+    path('blog/', views.blog_list, name='blog_list'),
+    path('blog/create/', views.blog_create, name='blog_create'),
+    path('blog/<int:post_id>/edit/', views.blog_edit, name='blog_edit'),
+    path('blog/<int:post_id>/delete/', views.blog_delete, name='blog_delete'),
 ]
 

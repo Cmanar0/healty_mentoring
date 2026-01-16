@@ -13,6 +13,10 @@ from dashboard_mentor.constants import (
     QUALIFICATION_TYPES
 )
 from general.email_service import EmailService
+from general.models import BlogPost
+from general.forms import BlogPostForm
+from django.core.paginator import Paginator
+from django.db.models import Q
 import json
 import os
 from datetime import datetime, timedelta, timezone as dt_timezone
@@ -3854,3 +3858,118 @@ def delete_client_relationship(request, relationship_id):
         'success': True,
         'message': 'Client removed from your list successfully.'
     })
+
+
+# ============================================================================
+# BLOG POST VIEWS FOR MENTORS
+# ============================================================================
+
+@login_required
+def blog_list(request):
+    """List all blog posts for the current mentor"""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        messages.error(request, "Only mentors can access this page.")
+        return redirect('general:index')
+    
+    # Get only posts by this mentor
+    posts = BlogPost.objects.filter(author=request.user).order_by('-created_at')
+    
+    # Search functionality
+    search_query = request.GET.get('search', '').strip()
+    if search_query:
+        posts = posts.filter(
+            Q(title__icontains=search_query) |
+            Q(excerpt__icontains=search_query) |
+            Q(content__icontains=search_query)
+        )
+    
+    # Filter by status
+    status_filter = request.GET.get('status', '')
+    if status_filter in ['draft', 'published']:
+        posts = posts.filter(status=status_filter)
+    
+    # Pagination
+    paginator = Paginator(posts, 20)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    return render(request, 'dashboard_mentor/blog_list.html', {
+        'page_obj': page_obj,
+        'posts': page_obj,
+        'search_query': search_query,
+        'status_filter': status_filter,
+        'predefined_categories': PREDEFINED_CATEGORIES,
+    })
+
+
+@login_required
+def blog_create(request):
+    """Create a new blog post"""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        messages.error(request, "Only mentors can create blog posts.")
+        return redirect('general:index')
+    
+    if request.method == 'POST':
+        form = BlogPostForm(request.POST, request.FILES)
+        if form.is_valid():
+            post = form.save(commit=False)
+            post.author = request.user
+            post.save()
+            messages.success(request, 'Blog post created successfully!')
+            return redirect('general:dashboard_mentor:blog_list')
+    else:
+        form = BlogPostForm()
+    
+    return render(request, 'dashboard_mentor/blog_form.html', {
+        'form': form,
+        'action': 'Create',
+        'predefined_categories': PREDEFINED_CATEGORIES,
+    })
+
+
+@login_required
+def blog_edit(request, post_id):
+    """Edit an existing blog post"""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        messages.error(request, "Only mentors can edit blog posts.")
+        return redirect('general:index')
+    
+    post = get_object_or_404(BlogPost, id=post_id, author=request.user)
+    
+    if request.method == 'POST':
+        form = BlogPostForm(request.POST, request.FILES, instance=post)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Blog post updated successfully!')
+            return redirect('general:dashboard_mentor:blog_list')
+    else:
+        form = BlogPostForm(instance=post)
+    
+    return render(request, 'dashboard_mentor/blog_form.html', {
+        'form': form,
+        'post': post,
+        'action': 'Edit',
+        'predefined_categories': PREDEFINED_CATEGORIES,
+    })
+
+
+@login_required
+@require_POST
+def blog_delete(request, post_id):
+    """Delete a blog post"""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        return JsonResponse({'success': False, 'error': 'Only mentors can delete blog posts'}, status=403)
+    
+    post = get_object_or_404(BlogPost, id=post_id, author=request.user)
+    
+    # Delete cover image if it exists
+    if post.cover_image:
+        post.cover_image.delete(save=False)
+    
+    post.delete()
+    
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return JsonResponse({'success': True, 'message': 'Blog post deleted successfully.'})
+    
+    messages.success(request, 'Blog post deleted successfully.')
+    return redirect('general:dashboard_mentor:blog_list')

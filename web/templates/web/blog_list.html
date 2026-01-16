@@ -1,0 +1,529 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Blog{% if mentor_filter %} — Articles by {{ mentor_filter.first_name }} {{ mentor_filter.last_name }}{% endif %} — Healthy Mentoring{% endblock %}
+
+{% block extra_css %}
+{{ block.super }}
+<link rel="stylesheet" href="{% static 'css/landing.css' %}">
+<style>
+/* ============================================
+   PAGE LAYOUT
+   ============================================ */
+.blog-page {
+  padding: 40px;
+  max-width: 1400px;
+  margin: 0 auto;
+  background: #f8fafc;
+  min-height: 80vh;
+}
+
+.blog-header {
+  margin-bottom: 30px;
+}
+
+.blog-header h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 16px 0;
+}
+
+.blog-header p {
+  font-size: 1.1rem;
+  color: #64748b;
+  margin: 0;
+}
+
+/* ============================================
+   FILTER SECTION STYLES
+   ============================================ */
+.blog-filters {
+  background: white;
+  padding: 24px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  margin-bottom: 30px;
+}
+
+.blog-filters .filter-form {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.blog-filters .filter-group {
+  flex: 1;
+  min-width: 180px;
+}
+
+.blog-filters .filter-group label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: #0f172a;
+  font-size: 0.9rem;
+}
+
+.blog-filters .filter-group input[type="text"],
+.blog-filters .filter-group select {
+  width: 100%;
+  padding: 10px 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  background: white;
+  transition: all 0.2s;
+}
+
+.blog-filters .filter-group input[type="text"]:focus,
+.blog-filters .filter-group select:focus {
+  outline: none;
+  border-color: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+}
+
+.blog-filters .btn-filter,
+.blog-filters .btn-clear {
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  transition: all 0.2s;
+  white-space: nowrap;
+  height: fit-content;
+}
+
+.blog-filters .btn-filter {
+  background: #10b981;
+  color: white;
+}
+
+.blog-filters .btn-filter:hover {
+  background: #059669;
+}
+
+.blog-filters .btn-clear {
+  background: #f3f4f6;
+  color: #0f172a;
+}
+
+.blog-filters .btn-clear:hover {
+  background: #e5e7eb;
+}
+
+.blog-filters .active-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.blog-filters .filter-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: #10b981;
+  color: white;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.blog-filters .filter-badge .remove {
+  cursor: pointer;
+  opacity: 0.8;
+  transition: opacity 0.2s;
+}
+
+.blog-filters .filter-badge .remove:hover {
+  opacity: 1;
+}
+
+/* ============================================
+   BLOG POSTS SECTION STYLES
+   ============================================ */
+.blog-posts-container {
+  margin-bottom: 40px;
+}
+
+.blog-posts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 24px;
+  margin-bottom: 40px;
+}
+
+.blog-post-card {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  overflow: hidden;
+  transition: transform 0.2s, box-shadow 0.2s;
+  cursor: pointer;
+  text-decoration: none;
+  color: inherit;
+  display: flex;
+  flex-direction: column;
+}
+
+.blog-post-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.blog-post-card .post-cover {
+  width: 100%;
+  height: 180px;
+  position: relative;
+  overflow: hidden;
+}
+
+.blog-post-card .post-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.blog-post-card .post-cover-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 3rem;
+}
+
+.blog-post-card .post-content {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+}
+
+.blog-post-card .post-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 12px 0;
+  line-height: 1.4;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.blog-post-card .post-excerpt {
+  color: #64748b;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  margin: 0 0 16px 0;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.blog-post-card .post-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+  font-size: 0.85rem;
+  color: #64748b;
+}
+
+.blog-post-card .post-date {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.blog-post-card .post-categories {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.blog-post-card .category-tag {
+  background: #f3f4f6;
+  color: #0f172a;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+/* ============================================
+   PAGINATION STYLES
+   ============================================ */
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  margin-top: 40px;
+}
+
+.page-link {
+  padding: 10px 20px;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  color: #0f172a;
+  text-decoration: none;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s;
+}
+
+.page-link:hover {
+  background: #f9fafb;
+  border-color: #10b981;
+  color: #10b981;
+}
+
+.page-info {
+  color: #64748b;
+  font-size: 0.9rem;
+}
+
+/* ============================================
+   NO POSTS STYLES
+   ============================================ */
+.no-posts {
+  text-align: center;
+  padding: 80px 20px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.no-posts i {
+  font-size: 4rem;
+  margin-bottom: 20px;
+  opacity: 0.3;
+  color: #64748b;
+}
+
+.no-posts p {
+  font-size: 1.2rem;
+  margin: 0 0 30px 0;
+  color: #64748b;
+}
+
+.no-posts .btn-filter {
+  background: #10b981;
+  color: white;
+  padding: 12px 24px;
+  border-radius: 8px;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+  transition: background 0.2s;
+}
+
+.no-posts .btn-filter:hover {
+  background: #059669;
+}
+
+/* ============================================
+   RESPONSIVE STYLES
+   ============================================ */
+@media (max-width: 768px) {
+  .blog-page {
+    padding: 20px;
+  }
+  
+  .blog-header h1 {
+    font-size: 1.5rem;
+  }
+  
+  .blog-filters .filter-form {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .blog-filters .filter-group {
+    width: 100%;
+    min-width: unset;
+  }
+  
+  .blog-filters .btn-filter,
+  .blog-filters .btn-clear {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .blog-posts-grid {
+    grid-template-columns: 1fr;
+  }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="blog-page">
+  <div class="blog-header">
+    <h1>{% if mentor_filter %}Articles by {{ mentor_filter.first_name }} {{ mentor_filter.last_name }}{% else %}Blog{% endif %}</h1>
+    {% if not mentor_filter %}
+      <p>Discover insights, tips, and stories from our mentors and team</p>
+    {% endif %}
+  </div>
+
+  <!-- Search and Filters -->
+  <div class="blog-filters">
+    <form method="get" class="filter-form">
+      <div class="filter-group">
+        <input 
+          type="text" 
+          name="search" 
+          placeholder="Search posts..." 
+          value="{{ search_query }}"
+        >
+      </div>
+      <div class="filter-group">
+        <select name="category">
+          <option value="">All Categories</option>
+          {% for cat in predefined_categories %}
+            <option value="{{ cat.id }}" {% if category_filter == cat.id %}selected{% endif %}>
+              {{ cat.name }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="filter-group">
+        <select name="mentor">
+          <option value="">All Authors</option>
+          {% for mentor_user in mentors_with_posts %}
+            {% if mentor_user.mentor_profile %}
+              <option value="{{ mentor_user.id }}" {% if request.GET.mentor == mentor_user.id|stringformat:"s" %}selected{% endif %}>
+                {{ mentor_user.mentor_profile.first_name }} {{ mentor_user.mentor_profile.last_name }}
+              </option>
+            {% endif %}
+          {% endfor %}
+        </select>
+      </div>
+      <button type="submit" class="btn-filter">
+        <i class="fas fa-search"></i> Filter
+      </button>
+      {% if search_query or category_filter or mentor_id %}
+        <a href="{% url 'web:blog' %}" class="btn-clear">
+          Clear
+        </a>
+      {% endif %}
+    </form>
+    
+    {% if mentor_filter or category_filter or search_query %}
+      <div class="active-filters">
+        {% if mentor_filter %}
+          <span class="filter-badge">
+            Author: {{ mentor_filter.first_name }} {{ mentor_filter.last_name }}
+            <a href="?{% if category_filter %}category={{ category_filter }}&{% endif %}{% if search_query %}search={{ search_query }}{% endif %}" class="remove">×</a>
+          </span>
+        {% endif %}
+        {% if category_filter %}
+          {% for cat in predefined_categories %}
+            {% if cat.id == category_filter %}
+              <span class="filter-badge">
+                Category: {{ cat.name }}
+                <a href="?{% if mentor_id %}mentor={{ mentor_id }}&{% endif %}{% if search_query %}search={{ search_query }}{% endif %}" class="remove">×</a>
+              </span>
+            {% endif %}
+          {% endfor %}
+        {% endif %}
+        {% if search_query %}
+          <span class="filter-badge">
+            Search: {{ search_query }}
+            <a href="?{% if mentor_id %}mentor={{ mentor_id }}&{% endif %}{% if category_filter %}category={{ category_filter }}{% endif %}" class="remove">×</a>
+          </span>
+        {% endif %}
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- Blog Posts List -->
+  <div class="blog-posts-container">
+    {% if posts %}
+      <div class="blog-posts-grid">
+        {% for post in posts %}
+          <a href="{% url 'web:blog_detail' post.slug %}" class="blog-post-card">
+            <div class="post-cover" style="background-color: {{ post.cover_color }};">
+              {% if post.cover_image %}
+                <img src="{{ post.cover_image.url }}" alt="{{ post.title }}">
+              {% else %}
+                <div class="post-cover-placeholder">
+                  <i class="fas fa-image"></i>
+                </div>
+              {% endif %}
+            </div>
+            <div class="post-content">
+              <h3 class="post-title">{{ post.title }}</h3>
+              {% if post.excerpt %}
+                <p class="post-excerpt">{{ post.excerpt|truncatewords:20 }}</p>
+              {% endif %}
+              <div class="post-meta">
+                <span class="post-date">
+                  <i class="far fa-calendar"></i>
+                  {{ post.published_at|date:"M d, Y" }}
+                </span>
+                {% if post.categories %}
+                  <span class="post-categories">
+                    {% for cat_id in post.categories|slice:":2" %}
+                      {% for cat in predefined_categories %}
+                        {% if cat.id == cat_id %}
+                          <span class="category-tag">{{ cat.name }}</span>
+                        {% endif %}
+                      {% endfor %}
+                    {% endfor %}
+                    {% if post.categories|length > 2 %}
+                      <span class="category-tag">+{{ post.categories|length|add:"-2" }}</span>
+                    {% endif %}
+                  </span>
+                {% endif %}
+              </div>
+            </div>
+          </a>
+        {% endfor %}
+      </div>
+
+      <!-- Pagination -->
+      {% if page_obj.has_other_pages %}
+        <div class="pagination">
+          {% if page_obj.has_previous %}
+            <a href="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if category_filter %}&category={{ category_filter }}{% endif %}{% if mentor_id %}&mentor={{ mentor_id }}{% endif %}" class="page-link">
+              <i class="fas fa-chevron-left"></i> Previous
+            </a>
+          {% endif %}
+          
+          <span class="page-info">
+            Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+          </span>
+          
+          {% if page_obj.has_next %}
+            <a href="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if category_filter %}&category={{ category_filter }}{% endif %}{% if mentor_id %}&mentor={{ mentor_id }}{% endif %}" class="page-link">
+              Next <i class="fas fa-chevron-right"></i>
+            </a>
+          {% endif %}
+        </div>
+      {% endif %}
+    {% else %}
+      <div class="no-posts">
+        <i class="fas fa-blog"></i>
+        <p>No blog posts found</p>
+        <a href="{% url 'web:blog' %}" class="btn-filter">View All Posts</a>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

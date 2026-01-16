@@ -1,0 +1,755 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ post.title }} — Healthy Mentoring Blog{% endblock %}
+
+{% block extra_head %}
+<!-- SEO Meta Tags -->
+<meta name="description" content="{% if post.excerpt %}{{ post.excerpt|truncatewords:30 }}{% else %}{{ post.content|striptags|truncatewords:30 }}{% endif %}">
+<meta name="author" content="{{ author_name }}">
+
+<!-- Open Graph / Facebook -->
+<meta property="og:type" content="article">
+<meta property="og:url" content="{{ request.build_absolute_uri }}">
+<meta property="og:title" content="{{ post.title }}">
+<meta property="og:description" content="{% if post.excerpt %}{{ post.excerpt|truncatewords:30 }}{% else %}{{ post.content|striptags|truncatewords:30 }}{% endif %}">
+{% if cover_image_url %}
+<meta property="og:image" content="{{ cover_image_url }}">
+{% else %}
+<meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{% static 'images/logo.png' %}">
+{% endif %}
+<meta property="og:site_name" content="Healthy Mentoring">
+{% if author_is_mentor %}
+<meta property="article:author" content="{{ author_name }}">
+{% endif %}
+
+<!-- Twitter -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:url" content="{{ request.build_absolute_uri }}">
+<meta name="twitter:title" content="{{ post.title }}">
+<meta name="twitter:description" content="{% if post.excerpt %}{{ post.excerpt|truncatewords:30 }}{% else %}{{ post.content|striptags|truncatewords:30 }}{% endif %}">
+{% if cover_image_url %}
+<meta name="twitter:image" content="{{ cover_image_url }}">
+{% else %}
+<meta name="twitter:image" content="{{ request.scheme }}://{{ request.get_host }}{% static 'images/logo.png' %}">
+{% endif %}
+{% endblock %}
+
+{% block extra_css %}
+{{ block.super }}
+<link rel="stylesheet" href="{% static 'css/landing.css' %}">
+<style>
+.blog-detail-page {
+  padding: 60px 0;
+  background: #f8fafc;
+  min-height: 80vh;
+}
+
+.blog-detail-container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.blog-post-header {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  overflow: hidden;
+  margin-bottom: 40px;
+}
+
+.post-cover-large {
+  width: 100%;
+  height: 400px;
+  position: relative;
+  overflow: hidden;
+}
+
+.post-cover-large img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.post-cover-placeholder-large {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 5rem;
+}
+
+.post-header-content {
+  padding: 40px;
+}
+
+.post-meta-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+  font-size: 0.9rem;
+  color: #64748b;
+  flex-wrap: wrap;
+}
+
+.post-meta-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.post-share {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.share-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid #e5e7eb;
+  background: white;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+
+.share-btn:hover {
+  background: #f9fafb;
+  border-color: #10b981;
+  color: #10b981;
+  transform: translateY(-2px);
+}
+
+.share-btn.share-facebook:hover {
+  background: #1877f2;
+  border-color: #1877f2;
+  color: white;
+}
+
+.share-btn.share-x:hover {
+  background: #000000;
+  border-color: #000000;
+  color: white;
+}
+
+.share-btn.share-linkedin:hover {
+  background: #0077b5;
+  border-color: #0077b5;
+  color: white;
+}
+
+.share-btn.share-copy:hover {
+  background: #10b981;
+  border-color: #10b981;
+  color: white;
+}
+
+/* Share Popup Modal */
+.share-modal {
+  display: none;
+  position: fixed;
+  z-index: 1000;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  animation: fadeIn 0.2s;
+}
+
+.share-modal.show {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.share-modal-content {
+  background: white;
+  border-radius: 12px;
+  padding: 32px;
+  max-width: 500px;
+  width: 90%;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+  animation: slideUp 0.3s;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.share-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.share-modal-header h3 {
+  margin: 0;
+  font-size: 1.5rem;
+  color: #0f172a;
+}
+
+.share-modal-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: #64748b;
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s;
+}
+
+.share-modal-close:hover {
+  background: #f3f4f6;
+  color: #0f172a;
+}
+
+.share-url-container {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 24px;
+  align-items: center;
+}
+
+.share-url-input {
+  flex: 1;
+  padding: 12px 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-family: monospace;
+}
+
+.share-url-input:focus {
+  outline: none;
+  border-color: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+}
+
+.share-copy-btn {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  background: #10b981;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.share-copy-btn:hover {
+  background: #059669;
+  transform: scale(1.05);
+}
+
+.share-copy-btn.copied {
+  background: #059669;
+}
+
+.share-copy-btn i {
+  font-size: 1.1rem;
+}
+
+.share-social-links {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  padding-top: 24px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.share-social-links .share-btn {
+  width: 44px;
+  height: 44px;
+  font-size: 1.1rem;
+}
+
+.post-author {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+}
+
+.post-author a {
+  color: #10b981;
+  text-decoration: none;
+}
+
+.post-author a:hover {
+  text-decoration: underline;
+}
+
+.post-date {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.post-title-large {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 20px 0;
+  line-height: 1.2;
+}
+
+.post-excerpt-large {
+  font-size: 1.2rem;
+  color: #64748b;
+  line-height: 1.6;
+  margin: 0 0 24px 0;
+}
+
+.post-categories-large {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.category-tag-large {
+  background: #f1f5f9;
+  color: #475569;
+  padding: 6px 16px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.blog-post-content {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  padding: 40px;
+  margin-bottom: 40px;
+}
+
+.post-content-body {
+  font-size: 1.1rem;
+  line-height: 1.8;
+  color: #0f172a;
+}
+
+.post-content-body h1,
+.post-content-body h2,
+.post-content-body h3,
+.post-content-body h4 {
+  margin-top: 32px;
+  margin-bottom: 16px;
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.post-content-body h1 { font-size: 2rem; }
+.post-content-body h2 { font-size: 1.75rem; }
+.post-content-body h3 { font-size: 1.5rem; }
+.post-content-body h4 { font-size: 1.25rem; }
+
+.post-content-body p {
+  margin-bottom: 20px;
+}
+
+.post-content-body ul,
+.post-content-body ol {
+  margin-bottom: 20px;
+  padding-left: 30px;
+}
+
+.post-content-body li {
+  margin-bottom: 8px;
+}
+
+.post-content-body a {
+  color: #10b981;
+  text-decoration: underline;
+}
+
+.post-content-body a:hover {
+  color: #059669;
+}
+
+.post-content-body img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  margin: 24px 0;
+}
+
+.post-content-body blockquote {
+  border-left: 4px solid #10b981;
+  padding-left: 20px;
+  margin: 24px 0;
+  font-style: italic;
+  color: #64748b;
+}
+
+.related-posts {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  padding: 40px;
+}
+
+.related-posts h2 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 24px;
+}
+
+.related-posts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 24px;
+}
+
+.related-post-card {
+  background: #f8fafc;
+  border-radius: 8px;
+  overflow: hidden;
+  text-decoration: none;
+  color: inherit;
+  display: block;
+  transition: transform 0.2s;
+}
+
+.related-post-card:hover {
+  transform: translateY(-4px);
+}
+
+.related-post-cover {
+  width: 100%;
+  height: 150px;
+  position: relative;
+  overflow: hidden;
+}
+
+.related-post-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.related-post-content {
+  padding: 16px;
+}
+
+.related-post-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #0f172a;
+  margin: 0;
+  line-height: 1.4;
+}
+
+@media (max-width: 768px) {
+  .post-title-large {
+    font-size: 1.75rem;
+  }
+  
+  .post-header-content {
+    padding: 24px;
+  }
+  
+  .blog-post-content {
+    padding: 24px;
+  }
+  
+  .related-posts-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .post-meta-top {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .post-share {
+    width: 100%;
+    justify-content: flex-end;
+    margin-top: 12px;
+  }
+  
+  .share-modal-content {
+    padding: 24px;
+  }
+  
+  .share-url-container {
+    flex-direction: column;
+  }
+  
+  .share-copy-btn {
+    width: 100%;
+  }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="blog-detail-page">
+  <div class="blog-detail-container">
+    <!-- Blog Post Header -->
+    <article class="blog-post-header">
+      <div class="post-cover-large" style="background-color: {{ post.cover_color }};">
+        {% if post.cover_image %}
+          <img src="{{ post.cover_image.url }}" alt="{{ post.title }}">
+        {% else %}
+          <div class="post-cover-placeholder-large">
+            <i class="fas fa-image"></i>
+          </div>
+        {% endif %}
+      </div>
+      
+      <div class="post-header-content">
+        <div class="post-meta-top">
+          <div class="post-meta-left">
+            {% if author_is_mentor %}
+              <span class="post-author">
+                <i class="fas fa-user"></i>
+                <a href="{% url 'web:mentor_profile_detail' author_user_id %}">{{ author_name }}</a>
+              </span>
+            {% else %}
+              <span class="post-author">
+                <i class="fas fa-user-shield"></i>
+                {{ author_name }}
+              </span>
+            {% endif %}
+            <span class="post-date">
+              <i class="far fa-calendar"></i>
+              {{ post.published_at|date:"F d, Y" }}
+            </span>
+          </div>
+          
+          <div class="post-share">
+            {% with share_url=request.build_absolute_uri share_title=post.title|striptags|truncatewords:30 %}
+            <a href="https://www.facebook.com/sharer/sharer.php?u={{ share_url|urlencode }}" 
+               target="_blank" 
+               rel="noopener noreferrer"
+               class="share-btn share-facebook"
+               title="Share on Facebook">
+              <i class="fab fa-facebook-f"></i>
+            </a>
+            <a href="https://x.com/intent/tweet?url={{ share_url|urlencode }}&text={{ share_title|urlencode }}" 
+               target="_blank" 
+               rel="noopener noreferrer"
+               class="share-btn share-x"
+               title="Share on X">
+              <i class="fab fa-x-twitter"></i>
+            </a>
+            <a href="https://www.linkedin.com/sharing/share-offsite/?url={{ share_url|urlencode }}" 
+               target="_blank" 
+               rel="noopener noreferrer"
+               class="share-btn share-linkedin"
+               title="Share on LinkedIn">
+              <i class="fab fa-linkedin-in"></i>
+            </a>
+            {% endwith %}
+            <button class="share-btn share-copy" 
+                    onclick="openShareModal()"
+                    title="Copy link">
+              <i class="fas fa-link"></i>
+            </button>
+          </div>
+        </div>
+        
+        <h1 class="post-title-large">{{ post.title }}</h1>
+        
+        {% if post.excerpt %}
+          <p class="post-excerpt-large">{{ post.excerpt }}</p>
+        {% endif %}
+        
+        {% if post.categories %}
+          <div class="post-categories-large">
+            {% for cat_id in post.categories %}
+              {% for cat in predefined_categories %}
+                {% if cat.id == cat_id %}
+                  <span class="category-tag-large">{{ cat.name }}</span>
+                {% endif %}
+              {% endfor %}
+            {% endfor %}
+          </div>
+        {% endif %}
+      </div>
+    </article>
+
+    <!-- Blog Post Content -->
+    <div class="blog-post-content">
+      <div class="post-content-body">
+        {{ post.content|safe }}
+      </div>
+    </div>
+
+    <!-- Related Posts -->
+    {% if related_posts %}
+      <div class="related-posts">
+        <h2>Related Articles</h2>
+        <div class="related-posts-grid">
+          {% for related_post in related_posts %}
+            <a href="{% url 'web:blog_detail' related_post.slug %}" class="related-post-card">
+              <div class="related-post-cover" style="background-color: {{ related_post.cover_color }};">
+                {% if related_post.cover_image %}
+                  <img src="{{ related_post.cover_image.url }}" alt="{{ related_post.title }}">
+                {% else %}
+                  <div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: rgba(255,255,255,0.7);">
+                    <i class="fas fa-image"></i>
+                  </div>
+                {% endif %}
+              </div>
+              <div class="related-post-content">
+                <h3 class="related-post-title">{{ related_post.title }}</h3>
+              </div>
+            </a>
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Share Modal -->
+<div id="shareModal" class="share-modal" onclick="closeShareModalOnBackdrop(event)">
+  <div class="share-modal-content" onclick="event.stopPropagation()">
+    <div class="share-modal-header">
+      <h3>Share this article</h3>
+      <button class="share-modal-close" onclick="closeShareModal()" aria-label="Close">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <div class="share-url-container">
+      <input type="text" 
+             id="shareUrlInput" 
+             class="share-url-input" 
+             value="{{ request.build_absolute_uri }}" 
+             readonly>
+      <button class="share-copy-btn" onclick="copyToClipboard()" title="Copy link">
+        <i class="fas fa-copy"></i>
+      </button>
+    </div>
+    <div class="share-social-links">
+      {% with share_url=request.build_absolute_uri share_title=post.title|striptags|truncatewords:30 %}
+      <a href="https://www.facebook.com/sharer/sharer.php?u={{ share_url|urlencode }}" 
+         target="_blank" 
+         rel="noopener noreferrer"
+         class="share-btn share-facebook"
+         title="Share on Facebook">
+        <i class="fab fa-facebook-f"></i>
+      </a>
+      <a href="https://x.com/intent/tweet?url={{ share_url|urlencode }}&text={{ share_title|urlencode }}" 
+         target="_blank" 
+         rel="noopener noreferrer"
+         class="share-btn share-x"
+         title="Share on X">
+        <i class="fab fa-x-twitter"></i>
+      </a>
+      <a href="https://www.linkedin.com/sharing/share-offsite/?url={{ share_url|urlencode }}" 
+         target="_blank" 
+         rel="noopener noreferrer"
+         class="share-btn share-linkedin"
+         title="Share on LinkedIn">
+        <i class="fab fa-linkedin-in"></i>
+      </a>
+      {% endwith %}
+    </div>
+  </div>
+</div>
+
+<script>
+function openShareModal() {
+  const modal = document.getElementById('shareModal');
+  modal.classList.add('show');
+  // Select the URL input
+  setTimeout(() => {
+    const input = document.getElementById('shareUrlInput');
+    input.select();
+    input.setSelectionRange(0, 99999); // For mobile devices
+  }, 100);
+}
+
+function closeShareModal() {
+  const modal = document.getElementById('shareModal');
+  modal.classList.remove('show');
+}
+
+function closeShareModalOnBackdrop(event) {
+  if (event.target.id === 'shareModal') {
+    closeShareModal();
+  }
+}
+
+function copyToClipboard() {
+  const input = document.getElementById('shareUrlInput');
+  const modal = document.getElementById('shareModal');
+  const button = modal.querySelector('.share-copy-btn');
+  const icon = button.querySelector('i');
+  
+  input.select();
+  input.setSelectionRange(0, 99999); // For mobile devices
+  
+  const originalIcon = icon.className;
+  
+  try {
+    navigator.clipboard.writeText(input.value).then(() => {
+      icon.className = 'fas fa-check';
+      button.classList.add('copied');
+      setTimeout(() => {
+        icon.className = originalIcon;
+        button.classList.remove('copied');
+      }, 2000);
+    });
+  } catch (err) {
+    // Fallback for older browsers
+    document.execCommand('copy');
+    icon.className = 'fas fa-check';
+    button.classList.add('copied');
+    setTimeout(() => {
+      icon.className = originalIcon;
+      button.classList.remove('copied');
+    }, 2000);
+  }
+}
+
+// Close modal on Escape key
+document.addEventListener('keydown', function(event) {
+  if (event.key === 'Escape') {
+    closeShareModal();
+  }
+});
+</script>
+{% endblock %}

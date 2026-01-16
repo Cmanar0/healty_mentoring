@@ -6,7 +6,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   
@@ -28,6 +28,7 @@
         <a href="/#features">Features</a>
         <a href="/#business-lab">Business Lab</a>
         <a href="{% url 'web:mentors' %}" {% if request.resolver_match.url_name == 'mentors' %}class="active"{% endif %}>Find Mentor</a>
+        <a href="{% url 'web:blog' %}" {% if request.resolver_match.url_name == 'blog' or request.resolver_match.url_name == 'blog_detail' %}class="active"{% endif %}>Blog</a>
       </div>
       <div class="top-actions">
         {% if user.is_authenticated %}

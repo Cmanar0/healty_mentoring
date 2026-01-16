@@ -786,8 +786,8 @@
                 {% if mentor_profile.personal_website %}
                     <a href="{{ mentor_profile.personal_website }}" target="_blank" class="mp-social-btn" title="Website"><i class="fas fa-link"></i></a>
                 {% endif %}
-                <!-- Blog Icon Placeholder -->
-                <a href="#" class="mp-social-btn" title="My Blog"><i class="fas fa-newspaper"></i></a>
+                <!-- Blog Icon -->
+                <a href="{% url 'web:blog' %}?mentor={{ mentor_user.id }}" class="mp-social-btn" title="My Blog"><i class="fas fa-newspaper"></i></a>
             </div>
         </div>
     </div>
@@ -941,7 +941,7 @@
                 </a>
                 {% endif %}
 
-                <a href="#" class="mp-btn mp-btn-secondary">
+                <a href="{% url 'web:blog' %}?mentor={{ mentor_user.id }}" class="mp-btn mp-btn-secondary">
                     <i class="fas fa-newspaper"></i>
                     Read My Articles
                 </a>

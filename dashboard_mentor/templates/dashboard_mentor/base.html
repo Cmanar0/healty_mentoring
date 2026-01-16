@@ -200,7 +200,7 @@
           </a>
         </li>
         <li>
-          <a href="#" class="sidebar-link sidebar-link-your" title="Your Blog">
+          <a href="{% url 'general:dashboard_mentor:blog_list' %}" class="sidebar-link sidebar-link-your {% if request.resolver_match.url_name == 'blog_list' or request.resolver_match.url_name == 'blog_create' or request.resolver_match.url_name == 'blog_edit' %}active{% endif %}" title="Your Blog">
             <i class="fas fa-pen-nib"></i>
             <span class="sidebar-text">Your Blog</span>
           </a>

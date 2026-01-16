@@ -8,8 +8,12 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_POST, require_http_methods
 from django.db.models import Q
 from functools import wraps
-from general.models import Notification
+from general.models import Notification, BlogPost
+from general.forms import BlogPostForm
 from accounts.models import CustomUser
+from dashboard_mentor.constants import PREDEFINED_CATEGORIES
+from django.core.paginator import Paginator
+from django.db.models import Q
 import uuid
 
 def admin_required(view_func):
@@ -411,10 +415,104 @@ def notification_modal_detail(request, notification_id):
 @login_required
 @admin_required
 def blog(request):
-    """Admin blog management page"""
+    """Admin blog management page - list all admin's blog posts"""
+    # Get only posts by this admin
+    posts = BlogPost.objects.filter(author=request.user).order_by('-created_at')
+    
+    # Search functionality
+    search_query = request.GET.get('search', '').strip()
+    if search_query:
+        posts = posts.filter(
+            Q(title__icontains=search_query) |
+            Q(excerpt__icontains=search_query) |
+            Q(content__icontains=search_query)
+        )
+    
+    # Filter by status
+    status_filter = request.GET.get('status', '')
+    if status_filter in ['draft', 'published']:
+        posts = posts.filter(status=status_filter)
+    
+    # Pagination
+    paginator = Paginator(posts, 20)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
     return render(request, 'dashboard_admin/blog.html', {
         'debug': settings.DEBUG,
+        'page_obj': page_obj,
+        'posts': page_obj,
+        'search_query': search_query,
+        'status_filter': status_filter,
+        'predefined_categories': PREDEFINED_CATEGORIES,
     })
+
+
+@login_required
+@admin_required
+def blog_create(request):
+    """Create a new blog post as admin"""
+    if request.method == 'POST':
+        form = BlogPostForm(request.POST, request.FILES)
+        if form.is_valid():
+            post = form.save(commit=False)
+            post.author = request.user
+            post.save()
+            messages.success(request, 'Blog post created successfully!')
+            return redirect('general:dashboard_admin:blog')
+    else:
+        form = BlogPostForm()
+    
+    return render(request, 'dashboard_admin/blog_form.html', {
+        'form': form,
+        'action': 'Create',
+        'debug': settings.DEBUG,
+        'predefined_categories': PREDEFINED_CATEGORIES,
+    })
+
+
+@login_required
+@admin_required
+def blog_edit(request, post_id):
+    """Edit an existing blog post (admin can only edit their own posts)"""
+    post = get_object_or_404(BlogPost, id=post_id, author=request.user)
+    
+    if request.method == 'POST':
+        form = BlogPostForm(request.POST, request.FILES, instance=post)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Blog post updated successfully!')
+            return redirect('general:dashboard_admin:blog')
+    else:
+        form = BlogPostForm(instance=post)
+    
+    return render(request, 'dashboard_admin/blog_form.html', {
+        'form': form,
+        'post': post,
+        'action': 'Edit',
+        'debug': settings.DEBUG,
+        'predefined_categories': PREDEFINED_CATEGORIES,
+    })
+
+
+@login_required
+@admin_required
+@require_POST
+def blog_delete(request, post_id):
+    """Delete a blog post (admin can only delete their own posts)"""
+    post = get_object_or_404(BlogPost, id=post_id, author=request.user)
+    
+    # Delete cover image if it exists
+    if post.cover_image:
+        post.cover_image.delete(save=False)
+    
+    post.delete()
+    
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return JsonResponse({'success': True, 'message': 'Blog post deleted successfully.'})
+    
+    messages.success(request, 'Blog post deleted successfully.')
+    return redirect('general:dashboard_admin:blog')
 
 @login_required
 @admin_required

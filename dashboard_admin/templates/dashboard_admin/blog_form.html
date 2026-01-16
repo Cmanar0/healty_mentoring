@@ -1,0 +1,585 @@
+{% extends "dashboard_admin/base.html" %}
+{% load static %}
+
+{% block page_title %}{{ action }} Blog Post{% endblock %}
+
+{% block extra_css %}
+{{ block.super }}
+<link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+{% endblock %}
+
+{% block dashboard_content %}
+<div class="dashboard-content-container">
+  <div class="blog-form-page">
+    <div class="blog-form-header">
+      <h1>{{ action }} Blog Post</h1>
+      <a href="{% url 'general:dashboard_admin:blog' %}" class="btn-back">
+        <i class="fas fa-arrow-left"></i> Back to Posts
+      </a>
+    </div>
+
+    <form method="post" enctype="multipart/form-data" class="blog-form" id="blogPostForm">
+      {% csrf_token %}
+      
+      <div class="form-section">
+        <label for="{{ form.title.id_for_label }}" class="form-label">
+          Title <span class="required">*</span>
+        </label>
+        {{ form.title }}
+        {% if form.title.errors %}
+          <div class="form-error">{{ form.title.errors }}</div>
+        {% endif %}
+      </div>
+
+      <div class="form-section">
+        <label for="{{ form.excerpt.id_for_label }}" class="form-label">
+          Excerpt (Optional)
+        </label>
+        {{ form.excerpt }}
+        <small class="form-help">A short preview text for your blog post (max 500 characters)</small>
+        {% if form.excerpt.errors %}
+          <div class="form-error">{{ form.excerpt.errors }}</div>
+        {% endif %}
+      </div>
+
+      <div class="form-section">
+        <label for="{{ form.content.id_for_label }}" class="form-label">
+          Content <span class="required">*</span>
+        </label>
+        <div id="contentEditor" class="quill-editor-wrapper"></div>
+        <div style="display: none;">
+          {{ form.content }}
+        </div>
+        <small class="form-help">Write your blog post content using the rich text editor above</small>
+        {% if form.content.errors %}
+          <div class="form-error">{{ form.content.errors }}</div>
+        {% endif %}
+      </div>
+
+      <div class="form-row">
+        <div class="form-section">
+          <label for="{{ form.cover_image.id_for_label }}" class="form-label">
+            Cover Image (Optional)
+          </label>
+          {{ form.cover_image }}
+          {% if post and post.cover_image %}
+            <div class="current-cover-image">
+              <img src="{{ post.cover_image.url }}" alt="Current cover">
+              <small>Current cover image</small>
+            </div>
+          {% endif %}
+          <small class="form-help">Upload a cover image (max 5MB, JPG/PNG/WEBP)</small>
+          {% if form.cover_image.errors %}
+            <div class="form-error">{{ form.cover_image.errors }}</div>
+          {% endif %}
+        </div>
+
+        <div class="form-section">
+          <label class="form-label">
+            Cover Color
+          </label>
+          {{ form.cover_color }}
+          <div class="color-picker-grid">
+            {% for color_value, color_name in form.cover_color.field.choices %}
+              <button 
+                type="button" 
+                class="color-picker-item {% if form.cover_color.value == color_value %}selected{% endif %}"
+                data-color="{{ color_value }}"
+                style="background-color: {{ color_value }};"
+                title="{{ color_name }}"
+                aria-label="{{ color_name }}"
+              >
+                {% if form.cover_color.value == color_value %}
+                  <i class="fas fa-check"></i>
+                {% endif %}
+              </button>
+            {% endfor %}
+          </div>
+          <small class="form-help">Color used when no cover image is uploaded</small>
+          {% if form.cover_color.errors %}
+            <div class="form-error">{{ form.cover_color.errors }}</div>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="form-section">
+        <label class="form-label">Categories</label>
+        <div class="categories-grid">
+          {% for choice in form.categories %}
+            <label class="category-checkbox">
+              {{ choice.tag }}
+              <span>{{ choice.choice_label }}</span>
+            </label>
+          {% endfor %}
+        </div>
+        {% if form.categories.errors %}
+          <div class="form-error">{{ form.categories.errors }}</div>
+        {% endif %}
+      </div>
+
+      <div class="form-section">
+        <label for="{{ form.status.id_for_label }}" class="form-label">
+          Status
+        </label>
+        {{ form.status }}
+        <small class="form-help">Draft posts are only visible in your management page, not in public blog</small>
+        {% if form.status.errors %}
+          <div class="form-error">{{ form.status.errors }}</div>
+        {% endif %}
+      </div>
+
+      <div class="form-actions">
+        <a href="{% url 'general:dashboard_admin:blog' %}" class="btn-cancel">Cancel</a>
+        <button type="submit" class="btn-submit">
+          <i class="fas fa-save"></i> Save Post
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% block scripts %}
+{{ block.super }}
+<script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
+<script>
+// Prevent double initialization
+if (typeof window.blogQuillInitialized === 'undefined') {
+  window.blogQuillInitialized = false;
+}
+
+// Wait for both DOM and Quill to be ready
+(function() {
+  function initQuillEditor() {
+    // Prevent double initialization
+    if (window.blogQuillInitialized) {
+      return;
+    }
+    
+    // Check if Quill is loaded
+    if (typeof Quill === 'undefined') {
+      setTimeout(initQuillEditor, 100);
+      return;
+    }
+    
+    // Get the textarea - try multiple possible IDs
+    const contentTextarea = document.getElementById('id_content') || 
+                            document.querySelector('textarea[name="content"]');
+    const editorContainer = document.getElementById('contentEditor');
+    
+    if (!contentTextarea || !editorContainer) {
+      console.error('Could not find content textarea or editor container');
+      return;
+    }
+    
+    // Check if Quill is already initialized on this container
+    if (editorContainer.classList.contains('ql-container')) {
+      console.warn('Quill editor already initialized on this container');
+      return;
+    }
+    
+    // Hide the textarea completely
+    contentTextarea.style.display = 'none';
+    contentTextarea.style.visibility = 'hidden';
+    contentTextarea.style.position = 'absolute';
+    contentTextarea.style.left = '-9999px';
+    
+    // Set initial content if editing
+    const initialContent = contentTextarea.value || '';
+    
+      // Initialize Quill only once
+      try {
+        const quill = new Quill('#contentEditor', {
+          theme: 'snow',
+          modules: {
+            toolbar: [
+              [{ 'header': [1, 2, 3, false] }],
+              ['bold', 'italic', 'underline', 'strike'],
+              [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+              [{ 'script': 'sub'}, { 'script': 'super' }],
+              [{ 'indent': '-1'}, { 'indent': '+1' }],
+              [{ 'direction': 'rtl' }],
+              [{ 'color': [] }, { 'background': [] }],
+              [{ 'font': [] }],
+              [{ 'align': [] }],
+              ['link', 'image', 'video'],
+              ['clean']
+            ]
+          },
+          placeholder: 'Write your blog post content here...'
+        });
+        
+        // Mark as initialized
+        window.blogQuillInitialized = true;
+        
+        // Make the editor container clickable to focus
+        editorContainer.addEventListener('click', function(e) {
+          // Only focus if clicking on the container itself, not on toolbar or editor content
+          if (e.target === editorContainer || e.target.closest('.ql-container')) {
+            quill.focus();
+          }
+        });
+        
+        // Set initial content
+        if (initialContent) {
+          quill.root.innerHTML = initialContent;
+        }
+        
+        // Update textarea on content change
+        quill.on('text-change', function() {
+          contentTextarea.value = quill.root.innerHTML;
+        });
+        
+        // Update textarea before form submission (as backup)
+        const form = document.getElementById('blogPostForm');
+        if (form) {
+          form.addEventListener('submit', function(e) {
+            contentTextarea.value = quill.root.innerHTML;
+          });
+        }
+    } catch (error) {
+      console.error('Error initializing Quill editor:', error);
+    }
+    
+    // Cover color picker
+    const colorInput = document.getElementById('cover-color-input') || 
+                       document.getElementById('id_cover_color') ||
+                       document.querySelector('input[name="cover_color"]');
+    const colorItems = document.querySelectorAll('.color-picker-item');
+    
+    if (colorInput && colorItems.length > 0) {
+      // Set initial value if not set
+      if (!colorInput.value) {
+        const firstColor = colorItems[0].getAttribute('data-color');
+        if (firstColor) {
+          colorInput.value = firstColor;
+          // Mark first color as selected
+          colorItems[0].classList.add('selected');
+          colorItems[0].innerHTML = '<i class="fas fa-check"></i>';
+        }
+      } else {
+        // Mark the current value as selected
+        colorItems.forEach(item => {
+          if (item.getAttribute('data-color') === colorInput.value) {
+            item.classList.add('selected');
+            item.innerHTML = '<i class="fas fa-check"></i>';
+          }
+        });
+      }
+      
+      // Handle color selection
+      colorItems.forEach(item => {
+        item.addEventListener('click', function() {
+          const selectedColor = this.getAttribute('data-color');
+          
+          // Update hidden input
+          colorInput.value = selectedColor;
+          
+          // Update visual selection
+          colorItems.forEach(i => {
+            i.classList.remove('selected');
+            i.innerHTML = '';
+          });
+          this.classList.add('selected');
+          this.innerHTML = '<i class="fas fa-check"></i>';
+        });
+      });
+    }
+  }
+  
+  // Start initialization when DOM is ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initQuillEditor);
+  } else {
+    initQuillEditor();
+  }
+})();
+</script>
+{% endblock %}
+
+<style>
+.blog-form-page {
+  padding: 40px;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.blog-form-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+}
+
+.blog-form-header h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text-dark);
+  margin: 0;
+}
+
+.btn-back {
+  padding: 10px 20px;
+  background: #f3f4f6;
+  color: var(--text-dark);
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: background 0.2s;
+}
+
+.btn-back:hover {
+  background: #e5e7eb;
+}
+
+.blog-form {
+  background: white;
+  padding: 40px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.form-section {
+  margin-bottom: 30px;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+.form-label {
+  display: block;
+  font-weight: 600;
+  color: var(--text-dark);
+  margin-bottom: 8px;
+  font-size: 0.95rem;
+}
+
+.required {
+  color: #ef4444;
+}
+
+.form-control {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-family: inherit;
+  transition: border-color 0.2s;
+}
+
+.form-control:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+}
+
+.form-help {
+  display: block;
+  margin-top: 6px;
+  font-size: 0.85rem;
+  color: var(--text-light);
+}
+
+.form-error {
+  margin-top: 6px;
+  color: #ef4444;
+  font-size: 0.85rem;
+}
+
+.quill-editor-wrapper {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  min-height: 400px;
+  display: flex;
+  flex-direction: column;
+  cursor: text;
+}
+
+.quill-editor-wrapper .ql-toolbar {
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+  border-bottom: 1px solid #e5e7eb;
+  flex-shrink: 0;
+}
+
+.quill-editor-wrapper .ql-container {
+  flex: 1;
+  font-size: 0.95rem;
+  border-bottom-left-radius: 8px;
+  border-bottom-right-radius: 8px;
+  border: none;
+  display: flex;
+  flex-direction: column;
+}
+
+.quill-editor-wrapper .ql-editor {
+  flex: 1;
+  min-height: 400px;
+  padding: 16px;
+}
+
+.quill-editor-wrapper .ql-editor.ql-blank::before {
+  font-style: normal;
+  color: #9ca3af;
+}
+
+.current-cover-image {
+  margin-top: 12px;
+  padding: 12px;
+  background: #f9fafb;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.current-cover-image img {
+  max-width: 100%;
+  max-height: 200px;
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+
+.current-cover-image small {
+  display: block;
+  color: var(--text-light);
+  font-size: 0.85rem;
+}
+
+.color-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(50px, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+  max-width: 400px;
+}
+
+.color-picker-item {
+  width: 50px;
+  height: 50px;
+  border-radius: 8px;
+  border: 3px solid #e5e7eb;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  position: relative;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.color-picker-item:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+  border-color: #cbd5e1;
+}
+
+.color-picker-item.selected {
+  border-color: #10b981;
+  border-width: 4px;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2), 0 4px 8px rgba(0,0,0,0.2);
+  transform: scale(1.05);
+}
+
+.color-picker-item i {
+  color: white;
+  font-size: 1.2rem;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.8));
+}
+
+.categories-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+  padding: 16px;
+  background: #f9fafb;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.category-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.category-checkbox:hover {
+  background: white;
+}
+
+.category-checkbox input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+.category-checkbox span {
+  font-size: 0.9rem;
+  color: var(--text-dark);
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding-top: 30px;
+  border-top: 1px solid #e5e7eb;
+  margin-top: 30px;
+}
+
+.btn-cancel {
+  padding: 12px 24px;
+  background: #f3f4f6;
+  color: var(--text-dark);
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: 500;
+  transition: background 0.2s;
+}
+
+.btn-cancel:hover {
+  background: #e5e7eb;
+}
+
+.btn-submit {
+  padding: 12px 24px;
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: background 0.2s;
+}
+
+.btn-submit:hover {
+  background: #059669;
+}
+
+@media (max-width: 768px) {
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+  
+  .categories-grid {
+    grid-template-columns: 1fr;
+  }
+}
+</style>
+{% endblock %}

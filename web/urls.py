@@ -10,4 +10,6 @@ urlpatterns = [
     path("terms/", views.terms, name="terms"),
     path("privacy/", views.privacy, name="privacy"),
     path("mentor/<int:user_id>/", views.mentor_profile_detail, name="mentor_profile_detail"),
+    path("blog/", views.blog_list, name="blog"),
+    path("blog/<slug:slug>/", views.blog_detail, name="blog_detail"),
 ]

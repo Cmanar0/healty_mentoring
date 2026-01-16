@@ -2,7 +2,10 @@ from django.db import models
 from django.utils import timezone
 from django.conf import settings
 from django.utils.crypto import get_random_string
+from django.utils.text import slugify
+from django.core.validators import FileExtensionValidator
 import uuid
+import os
 from datetime import timedelta
 
 class Session(models.Model):
@@ -494,3 +497,134 @@ class TicketComment(models.Model):
     
     def __str__(self):
         return f"Comment on Ticket #{self.ticket.id} by {self.user.email}"
+
+
+def blog_cover_image_upload_to(instance, filename: str) -> str:
+    """Upload path for blog post cover images"""
+    _, ext = os.path.splitext(filename or "")
+    ext = (ext or "").lower()
+    if ext and len(ext) > 10:
+        ext = ext[:10]
+    return f"blog_covers/{uuid.uuid4().hex}{ext}"
+
+
+class BlogPost(models.Model):
+    """Blog post model for mentors and admins"""
+    STATUS_CHOICES = [
+        ('draft', 'Draft'),
+        ('published', 'Published'),
+    ]
+    
+    # Basic fields
+    title = models.CharField(max_length=200)
+    slug = models.SlugField(max_length=250, unique=True, blank=True, db_index=True)
+    content = models.TextField(help_text="Rich text content of the blog post")
+    excerpt = models.TextField(max_length=500, blank=True, help_text="Short excerpt for preview (optional)")
+    
+    # Author
+    author = models.ForeignKey(
+        "accounts.CustomUser",
+        on_delete=models.CASCADE,
+        related_name="blog_posts",
+        help_text="Author of the blog post"
+    )
+    
+    # Cover image
+    cover_image = models.ImageField(
+        upload_to=blog_cover_image_upload_to,
+        blank=True,
+        null=True,
+        max_length=255,
+        validators=[FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png', 'webp'])],
+        help_text="Cover image for the blog post (max 5MB)"
+    )
+    
+    # Cover image placeholder color (if no image)
+    cover_color = models.CharField(
+        max_length=7,
+        default='#10b981',
+        help_text="Hex color for cover placeholder (e.g., #10b981)"
+    )
+    
+    # Categories (multiple selection stored as JSON array)
+    categories = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="Array of category IDs from predefined categories"
+    )
+    
+    # Status
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default='draft',
+        db_index=True,
+        help_text="Draft posts are only visible in management pages, not in public blog"
+    )
+    
+    # Timestamps
+    created_at = models.DateTimeField(default=timezone.now, db_index=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    published_at = models.DateTimeField(blank=True, null=True, db_index=True, help_text="Publication date (set when status changes to published)")
+    
+    class Meta:
+        verbose_name = "Blog Post"
+        verbose_name_plural = "Blog Posts"
+        ordering = ['-published_at', '-created_at']
+        indexes = [
+            models.Index(fields=['status', '-published_at']),
+            models.Index(fields=['author', '-created_at']),
+            models.Index(fields=['slug']),
+        ]
+    
+    def save(self, *args, **kwargs):
+        # Auto-generate slug from title if not provided
+        if not self.slug:
+            base_slug = slugify(self.title)
+            slug = base_slug
+            counter = 1
+            while BlogPost.objects.filter(slug=slug).exists():
+                slug = f"{base_slug}-{counter}"
+                counter += 1
+            self.slug = slug
+        
+        # Set published_at when status changes to published
+        if self.status == 'published' and not self.published_at:
+            self.published_at = timezone.now()
+        elif self.status == 'draft' and self.published_at:
+            # Keep published_at even if reverted to draft (for history)
+            pass
+        
+        super().save(*args, **kwargs)
+    
+    def __str__(self):
+        return f"{self.title} ({self.get_status_display()})"
+    
+    @property
+    def is_published(self):
+        """Check if post is published"""
+        return self.status == 'published'
+    
+    @property
+    def author_name(self):
+        """Get author's display name"""
+        if hasattr(self.author, 'mentor_profile'):
+            profile = self.author.mentor_profile
+            return f"{profile.first_name} {profile.last_name}"
+        elif hasattr(self.author, 'profile'):
+            profile = self.author.profile
+            if hasattr(profile, 'first_name') and hasattr(profile, 'last_name'):
+                return f"{profile.first_name} {profile.last_name}"
+        return self.author.email
+    
+    @property
+    def author_is_mentor(self):
+        """Check if author is a mentor (has mentor profile)"""
+        return hasattr(self.author, 'mentor_profile')
+    
+    @property
+    def author_is_admin(self):
+        """Check if author is an admin"""
+        if hasattr(self.author, 'profile'):
+            return getattr(self.author.profile, 'role', None) == 'admin'
+        return False

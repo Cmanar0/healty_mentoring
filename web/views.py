@@ -3,7 +3,9 @@ from django.http import JsonResponse
 from django.db.models import Q, Min, Max
 from django.db.models.functions import Coalesce
 from django.db import models
+from django.core.paginator import Paginator
 from accounts.models import CustomUser, MentorProfile
+from general.models import BlogPost
 from dashboard_mentor.constants import PREDEFINED_CATEGORIES, PREDEFINED_LANGUAGES, QUALIFICATION_TYPES
 import json
 
@@ -403,4 +405,96 @@ def mentor_profile_detail(request, user_id):
         "predefined_languages": PREDEFINED_LANGUAGES,
         "qualification_types": QUALIFICATION_TYPES,
         "is_first_session": is_first_session,
+    })
+
+
+def blog_list(request):
+    """Public blog list page with filtering by mentor and category"""
+    # Only show published posts
+    posts = BlogPost.objects.filter(status='published').order_by('-published_at', '-created_at')
+    
+    # Filter by mentor (from query parameter)
+    mentor_id = request.GET.get('mentor')
+    mentor_filter = None
+    if mentor_id:
+        try:
+            mentor_user = CustomUser.objects.get(id=int(mentor_id))
+            if hasattr(mentor_user, 'mentor_profile'):
+                posts = posts.filter(author=mentor_user)
+                mentor_filter = mentor_user.mentor_profile
+        except (ValueError, CustomUser.DoesNotExist):
+            pass
+    
+    # Filter by category
+    category_filter = request.GET.get('category', '')
+    if category_filter:
+        # Filter posts where categories JSONField contains the category ID
+        posts = posts.filter(categories__contains=[category_filter])
+    
+    # Search functionality
+    search_query = request.GET.get('search', '').strip()
+    if search_query:
+        posts = posts.filter(
+            Q(title__icontains=search_query) |
+            Q(excerpt__icontains=search_query) |
+            Q(content__icontains=search_query)
+        )
+    
+    # Pagination
+    paginator = Paginator(posts, 12)  # 12 posts per page
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    # Get list of mentors who have published posts (for filter dropdown)
+    mentors_with_posts = CustomUser.objects.filter(
+        blog_posts__status='published'
+    ).distinct().select_related('mentor_profile')
+    
+    return render(request, "web/blog_list.html", {
+        "page_obj": page_obj,
+        "posts": page_obj,
+        "predefined_categories": PREDEFINED_CATEGORIES,
+        "mentors_with_posts": mentors_with_posts,
+        "mentor_filter": mentor_filter,
+        "category_filter": category_filter,
+        "search_query": search_query,
+    })
+
+
+def blog_detail(request, slug):
+    """Public blog post detail page with SEO meta tags"""
+    post = get_object_or_404(BlogPost, slug=slug, status='published')
+    
+    # Get related posts (same categories, excluding current post)
+    related_posts = BlogPost.objects.filter(
+        status='published',
+        categories__overlap=post.categories
+    ).exclude(id=post.id).distinct()[:3]
+    
+    # If not enough related posts, get recent posts
+    if related_posts.count() < 3:
+        recent_posts = BlogPost.objects.filter(
+            status='published'
+        ).exclude(id=post.id).order_by('-published_at')[:3]
+        related_posts = list(related_posts) + list(recent_posts[:3 - related_posts.count()])
+    
+    # Build absolute URL for cover image (for SEO)
+    cover_image_url = None
+    if post.cover_image:
+        # Use request.build_absolute_uri to get the full URL
+        cover_image_url = request.build_absolute_uri(post.cover_image.url)
+    
+    # Get author info
+    author_name = post.author_name
+    author_is_mentor = post.author_is_mentor
+    author_user_id = post.author.id if author_is_mentor else None
+    
+    return render(request, "web/blog_detail.html", {
+        "post": post,
+        "related_posts": related_posts,
+        "cover_image_url": cover_image_url,
+        "author_name": author_name,
+        "author_is_mentor": author_is_mentor,
+        "author_user_id": author_user_id,
+        "predefined_categories": PREDEFINED_CATEGORIES,
     })
