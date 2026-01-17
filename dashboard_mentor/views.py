@@ -1020,6 +1020,22 @@ def profile(request):
             sessions=list(profile.sessions.all())
         )
     
+    # Get last 3 published reviews for sidebar
+    from general.models import Review
+    last_3_reviews = Review.objects.filter(
+        mentor=profile,
+        status='published'
+    ).select_related('client', 'client__user', 'reply').order_by('-published_at')[:3]
+    
+    total_reviews = Review.objects.filter(
+        mentor=profile,
+        status='published'
+    ).count()
+    
+    has_3_reviews = total_reviews >= 3
+    # Calculate progress percentage (max 100%)
+    reviews_progress_percentage = min(100, (total_reviews / 3.0) * 100) if total_reviews > 0 else 0
+    
     return render(request, 'dashboard_mentor/profile.html', {
         'user': user,
         'profile': profile,
@@ -1031,6 +1047,10 @@ def profile(request):
         'predefined_tags': PREDEFINED_TAGS,
         'predefined_languages': PREDEFINED_LANGUAGES,
         'predefined_categories': PREDEFINED_CATEGORIES,
+        'last_3_reviews': last_3_reviews,
+        'total_reviews': total_reviews,
+        'has_3_reviews': has_3_reviews,
+        'reviews_progress_percentage': reviews_progress_percentage,
         'qualification_types': QUALIFICATION_TYPES,
         'has_collisions_now': has_collisions_now,
         'debug': settings.DEBUG,
@@ -4013,3 +4033,269 @@ def blog_delete(request, post_id):
     
     messages.success(request, 'Blog post deleted successfully.')
     return redirect('general:dashboard_mentor:blog_list')
+
+
+# ============================================================================
+# REVIEWS SYSTEM
+# ============================================================================
+
+@login_required
+def client_detail(request, client_id):
+    """Mentor's view of a specific client detail page"""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        return redirect('general:index')
+    
+    mentor_profile = request.user.mentor_profile
+    client_profile = get_object_or_404(UserProfile, id=client_id)
+    
+    # Get relationship
+    relationship = MentorClientRelationship.objects.filter(
+        mentor=mentor_profile,
+        client=client_profile
+    ).first()
+    
+    if not relationship:
+        messages.error(request, 'Client relationship not found.')
+        return redirect('general:dashboard_mentor:clients_list')
+    
+    # Get all sessions between mentor and client
+    from general.models import Session
+    sessions = mentor_profile.sessions.filter(
+        attendees=client_profile.user
+    ).order_by('-start_datetime').select_related('created_by')
+    
+    # Check if first session is completed
+    has_completed_session = sessions.filter(status='completed').exists()
+    
+    # Get review if exists
+    from general.models import Review
+    review = Review.objects.filter(
+        mentor=mentor_profile,
+        client=client_profile
+    ).select_related('reply').first()
+    
+    # Check if can request review
+    can_request_review = False
+    request_error = None
+    
+    if not relationship.first_session_scheduled:
+        request_error = "First session not scheduled"
+    elif not has_completed_session:
+        request_error = "No completed sessions"
+    elif relationship.review_provided:
+        request_error = "Review already provided"
+    elif relationship.review_requested_at:
+        # Check rate limit (24 hours)
+        time_since_request = timezone.now() - relationship.review_requested_at
+        if time_since_request < timedelta(days=1):
+            hours_remaining = 24 - int(time_since_request.total_seconds() / 3600)
+            request_error = f"Review already requested today. Please wait {hours_remaining} more hour(s)."
+        else:
+            can_request_review = True
+    else:
+        can_request_review = True
+    
+    return render(request, 'dashboard_mentor/client_detail.html', {
+        'client_profile': client_profile,
+        'relationship': relationship,
+        'sessions': sessions,
+        'has_completed_session': has_completed_session,
+        'review': review,
+        'can_request_review': can_request_review,
+        'request_error': request_error,
+    })
+
+
+@login_required
+@require_POST
+def request_review(request, client_id):
+    """AJAX endpoint for mentor to request review from client"""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+    
+    mentor_profile = request.user.mentor_profile
+    client_profile = get_object_or_404(UserProfile, id=client_id)
+    
+    # Get relationship
+    relationship = MentorClientRelationship.objects.filter(
+        mentor=mentor_profile,
+        client=client_profile
+    ).first()
+    
+    if not relationship:
+        return JsonResponse({'success': False, 'error': 'Relationship not found'}, status=404)
+    
+    # Check eligibility
+    if not relationship.first_session_scheduled:
+        return JsonResponse({'success': False, 'error': 'First session not scheduled'}, status=400)
+    
+    # Check if completed session exists
+    from general.models import Session
+    has_completed_session = mentor_profile.sessions.filter(
+        attendees=client_profile.user,
+        status='completed'
+    ).exists()
+    
+    if not has_completed_session:
+        return JsonResponse({'success': False, 'error': 'No completed sessions'}, status=400)
+    
+    if relationship.review_provided:
+        return JsonResponse({'success': False, 'error': 'Review already provided'}, status=400)
+    
+    # Check rate limit
+    if relationship.review_requested_at:
+        time_since_request = timezone.now() - relationship.review_requested_at
+        if time_since_request < timedelta(days=1):
+            hours_remaining = 24 - int(time_since_request.total_seconds() / 3600)
+            return JsonResponse({
+                'success': False,
+                'error': f'Review already requested today. Please wait {hours_remaining} more hour(s).'
+            }, status=400)
+    
+    # Update relationship
+    relationship.review_requested_at = timezone.now()
+    relationship.save(update_fields=['review_requested_at'])
+    
+    # Build review URL - redirect to mentor detail page where review can be written
+    site_domain = EmailService.get_site_domain()
+    from django.urls import reverse
+    review_url = f"{site_domain}{reverse('general:dashboard_user:mentor_detail', args=[mentor_profile.user.id])}"
+    
+    # Send email
+    client_name = client_profile.first_name or "there"
+    mentor_name = f"{mentor_profile.first_name} {mentor_profile.last_name}"
+    
+    try:
+        EmailService.send_email(
+            subject=f"{mentor_name} would like your feedback",
+            recipient_email=client_profile.user.email,
+            template_name='review_request',
+            context={
+                'mentor_name': mentor_name,
+                'client_name': client_name,
+                'review_url': review_url,
+                'mentor_id': mentor_profile.user.id,
+            }
+        )
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f'Error sending review request email: {str(e)}')
+        return JsonResponse({'success': False, 'error': 'Failed to send email'}, status=500)
+    
+    return JsonResponse({
+        'success': True,
+        'message': 'Review request sent successfully'
+    })
+
+
+def view_reviews_secure(request, uidb64, token):
+    """Secure link handler for mentor review emails - ensures correct user is logged in"""
+    from django.utils.http import urlsafe_base64_decode
+    from django.utils.encoding import force_str
+    from django.contrib.auth.tokens import default_token_generator
+    from django.contrib.auth import logout
+    from django.urls import reverse
+    
+    # Validate token first
+    try:
+        user_id = force_str(urlsafe_base64_decode(uidb64))
+        user = get_object_or_404(CustomUser, id=user_id)
+        
+        if not default_token_generator.check_token(user, token):
+            messages.error(request, 'Invalid or expired review link.')
+            return redirect('general:index')
+    except Exception:
+        messages.error(request, 'Invalid review link.')
+        return redirect('general:index')
+    
+    # Check if logout is requested (from email link)
+    if request.GET.get('logout') == 'true' and request.user.is_authenticated:
+        # If wrong user is logged in, log them out
+        if str(request.user.id) != user_id:
+            logout(request)
+            messages.info(request, 'Please log in with the correct account to view your reviews.')
+        # If correct user is already logged in, just redirect
+        elif request.user.id == user.id:
+            return redirect('general:dashboard_mentor:reviews_management')
+    
+    # Ensure correct user is logged in
+    if not request.user.is_authenticated or request.user.id != user.id:
+        messages.warning(request, 'Please log in to view your reviews.')
+        # Preserve the logout parameter in the next URL if it exists
+        next_url = reverse("general:dashboard_mentor:view_reviews_secure", args=[uidb64, token])
+        if request.GET.get('logout') == 'true':
+            next_url += '?logout=true'
+        return redirect(f'/accounts/login/?next={next_url}')
+    
+    # Redirect to reviews management page
+    return redirect('general:dashboard_mentor:reviews_management')
+
+
+@login_required
+def reviews_management(request):
+    """Mentor's reviews management page"""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        return redirect('general:index')
+    
+    mentor_profile = request.user.mentor_profile
+    
+    from general.models import Review
+    from django.core.paginator import Paginator
+    
+    reviews = Review.objects.filter(
+        mentor=mentor_profile
+    ).select_related('client', 'client__user', 'reply').order_by('-published_at', '-created_at')
+    
+    paginator = Paginator(reviews, 10)  # 10 reviews per page
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    return render(request, 'dashboard_mentor/reviews.html', {
+        'page_obj': page_obj,
+        'reviews': page_obj,
+    })
+
+
+@login_required
+@require_POST
+def review_reply(request, review_id):
+    """AJAX endpoint for mentor to write/edit reply to review"""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+    
+    mentor_profile = request.user.mentor_profile
+    
+    from general.models import Review, ReviewReply
+    review = get_object_or_404(Review, id=review_id, mentor=mentor_profile)
+    
+    # Get reply text from request
+    try:
+        data = json.loads(request.body)
+        reply_text = data.get('text', '').strip()
+    except json.JSONDecodeError:
+        reply_text = request.POST.get('text', '').strip()
+    
+    if not reply_text:
+        return JsonResponse({'success': False, 'error': 'Reply text is required'}, status=400)
+    
+    # Create or update reply
+    reply, created = ReviewReply.objects.get_or_create(
+        review=review,
+        defaults={'text': reply_text}
+    )
+    
+    if not created:
+        reply.text = reply_text
+        reply.save()
+    
+    return JsonResponse({
+        'success': True,
+        'message': 'Reply saved successfully',
+        'reply': {
+            'id': reply.id,
+            'text': reply.text,
+            'created_at': reply.created_at.isoformat(),
+            'updated_at': reply.updated_at.isoformat(),
+        }
+    })

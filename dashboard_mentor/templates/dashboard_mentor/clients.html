@@ -20,11 +20,12 @@
           <div class="client-col-email">Email</div>
           <div class="client-col-status">Status</div>
           <div class="client-col-sessions">Sessions</div>
-          <div class="client-col-earnings">Earnings</div>
+          <div class="client-col-review">Review</div>
           <div class="client-col-actions"></div>
         </div>
         <div class="clients-table-body">
           {% for relationship in relationships %}
+            <a href="{% url 'general:dashboard_mentor:client_detail' relationship.client.id %}" class="client-row-link">
             <div class="client-row {% if relationship.status == 'inactive' and not relationship.confirmed %}pending{% endif %}">
               <div class="client-col-name">
                 {% if relationship.client.first_name or relationship.client.last_name %}
@@ -52,7 +53,13 @@
                 {% endif %}
               </div>
               <div class="client-col-sessions">{{ relationship.sessions_count }}</div>
-              <div class="client-col-earnings">€{{ relationship.total_earnings|floatformat:2 }}</div>
+              <div class="client-col-review">
+                {% if relationship.review_provided %}
+                  <i class="fas fa-check-circle" style="color: #10b981; font-size: 1.2rem;"></i>
+                {% else %}
+                  <span style="color: #9ca3af;">—</span>
+                {% endif %}
+              </div>
               <div class="client-col-actions">
                 <div class="client-actions-dropdown">
                   <button class="client-actions-btn" data-relationship-id="{{ relationship.id }}">
@@ -71,6 +78,7 @@
                 </div>
               </div>
             </div>
+            </a>
           {% endfor %}
         </div>
       </div>
@@ -238,6 +246,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const actionsBtn = e.target.closest('.client-actions-btn');
         if (actionsBtn) {
             e.stopPropagation();
+            e.preventDefault();
             const relationshipId = actionsBtn.getAttribute('data-relationship-id');
             const menu = document.getElementById(`actions-menu-${relationshipId}`);
             const allMenus = document.querySelectorAll('.client-actions-menu');
@@ -260,6 +269,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const resendBtn = e.target.closest('.resend-btn');
         if (resendBtn) {
             e.stopPropagation();
+            e.preventDefault();
             const relationshipId = resendBtn.getAttribute('data-relationship-id');
             resendInvitation(relationshipId);
             return;
@@ -269,6 +279,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const deleteBtn = e.target.closest('.delete-btn');
         if (deleteBtn) {
             e.stopPropagation();
+            e.preventDefault();
             const relationshipId = deleteBtn.getAttribute('data-relationship-id');
             deleteClient(relationshipId);
             return;
@@ -425,6 +436,12 @@ function deleteClient(relationshipId) {
   position: relative;
 }
 
+.client-row-link {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+
 .client-row {
   display: grid;
   grid-template-columns: 2fr 2fr 1.5fr 1fr 1fr 60px;
@@ -434,6 +451,7 @@ function deleteClient(relationshipId) {
   transition: background 0.2s ease;
   align-items: center;
   position: relative;
+  cursor: pointer;
 }
 
 .client-row:last-child {
@@ -458,6 +476,12 @@ function deleteClient(relationshipId) {
 .client-actions-dropdown {
   position: relative;
   z-index: 10;
+}
+
+.client-actions-dropdown button,
+.client-actions-menu {
+  position: relative;
+  z-index: 20;
 }
 
 .client-actions-btn {
@@ -585,10 +609,15 @@ function deleteClient(relationshipId) {
   color: #991b1b;
 }
 
-.client-col-sessions,
-.client-col-earnings {
+.client-col-sessions {
   color: var(--text-dark);
   font-weight: 500;
+}
+
+.client-col-review {
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .no-clients {

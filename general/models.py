@@ -3,7 +3,7 @@ from django.utils import timezone
 from django.conf import settings
 from django.utils.crypto import get_random_string
 from django.utils.text import slugify
-from django.core.validators import FileExtensionValidator
+from django.core.validators import FileExtensionValidator, MinValueValidator, MaxValueValidator
 import uuid
 import os
 from datetime import timedelta
@@ -635,3 +635,56 @@ class BlogPost(models.Model):
         if hasattr(self.author, 'profile'):
             return getattr(self.author.profile, 'role', None) == 'admin'
         return False
+
+
+class Review(models.Model):
+    """Review model for clients to review mentors"""
+    STATUS_CHOICES = [
+        ('draft', 'Draft'),
+        ('published', 'Published'),
+    ]
+    
+    mentor = models.ForeignKey("accounts.MentorProfile", on_delete=models.CASCADE, related_name="client_reviews")
+    client = models.ForeignKey("accounts.UserProfile", on_delete=models.CASCADE, related_name="reviews")
+    rating = models.PositiveIntegerField(help_text="Rating from 1 to 5 stars", validators=[MinValueValidator(1), MaxValueValidator(5)])
+    text = models.TextField(help_text="Review text")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft')
+    published_at = models.DateTimeField(blank=True, null=True, help_text="When the review was published")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = "Review"
+        verbose_name_plural = "Reviews"
+        unique_together = ['mentor', 'client']  # One review per client-mentor pair
+        ordering = ['-published_at', '-created_at']
+    
+    def save(self, *args, **kwargs):
+        # Set published_at when status changes to published
+        if self.status == 'published' and not self.published_at:
+            self.published_at = timezone.now()
+        super().save(*args, **kwargs)
+    
+    def __str__(self):
+        return f"Review by {self.client.first_name} {self.client.last_name} for {self.mentor.first_name} {self.mentor.last_name} ({self.rating} stars)"
+    
+    @property
+    def is_published(self):
+        """Check if review is published"""
+        return self.status == 'published'
+
+
+class ReviewReply(models.Model):
+    """Reply from mentor to a review"""
+    review = models.OneToOneField(Review, on_delete=models.CASCADE, related_name="reply")
+    text = models.TextField(help_text="Reply text")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = "Review Reply"
+        verbose_name_plural = "Review Replies"
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"Reply to review #{self.review.id}"

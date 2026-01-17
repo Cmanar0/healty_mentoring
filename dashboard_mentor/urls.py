@@ -18,6 +18,8 @@ urlpatterns = [
     path('my-sessions/client-suggestions/', views.client_suggestions, name='client_suggestions'),
     path('my-sessions/delete-availability-slot/', views.delete_availability_slot, name='delete_availability_slot'),
     path('clients/', views.clients_list, name='clients_list'),
+    path('clients/<int:client_id>/', views.client_detail, name='client_detail'),
+    path('clients/<int:client_id>/request-review/', views.request_review, name='request_review'),
     path('invite-client/', views.invite_client, name='invite_client'),
     path('my-sessions/invite-session/', views.invite_session, name='invite_session'),
     path('my-sessions/schedule-session/', views.schedule_session, name='schedule_session'),
@@ -38,5 +40,8 @@ urlpatterns = [
     path('blog/create/', views.blog_create, name='blog_create'),
     path('blog/<int:post_id>/edit/', views.blog_edit, name='blog_edit'),
     path('blog/<int:post_id>/delete/', views.blog_delete, name='blog_delete'),
+    path('profile/reviews/', views.reviews_management, name='reviews_management'),
+    path('reviews/<int:review_id>/reply/', views.review_reply, name='review_reply'),
+    path('reviews/secure/<str:uidb64>/<str:token>/', views.view_reviews_secure, name='view_reviews_secure'),
 ]
 

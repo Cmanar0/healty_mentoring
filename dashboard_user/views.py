@@ -11,6 +11,7 @@ from django.views.decorators.http import require_POST, require_http_methods
 from django.views.decorators.csrf import csrf_exempt
 from django.core.paginator import Paginator
 from general.models import Notification
+from general.email_service import EmailService
 import json
 from decimal import Decimal
 
@@ -600,11 +601,27 @@ def mentors_list(request):
         return redirect('general:index')
     
     from accounts.models import MentorClientRelationship
+    from general.models import Review
     
-    user_profile = request.user.profile
+    user_profile = request.user.user_profile
     relationships = MentorClientRelationship.objects.filter(
         client=user_profile
     ).select_related('mentor', 'mentor__user').order_by('-created_at')
+    
+    # Get published reviews for each mentor
+    mentor_ids = [rel.mentor.id for rel in relationships]
+    published_reviews = Review.objects.filter(
+        client=user_profile,
+        mentor_id__in=mentor_ids,
+        status='published'
+    ).values_list('mentor_id', flat=True)
+    
+    # Create a set for quick lookup
+    mentors_with_reviews = set(published_reviews)
+    
+    # Add review status to each relationship
+    for relationship in relationships:
+        relationship.has_published_review = relationship.mentor.id in mentors_with_reviews
     
     return render(request, 'dashboard_user/mentors.html', {
         'relationships': relationships,
@@ -1555,4 +1572,452 @@ def notification_modal_detail(request, notification_id):
     # If GET, return HTML template for modal content
     return render(request, 'general/notifications/modal_content.html', {
         'notification': notification,
+    })
+
+
+# ============================================================================
+# REVIEWS SYSTEM
+# ============================================================================
+
+@login_required
+def mentor_detail(request, mentor_id):
+    """User's view of a specific mentor detail page"""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'user':
+        return redirect('general:index')
+    
+    user_profile = request.user.user_profile
+    mentor_user = get_object_or_404(CustomUser, id=mentor_id)
+    
+    try:
+        mentor_profile = mentor_user.mentor_profile
+    except AttributeError:
+        messages.error(request, 'Mentor profile not found.')
+        return redirect('general:dashboard_user:mentors_list')
+    
+    # Get relationship
+    relationship = MentorClientRelationship.objects.filter(
+        mentor=mentor_profile,
+        client=user_profile
+    ).first()
+    
+    # Get all sessions between user and mentor
+    from general.models import Session
+    sessions = mentor_profile.sessions.filter(
+        attendees=request.user
+    ).order_by('-start_datetime').select_related('created_by')
+    
+    # Check if first session is completed
+    has_completed_session = sessions.filter(status='completed').exists()
+    
+    # Get review if exists
+    from general.models import Review
+    review = Review.objects.filter(
+        mentor=mentor_profile,
+        client=user_profile
+    ).select_related('reply').first()
+    
+    return render(request, 'dashboard_user/mentor_detail.html', {
+        'mentor_user': mentor_user,
+        'mentor_profile': mentor_profile,
+        'relationship': relationship,
+        'sessions': sessions,
+        'has_completed_session': has_completed_session,
+        'review': review,
+    })
+
+
+@login_required
+def write_review(request, mentor_id, uid, token):
+    """User review writing page (from email link) - redirects to mentor detail page"""
+    # Simply redirect to mentor detail page where review can be written
+    # The mentor_detail page already has all the review functionality
+    return redirect('general:dashboard_user:mentor_detail', mentor_id=mentor_id)
+
+
+@login_required
+def create_edit_review(request, review_id=None):
+    """AJAX endpoint for user to create or edit review"""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'user':
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+    
+    # Only allow POST and PUT methods
+    if request.method not in ['POST', 'PUT']:
+        return JsonResponse({'success': False, 'error': 'Method not allowed'}, status=405)
+    
+    user_profile = request.user.user_profile
+    
+    try:
+        data = json.loads(request.body)
+        mentor_id = data.get('mentor_id')
+        rating = data.get('rating')
+        text = data.get('text', '').strip()
+        publish = data.get('publish', False)  # Flag to publish immediately
+    except json.JSONDecodeError:
+        mentor_id = request.POST.get('mentor_id')
+        rating = request.POST.get('rating')
+        text = request.POST.get('text', '').strip()
+        publish = request.POST.get('publish', 'false').lower() == 'true'
+    
+    if not mentor_id:
+        return JsonResponse({'success': False, 'error': 'Mentor ID is required'}, status=400)
+    
+    try:
+        mentor_user = CustomUser.objects.get(id=mentor_id)
+        mentor_profile = mentor_user.mentor_profile
+    except (CustomUser.DoesNotExist, AttributeError):
+        return JsonResponse({'success': False, 'error': 'Mentor not found'}, status=404)
+    
+    # Validate rating
+    try:
+        rating = int(rating)
+        if rating < 1 or rating > 5:
+            return JsonResponse({'success': False, 'error': 'Rating must be between 1 and 5'}, status=400)
+    except (ValueError, TypeError):
+        return JsonResponse({'success': False, 'error': 'Invalid rating'}, status=400)
+    
+    if not text:
+        return JsonResponse({'success': False, 'error': 'Review text is required'}, status=400)
+    
+    # Check relationship
+    relationship = MentorClientRelationship.objects.filter(
+        mentor=mentor_profile,
+        client=user_profile
+    ).first()
+    
+    if not relationship:
+        return JsonResponse({'success': False, 'error': 'No relationship found'}, status=404)
+    
+    # Check if at least one session is completed
+    from general.models import Session
+    has_completed_session = mentor_profile.sessions.filter(
+        attendees=request.user,
+        status='completed'
+    ).exists()
+    
+    if not has_completed_session:
+        return JsonResponse({'success': False, 'error': 'You must complete at least one session before writing a review'}, status=400)
+    
+    # Create review (no updates allowed)
+    from general.models import Review
+    
+    # Check if review already exists
+    existing_review = Review.objects.filter(
+        mentor=mentor_profile,
+        client=user_profile
+    ).first()
+    
+    if existing_review:
+        return JsonResponse({'success': False, 'error': 'Review already exists. Please delete the existing review to create a new one.'}, status=400)
+    
+    # Create new review
+    status = 'published' if publish else 'draft'
+    review = Review.objects.create(
+        mentor=mentor_profile,
+        client=user_profile,
+        rating=rating,
+        text=text,
+        status=status
+    )
+    
+    # If published immediately, send email and notification
+    if publish:
+        # Update relationship
+        relationship.review_provided = True
+        relationship.save(update_fields=['review_provided'])
+        
+        mentor_name = f"{mentor_profile.first_name} {mentor_profile.last_name}"
+        client_name = f"{user_profile.first_name} {user_profile.last_name}"
+        
+        # Generate secure link with token
+        from django.utils.http import urlsafe_base64_encode
+        from django.utils.encoding import force_bytes
+        from django.contrib.auth.tokens import default_token_generator
+        from django.urls import reverse
+        
+        token = default_token_generator.make_token(review.mentor.user)
+        uid = urlsafe_base64_encode(force_bytes(review.mentor.user.pk))
+        site_domain = EmailService.get_site_domain()
+        review_url = f"{site_domain}{reverse('general:dashboard_mentor:view_reviews_secure', args=[uid, token])}?logout=true"
+        
+        try:
+            EmailService.send_email(
+                subject=f"New review from {client_name}",
+                recipient_email=review.mentor.user.email,
+                template_name='review_published',
+                context={
+                    'mentor_name': mentor_name,
+                    'client_name': client_name,
+                    'rating': review.rating,
+                    'review_text': review.text,
+                    'review_url': review_url,
+                }
+            )
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f'Error sending review published email: {str(e)}')
+        
+        # Create notification for mentor
+        from general.models import Notification
+        import uuid
+        batch_id = uuid.uuid4()
+        
+        Notification.objects.create(
+            user=review.mentor.user,
+            batch_id=batch_id,
+            target_type='single',
+            title=f"New review from {client_name}",
+            description=f"{client_name} published a {review.rating}-star review. <a href=\"{review_url}\" style=\"color: #10b981; text-decoration: underline;\">View review</a>"
+        )
+    
+    return JsonResponse({
+        'success': True,
+        'message': 'Review published successfully' if publish else 'Review saved successfully',
+        'review': {
+            'id': review.id,
+            'rating': review.rating,
+            'text': review.text,
+            'status': review.status,
+        }
+    })
+
+
+@login_required
+@require_POST
+def publish_review(request, review_id):
+    """AJAX endpoint for user to publish review"""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'user':
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+    
+    user_profile = request.user.user_profile
+    
+    from general.models import Review
+    review = get_object_or_404(Review, id=review_id, client=user_profile)
+    
+    # Check if at least one session is completed
+    from general.models import Session
+    has_completed_session = Session.objects.filter(
+        mentors=review.mentor,
+        attendees=request.user,
+        status='completed'
+    ).exists()
+    
+    if not has_completed_session:
+        return JsonResponse({'success': False, 'error': 'You must complete at least one session before publishing a review'}, status=400)
+    
+    # Publish review
+    review.status = 'published'
+    review.save()
+    
+    # Update relationship
+    relationship = MentorClientRelationship.objects.filter(
+        mentor=review.mentor,
+        client=user_profile
+    ).first()
+    
+    if relationship:
+        relationship.review_provided = True
+        relationship.save(update_fields=['review_provided'])
+    
+    # Send email to mentor
+    mentor_name = f"{review.mentor.first_name} {review.mentor.last_name}"
+    client_name = f"{user_profile.first_name} {user_profile.last_name}"
+    
+    # Generate secure link with token
+    from django.utils.http import urlsafe_base64_encode
+    from django.utils.encoding import force_bytes
+    from django.contrib.auth.tokens import default_token_generator
+    from django.urls import reverse
+    
+    token = default_token_generator.make_token(review.mentor.user)
+    uid = urlsafe_base64_encode(force_bytes(review.mentor.user.pk))
+    site_domain = EmailService.get_site_domain()
+    review_url = f"{site_domain}{reverse('general:dashboard_mentor:view_reviews_secure', args=[uid, token])}?logout=true"
+    
+    try:
+        EmailService.send_email(
+            subject=f"New review from {client_name}",
+            recipient_email=review.mentor.user.email,
+            template_name='review_published',
+            context={
+                'mentor_name': mentor_name,
+                'client_name': client_name,
+                'rating': review.rating,
+                'review_text': review.text,
+                'review_url': review_url,
+            }
+        )
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f'Error sending review published email: {str(e)}')
+    
+    # Create notification for mentor
+    from general.models import Notification
+    import uuid
+    batch_id = uuid.uuid4()
+    
+    Notification.objects.create(
+        user=review.mentor.user,
+        batch_id=batch_id,
+        target_type='single',
+        title=f"New review from {client_name}",
+        description=f"{client_name} published a {review.rating}-star review. <a href=\"{review_url}\" style=\"color: #10b981; text-decoration: underline;\">View review</a>"
+    )
+    
+    return JsonResponse({
+        'success': True,
+        'message': 'Review published successfully',
+        'review': {
+            'id': review.id,
+            'status': review.status,
+            'published_at': review.published_at.isoformat() if review.published_at else None,
+        }
+    })
+
+
+@login_required
+@require_POST
+def delete_review(request, review_id):
+    """AJAX endpoint for user to delete review"""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'user':
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+    
+    user_profile = request.user.user_profile
+    
+    from general.models import Review
+    review = get_object_or_404(Review, id=review_id, client=user_profile)
+    
+    # Get relationship and mentor info before deleting
+    relationship = MentorClientRelationship.objects.filter(
+        mentor=review.mentor,
+        client=user_profile
+    ).first()
+    
+    # Store info for email/notification before deleting
+    mentor_profile = review.mentor
+    mentor_name = f"{mentor_profile.first_name} {mentor_profile.last_name}"
+    client_name = f"{user_profile.first_name} {user_profile.last_name}"
+    was_published = review.status == 'published'
+    review_rating = review.rating
+    
+    # Store info for email/notification before deleting
+    mentor_profile = review.mentor
+    mentor_name = f"{mentor_profile.first_name} {mentor_profile.last_name}"
+    client_name = f"{user_profile.first_name} {user_profile.last_name}"
+    was_published = review.status == 'published'
+    review_rating = review.rating
+    
+    # Delete review (cascade deletes reply)
+    review.delete()
+    
+    # Update relationship
+    if relationship:
+        relationship.review_provided = False
+        relationship.save(update_fields=['review_provided'])
+    
+    # Send email to mentor if review was published
+    if was_published:
+        # Generate secure link with token
+        from django.utils.http import urlsafe_base64_encode
+        from django.utils.encoding import force_bytes
+        from django.contrib.auth.tokens import default_token_generator
+        from django.urls import reverse
+        
+        token = default_token_generator.make_token(mentor_profile.user)
+        uid = urlsafe_base64_encode(force_bytes(mentor_profile.user.pk))
+        site_domain = EmailService.get_site_domain()
+        review_url = f"{site_domain}{reverse('general:dashboard_mentor:view_reviews_secure', args=[uid, token])}?logout=true"
+        
+        try:
+            EmailService.send_email(
+                subject=f"Review deleted by {client_name}",
+                recipient_email=mentor_profile.user.email,
+                template_name='review_deleted',
+                context={
+                    'mentor_name': mentor_name,
+                    'client_name': client_name,
+                    'review_url': review_url,
+                }
+            )
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f'Error sending review deleted email: {str(e)}')
+        
+        # Create notification for mentor
+        from general.models import Notification
+        import uuid
+        batch_id = uuid.uuid4()
+        
+        Notification.objects.create(
+            user=mentor_profile.user,
+            batch_id=batch_id,
+            target_type='single',
+            title=f"Review deleted by {client_name}",
+            description=f"{client_name} deleted their {review_rating}-star review."
+        )
+    
+    return JsonResponse({
+        'success': True,
+        'message': 'Review deleted successfully'
+    })
+
+
+@login_required
+def session_detail(request, session_id):
+    """User's session detail page"""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'user':
+        return redirect('general:index')
+    
+    user_profile = request.user.user_profile
+    from general.models import Session
+    
+    # Get session where user is an attendee
+    session = Session.objects.filter(
+        id=session_id,
+        attendees=request.user
+    ).select_related('created_by', 'created_by__mentor_profile').first()
+    
+    if not session:
+        messages.error(request, 'Session not found.')
+        return redirect('general:dashboard_user:my_sessions')
+    
+    # Get mentor info
+    mentor_name = None
+    mentor_email = None
+    if session.created_by and hasattr(session.created_by, 'mentor_profile'):
+        mentor_profile = session.created_by.mentor_profile
+        mentor_name = f"{mentor_profile.first_name} {mentor_profile.last_name}"
+        mentor_email = session.created_by.email
+    
+    # Convert times to user's timezone
+    user_timezone = user_profile.selected_timezone or user_profile.detected_timezone or user_profile.time_zone or 'UTC'
+    start_local = None
+    end_local = None
+    
+    try:
+        from zoneinfo import ZoneInfo
+        from datetime import timezone as dt_timezone
+        tzinfo = ZoneInfo(str(user_timezone))
+        start_local = session.start_datetime.astimezone(tzinfo) if session.start_datetime else None
+        end_local = session.end_datetime.astimezone(tzinfo) if session.end_datetime else None
+    except Exception:
+        start_local = session.start_datetime
+        end_local = session.end_datetime
+    
+    # Calculate duration
+    duration_minutes = 0
+    if session.start_datetime and session.end_datetime:
+        duration = session.end_datetime - session.start_datetime
+        duration_minutes = int(duration.total_seconds() / 60)
+    
+    return render(request, 'dashboard_user/session_detail.html', {
+        'session': session,
+        'mentor_name': mentor_name,
+        'mentor_email': mentor_email,
+        'user_timezone': user_timezone,
+        'start_local': start_local,
+        'end_local': end_local,
+        'duration_minutes': duration_minutes,
     })

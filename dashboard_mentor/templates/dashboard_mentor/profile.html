@@ -694,84 +694,50 @@
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                         <span style="font-size: 0.85rem; color: var(--dash-text-muted);">Reviews</span>
                         <span style="font-size: 0.85rem; font-weight: 600; color: var(--dash-text-main);">
-                            <span id="reviewsCount">3</span>/3
+                            <span id="reviewsCount">{{ total_reviews|default:0 }}</span>/3
                         </span>
                     </div>
                     <div style="width: 100%; height: 8px; background: var(--dash-border); border-radius: 4px; overflow: hidden;">
-                        <div id="reviewsProgressBar" style="height: 100%; background: var(--dash-primary); border-radius: 4px; transition: width 0.3s ease; width: 100%;"></div>
+                        <div id="reviewsProgressBar" style="height: 100%; background: var(--dash-primary); border-radius: 4px; transition: width 0.3s ease; width: {{ reviews_progress_percentage|floatformat:0 }}%;"></div>
                     </div>
                 </div>
 
-                <!-- Static Reviews List -->
+                <!-- Reviews List -->
                 <div class="reviews-list" style="display: flex; flex-direction: column; gap: 16px; margin-bottom: 24px;">
-                    <!-- Review 1 -->
-                    <div class="review-item" style="display: flex; gap: 12px; align-items: start;">
-                        <div style="width: 40px; height: 40px; border-radius: 50%; background: #f3f4f6; display: flex; align-items: center; justify-content: center; color: #9ca3af; flex-shrink: 0;">
-                            <i class="fas fa-user"></i>
-                        </div>
-                        <div>
-                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
-                                <span style="font-weight: 600; font-size: 0.9rem; color: var(--dash-text-main);">Sarah Jenkins</span>
-                                <div style="color: #fbbf24; font-size: 0.8rem;">
-                                    <i class="fas fa-star"></i>
-                                    <i class="fas fa-star"></i>
-                                    <i class="fas fa-star"></i>
-                                    <i class="fas fa-star"></i>
-                                    <i class="fas fa-star"></i>
+                    {% if last_3_reviews %}
+                        {% for review in last_3_reviews %}
+                            <div class="review-item" style="display: flex; gap: 12px; align-items: start;">
+                                <div style="width: 40px; height: 40px; border-radius: 50%; background: #f3f4f6; display: flex; align-items: center; justify-content: center; color: #9ca3af; flex-shrink: 0; font-weight: 600; font-size: 0.85rem;">
+                                    {{ review.client.first_name|first }}{{ review.client.last_name|first }}
+                                </div>
+                                <div style="flex: 1;">
+                                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                                        <span style="font-weight: 600; font-size: 0.9rem; color: var(--dash-text-main);">{{ review.client.first_name }} {{ review.client.last_name|first }}.</span>
+                                        <div style="color: #fbbf24; font-size: 0.8rem;">
+                                            {% for i in "12345"|make_list %}
+                                                {% if forloop.counter <= review.rating %}
+                                                    <i class="fas fa-star"></i>
+                                                {% else %}
+                                                    <i class="far fa-star"></i>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                    <p style="margin: 0; font-size: 0.85rem; color: var(--dash-text-muted); line-height: 1.4;">
+                                        "{{ review.text|truncatewords:20 }}"
+                                    </p>
                                 </div>
                             </div>
-                            <p style="margin: 0; font-size: 0.85rem; color: var(--dash-text-muted); line-height: 1.4;">
-                                "Great session! Really helped me clarify my career goals."
-                            </p>
+                        {% endfor %}
+                    {% else %}
+                        <div style="text-align: center; padding: 20px; color: var(--dash-text-muted); font-size: 0.9rem;">
+                            <i class="fas fa-star" style="opacity: 0.3; margin-bottom: 8px;"></i>
+                            <p style="margin: 0;">No reviews yet</p>
                         </div>
-                    </div>
-                    
-                    <!-- Review 2 -->
-                    <div class="review-item" style="display: flex; gap: 12px; align-items: start;">
-                        <div style="width: 40px; height: 40px; border-radius: 50%; background: #f3f4f6; display: flex; align-items: center; justify-content: center; color: #9ca3af; flex-shrink: 0;">
-                            <i class="fas fa-user"></i>
-                        </div>
-                        <div>
-                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
-                                <span style="font-weight: 600; font-size: 0.9rem; color: var(--dash-text-main);">Mike Ross</span>
-                                <div style="color: #fbbf24; font-size: 0.8rem;">
-                                    <i class="fas fa-star"></i>
-                                    <i class="fas fa-star"></i>
-                                    <i class="fas fa-star"></i>
-                                    <i class="fas fa-star"></i>
-                                    <i class="fas fa-star-half-alt"></i>
-                                </div>
-                            </div>
-                            <p style="margin: 0; font-size: 0.85rem; color: var(--dash-text-muted); line-height: 1.4;">
-                                "Very knowledgeable and easy to talk to. Highly recommended."
-                            </p>
-                        </div>
-                    </div>
-
-                    <!-- Review 3 -->
-                    <div class="review-item" style="display: flex; gap: 12px; align-items: start;">
-                        <div style="width: 40px; height: 40px; border-radius: 50%; background: #f3f4f6; display: flex; align-items: center; justify-content: center; color: #9ca3af; flex-shrink: 0;">
-                            <i class="fas fa-user"></i>
-                        </div>
-                        <div>
-                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
-                                <span style="font-weight: 600; font-size: 0.9rem; color: var(--dash-text-main);">Emily Chen</span>
-                                <div style="color: #fbbf24; font-size: 0.8rem;">
-                                    <i class="fas fa-star"></i>
-                                    <i class="fas fa-star"></i>
-                                    <i class="fas fa-star"></i>
-                                    <i class="fas fa-star"></i>
-                                    <i class="fas fa-star"></i>
-                                </div>
-                            </div>
-                            <p style="margin: 0; font-size: 0.85rem; color: var(--dash-text-muted); line-height: 1.4;">
-                                "The best mentor I've had so far. Thank you!"
-                            </p>
-                        </div>
-                    </div>
+                    {% endif %}
                 </div>
 
-                <a href="#" class="btn btn-outline btn-sm" style="width: 100%; text-align: center; display: inline-block;">
+                <a href="{% url 'general:dashboard_mentor:reviews_management' %}" class="btn btn-outline btn-sm" style="width: 100%; text-align: center; display: inline-block;">
                     Manage reviews
                 </a>
             </div>

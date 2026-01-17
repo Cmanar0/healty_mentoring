@@ -1,0 +1,287 @@
+{% extends "dashboard_mentor/base.html" %}
+{% load static %}
+
+{% block page_title %}Client Details{% endblock %}
+
+{% block dashboard_content %}
+<div class="dashboard-content-container" style="max-width: 980px;">
+  <div style="margin-bottom: 24px;">
+    <a href="{% url 'general:dashboard_mentor:clients_list' %}" class="btn btn-secondary" style="text-decoration: none; display: inline-flex; align-items: center; gap: 8px;">
+      <i class="fas fa-arrow-left"></i> Back to Clients
+    </a>
+  </div>
+
+  <!-- Client Info Card -->
+  <div class="dashboard-card" style="margin-bottom: 24px;">
+    <h2 class="card-title" style="margin-bottom: 20px;">Client Information</h2>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+      <div>
+        <div style="font-weight: 600; color: var(--dash-text-muted); margin-bottom: 4px;">Name</div>
+        <div style="font-size: 1.1rem; font-weight: 600; color: var(--dash-text-main);">
+          {{ client_profile.first_name }} {{ client_profile.last_name }}
+        </div>
+      </div>
+      <div>
+        <div style="font-weight: 600; color: var(--dash-text-muted); margin-bottom: 4px;">Email</div>
+        <div style="font-size: 1rem; color: var(--dash-text-main);">
+          {{ client_profile.user.email }}
+        </div>
+      </div>
+      <div>
+        <div style="font-weight: 600; color: var(--dash-text-muted); margin-bottom: 4px;">Relationship Status</div>
+        <div>
+          {% if relationship.status == 'confirmed' %}
+            <span class="status-badge confirmed-badge">Confirmed</span>
+          {% elif relationship.status == 'active' %}
+            <span class="status-badge active-badge">Active</span>
+          {% else %}
+            <span class="status-badge inactive-badge">Inactive</span>
+          {% endif %}
+        </div>
+      </div>
+      <div>
+        <div style="font-weight: 600; color: var(--dash-text-muted); margin-bottom: 4px;">Total Sessions</div>
+        <div style="font-size: 1.1rem; font-weight: 600; color: var(--dash-text-main);">
+          {{ relationship.sessions_count }}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sessions Card -->
+  <div class="dashboard-card" style="margin-bottom: 24px;">
+    <h2 class="card-title" style="margin-bottom: 20px;">Sessions</h2>
+    {% if sessions %}
+      <div style="display: flex; flex-direction: column; gap: 12px;">
+        {% for session in sessions %}
+          <a href="{% url 'general:dashboard_mentor:session_detail' session.id %}" style="text-decoration: none; color: inherit; display: block;">
+            <div style="padding: 16px; border: 1px solid #e5e7eb; border-radius: 8px; background: #f9fafb; transition: all 0.2s ease; cursor: pointer;" onmouseover="this.style.background='#f3f4f6'; this.style.borderColor='#10b981';" onmouseout="this.style.background='#f9fafb'; this.style.borderColor='#e5e7eb';">
+              <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
+                <div>
+                  <div style="font-weight: 600; color: var(--dash-text-main); margin-bottom: 4px;">
+                    {{ session.start_datetime|date:"F d, Y" }} at {{ session.start_datetime|time:"g:i A" }}
+                  </div>
+                  <div style="font-size: 0.9rem; color: var(--dash-text-muted);">
+                    Duration: {{ session.start_datetime|timesince:session.end_datetime }}
+                  </div>
+                </div>
+                <span class="status-badge {% if session.status == 'completed' %}confirmed-badge{% elif session.status == 'confirmed' %}active-badge{% else %}inactive-badge{% endif %}" style="text-transform: capitalize;">
+                  {{ session.status }}
+                </span>
+              </div>
+              {% if session.note %}
+                <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #e5e7eb; color: var(--dash-text-muted); font-size: 0.9rem;">
+                  {{ session.note }}
+                </div>
+              {% endif %}
+            </div>
+          </a>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div style="text-align: center; padding: 40px; color: var(--dash-text-muted);">
+        <i class="fas fa-calendar-times" style="font-size: 2rem; margin-bottom: 12px; opacity: 0.5;"></i>
+        <p>No sessions yet</p>
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- Review Section -->
+  <div class="dashboard-card">
+    <h2 class="card-title" style="margin-bottom: 20px;">Review</h2>
+    
+    {% if review %}
+      <!-- Existing Review -->
+      <div style="padding: 20px; background: #f9fafb; border-radius: 8px; margin-bottom: 20px;">
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+          <div style="color: #fbbf24; font-size: 1.2rem;">
+            {% for i in "12345"|make_list %}
+              {% if forloop.counter <= review.rating %}
+                <i class="fas fa-star"></i>
+              {% else %}
+                <i class="far fa-star"></i>
+              {% endif %}
+            {% endfor %}
+          </div>
+          <span style="font-weight: 600; color: var(--dash-text-main);">{{ review.rating }}/5</span>
+          {% if review.status == 'published' %}
+            <span class="status-badge confirmed-badge" style="margin-left: auto;">Published</span>
+          {% else %}
+            <span class="status-badge inactive-badge" style="margin-left: auto;">Draft</span>
+          {% endif %}
+        </div>
+        <div style="color: var(--dash-text-main); line-height: 1.6; margin-bottom: 16px;">
+          {{ review.text }}
+        </div>
+        {% if review.published_at %}
+          <div style="font-size: 0.85rem; color: var(--dash-text-muted);">
+            Published: {{ review.published_at|date:"F d, Y" }}
+          </div>
+        {% endif %}
+      </div>
+
+      <!-- Reply Section -->
+      <div style="margin-top: 24px;">
+        <h3 style="font-size: 1rem; font-weight: 600; margin-bottom: 12px; color: var(--dash-text-main);">Your Reply</h3>
+        {% if review.reply %}
+          <div style="padding: 16px; background: white; border: 1px solid #e5e7eb; border-radius: 8px; margin-bottom: 12px;">
+            <div style="color: var(--dash-text-main); line-height: 1.6; margin-bottom: 8px;">
+              {{ review.reply.text }}
+            </div>
+            <div style="font-size: 0.85rem; color: var(--dash-text-muted);">
+              Last updated: {{ review.reply.updated_at|date:"F d, Y g:i A" }}
+            </div>
+          </div>
+        {% endif %}
+        <textarea id="replyText" rows="4" style="width: 100%; padding: 12px; border: 1px solid #e5e7eb; border-radius: 8px; font-family: inherit; font-size: 0.95rem; resize: vertical;" placeholder="Write your reply to this review...">{% if review.reply %}{{ review.reply.text }}{% endif %}</textarea>
+        <button onclick="saveReply({{ review.id }})" class="btn btn-primary" style="margin-top: 12px;">
+          <i class="fas fa-save"></i> {% if review.reply %}Update Reply{% else %}Save Reply{% endif %}
+        </button>
+      </div>
+    {% else %}
+      <!-- No Review - Request Button -->
+      <div style="text-align: center; padding: 40px;">
+        {% if can_request_review %}
+          <i class="fas fa-star" style="font-size: 3rem; color: #fbbf24; margin-bottom: 16px; opacity: 0.7;"></i>
+          <p style="color: var(--dash-text-muted); margin-bottom: 24px;">
+            Request a review from this client to help build your reputation.
+          </p>
+          <button onclick="requestReview({{ client_profile.id }})" id="requestReviewBtn" class="btn btn-primary">
+            <i class="fas fa-paper-plane"></i> Request Review
+          </button>
+          <div id="requestReviewMessage" style="margin-top: 16px; display: none;"></div>
+        {% else %}
+          <i class="fas fa-info-circle" style="font-size: 2rem; color: #6b7280; margin-bottom: 16px; opacity: 0.7;"></i>
+          <p style="color: var(--dash-text-muted);">
+            {% if request_error %}{{ request_error }}{% else %}Review cannot be requested at this time.{% endif %}
+          </p>
+          {% if not has_completed_session %}
+            <p style="color: var(--dash-text-muted); font-size: 0.9rem; margin-top: 8px;">
+              At least one session must be completed before requesting a review.
+            </p>
+          {% endif %}
+        {% endif %}
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+<script>
+function requestReview(clientId) {
+  const btn = document.getElementById('requestReviewBtn');
+  const messageDiv = document.getElementById('requestReviewMessage');
+  const originalText = btn.innerHTML;
+  
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+  
+  const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+  
+  fetch(`/dashboard/mentor/clients/${clientId}/request-review/`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'X-CSRFToken': csrfToken,
+    },
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      messageDiv.style.display = 'block';
+      messageDiv.className = 'success-message';
+      messageDiv.innerHTML = '<i class="fas fa-check-circle"></i> ' + data.message;
+      btn.style.display = 'none';
+    } else {
+      messageDiv.style.display = 'block';
+      messageDiv.className = 'error-message';
+      messageDiv.innerHTML = '<i class="fas fa-exclamation-circle"></i> ' + (data.error || 'An error occurred');
+      btn.disabled = false;
+      btn.innerHTML = originalText;
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    messageDiv.style.display = 'block';
+    messageDiv.className = 'error-message';
+    messageDiv.innerHTML = '<i class="fas fa-exclamation-circle"></i> An error occurred. Please try again.';
+    btn.disabled = false;
+    btn.innerHTML = originalText;
+  });
+}
+
+function saveReply(reviewId) {
+  const textarea = document.getElementById('replyText');
+  const text = textarea.value.trim();
+  
+  if (!text) {
+    alert('Please enter a reply');
+    return;
+  }
+  
+  const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+  
+  fetch(`/dashboard/mentor/reviews/${reviewId}/reply/`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': csrfToken,
+    },
+    body: JSON.stringify({ text: text })
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      alert('Reply saved successfully!');
+      window.location.reload();
+    } else {
+      alert(data.error || 'An error occurred');
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    alert('An error occurred. Please try again.');
+  });
+}
+</script>
+
+<style>
+.status-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.confirmed-badge {
+  background: rgba(16, 185, 129, 0.1);
+  color: #065f46;
+}
+
+.active-badge {
+  background: rgba(59, 130, 246, 0.1);
+  color: #1e40af;
+}
+
+.inactive-badge {
+  background: rgba(107, 114, 128, 0.1);
+  color: #374151;
+}
+
+.success-message {
+  padding: 12px 16px;
+  background: rgba(16, 185, 129, 0.1);
+  color: #065f46;
+  border-radius: 8px;
+  border-left: 3px solid #10b981;
+}
+
+.error-message {
+  padding: 12px 16px;
+  background: rgba(239, 68, 68, 0.1);
+  color: #991b1b;
+  border-radius: 8px;
+  border-left: 3px solid #ef4444;
+}
+</style>
+{% endblock %}

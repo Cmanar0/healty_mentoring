@@ -1,0 +1,50 @@
+{% extends "emails/base.html" %}
+
+{% block title %}Review Updated{% endblock %}
+
+{% block content %}
+<h1>Your Review Has Been Updated</h1>
+
+<p class="content-text">
+  Hi{% if mentor_name %} {{ mentor_name }}{% endif %},
+</p>
+
+<p class="content-text">
+  {% if client_name %}<strong>{{ client_name }}</strong>{% else %}A client{% endif %} has updated their review for you.
+</p>
+
+<div style="background-color: #f9fafb; border-radius: 12px; padding: 24px; margin: 24px 0; border: 1px solid #e5e7eb;">
+  <div style="margin-bottom: 16px;">
+    <div style="font-weight: 600; color: #374151; margin-bottom: 8px;">Rating</div>
+    <div style="color: #fbbf24; font-size: 1.5rem;">
+      {% for i in "12345"|make_list %}
+        {% if forloop.counter <= rating %}
+          <i class="fas fa-star"></i>
+        {% else %}
+          <i class="far fa-star"></i>
+        {% endif %}
+      {% endfor %}
+      <span style="color: #374151; font-size: 1rem; margin-left: 8px;">{{ rating }}/5</span>
+    </div>
+  </div>
+  <div>
+    <div style="font-weight: 600; color: #374151; margin-bottom: 8px;">Review</div>
+    <div style="color: #4b5563; line-height: 1.6;">{{ review_text }}</div>
+  </div>
+</div>
+
+<div style="text-align: center; margin: 32px 0;">
+  <a href="{{ review_url }}" class="button" style="display: inline-block; padding: 14px 32px; background-color: #10b981; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">
+    View Updated Review
+  </a>
+</div>
+
+<p class="content-text" style="color: #6b7280; font-size: 14px;">
+  If the button doesn't work, copy and paste this link into your browser:<br>
+  <a href="{{ review_url }}" style="color: #10b981; word-break: break-all;">{{ review_url }}</a>
+</p>
+
+<p class="content-text" style="margin-top: 32px; color: #6b7280; font-size: 14px;">
+  Thank you for being part of the Healthy Mentoring community!
+</p>
+{% endblock %}

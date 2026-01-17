@@ -400,12 +400,29 @@ def mentor_profile_detail(request, user_id):
             # If any error, assume it's first session
             is_first_session = True
     
+    # Get published reviews and calculate average rating
+    from general.models import Review
+    from django.db.models import Avg
+    reviews = Review.objects.filter(
+        mentor=mentor_profile,
+        status='published'
+    ).select_related('client', 'client__user', 'reply').order_by('-published_at')
+    
+    average_rating = reviews.aggregate(avg_rating=Avg('rating'))['avg_rating']
+    if average_rating:
+        average_rating = round(float(average_rating), 1)
+    else:
+        average_rating = 0
+    
     return render(request, "web/mentor_profile_detail.html", {
         "mentor_user": mentor_user,
         "mentor_profile": mentor_profile,
         "predefined_languages": PREDEFINED_LANGUAGES,
         "qualification_types": QUALIFICATION_TYPES,
         "is_first_session": is_first_session,
+        "reviews": reviews,
+        "average_rating": average_rating,
+        "reviews_count": reviews.count(),
     })
 
 

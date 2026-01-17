@@ -1,0 +1,124 @@
+{% extends "dashboard_user/base.html" %}
+{% load static %}
+
+{% block page_title %}Session Detail{% endblock %}
+
+{% block dashboard_content %}
+<div class="dashboard-content-container" style="max-width: 980px;">
+  <div style="margin-bottom: 24px;">
+    <a href="{% url 'general:dashboard_user:my_sessions' %}" class="btn btn-secondary" style="text-decoration: none; display: inline-flex; align-items: center; gap: 8px;">
+      <i class="fas fa-arrow-left"></i> Back to Sessions
+    </a>
+  </div>
+
+  <div class="dashboard-card" style="padding: 24px;">
+    <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 24px;">
+      <div>
+        <h2 class="card-title" style="margin: 0 0 8px 0;">Session Detail</h2>
+        <div style="color: var(--dash-text-muted); font-weight: 600; font-size: 0.95rem;">
+          Status: <span style="text-transform: capitalize; color: var(--dash-text-main);">{{ session.status }}</span>
+        </div>
+      </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+      <!-- Time Information -->
+      <div style="border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; background: #f9fafb;">
+        <div style="font-weight: 700; color: #0f172a; margin-bottom: 12px; font-size: 1.1rem;">Time</div>
+        <div style="color: #334151; font-weight: 600; margin-bottom: 4px; font-size: 0.9rem;">Start</div>
+        <div style="color: #0f172a; font-weight: 700; margin-bottom: 12px; font-size: 1rem;">
+          {% if start_local %}
+            {{ start_local|date:"F d, Y" }} at {{ start_local|time:"g:i A" }}
+          {% else %}
+            N/A
+          {% endif %}
+        </div>
+        <div style="color: #334151; font-weight: 600; margin-bottom: 4px; font-size: 0.9rem;">End</div>
+        <div style="color: #0f172a; font-weight: 700; margin-bottom: 12px; font-size: 1rem;">
+          {% if end_local %}
+            {{ end_local|time:"g:i A" }}
+          {% else %}
+            N/A
+          {% endif %}
+        </div>
+        <div style="margin-top: 12px; color: #64748b; font-weight: 600; font-size: 0.85rem;">
+          Duration: {{ duration_minutes }} minutes
+        </div>
+        <div style="margin-top: 8px; color: #64748b; font-weight: 600; font-size: 0.85rem;">
+          Timezone: {{ user_timezone }}
+        </div>
+      </div>
+
+      <!-- Mentor Information -->
+      <div style="border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; background: #f9fafb;">
+        <div style="font-weight: 700; color: #0f172a; margin-bottom: 12px; font-size: 1.1rem;">Mentor</div>
+        {% if mentor_name %}
+          <div style="color: #334151; font-weight: 600; margin-bottom: 4px; font-size: 0.9rem;">Name</div>
+          <div style="color: #0f172a; font-weight: 700; margin-bottom: 12px; font-size: 1rem;">{{ mentor_name }}</div>
+        {% endif %}
+        {% if mentor_email %}
+          <div style="color: #334151; font-weight: 600; margin-bottom: 4px; font-size: 0.9rem;">Email</div>
+          <div style="color: #0f172a; font-weight: 600; margin-bottom: 12px; font-size: 0.95rem; word-break: break-all;">{{ mentor_email }}</div>
+        {% endif %}
+      </div>
+
+      <!-- Pricing Information -->
+      <div style="border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; background: #f9fafb;">
+        <div style="font-weight: 700; color: #0f172a; margin-bottom: 12px; font-size: 1.1rem;">Pricing</div>
+        <div style="color: #334151; font-weight: 600; margin-bottom: 4px; font-size: 0.9rem;">Session Price</div>
+        <div style="color: #0f172a; font-weight: 700; font-size: 1.2rem;">
+          {% if session.session_price %}
+            €{{ session.session_price|floatformat:2 }}
+          {% else %}
+            <span style="color: #94a3b8;">—</span>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Session Type -->
+      <div style="border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; background: #f9fafb;">
+        <div style="font-weight: 700; color: #0f172a; margin-bottom: 12px; font-size: 1.1rem;">Session Type</div>
+        <div style="color: #0f172a; font-weight: 600; font-size: 1rem; text-transform: capitalize;">
+          {{ session.session_type }}
+        </div>
+      </div>
+    </div>
+
+    <!-- Notes Section -->
+    <div style="grid-column: 1 / -1; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; background: #f9fafb; margin-top: 16px;">
+      <div style="font-weight: 700; color: #0f172a; margin-bottom: 12px; font-size: 1.1rem;">Notes</div>
+      <div style="color: #334151; line-height: 1.6;">
+        {% if session.note %}
+          {{ session.note|linebreaks }}
+        {% else %}
+          <span style="color: #94a3b8; font-style: italic;">No notes for this session.</span>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- First Lesson Note (if exists) -->
+    {% if session.first_lesson_user_note %}
+    <div style="grid-column: 1 / -1; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; background: #f0fdf4; margin-top: 16px; border-left: 4px solid #10b981;">
+      <div style="font-weight: 700; color: #0f172a; margin-bottom: 12px; font-size: 1.1rem; display: flex; align-items: center; gap: 8px;">
+        <i class="fas fa-star" style="color: #10b981;"></i> Your First Lesson Note
+      </div>
+      <div style="color: #334151; line-height: 1.6;">
+        {{ session.first_lesson_user_note|linebreaks }}
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Tasks Section -->
+    {% if session.tasks and session.tasks|length %}
+    <div style="grid-column: 1 / -1; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; background: #f9fafb; margin-top: 16px;">
+      <div style="font-weight: 700; color: #0f172a; margin-bottom: 12px; font-size: 1.1rem;">Tasks</div>
+      <ul style="margin: 0; padding-left: 20px; color: #334151; line-height: 1.8;">
+        {% for task in session.tasks %}
+          <li style="margin: 4px 0;">{{ task }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

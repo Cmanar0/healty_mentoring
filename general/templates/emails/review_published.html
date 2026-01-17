@@ -1,0 +1,53 @@
+{% extends "emails/base.html" %}
+
+{% block title %}New Review Received{% endblock %}
+
+{% block content %}
+<h1>You've Received a New Review!</h1>
+
+<p class="content-text">
+  Hi{% if mentor_name %} {{ mentor_name }}{% endif %},
+</p>
+
+<p class="content-text">
+  Great news! <strong>{{ client_name }}</strong> has published a review for you.
+</p>
+
+<div style="background-color: #f9fafb; border-radius: 12px; padding: 24px; margin: 24px 0; border: 1px solid #e5e7eb;">
+  <h2 style="font-size: 18px; font-weight: 600; color: #111827; margin-top: 0; margin-bottom: 16px;">Review Details</h2>
+  
+  <p class="content-text" style="font-size: 15px; color: #374151; margin-bottom: 12px;">
+    <strong style="color: #111827;">Rating:</strong> 
+    <span style="color: #fbbf24; font-size: 18px;">
+      {% if rating == 5 %}★★★★★
+      {% elif rating == 4 %}★★★★☆
+      {% elif rating == 3 %}★★★☆☆
+      {% elif rating == 2 %}★★☆☆☆
+      {% else %}★☆☆☆☆
+      {% endif %}
+    </span>
+    ({{ rating }}/5)
+  </p>
+  
+  {% if review_text %}
+  <p class="content-text" style="font-size: 15px; color: #374151; margin-top: 16px; margin-bottom: 0;">
+    <strong style="color: #111827;">Review:</strong><br>
+    <em style="color: #6b7280; font-style: italic;">{{ review_text }}</em>
+  </p>
+  {% endif %}
+</div>
+
+<div style="text-align: center; margin: 32px 0;">
+  <a href="{{ review_url }}" class="button" style="display: inline-block; padding: 14px 32px; background-color: #10b981; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">
+    View & Reply to Review
+  </a>
+</div>
+
+<p class="content-text" style="color: #6b7280; font-size: 14px;">
+  You can respond to this review from your dashboard. Your response will be displayed publicly alongside the review.
+</p>
+
+<p class="content-text" style="margin-top: 32px; color: #6b7280; font-size: 14px;">
+  Keep up the great work!
+</p>
+{% endblock %}

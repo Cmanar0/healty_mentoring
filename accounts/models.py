@@ -321,6 +321,8 @@ class MentorClientRelationship(models.Model):
     sessions_count = models.PositiveIntegerField(default=0)
     total_earnings = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     first_session_scheduled = models.BooleanField(default=False, blank=True, help_text="True if the first session has been scheduled (booked) with this mentor")
+    review_requested_at = models.DateTimeField(blank=True, null=True, help_text="When the mentor last requested a review from this client")
+    review_provided = models.BooleanField(default=False, help_text="True if the client has provided a review")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     invited_at = models.DateTimeField(auto_now_add=True, help_text="When the invitation/confirmation was sent")

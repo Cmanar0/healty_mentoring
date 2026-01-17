@@ -1,0 +1,269 @@
+{% extends "dashboard_user/base.html" %}
+{% load static %}
+
+{% block page_title %}Write Review{% endblock %}
+
+{% block dashboard_content %}
+<div class="dashboard-content-container" style="max-width: 800px; margin: 0 auto;">
+  <div class="dashboard-card">
+    <h1 class="card-title" style="margin-bottom: 8px;">Write a Review</h1>
+    <p style="color: var(--dash-text-muted); margin-bottom: 32px;">
+      Share your experience with <strong>{{ mentor_profile.first_name }} {{ mentor_profile.last_name }}</strong>
+    </p>
+
+    <form id="reviewForm">
+      {% csrf_token %}
+      <input type="hidden" id="reviewId" value="{% if review %}{{ review.id }}{% endif %}">
+      <input type="hidden" id="mentorId" value="{{ mentor_user.id }}">
+      
+      <!-- Star Rating -->
+      <div style="margin-bottom: 24px;">
+        <label style="display: block; font-weight: 600; color: var(--dash-text-main); margin-bottom: 12px; font-size: 1.1rem;">How would you rate this mentor?</label>
+        <div class="star-rating" style="display: flex; gap: 12px; align-items: center; justify-content: center; padding: 20px; background: #f9fafb; border-radius: 12px;">
+          {% for i in "12345"|make_list %}
+            <i class="fas fa-star star-icon" data-rating="{{ forloop.counter }}" style="font-size: 3rem; color: #d1d5db; cursor: pointer; transition: all 0.2s;"></i>
+          {% endfor %}
+        </div>
+        <div style="text-align: center; margin-top: 12px;">
+          <span id="ratingValue" style="font-size: 1.2rem; font-weight: 700; color: var(--dash-text-main);">{% if review %}{{ review.rating }}{% else %}0{% endif %}/5</span>
+        </div>
+        <input type="hidden" id="rating" name="rating" value="{% if review %}{{ review.rating }}{% else %}0{% endif %}" required>
+      </div>
+
+      <!-- Review Text -->
+      <div style="margin-bottom: 24px;">
+        <label for="reviewText" style="display: block; font-weight: 600; color: var(--dash-text-main); margin-bottom: 12px; font-size: 1.1rem;">Your Review</label>
+        <textarea id="reviewText" name="text" rows="8" style="width: 100%; padding: 16px; border: 2px solid #e5e7eb; border-radius: 12px; font-family: inherit; font-size: 1rem; resize: vertical; transition: border-color 0.2s;" placeholder="Tell others about your experience with this mentor..." required>{% if review %}{{ review.text }}{% endif %}</textarea>
+        <div style="margin-top: 8px; font-size: 0.85rem; color: var(--dash-text-muted);">
+          Your review will help other clients make informed decisions.
+        </div>
+      </div>
+
+      <!-- Buttons -->
+      <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 32px;">
+        <button type="button" onclick="saveReview('draft')" class="btn btn-secondary" style="padding: 14px 28px; font-size: 1rem;">
+          <i class="fas fa-save"></i> Save as Draft
+        </button>
+        {% if review and review.status == 'draft' %}
+          <button type="button" onclick="publishReview()" class="btn btn-primary" style="padding: 14px 28px; font-size: 1rem;">
+            <i class="fas fa-paper-plane"></i> Publish Review
+          </button>
+        {% elif not review %}
+          <button type="button" onclick="saveReview('draft')" class="btn btn-primary" style="padding: 14px 28px; font-size: 1rem;">
+            <i class="fas fa-save"></i> Save Review
+          </button>
+        {% endif %}
+      </div>
+    </form>
+
+    <div id="reviewMessage" style="margin-top: 24px; display: none;"></div>
+  </div>
+</div>
+
+<script>
+// Initialize star rating
+document.addEventListener('DOMContentLoaded', function() {
+  const stars = document.querySelectorAll('.star-icon');
+  const ratingInput = document.getElementById('rating');
+  const ratingValue = document.getElementById('ratingValue');
+  const currentRating = parseInt(ratingInput.value) || 0;
+  
+  // Set initial stars
+  if (currentRating > 0) {
+    stars.forEach((star, index) => {
+      if (index < currentRating) {
+        star.style.color = '#fbbf24';
+        star.classList.add('fas');
+        star.classList.remove('far');
+      }
+    });
+  }
+  
+  stars.forEach((star, index) => {
+    star.addEventListener('click', function() {
+      const rating = index + 1;
+      ratingInput.value = rating;
+      ratingValue.textContent = rating + '/5';
+      
+      stars.forEach((s, i) => {
+        if (i < rating) {
+          s.style.color = '#fbbf24';
+          s.style.transform = 'scale(1.1)';
+          s.classList.add('fas');
+          s.classList.remove('far');
+        } else {
+          s.style.color = '#d1d5db';
+          s.style.transform = 'scale(1)';
+          s.classList.add('far');
+          s.classList.remove('fas');
+        }
+      });
+      
+      setTimeout(() => {
+        stars.forEach(s => s.style.transform = 'scale(1)');
+      }, 200);
+    });
+    
+    star.addEventListener('mouseenter', function() {
+      const rating = index + 1;
+      stars.forEach((s, i) => {
+        if (i < rating) {
+          s.style.color = '#fbbf24';
+          s.style.transform = 'scale(1.05)';
+        } else {
+          s.style.color = '#d1d5db';
+          s.style.transform = 'scale(1)';
+        }
+      });
+    });
+  });
+  
+  document.querySelector('.star-rating').addEventListener('mouseleave', function() {
+    const currentRating = parseInt(ratingInput.value) || 0;
+    stars.forEach((s, i) => {
+      if (i < currentRating) {
+        s.style.color = '#fbbf24';
+      } else {
+        s.style.color = '#d1d5db';
+      }
+      s.style.transform = 'scale(1)';
+    });
+  });
+});
+
+function saveReview(status) {
+  const reviewId = document.getElementById('reviewId').value;
+  const mentorId = document.getElementById('mentorId').value;
+  const rating = document.getElementById('rating').value;
+  const text = document.getElementById('reviewText').value.trim();
+  const messageDiv = document.getElementById('reviewMessage');
+  
+  if (!rating || rating === '0') {
+    messageDiv.style.display = 'block';
+    messageDiv.className = 'error-message';
+    messageDiv.innerHTML = '<i class="fas fa-exclamation-circle"></i> Please select a rating';
+    return;
+  }
+  
+  if (!text) {
+    messageDiv.style.display = 'block';
+    messageDiv.className = 'error-message';
+    messageDiv.innerHTML = '<i class="fas fa-exclamation-circle"></i> Please enter your review';
+    return;
+  }
+  
+  const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+  const url = reviewId ? `/dashboard/user/reviews/${reviewId}/` : '/dashboard/user/reviews/';
+  const method = reviewId ? 'PUT' : 'POST';
+  
+  fetch(url, {
+    method: method,
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': csrfToken,
+    },
+    body: JSON.stringify({
+      mentor_id: mentorId,
+      rating: parseInt(rating),
+      text: text
+    })
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      messageDiv.style.display = 'block';
+      messageDiv.className = 'success-message';
+      messageDiv.innerHTML = '<i class="fas fa-check-circle"></i> Review saved successfully!';
+      if (data.review && data.review.id) {
+        document.getElementById('reviewId').value = data.review.id;
+      }
+      // Show publish button if it was a new review
+      if (!reviewId && data.review) {
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
+      }
+    } else {
+      messageDiv.style.display = 'block';
+      messageDiv.className = 'error-message';
+      messageDiv.innerHTML = '<i class="fas fa-exclamation-circle"></i> ' + (data.error || 'An error occurred');
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    messageDiv.style.display = 'block';
+    messageDiv.className = 'error-message';
+    messageDiv.innerHTML = '<i class="fas fa-exclamation-circle"></i> An error occurred. Please try again.';
+  });
+}
+
+function publishReview() {
+  const reviewId = document.getElementById('reviewId').value;
+  if (!reviewId) {
+    alert('Please save the review first');
+    return;
+  }
+  
+  if (!confirm('Are you sure you want to publish this review? It will be visible on the mentor\'s public profile.')) {
+    return;
+  }
+  
+  const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+  const messageDiv = document.getElementById('reviewMessage');
+  
+  fetch(`/dashboard/user/reviews/${reviewId}/publish/`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'X-CSRFToken': csrfToken,
+    },
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      messageDiv.style.display = 'block';
+      messageDiv.className = 'success-message';
+      messageDiv.innerHTML = '<i class="fas fa-check-circle"></i> Review published successfully! Thank you for your feedback.';
+      setTimeout(() => {
+        window.location.href = '{% url "general:dashboard_user:mentors_list" %}';
+      }, 2000);
+    } else {
+      messageDiv.style.display = 'block';
+      messageDiv.className = 'error-message';
+      messageDiv.innerHTML = '<i class="fas fa-exclamation-circle"></i> ' + (data.error || 'An error occurred');
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    messageDiv.style.display = 'block';
+    messageDiv.className = 'error-message';
+    messageDiv.innerHTML = '<i class="fas fa-exclamation-circle"></i> An error occurred. Please try again.';
+  });
+}
+</script>
+
+<style>
+.success-message {
+  padding: 16px;
+  background: rgba(16, 185, 129, 0.1);
+  color: #065f46;
+  border-radius: 8px;
+  border-left: 4px solid #10b981;
+  font-weight: 500;
+}
+
+.error-message {
+  padding: 16px;
+  background: rgba(239, 68, 68, 0.1);
+  color: #991b1b;
+  border-radius: 8px;
+  border-left: 4px solid #ef4444;
+  font-weight: 500;
+}
+
+#reviewText:focus {
+  outline: none;
+  border-color: #10b981;
+}
+</style>
+{% endblock %}

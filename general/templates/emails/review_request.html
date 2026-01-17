@@ -1,0 +1,40 @@
+{% extends "emails/base.html" %}
+
+{% block title %}Review Request{% endblock %}
+
+{% block content %}
+<h1>We'd Love Your Feedback!</h1>
+
+<p class="content-text">
+  Hi{% if client_name %} {{ client_name }}{% endif %},
+</p>
+
+<p class="content-text">
+  {% if mentor_name %}<strong>{{ mentor_name }}</strong>{% else %}Your mentor{% endif %} would love to hear about your experience! Your feedback helps mentors improve and helps other clients find the right mentor for them.
+</p>
+
+<div style="background-color: #f9fafb; border-radius: 12px; padding: 24px; margin: 24px 0; border: 1px solid #e5e7eb;">
+  <p class="content-text" style="font-size: 15px; color: #374151; margin-bottom: 0;">
+    Writing a review only takes a few minutes, and it makes a big difference. Share your experience and help others on their journey!
+  </p>
+</div>
+
+<div style="text-align: center; margin: 32px 0;">
+  <a href="{{ review_url }}" class="button" style="display: inline-block; padding: 14px 32px; background-color: #10b981; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">
+    Write Your Review
+  </a>
+</div>
+
+<p class="content-text" style="color: #6b7280; font-size: 14px;">
+  If the button doesn't work, copy and paste this link into your browser:<br>
+  <a href="{{ review_url }}" style="color: #10b981; word-break: break-all;">{{ review_url }}</a>
+</p>
+
+<p class="content-text" style="margin-top: 24px; color: #6b7280; font-size: 14px;">
+  You'll be able to write your review on the mentor's detail page. Just click the button above to get started!
+</p>
+
+<p class="content-text" style="margin-top: 32px; color: #6b7280; font-size: 14px;">
+  Thank you for being part of the Healthy Mentoring community!
+</p>
+{% endblock %}

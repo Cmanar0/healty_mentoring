@@ -761,11 +761,13 @@
                     </div>
                     {% endif %}
                     
-                    <!-- Rating (Static for now) -->
+                    <!-- Rating -->
+                    {% if average_rating > 0 %}
                     <div class="mp-stat-item" title="Rating">
                         <i class="fas fa-star" style="color: #fbbf24;"></i>
-                        <span><b>5.0</b> (12 Reviews)</span>
+                        <span><b>{{ average_rating }}</b> ({{ reviews_count }} Review{{ reviews_count|pluralize }})</span>
                     </div>
+                    {% endif %}
                     
                     <!-- Community (Static for now) -->
                     <div class="mp-stat-item" title="Community">
@@ -856,48 +858,52 @@
             {% endif %}
 
             <!-- Reviews Section -->
+            {% if reviews %}
             <div class="mp-section-card">
                 <h2 class="mp-section-title">Client Reviews</h2>
                 
-                <!-- Mock Review 1 -->
+                {% for review in reviews %}
                 <div class="mp-review-item">
                     <div class="mp-review-top">
                         <div class="mp-reviewer">
-                            <div class="mp-reviewer-avatar">JS</div>
+                            <div class="mp-reviewer-avatar">{{ review.client.first_name|first }}{{ review.client.last_name|first }}</div>
                             <div>
-                                <div style="font-weight: 600;">John Smith</div>
-                                <div style="font-size: 0.8rem; color: #94a3b8;">Career Coaching • 2 weeks ago</div>
+                                <div style="font-weight: 600;">{{ review.client.first_name }} {{ review.client.last_name|first }}.</div>
+                                <div style="font-size: 0.8rem; color: #94a3b8;">
+                                    {% if review.published_at %}
+                                        {{ review.published_at|timesince }} ago
+                                    {% endif %}
+                                </div>
                             </div>
                         </div>
-                        <div class="mp-stars">
-                            <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
+                        <div class="mp-stars" style="color: #fbbf24;">
+                            {% for i in "12345"|make_list %}
+                                {% if forloop.counter <= review.rating %}
+                                    <i class="fas fa-star"></i>
+                                {% else %}
+                                    <i class="far fa-star"></i>
+                                {% endif %}
+                            {% endfor %}
                         </div>
                     </div>
                     <div class="mp-review-text">
-                        "{{ mentor_profile.first_name }} helped me gain so much clarity in my career path. The sessions were structured yet flexible enough to address my specific concerns. Highly recommend!"
+                        "{{ review.text }}"
                     </div>
-                </div>
-
-                <!-- Mock Review 2 -->
-                <div class="mp-review-item">
-                    <div class="mp-review-top">
-                        <div class="mp-reviewer">
-                            <div class="mp-reviewer-avatar">EL</div>
-                            <div>
-                                <div style="font-weight: 600;">Emily Larson</div>
-                                <div style="font-size: 0.8rem; color: #94a3b8;">Life Coaching • 1 month ago</div>
-                            </div>
+                    {% if review.reply %}
+                    <div class="mp-review-reply" style="margin-top: 16px; padding: 16px; background: #f8fafc; border-left: 3px solid #10b981; border-radius: 8px;">
+                        <div style="font-weight: 600; font-size: 0.9rem; color: var(--dash-text-main); margin-bottom: 8px;">
+                            Response from {{ mentor_profile.first_name }}:
                         </div>
-                        <div class="mp-stars">
-                            <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
+                        <div style="color: var(--dash-text-main); line-height: 1.6;">
+                            {{ review.reply.text }}
                         </div>
                     </div>
-                    <div class="mp-review-text">
-                        "An amazing listener and strategist. I've seen tangible improvements in my productivity and work-life balance since we started working together."
-                    </div>
+                    {% endif %}
                 </div>
+                {% endfor %}
                 
             </div>
+            {% endif %}
 
         </div>
 
