@@ -6,6 +6,8 @@
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/dashboard.css' %}">
 <link rel="stylesheet" href="{% static 'css/notifications.css' %}">
+<!-- Cropper.js CSS -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
 {% endblock %}
 
 {% block navbar %}
@@ -116,6 +118,8 @@
 
 {% block scripts %}
 <script src="{% static 'js/notifications.js' %}"></script>
+<!-- Cropper.js JS -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
 {{ block.super }}
 <style>
 :root {

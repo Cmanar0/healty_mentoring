@@ -522,65 +522,24 @@ document.addEventListener('DOMContentLoaded', function() {
     }, false);
   }
   
-  // Preview logic - triggered after file is selected (via click or drag & drop)
+  // Cropper logic - triggered after file is selected (via click or drag & drop)
   if (coverImageInput) {
     coverImageInput.addEventListener('change', function(e) {
+      // Don't trigger cropper if we're setting the file programmatically
+      if (isSettingFileProgrammatically) {
+        console.log('Skipping cropper - file set programmatically');
+        return;
+      }
+      
       const file = e.target.files[0];
       if (file) {
-        // Create preview
-        const reader = new FileReader();
-        reader.onload = function(e) {
-          const previewUrl = e.target.result;
-          
-          // Remove old preview if exists
-          const oldPreview = document.getElementById('new-cover-preview');
-          if (oldPreview) {
-            oldPreview.remove();
-          }
-          
-          // Remove old image container if it exists
-          const currentContainer = document.getElementById('current-cover-container');
-          if (currentContainer) {
-            currentContainer.remove();
-          }
-          
-          // Reset remove flag since we're uploading a new image
-          const removeInput = document.getElementById('remove-cover-input');
-          if (removeInput) {
-            removeInput.value = '0';
-          }
-          
-          // Create new preview container
-          const previewContainer = document.createElement('div');
-          previewContainer.id = 'new-cover-preview';
-          previewContainer.className = 'current-cover-image';
-          previewContainer.style.cssText = 'margin-top: 12px; padding: 12px; background: #f0fdf4; border: 2px solid #10b981; border-radius: 8px; text-align: center; position: relative;';
-          
-          const previewImg = document.createElement('img');
-          previewImg.src = previewUrl;
-          previewImg.style.cssText = 'max-width: 100%; max-height: 200px; border-radius: 8px; margin-bottom: 8px;';
-          previewImg.alt = 'New cover image preview';
-          
-          const previewLabel = document.createElement('small');
-          previewLabel.style.cssText = 'display: block; color: #059669; font-size: 0.85rem; font-weight: 600;';
-          previewLabel.textContent = 'New cover image (will be saved when you submit)';
-          
-          previewContainer.appendChild(previewImg);
-          previewContainer.appendChild(previewLabel);
-          
-          // Insert after the file input wrapper
-          const formSection = coverImageInput.closest('.form-section');
-          if (formSection) {
-            const helpText = formSection.querySelector('.form-help');
-            if (helpText) {
-              formSection.insertBefore(previewContainer, helpText);
-            } else {
-              formSection.appendChild(previewContainer);
-            }
-          }
-        };
-        
-        reader.readAsDataURL(file);
+        // Get the actual file input element (not just the variable)
+        const fileInputElement = document.getElementById('cover-image-input');
+        if (fileInputElement) {
+          showImagePreview(file, fileInputElement);
+        } else {
+          console.error('Cover image input element not found');
+        }
       }
     });
   }
@@ -1336,5 +1295,379 @@ header nav .notification-dropdown.active .notification-menu {
     grid-template-columns: 1fr;
   }
 }
+
+/* Cropper Modal Styles - already in dashboard.css, but ensuring they work here */
+.cropper-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 10000;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.cropper-modal-backdrop.active {
+  opacity: 1;
+  visibility: visible;
+}
 </style>
+
+<!-- Image Cropper Modal -->
+<div id="imagePreviewModal" class="cropper-modal-backdrop">
+  <div class="cropper-modal-card">
+    <div class="cropper-header">
+      <h3 id="previewTitle"><i class="fas fa-crop-alt"></i> Crop Cover Image</h3>
+      <button type="button" class="cropper-close-btn" onclick="closeImagePreview()">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    
+    <div class="cropper-body">
+      <img id="previewImage" src="" alt="Preview">
+    </div>
+    
+    <div class="cropper-footer">
+      <div class="cropper-toolbar">
+        <button type="button" class="cropper-tool-btn" onclick="zoomOut()" title="Zoom Out">
+          <i class="fas fa-search-minus"></i>
+        </button>
+        <button type="button" class="cropper-tool-btn" onclick="zoomIn()" title="Zoom In">
+          <i class="fas fa-search-plus"></i>
+        </button>
+        <button type="button" class="cropper-tool-btn" onclick="resetZoom()" title="Reset View">
+          <i class="fas fa-undo"></i>
+        </button>
+      </div>
+      
+      <div class="cropper-actions">
+        <button type="button" class="btn-cropper-cancel" onclick="closeImagePreview()">Cancel</button>
+        <button type="button" class="btn-cropper-save" onclick="saveCroppedImage()">
+          <i class="fas fa-check"></i> Crop & Save
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// CropperJS instance
+let cropper = null;
+let currentFileInput = null;
+let isSettingFileProgrammatically = false; // Flag to prevent cropper from triggering when we set file programmatically
+
+// Show image with CropperJS
+function showImagePreview(file, fileInput) {
+  if (!file) return;
+  
+  // Check if CropperJS is loaded
+  if (typeof Cropper === 'undefined') {
+    alert('Image cropper library not loaded. Please refresh the page.');
+    return;
+  }
+  
+  currentFileInput = fileInput;
+  
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const modal = document.getElementById('imagePreviewModal');
+    const img = document.getElementById('previewImage');
+    const title = document.getElementById('previewTitle');
+    
+    if (modal && img && title) {
+      // Set image source
+      img.src = e.target.result;
+      title.innerHTML = '<i class="fas fa-crop-alt"></i> Crop Cover Image';
+      
+      // Show modal with flex and fade-in
+      modal.style.display = 'flex';
+      // Small delay to allow display:flex to apply before adding active class for transition
+      setTimeout(() => {
+        modal.classList.add('active');
+      }, 10);
+      
+      // Remove circular class for blog cover (should be rectangular)
+      const modalCard = document.querySelector('.cropper-modal-card');
+      if (modalCard) {
+        modalCard.classList.remove('cropper-circle-view');
+      }
+      
+      // Wait for image to load, then initialize CropperJS
+      img.onload = function() {
+        // Destroy previous cropper if exists
+        if (cropper) {
+          cropper.destroy();
+          cropper = null;
+        }
+        
+        // Initialize CropperJS with 16:9 aspect ratio for blog covers
+        const aspectRatio = 16/9;
+        cropper = new Cropper(img, {
+          aspectRatio: aspectRatio,
+          viewMode: 1, // Restrict crop box within canvas
+          autoCropArea: 1,
+          responsive: true,
+          restore: false,
+          guides: true,
+          center: true,
+          highlight: false,
+          cropBoxMovable: true,
+          cropBoxResizable: false, // Lock aspect ratio
+          toggleDragModeOnDblclick: false,
+          dragMode: 'move', // Allow dragging the image when zoomed
+          zoomable: true, // Enable zoom
+          scalable: false, // Disable scaling (we only want zoom)
+          rotatable: false, // Disable rotation
+        });
+      };
+      
+      // If image already loaded
+      if (img.complete) {
+        img.onload();
+      }
+    }
+  };
+  reader.readAsDataURL(file);
+}
+
+function closeImagePreview(skipFileReset = false) {
+  const modal = document.getElementById('imagePreviewModal');
+  if (modal) {
+    modal.classList.remove('active');
+    // Wait for transition to finish before hiding
+    setTimeout(() => {
+      modal.style.display = 'none';
+    }, 300);
+  }
+  
+  // Destroy cropper
+  if (cropper) {
+    cropper.destroy();
+    cropper = null;
+  }
+  
+  // Reset file input so the same file can be selected again
+  // BUT NOT if we just saved a cropped image (skipFileReset = true)
+  if (currentFileInput && !skipFileReset) {
+    currentFileInput.value = '';
+  }
+  
+  // Reset variable only if we're not keeping the file
+  if (!skipFileReset) {
+    currentFileInput = null;
+  }
+}
+
+// Zoom functions
+function zoomIn() {
+  if (cropper) {
+    cropper.zoom(0.1); // Zoom in by 10%
+  }
+}
+
+function zoomOut() {
+  if (cropper) {
+    cropper.zoom(-0.1); // Zoom out by 10%
+  }
+}
+
+function resetZoom() {
+  if (cropper) {
+    cropper.reset(); // Reset zoom and position
+  }
+}
+
+// Save cropped image
+function saveCroppedImage() {
+  if (!cropper || !currentFileInput) {
+    alert('Error: Missing cropper or file input');
+    return;
+  }
+  
+  // Get cropped canvas with proper dimensions (16:9 ratio)
+  // Common blog cover dimensions: 1920x1080 (Full HD)
+  const canvas = cropper.getCroppedCanvas({
+    width: 1920,
+    height: 1080,
+    imageSmoothingEnabled: true,
+    imageSmoothingQuality: 'high',
+  });
+  
+  // Convert to blob
+  canvas.toBlob(function(blob) {
+    if (!blob) {
+      alert('Error creating cropped image');
+      return;
+    }
+    
+    // Create a new File object from the blob
+    const fileName = currentFileInput.files[0] ? currentFileInput.files[0].name : 'cover-image.jpg';
+    const croppedFile = new File([blob], fileName, { type: 'image/jpeg' });
+    
+    // Update the file input with the cropped file
+    try {
+      // Set flag to prevent cropper from triggering
+      isSettingFileProgrammatically = true;
+      
+      // Use DataTransfer API to set the file directly on the existing input
+      // This is more reliable than replacing the element
+      const dataTransfer = new DataTransfer();
+      dataTransfer.items.add(croppedFile);
+      
+      // Set files using standard assignment (DataTransfer API)
+      currentFileInput.files = dataTransfer.files;
+      
+      // Verify the file was set
+      if (!currentFileInput.files || currentFileInput.files.length === 0) {
+        console.error('Failed to set file in input');
+        isSettingFileProgrammatically = false;
+        alert('Error: Failed to save cropped image. Please try again.');
+        return;
+      }
+      
+      console.log('File set successfully:', currentFileInput.files[0].name, currentFileInput.files[0].size, 'bytes');
+      console.log('File input name:', currentFileInput.name, 'id:', currentFileInput.id);
+      console.log('File input form:', currentFileInput.form ? 'connected' : 'NOT CONNECTED');
+      
+      // Ensure the input is connected to the form
+      const form = document.getElementById('blogPostForm');
+      if (form && !currentFileInput.form) {
+        console.warn('File input not connected to form, attempting to reconnect...');
+        form.appendChild(currentFileInput);
+      }
+      
+      // Trigger change event so the form recognizes the new file (but cropper won't trigger due to flag)
+      const changeEvent = new Event('change', { bubbles: true, cancelable: true });
+      currentFileInput.dispatchEvent(changeEvent);
+      
+      // Also trigger input event for better browser compatibility
+      const inputEvent = new Event('input', { bubbles: true, cancelable: true });
+      currentFileInput.dispatchEvent(inputEvent);
+      
+      // Reset flag after a short delay to allow events to process
+      setTimeout(() => {
+        isSettingFileProgrammatically = false;
+        if (currentFileInput && currentFileInput.files && currentFileInput.files.length > 0) {
+          console.log('File still present after events:', currentFileInput.files[0].name);
+        } else {
+          console.error('File disappeared after events!');
+        }
+      }, 200);
+    } catch (error) {
+      console.error('Error setting file:', error);
+      alert('Error: Failed to save cropped image. Please try again.');
+      return;
+    }
+    
+    // Remove old preview if exists
+    const oldPreview = document.getElementById('new-cover-preview');
+    if (oldPreview) {
+      oldPreview.remove();
+    }
+    
+    // Remove old image container if it exists
+    const currentContainer = document.getElementById('current-cover-container');
+    if (currentContainer) {
+      currentContainer.remove();
+    }
+    
+    // Reset remove flag since we're uploading a new image
+    const removeInput = document.getElementById('remove-cover-input');
+    if (removeInput) {
+      removeInput.value = '0';
+    }
+    
+    // Create new preview container
+    const previewContainer = document.createElement('div');
+    previewContainer.id = 'new-cover-preview';
+    previewContainer.className = 'current-cover-image';
+    previewContainer.style.cssText = 'margin-top: 12px; padding: 12px; background: #f0fdf4; border: 2px solid #10b981; border-radius: 8px; text-align: center; position: relative;';
+    
+    const previewImg = document.createElement('img');
+    previewImg.src = canvas.toDataURL('image/jpeg', 0.9);
+    previewImg.style.cssText = 'max-width: 100%; max-height: 200px; border-radius: 8px; margin-bottom: 8px;';
+    previewImg.alt = 'New cover image preview';
+    
+    const previewLabel = document.createElement('small');
+    previewLabel.style.cssText = 'display: block; color: #059669; font-size: 0.85rem; font-weight: 600;';
+    previewLabel.textContent = 'New cover image (will be saved when you submit)';
+    
+    previewContainer.appendChild(previewImg);
+    previewContainer.appendChild(previewLabel);
+    
+    // Insert after the file input wrapper
+    const formSection = currentFileInput.closest('.form-section');
+    if (formSection) {
+      const helpText = formSection.querySelector('.form-help');
+      if (helpText) {
+        formSection.insertBefore(previewContainer, helpText);
+      } else {
+        formSection.appendChild(previewContainer);
+      }
+    }
+    
+    // Close modal WITHOUT clearing the file input (we just set it!)
+    closeImagePreview(true);
+  }, 'image/jpeg', 0.9);
+}
+
+// Close modal when clicking outside or pressing Escape
+document.addEventListener('DOMContentLoaded', function() {
+  const modal = document.getElementById('imagePreviewModal');
+  if (modal) {
+    // Close on outside click
+    modal.addEventListener('click', function(e) {
+      if (e.target === modal) {
+        closeImagePreview();
+      }
+    });
+    
+    // Close on Escape key
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape' && modal.classList.contains('active')) {
+        closeImagePreview();
+      }
+    });
+  }
+  
+  // Debug: Log form data on submission to verify file is included
+  const blogForm = document.getElementById('blogPostForm');
+  if (blogForm) {
+    blogForm.addEventListener('submit', function(e) {
+      const coverInput = document.getElementById('cover-image-input');
+      console.log('Form submit - checking cover input:', coverInput);
+      if (coverInput) {
+        console.log('Cover input found:', {
+          name: coverInput.name,
+          id: coverInput.id,
+          form: coverInput.form ? 'connected' : 'NOT CONNECTED',
+          files: coverInput.files ? coverInput.files.length + ' file(s)' : 'no files property'
+        });
+        if (coverInput.files && coverInput.files.length > 0) {
+          console.log('Form submitting with cover image:', coverInput.files[0].name, coverInput.files[0].size, 'bytes');
+        } else {
+          console.warn('Form submitting WITHOUT cover image');
+          // Try to find the file input in the form
+          const formInputs = blogForm.querySelectorAll('input[type="file"]');
+          console.log('All file inputs in form:', formInputs.length);
+          formInputs.forEach((input, index) => {
+            console.log(`File input ${index}:`, {
+              name: input.name,
+              id: input.id,
+              files: input.files ? input.files.length : 'no files'
+            });
+          });
+        }
+      } else {
+        console.error('Cover input element not found!');
+      }
+    });
+  }
+});
+</script>
 {% endblock %}

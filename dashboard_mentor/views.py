@@ -3910,13 +3910,29 @@ def blog_create(request):
         return redirect('general:index')
     
     if request.method == 'POST':
+        # Debug: Log what files are being received
+        if 'cover_image' in request.FILES:
+            uploaded_file = request.FILES['cover_image']
+            print(f"DEBUG: Received cover_image file: {uploaded_file.name}, size: {uploaded_file.size}")
+        else:
+            print("DEBUG: No cover_image in request.FILES")
+        
         form = BlogPostForm(request.POST, request.FILES)
         if form.is_valid():
+            # Debug: Check if cover_image is in cleaned_data
+            if 'cover_image' in form.cleaned_data and form.cleaned_data['cover_image']:
+                print(f"DEBUG: cover_image in cleaned_data: {form.cleaned_data['cover_image'].name}")
+            else:
+                print("DEBUG: No cover_image in cleaned_data")
+            
             post = form.save(commit=False)
             post.author = request.user
             post.save()
             messages.success(request, 'Blog post created successfully!')
             return redirect('general:dashboard_mentor:blog_list')
+        else:
+            # Debug: Log form errors
+            print(f"DEBUG: Form errors: {form.errors}")
     else:
         form = BlogPostForm()
     
@@ -3937,6 +3953,15 @@ def blog_edit(request, post_id):
     post = get_object_or_404(BlogPost, id=post_id, author=request.user)
     
     if request.method == 'POST':
+        # Debug: Log what files are being received
+        if 'cover_image' in request.FILES:
+            uploaded_file = request.FILES['cover_image']
+            print(f"DEBUG: Received cover_image file: {uploaded_file.name}, size: {uploaded_file.size}")
+        else:
+            print("DEBUG: No cover_image in request.FILES")
+            if 'cover_image' in request.POST:
+                print(f"DEBUG: cover_image in POST (not FILES): {request.POST['cover_image']}")
+        
         form = BlogPostForm(request.POST, request.FILES, instance=post)
         if form.is_valid():
             # Check if cover image should be removed
@@ -3944,9 +3969,19 @@ def blog_edit(request, post_id):
                 if post.cover_image:
                     post.cover_image.delete(save=False)
                     post.cover_image = None
+            
+            # Debug: Check if cover_image is in cleaned_data
+            if 'cover_image' in form.cleaned_data and form.cleaned_data['cover_image']:
+                print(f"DEBUG: cover_image in cleaned_data: {form.cleaned_data['cover_image'].name}")
+            else:
+                print("DEBUG: No cover_image in cleaned_data")
+            
             form.save()
             messages.success(request, 'Blog post updated successfully!')
             return redirect('general:dashboard_mentor:blog_list')
+        else:
+            # Debug: Log form errors
+            print(f"DEBUG: Form errors: {form.errors}")
     else:
         form = BlogPostForm(instance=post)
     
