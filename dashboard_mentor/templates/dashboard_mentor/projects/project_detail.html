@@ -1,0 +1,230 @@
+{% extends "dashboard_mentor/base.html" %}
+{% load static %}
+
+{% block page_title %}Project: {{ project.title }}{% endblock %}
+
+{% block dashboard_content %}
+<div class="dashboard-content-container" style="max-width: 980px;">
+  <div style="margin-bottom: 24px;">
+    <a href="{% url 'general:dashboard_mentor:projects_list' %}" class="btn btn-secondary" style="text-decoration: none; display: inline-flex; align-items: center; gap: 8px;">
+      <i class="fas fa-arrow-left"></i> Back to Projects
+    </a>
+  </div>
+
+  <!-- Project Header Card -->
+  <div class="dashboard-card" style="margin-bottom: 24px;">
+    <div style="display: flex; align-items: start; gap: 24px; flex-wrap: wrap;">
+      <!-- Project Icon/Image -->
+      <div style="flex-shrink: 0;">
+        {% if project.template %}
+          {% if project.template.image %}
+            <img src="{{ project.template.image.url }}" alt="{{ project.template.name }}" style="
+              width: 100px;
+              height: 100px;
+              object-fit: cover;
+              border-radius: 12px;
+              border: 1px solid #e2e8f0;
+            ">
+          {% elif project.template.icon %}
+            <div style="
+              width: 100px;
+              height: 100px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              background: {{ project.template.color|default:'#10b981' }};
+              border-radius: 12px;
+              color: white;
+              font-size: 2.5rem;
+            ">
+              <i class="{{ project.template.icon }}"></i>
+            </div>
+          {% else %}
+            <div style="
+              width: 100px;
+              height: 100px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              background: #f1f5f9;
+              border-radius: 12px;
+              color: #64748b;
+              font-size: 2.5rem;
+            ">
+              <i class="fas fa-project-diagram"></i>
+            </div>
+          {% endif %}
+        {% else %}
+          <div style="
+            width: 100px;
+            height: 100px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #f1f5f9;
+            border-radius: 12px;
+            color: #64748b;
+            font-size: 2.5rem;
+          ">
+            <i class="fas fa-project-diagram"></i>
+          </div>
+        {% endif %}
+      </div>
+
+      <!-- Project Info -->
+      <div style="flex: 1; min-width: 0;">
+        <h1 style="font-size: 2rem; font-weight: 800; color: #1e293b; margin: 0 0 12px 0;">{{ project.title }}</h1>
+        
+        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px;">
+          {% if project.template %}
+            <span style="
+              padding: 6px 14px;
+              background: #f1f5f9;
+              color: #475569;
+              border-radius: 8px;
+              font-size: 0.9rem;
+              font-weight: 600;
+            ">
+              <i class="fas fa-layer-group" style="margin-right: 6px;"></i>{{ project.template.name }}
+            </span>
+          {% endif %}
+          {% if project.project_owner %}
+            <span style="
+              padding: 6px 14px;
+              background: #e0f2fe;
+              color: #0369a1;
+              border-radius: 8px;
+              font-size: 0.9rem;
+              font-weight: 600;
+            ">
+              <i class="fas fa-user" style="margin-right: 6px;"></i>
+              {% if project.project_owner.first_name or project.project_owner.last_name %}
+                {{ project.project_owner.first_name }} {{ project.project_owner.last_name }}
+              {% else %}
+                {{ project.project_owner.user.email }}
+              {% endif %}
+            </span>
+          {% else %}
+            <span style="
+              padding: 6px 14px;
+              background: #fef2f2;
+              color: #dc2626;
+              border-radius: 8px;
+              font-size: 0.9rem;
+              font-weight: 600;
+            ">
+              <i class="fas fa-exclamation-circle" style="margin-right: 6px;"></i>Unassigned
+            </span>
+          {% endif %}
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 20px; flex-wrap: wrap; color: #64748b; font-size: 0.9rem;">
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <i class="far fa-calendar"></i>
+            <span>Created: {{ project.created_at|date:"M d, Y" }}</span>
+          </div>
+          {% if project.updated_at != project.created_at %}
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <i class="far fa-edit"></i>
+              <span>Updated: {{ project.updated_at|date:"M d, Y" }}</span>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Project Description -->
+  {% if project.description %}
+    <div class="dashboard-card" style="margin-bottom: 24px;">
+      <h2 class="card-title" style="margin-bottom: 16px;">Description</h2>
+      <div style="color: var(--dash-text-main); line-height: 1.6; white-space: pre-wrap;">{{ project.description }}</div>
+    </div>
+  {% endif %}
+
+  <!-- Project Details -->
+  <div class="dashboard-card">
+    <h2 class="card-title" style="margin-bottom: 20px;">Project Details</h2>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+      <div>
+        <div style="font-weight: 600; color: var(--dash-text-muted); margin-bottom: 8px;">Template</div>
+        <div style="color: var(--dash-text-main); font-weight: 500;">
+          {% if project.template %}
+            {{ project.template.name }}
+            {% if project.template.description %}
+              <div style="font-size: 0.85rem; color: var(--dash-text-muted); margin-top: 4px; font-weight: 400;">
+                {{ project.template.description|truncatewords:15 }}
+              </div>
+            {% endif %}
+          {% else %}
+            <span style="color: var(--dash-text-muted); font-style: italic;">No template</span>
+          {% endif %}
+        </div>
+      </div>
+      
+      <div>
+        <div style="font-weight: 600; color: var(--dash-text-muted); margin-bottom: 8px;">Assigned To</div>
+        <div style="color: var(--dash-text-main); font-weight: 500;">
+          {% if project.project_owner %}
+            {% if project.project_owner.first_name or project.project_owner.last_name %}
+              {{ project.project_owner.first_name }} {{ project.project_owner.last_name }}
+            {% else %}
+              {{ project.project_owner.user.email }}
+            {% endif %}
+            <div style="font-size: 0.85rem; color: var(--dash-text-muted); margin-top: 4px; font-weight: 400;">
+              {{ project.project_owner.user.email }}
+            </div>
+          {% else %}
+            <span style="color: var(--dash-text-muted); font-style: italic;">Not assigned</span>
+          {% endif %}
+        </div>
+      </div>
+      
+      <div>
+        <div style="font-weight: 600; color: var(--dash-text-muted); margin-bottom: 8px;">Supervised By</div>
+        <div style="color: var(--dash-text-main); font-weight: 500;">
+          {% if project.supervised_by %}
+            {{ project.supervised_by.first_name }} {{ project.supervised_by.last_name }}
+          {% else %}
+            <span style="color: var(--dash-text-muted); font-style: italic;">Not assigned</span>
+          {% endif %}
+        </div>
+      </div>
+      
+      <div>
+        <div style="font-weight: 600; color: var(--dash-text-muted); margin-bottom: 8px;">Status</div>
+        <div>
+          {% if project.project_owner %}
+            <span style="
+              padding: 4px 12px;
+              background: #d1fae5;
+              color: #065f46;
+              border-radius: 6px;
+              font-size: 0.85rem;
+              font-weight: 600;
+            ">Assigned</span>
+          {% else %}
+            <span style="
+              padding: 4px 12px;
+              background: #fef2f2;
+              color: #dc2626;
+              border-radius: 6px;
+              font-size: 0.85rem;
+              font-weight: 600;
+            ">Unassigned</span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Actions -->
+  {% if project.project_owner %}
+    <div style="margin-top: 24px;">
+      <a href="{% url 'general:dashboard_mentor:client_detail' project.project_owner.id %}" class="btn btn-primary" style="text-decoration: none; display: inline-flex; align-items: center; gap: 8px;">
+        <i class="fas fa-user"></i> View Client Profile
+      </a>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

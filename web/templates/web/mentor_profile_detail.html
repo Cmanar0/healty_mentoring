@@ -873,8 +873,8 @@
                                     {% if review.published_at %}
                                         {{ review.published_at|timesince }} ago
                                     {% endif %}
-                                </div>
                             </div>
+                        </div>
                         </div>
                         <div class="mp-stars" style="color: #fbbf24;">
                             {% for i in "12345"|make_list %}
@@ -893,13 +893,13 @@
                     <div class="mp-review-reply" style="margin-top: 16px; padding: 16px; background: #f8fafc; border-left: 3px solid #10b981; border-radius: 8px;">
                         <div style="font-weight: 600; font-size: 0.9rem; color: var(--dash-text-main); margin-bottom: 8px;">
                             Response from {{ mentor_profile.first_name }}:
-                        </div>
+                </div>
                         <div style="color: var(--dash-text-main); line-height: 1.6;">
                             {{ review.reply.text }}
+                            </div>
                         </div>
-                    </div>
                     {% endif %}
-                </div>
+                        </div>
                 {% endfor %}
                 
             </div>

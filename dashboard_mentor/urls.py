@@ -43,5 +43,11 @@ urlpatterns = [
     path('profile/reviews/', views.reviews_management, name='reviews_management'),
     path('reviews/<int:review_id>/reply/', views.review_reply, name='review_reply'),
     path('reviews/secure/<str:uidb64>/<str:token>/', views.view_reviews_secure, name='view_reviews_secure'),
+    path('clients/api/', views.clients_api, name='clients_api'),
+    path('projects/templates/api/', views.project_templates_api, name='project_templates_api'),
+    path('projects/create/', views.create_project, name='create_project'),
+    path('templates/', views.templates_list, name='templates_list'),
+    path('projects/', views.projects_list, name='projects_list'),
+    path('projects/<int:project_id>/', views.project_detail, name='project_detail'),
 ]
 

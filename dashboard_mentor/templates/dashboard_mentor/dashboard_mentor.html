@@ -186,7 +186,7 @@
                             <div class="create-icon"><i class="fas fa-user-plus"></i></div>
                             <span class="create-label">User</span>
                         </button>
-                        <button class="create-new-btn btn-project">
+                        <button class="create-new-btn btn-project" onclick="openCreateProjectModal()">
                             <div class="create-icon"><i class="fas fa-project-diagram"></i></div>
                             <span class="create-label">Project</span>
                         </button>
@@ -660,4 +660,7 @@ document.addEventListener('keydown', function(e) {
   };
 })();
 </script>
+
+<!-- Include Create Project Modal -->
+{% include "general/modals/create_project_modal.html" %}
 {% endblock %}

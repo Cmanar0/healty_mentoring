@@ -706,28 +706,28 @@
                 <div class="reviews-list" style="display: flex; flex-direction: column; gap: 16px; margin-bottom: 24px;">
                     {% if last_3_reviews %}
                         {% for review in last_3_reviews %}
-                            <div class="review-item" style="display: flex; gap: 12px; align-items: start;">
+                    <div class="review-item" style="display: flex; gap: 12px; align-items: start;">
                                 <div style="width: 40px; height: 40px; border-radius: 50%; background: #f3f4f6; display: flex; align-items: center; justify-content: center; color: #9ca3af; flex-shrink: 0; font-weight: 600; font-size: 0.85rem;">
                                     {{ review.client.first_name|first }}{{ review.client.last_name|first }}
-                                </div>
+                        </div>
                                 <div style="flex: 1;">
-                                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
                                         <span style="font-weight: 600; font-size: 0.9rem; color: var(--dash-text-main);">{{ review.client.first_name }} {{ review.client.last_name|first }}.</span>
-                                        <div style="color: #fbbf24; font-size: 0.8rem;">
+                                <div style="color: #fbbf24; font-size: 0.8rem;">
                                             {% for i in "12345"|make_list %}
                                                 {% if forloop.counter <= review.rating %}
-                                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
                                                 {% else %}
                                                     <i class="far fa-star"></i>
                                                 {% endif %}
                                             {% endfor %}
-                                        </div>
-                                    </div>
-                                    <p style="margin: 0; font-size: 0.85rem; color: var(--dash-text-muted); line-height: 1.4;">
-                                        "{{ review.text|truncatewords:20 }}"
-                                    </p>
                                 </div>
                             </div>
+                            <p style="margin: 0; font-size: 0.85rem; color: var(--dash-text-muted); line-height: 1.4;">
+                                        "{{ review.text|truncatewords:20 }}"
+                            </p>
+                        </div>
+                    </div>
                         {% endfor %}
                     {% else %}
                         <div style="text-align: center; padding: 20px; color: var(--dash-text-muted); font-size: 0.9rem;">
@@ -735,7 +735,7 @@
                             <p style="margin: 0;">No reviews yet</p>
                         </div>
                     {% endif %}
-                </div>
+                    </div>
 
                 <a href="{% url 'general:dashboard_mentor:reviews_management' %}" class="btn btn-outline btn-sm" style="width: 100%; text-align: center; display: inline-block;">
                     Manage reviews

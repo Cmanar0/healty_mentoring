@@ -1,14 +1,36 @@
 from django.contrib import admin
-from .models import Project
+from .models import Project, ProjectTemplate
+
+
+@admin.register(ProjectTemplate)
+class ProjectTemplateAdmin(admin.ModelAdmin):
+    list_display = ('name', 'category', 'is_active', 'order', 'created_at')
+    list_filter = ('category', 'is_active')
+    search_fields = ('name', 'description')
+    list_editable = ('is_active', 'order')
+    
+    fieldsets = (
+        ('Basic Information', {
+            'fields': ('name', 'description', 'category')
+        }),
+        ('Display Settings', {
+            'fields': ('icon', 'color', 'order', 'is_active')
+        }),
+        ('Advanced', {
+            'fields': ('template_fields',),
+            'classes': ('collapse',)
+        }),
+    )
+
 
 class ProjectAdmin(admin.ModelAdmin):
-    list_display = ('title', 'project_type', 'project_owner', 'supervised_by')
-    list_filter = ('project_type',)
+    list_display = ('title', 'template', 'project_owner', 'supervised_by', 'created_at')
+    list_filter = ('template', 'template__category')
     search_fields = ('title',)
     
     fieldsets = (
         ('Basic Information', {
-            'fields': ('title', 'project_type')
+            'fields': ('title', 'template')
         }),
         ('Ownership & Supervision', {
             'fields': ('project_owner', 'supervised_by')

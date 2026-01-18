@@ -214,12 +214,25 @@ For non-form dropdowns, the trigger can have different styling based on context:
 
 #### Hover State
 
+**⚠️ IMPORTANT: Hover colors differ based on dropdown type**
+
+**For Navigation/Action Dropdowns:**
 ```css
 .dropdown-item:hover {
   background: rgba(16, 185, 129, 0.1);  /* Light green background */
   color: var(--dash-primary);  /* #10b981 - green text */
 }
 ```
+
+**For Form Input Dropdowns (e.g., client selection, template selection):**
+```css
+.dropdown-item:hover {
+  background: #f1f5f9;  /* Light grey background */
+  color: #1e293b;  /* Dark text */
+}
+```
+
+**Note:** Form dropdowns should use light grey hover to differentiate from action/navigation dropdowns which use green.
 
 ---
 
@@ -809,8 +822,8 @@ When creating a new dropdown menu, ensure:
 - [ ] First item has `.first-item` class
 - [ ] Last item has `.last-item` class
 - [ ] Corner rounding follows the rules based on number of items (see table above)
-- [ ] Hover background is `rgba(16, 185, 129, 0.1)` (light green)
-- [ ] Hover text color is `var(--dash-primary)` (#10b981)
+- [ ] Hover background is `rgba(16, 185, 129, 0.1)` (light green) for navigation/action dropdowns OR `#f1f5f9` (light grey) for form input dropdowns
+- [ ] Hover text color is `var(--dash-primary)` (#10b981) for navigation/action dropdowns OR `#1e293b` (dark) for form input dropdowns
 - [ ] Gap between icon and text is `12px`
 - [ ] Border radius matches menu container (`12px`)
 - [ ] Smooth transitions (`0.2s ease`)
@@ -838,7 +851,7 @@ When creating a new dropdown menu, ensure:
 4. **❌ Wrong corner rounding for number of items** - Follow the rules: 1 item = all round, 2 items = first top round/last bottom round, 3+ items = first top round/middle square/last bottom round
 5. **❌ Adding background color to form input trigger on hover** - Only border color should change
 6. **❌ Inconsistent icon widths** - Always use `width: 20px` for icons
-7. **❌ Wrong hover colors** - Use light green background (`rgba(16, 185, 129, 0.1)`), not dark
+7. **❌ Wrong hover colors** - Use light green background (`rgba(16, 185, 129, 0.1)`) for navigation/action dropdowns, or light grey (`#f1f5f9`) for form input dropdowns
 8. **❌ Missing transitions** - Always include smooth transitions for better UX
 9. **❌ Not handling single/two item cases** - Corner rounding must adapt to number of items
 

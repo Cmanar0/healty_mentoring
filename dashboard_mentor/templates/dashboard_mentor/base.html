@@ -139,13 +139,13 @@
           </a>
         </li>
         <li>
-          <a href="#" class="sidebar-link" title="Projects">
+          <a href="{% url 'general:dashboard_mentor:projects_list' %}" class="sidebar-link {% if request.resolver_match.url_name == 'projects_list' %}active{% endif %}" title="Projects">
             <i class="fas fa-project-diagram"></i>
             <span class="sidebar-text">Projects</span>
           </a>
         </li>
         <li>
-          <a href="#" class="sidebar-link" title="Templates">
+          <a href="{% url 'general:dashboard_mentor:templates_list' %}" class="sidebar-link {% if request.resolver_match.url_name == 'templates_list' %}active{% endif %}" title="Templates">
             <i class="fas fa-layer-group"></i>
             <span class="sidebar-text">Templates</span>
           </a>

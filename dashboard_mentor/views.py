@@ -7,6 +7,7 @@ from django.views.decorators.http import require_POST
 from django.utils.crypto import get_random_string
 from django.utils import timezone
 from accounts.models import CustomUser, UserProfile, MentorClientRelationship
+from dashboard_user.models import Project, ProjectTemplate
 from dashboard_mentor.constants import (
     PREDEFINED_MENTOR_TYPES, PREDEFINED_TAGS, 
     PREDEFINED_LANGUAGES, PREDEFINED_CATEGORIES,
@@ -4299,3 +4300,255 @@ def review_reply(request, review_id):
             'updated_at': reply.updated_at.isoformat(),
         }
     })
+
+
+@login_required
+def clients_api(request):
+    """API endpoint to fetch mentor's clients for project assignment"""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        return JsonResponse({'success': False, 'clients': [], 'error': 'Unauthorized'}, status=403)
+    
+    try:
+        mentor_profile = request.user.mentor_profile
+        relationships = MentorClientRelationship.objects.filter(
+            mentor=mentor_profile,
+            confirmed=True
+        ).select_related('client', 'client__user').order_by('client__first_name', 'client__last_name')
+        
+        clients = []
+        for rel in relationships:
+            try:
+                client_profile = rel.client
+                clients.append({
+                    'id': client_profile.id,
+                    'first_name': client_profile.first_name or '',
+                    'last_name': client_profile.last_name or '',
+                    'email': client_profile.user.email if client_profile.user else '',
+                })
+            except Exception:
+                continue
+        
+        return JsonResponse({'success': True, 'clients': clients})
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f'Error fetching clients for project: {str(e)}')
+        return JsonResponse({'success': False, 'clients': [], 'error': str(e)}, status=500)
+
+
+@login_required
+def project_templates_api(request):
+    """API endpoint to fetch active project templates"""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        return JsonResponse({'success': False, 'templates': [], 'error': 'Unauthorized'}, status=403)
+    
+    try:
+        templates = ProjectTemplate.objects.filter(is_active=True).order_by('order', 'name')
+        templates_data = []
+        for template in templates:
+            templates_data.append({
+                'id': template.id,
+                'name': template.name,
+                'description': template.description,
+                'category': template.category,
+                'icon': template.icon,
+                'color': template.color,
+            })
+        
+        return JsonResponse({'success': True, 'templates': templates_data})
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f'Error fetching project templates: {str(e)}')
+        return JsonResponse({'success': False, 'templates': [], 'error': str(e)}, status=500)
+
+
+@login_required
+@require_POST
+def create_project(request):
+    """Create a new project for a mentor"""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+    
+    try:
+        import json
+        data = json.loads(request.body)
+        
+        mentor_profile = request.user.mentor_profile
+        project_type = data.get('project_type')  # 'new' or 'template'
+        client_id = data.get('client_id')
+        
+        # Validate project type
+        if project_type not in ['new', 'template']:
+            return JsonResponse({'success': False, 'error': 'Invalid project type'}, status=400)
+        
+        # Get client if assigned
+        client_profile = None
+        if client_id:
+            try:
+                # Verify the client is in mentor's relationships
+                relationship = MentorClientRelationship.objects.get(
+                    mentor=mentor_profile,
+                    client_id=client_id,
+                    confirmed=True
+                )
+                client_profile = relationship.client
+            except MentorClientRelationship.DoesNotExist:
+                return JsonResponse({'success': False, 'error': 'Client not found or not confirmed'}, status=404)
+        
+        # Title is always required
+        title = data.get('title', '').strip()
+        if not title:
+            return JsonResponse({'success': False, 'error': 'Project title is required'}, status=400)
+        
+        description = data.get('description', '').strip()
+        
+        # Create project based on type
+        if project_type == 'new':
+            project = Project.objects.create(
+                title=title,
+                description=description,
+                template=None,
+                project_owner=client_profile,
+                supervised_by=mentor_profile
+            )
+        elif project_type == 'template':
+            template_id = data.get('template_id')
+            if not template_id:
+                return JsonResponse({'success': False, 'error': 'Template ID is required'}, status=400)
+            
+            try:
+                template = ProjectTemplate.objects.get(id=template_id, is_active=True)
+            except ProjectTemplate.DoesNotExist:
+                return JsonResponse({'success': False, 'error': 'Template not found'}, status=404)
+            
+            project = Project.objects.create(
+                title=title,
+                description=description,
+                template=template,
+                project_owner=client_profile,
+                supervised_by=mentor_profile
+            )
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Project created successfully',
+            'project': {
+                'id': project.id,
+                'title': project.title,
+                'template_id': project.template.id if project.template else None,
+                'client_id': project.project_owner.id if project.project_owner else None,
+            }
+        })
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f'Error creating project: {str(e)}')
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+def templates_list(request):
+    """List all project templates"""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        return redirect('general:index')
+    
+    templates = ProjectTemplate.objects.all().order_by('order', 'name')
+    
+    context = {
+        'templates': templates,
+    }
+    
+    return render(request, 'dashboard_mentor/templates_list.html', context)
+
+
+@login_required
+def projects_list(request):
+    """List all projects supervised by the mentor"""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        return redirect('general:index')
+    
+    mentor_profile = request.user.mentor_profile
+    
+    # Get all projects supervised by this mentor
+    projects = Project.objects.filter(supervised_by=mentor_profile).select_related('project_owner', 'project_owner__user', 'template').order_by('-created_at')
+    
+    # Filter by client if specified
+    client_id = request.GET.get('client', '').strip()
+    selected_client = None
+    if client_id:
+        try:
+            client_id_int = int(client_id)
+            selected_client = UserProfile.objects.get(id=client_id_int)
+            # Verify the client is in mentor's relationships
+            relationship = MentorClientRelationship.objects.filter(
+                mentor=mentor_profile,
+                client=selected_client,
+                confirmed=True
+            ).first()
+            if relationship:
+                projects = projects.filter(project_owner=selected_client)
+            else:
+                # Invalid client, reset filter
+                selected_client = None
+                client_id = ''
+        except (ValueError, UserProfile.DoesNotExist):
+            selected_client = None
+            client_id = ''
+    
+    # Separate assigned and unassigned projects
+    assigned_projects = projects.filter(project_owner__isnull=False)
+    unassigned_projects = projects.filter(project_owner__isnull=True)
+    
+    # Get all confirmed clients for the filter dropdown
+    relationships = MentorClientRelationship.objects.filter(
+        mentor=mentor_profile,
+        confirmed=True
+    ).select_related('client', 'client__user').order_by('client__first_name', 'client__last_name')
+    
+    clients = []
+    for rel in relationships:
+        try:
+            up = rel.client
+            clients.append({
+                'id': up.id,
+                'first_name': up.first_name if up else '',
+                'last_name': up.last_name if up else '',
+                'email': up.user.email if up and up.user else '',
+            })
+        except Exception:
+            continue
+    
+    context = {
+        'assigned_projects': assigned_projects,
+        'unassigned_projects': unassigned_projects,
+        'clients': clients,
+        'selected_client_id': client_id,
+        'selected_client': selected_client,
+    }
+    
+    return render(request, 'dashboard_mentor/projects/projects_list.html', context)
+
+
+@login_required
+def project_detail(request, project_id):
+    """Display project detail page for mentor"""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        return redirect('general:index')
+    
+    mentor_profile = request.user.mentor_profile
+    
+    # Get project and verify it's supervised by this mentor
+    project = get_object_or_404(
+        Project.objects.select_related('project_owner', 'project_owner__user', 'template', 'supervised_by'),
+        id=project_id,
+        supervised_by=mentor_profile
+    )
+    
+    context = {
+        'project': project,
+    }
+    
+    return render(request, 'dashboard_mentor/projects/project_detail.html', context)
