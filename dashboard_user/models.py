@@ -110,7 +110,7 @@ class Project(models.Model):
 
     def __str__(self):
         return self.title
-    
+
     def create_stages_from_template(self):
         """
         Create stages from template's stage templates.

@@ -4711,7 +4711,7 @@ def stage_detail(request, project_id, stage_id):
                 stage.completed_by = None
             stage.save()
             messages.success(request, f"Stage marked as {'completed' if stage.is_completed else 'incomplete'}.")
-            return redirect('dashboard_mentor:stage_detail', project_id=project.id, stage_id=stage.id)
+            return redirect('general:dashboard_mentor:stage_detail', project_id=project.id, stage_id=stage.id)
             
         elif "note_text" in request.POST:
             note_text = request.POST.get("note_text", "").strip()
@@ -4723,7 +4723,7 @@ def stage_detail(request, project_id, stage_id):
                     author_role='mentor'
                 )
                 messages.success(request, "Note added.")
-                return redirect('dashboard_mentor:stage_detail', project_id=project.id, stage_id=stage.id)
+                return redirect('general:dashboard_mentor:stage_detail', project_id=project.id, stage_id=stage.id)
 
     # Get notes
     notes = stage.notes.all().select_related('author', 'author__mentor_profile', 'author__user_profile')

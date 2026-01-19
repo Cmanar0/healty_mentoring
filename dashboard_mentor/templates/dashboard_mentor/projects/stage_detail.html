@@ -332,11 +332,6 @@
                         </div>
                     {% endif %}
                     
-                    {% if stage.target_date %}
-                        <div class="meta-chip">
-                            <i class="far fa-calendar-alt"></i> Due {{ stage.target_date|date:"F j, Y" }}
-                        </div>
-                    {% endif %}
                 </div>
             </div>
 
@@ -457,18 +452,7 @@
                         </div>
                     {% endif %}
                 {% endif %}
-                {% if stage.target_date %}
-                    <div style="display: flex; align-items: center; gap: 12px; font-weight: 500; color: #374151;">
-                        <div style="width: 40px; height: 40px; background: #f1f5f9; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #64748b;">
-                            <i class="fas fa-calendar-day"></i>
-                        </div>
-                        <div>
-                            <div style="font-size: 0.8rem; color: #94a3b8;">Target Date</div>
-                            <div>{{ stage.target_date|date:"F j, Y" }}</div>
-                        </div>
-                    </div>
-                {% endif %}
-                {% if not stage.start_date and not stage.end_date and not stage.target_date %}
+                {% if not stage.start_date and not stage.end_date %}
                     <div style="text-align: center; padding: 16px; color: #9ca3af; font-size: 0.85rem; font-style: italic;">
                         No timeline dates set
                     </div>

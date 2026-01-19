@@ -757,7 +757,7 @@
             if (!placeholderLine) {
                 placeholderLine = document.createElement('div');
                 placeholderLine.id = 'waterfallReorderPlaceholder';
-                placeholderLine.style.cssText = 'position: absolute; left: 0; right: 0; height: 2px; background: rgba(30, 41, 59, 0.6); z-index: 999; pointer-events: none;';
+                placeholderLine.style.cssText = 'position: absolute; left: 0; right: 0; height: 2px; background: #cbd5e1; z-index: 999; pointer-events: none;';
                 chartInner.appendChild(placeholderLine);
             }
             // y is already relative to the inner container (accounts for 20px top padding)
@@ -1150,10 +1150,6 @@
                 dateRangeHtml = `<div class="stage-meta" style="margin-top: 4px;"><i class="far fa-calendar-alt" style="margin-right: 4px;"></i> Ends ${endDateDisplay}</div>`;
             }
             
-            const targetDateHtml = stage.target_date_display 
-                ? `<div class="stage-meta"><i class="far fa-calendar-check" style="margin-right: 4px;"></i> Due ${stage.target_date_display}</div>`
-                : '';
-            
             const notesCountHtml = stage.notes_count > 0
                 ? `<div style="font-size: 0.8rem; color: #9ca3af;"><i class="far fa-comment" style="margin-right: 4px;"></i> ${stage.notes_count}</div>`
                 : '<div style="font-size: 0.8rem; color: #9ca3af;"></div>';
@@ -1169,7 +1165,6 @@
                             <span ${titleClass}>${titleText}</span>
                         </div>
                         ${dateRangeHtml}
-                        ${targetDateHtml}
                         <div style="margin-top: 8px; width: 100%;">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
                                 <span style="font-size: 0.75rem; color: #6b7280;">Progress</span>
