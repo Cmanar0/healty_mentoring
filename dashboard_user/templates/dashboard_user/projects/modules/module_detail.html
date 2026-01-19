@@ -1,0 +1,53 @@
+{% extends "dashboard_user/base.html" %}
+{% load static %}
+
+{% block page_title %}{{ module_instance.module.name }} - {{ project.title }}{% endblock %}
+
+{% block dashboard_content %}
+<div class="dashboard-content-container" style="max-width: 1200px; margin: 0 auto; padding: 32px;">
+    <!-- Breadcrumb -->
+    <div style="margin-bottom: 24px;">
+        <a href="{% url 'general:dashboard_user:project_detail' project.id %}" style="display: inline-flex; align-items: center; gap: 8px; color: #64748b; text-decoration: none; font-size: 0.875rem;">
+            <i class="fas fa-arrow-left"></i> Back to Project
+        </a>
+    </div>
+
+    <!-- Module Header -->
+    <div style="background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 32px; margin-bottom: 24px;">
+        <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 16px;">
+            {% if module_instance.module.icon %}
+                <div style="width: 64px; height: 64px; background: linear-gradient(135deg, {{ module_instance.module.color|default:'#10b981' }} 0%, {{ module_instance.module.color|default:'#059669' }} 100%); border-radius: 12px; display: flex; align-items: center; justify-content: center;">
+                    <i class="{{ module_instance.module.icon }}" style="font-size: 2rem; color: white;"></i>
+                </div>
+            {% endif %}
+            <div>
+                <h1 style="font-size: 2rem; font-weight: 700; color: #111827; margin: 0 0 8px 0;">{{ module_instance.module.name }}</h1>
+                <p style="font-size: 0.95rem; color: #64748b; margin: 0;">{{ module_instance.module.description }}</p>
+            </div>
+        </div>
+        
+        <div style="display: flex; gap: 16px; margin-top: 16px; padding-top: 16px; border-top: 1px solid #e5e7eb;">
+            <div>
+                <div style="font-size: 0.75rem; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px;">Project</div>
+                <div style="font-size: 0.875rem; font-weight: 600; color: #374151;">{{ project.title }}</div>
+            </div>
+            <div>
+                <div style="font-size: 0.75rem; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px;">Status</div>
+                <div style="font-size: 0.875rem; font-weight: 600; color: #10b981;">
+                    {% if module_instance.is_active %}Active{% else %}Inactive{% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Module Content -->
+    <div style="background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 32px;">
+        <div style="text-align: center; padding: 64px 32px; color: #9ca3af;">
+            <i class="fas fa-cube" style="font-size: 4rem; margin-bottom: 16px; opacity: 0.3;"></i>
+            <h2 style="font-size: 1.25rem; font-weight: 600; color: #374151; margin-bottom: 8px;">Module Content</h2>
+            <p style="font-size: 0.95rem; margin: 0;">Module detail page content will be implemented here.</p>
+            <p style="font-size: 0.85rem; margin-top: 8px; color: #6b7280;">This is a default template for all modules.</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

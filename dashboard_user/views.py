@@ -2155,7 +2155,7 @@ def projects_list(request):
         'pending_count': pending_projects.count(),
     }
     
-    return render(request, 'dashboard_user/projects_list.html', context)
+    return render(request, 'dashboard_user/projects/projects_list.html', context)
 
 
 @login_required
@@ -2222,7 +2222,49 @@ def project_detail(request, project_id):
         'is_supervisor': is_supervisor,
     }
     
-    return render(request, 'dashboard_user/project_detail.html', context)
+    return render(request, 'dashboard_user/projects/project_detail.html', context)
+
+
+@login_required
+def module_detail(request, project_id, module_id):
+    """Module detail page - default template for all modules"""
+    from dashboard_user.models import ProjectModuleInstance
+    
+    project = get_object_or_404(
+        Project.objects.select_related('template', 'supervised_by', 'project_owner'),
+        id=project_id
+    )
+    
+    # Check if user is the owner or the supervisor (mentor)
+    is_owner = False
+    is_supervisor = False
+    
+    if hasattr(request.user, 'profile'):
+        if request.user.profile.role == 'user':
+            user_profile = request.user.user_profile
+            is_owner = (project.project_owner == user_profile)
+        elif request.user.profile.role == 'mentor':
+            mentor_profile = request.user.mentor_profile
+            is_supervisor = (project.supervised_by == mentor_profile)
+    
+    # Only allow access if user is owner or supervisor
+    if not (is_owner or is_supervisor):
+        return redirect('general:index')
+    
+    module_instance = get_object_or_404(
+        ProjectModuleInstance.objects.select_related('module'),
+        id=module_id,
+        project=project
+    )
+    
+    context = {
+        'project': project,
+        'module_instance': module_instance,
+        'is_owner': is_owner,
+        'is_supervisor': is_supervisor,
+    }
+    
+    return render(request, 'dashboard_user/projects/modules/module_detail.html', context)
 
 
 @login_required

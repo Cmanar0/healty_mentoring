@@ -721,9 +721,11 @@ document.addEventListener('DOMContentLoaded', function() {
   }
   
   window.openCreateStageModal = function() {
-    // TODO: Implement stage creation modal
-    alert('Stage creation functionality will be implemented next.');
+    const modal = document.getElementById('createStageModal');
+    if(modal) { modal.style.display = 'flex'; setTimeout(()=>modal.classList.add('active'),10); }
   };
 });
 </script>
+
+{% include 'dashboard_user/projects/modals/create_stage_modal.html' %}
 {% endblock %}

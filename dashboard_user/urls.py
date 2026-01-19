@@ -34,5 +34,6 @@ urlpatterns = [
     path('projects/<int:project_id>/accept/', views.accept_project_assignment, name='accept_project_assignment'),
     path('projects/<int:project_id>/reject/', views.reject_project_assignment, name='reject_project_assignment'),
     path('projects/<int:project_id>/questionnaire/', views.submit_questionnaire, name='submit_questionnaire'),
+    path('projects/<int:project_id>/modules/<int:module_id>/', views.module_detail, name='module_detail'),
 ]
 

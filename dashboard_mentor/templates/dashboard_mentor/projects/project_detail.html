@@ -314,6 +314,7 @@
 
 {% block dashboard_content %}
 {% include 'general/modals/create_stage_modal.html' %}
+{% include 'dashboard_user/projects/modals/manage_modules_modal.html' %}
 
 <div class="dashboard-content-container" style="max-width: 1200px; margin: 0 auto;">
     
@@ -339,6 +340,56 @@
     <div class="roadmap-container">
         <!-- Main List -->
         <main>
+            <!-- Project Name, Description, and Progress -->
+            <div style="background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 24px; margin-bottom: 24px; display: grid; grid-template-columns: 1fr auto; gap: 24px; align-items: center;">
+                <!-- Project Info -->
+                <div>
+                    <h1 style="font-size: 1.75rem; font-weight: 700; color: #111827; margin: 0 0 12px 0;">{{ project.title }}</h1>
+                    {% if project.description %}
+                        <p style="font-size: 0.95rem; color: #64748b; line-height: 1.6; margin: 0;">{{ project.description }}</p>
+                    {% else %}
+                        <p style="font-size: 0.95rem; color: #9ca3af; font-style: italic; margin: 0;">No description provided</p>
+                    {% endif %}
+                </div>
+                
+                <!-- Project Completion Circle -->
+                <div style="display: flex; flex-direction: column; align-items: center;">
+                    <div class="profile-completion-circle" style="position: relative; width: 100px; height: 100px;">
+                        <svg width="100" height="100" viewBox="0 0 120 120" style="transform: scale(0.83);">
+                            <!-- Background circle -->
+                            <circle
+                                cx="60"
+                                cy="60"
+                                r="52"
+                                fill="none"
+                                stroke="#e5e7eb"
+                                stroke-width="8"
+                            />
+                            <!-- Progress circle -->
+                            <circle
+                                id="projectProgressCircle"
+                                cx="60"
+                                cy="60"
+                                r="52"
+                                fill="none"
+                                stroke="#10b981"
+                                stroke-width="8"
+                                stroke-linecap="round"
+                                stroke-dasharray="326.73"
+                                stroke-dashoffset="326.73"
+                                transform="rotate(-90 60 60)"
+                                style="transition: stroke-dashoffset 0.3s ease;"
+                            />
+                        </svg>
+                        <div class="completion-percentage" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-weight: 700; color: #111827; font-size: 1.1rem;">
+                            <span id="projectCompletionText">0%</span>
+                        </div>
+                    </div>
+                    <p style="margin: 8px 0 0; font-size: 0.8rem; color: #6b7280; text-align: center;">
+                        Completed
+                    </p>
+                </div>
+            </div>
             {% if not project.questionnaire_completed %}
                 <div style="background: #fffbeb; border: 1px solid #fcd34d; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
                     <h3 style="margin: 0 0 8px 0; font-size: 1rem; color: #92400e;">Setup Required</h3>
@@ -346,6 +397,17 @@
                     {% include "mentoring/partials/questionnaire_form.html" with questions=questions answers=answers %}
                 </div>
             {% endif %}
+
+            <!-- Waterfall Chart -->
+            <div id="waterfallChartContainer" style="display: none; background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
+                <h3 style="font-size: 1.125rem; font-weight: 600; color: #111827; margin: 0 0 20px 0;">
+                    <i class="fas fa-chart-line" style="color: #10b981; margin-right: 8px;"></i>
+                    Project Timeline
+                </h3>
+                <div id="waterfallChart" style="min-height: 200px; position: relative;">
+                    <!-- Chart will be rendered here by JavaScript -->
+                </div>
+            </div>
 
             <div class="roadmap-list-section">
                 <div class="roadmap-header">
@@ -370,33 +432,54 @@
         <!-- Sidebar Info -->
         <aside class="project-sidebar">
             <div class="project-meta-card">
-                <i class="fas fa-paper-plane meta-bg-icon"></i>
                 <div style="position: relative; z-index: 2;">
-                    <div style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.7; margin-bottom: 8px;">Current Project</div>
-                    <h1 class="project-title-lg">{{ project.title }}</h1>
-                    
-                    {% if project.template %}
-                    <div style="display: inline-flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.15); padding: 4px 10px; border-radius: 6px; font-size: 0.8rem;">
-                        <i class="{{ project.template.icon|default:'fas fa-cube' }}"></i>
-                        {{ project.template.name }}
-                    </div>
-                    {% endif %}
-
-                    <div class="project-owner-row">
-                        {% if project.project_owner %}
-                            <div class="owner-avatar">
-                                {{ project.project_owner.first_name|make_list|first|default:"U" }}
-                            </div>
-                            <div>
-                                <div style="font-size: 0.9rem; font-weight: 600;">
-                                    {{ project.project_owner.first_name }} {{ project.project_owner.last_name }}
+                    <!-- Owner Section -->
+                    <div style="margin-bottom: 20px;">
+                        <div style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.7; margin-bottom: 8px;">Owner</div>
+                        <div class="project-owner-row">
+                            {% if project.project_owner %}
+                                <div class="owner-avatar">
+                                    {{ project.project_owner.first_name|make_list|first|default:"U" }}
                                 </div>
-                                <div style="font-size: 0.8rem; opacity: 0.7;">Client</div>
-                            </div>
+                                <div>
+                                    <a href="{% url 'general:dashboard_mentor:client_detail' project.project_owner.id %}" style="text-decoration: none; color: inherit;">
+                                        <div style="font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">
+                                            {{ project.project_owner.first_name }} {{ project.project_owner.last_name }}
+                                        </div>
+                                    </a>
+                                    <div style="font-size: 0.8rem; opacity: 0.7;">Client</div>
+                                </div>
+                            {% else %}
+                                <div style="color: #fca5a5; font-size: 0.9rem;">
+                                    <i class="fas fa-exclamation-triangle"></i> Unassigned
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <!-- Modules Section -->
+                    <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.1);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                            <div style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.7;">Modules</div>
+                            <button onclick="openManageModulesModal()" style="background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.2)'" onmouseout="this.style.background='rgba(255,255,255,0.15)'">
+                                <i class="fas fa-cog" style="margin-right: 4px;"></i> Manage
+                            </button>
+                        </div>
+                        {% if active_modules %}
+                        <div style="display: flex; flex-direction: column; gap: 8px;">
+                            {% for module_instance in active_modules %}
+                                <a href="{% url 'general:dashboard_user:module_detail' project.id module_instance.id %}" style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: rgba(255,255,255,0.1); border-radius: 6px; text-decoration: none; color: white; transition: background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.15)'" onmouseout="this.style.background='rgba(255,255,255,0.1)'">
+                                    {% if module_instance.module.icon %}
+                                        <i class="{{ module_instance.module.icon }}" style="font-size: 0.9rem;"></i>
+                                    {% endif %}
+                                    <span style="font-size: 0.85rem; font-weight: 500;">{{ module_instance.module.name }}</span>
+                                </a>
+                            {% endfor %}
+                        </div>
                         {% else %}
-                            <div style="color: #fca5a5; font-size: 0.9rem;">
-                                <i class="fas fa-exclamation-triangle"></i> Unassigned
-                            </div>
+                        <div style="color: rgba(255,255,255,0.6); font-size: 0.85rem; font-style: italic; padding: 8px 0;">
+                            No modules added yet
+                        </div>
                         {% endif %}
                     </div>
                 </div>
@@ -413,15 +496,6 @@
                     <div class="stat-label">Status</div>
                 </div>
             </div>
-            
-            {% if project.description %}
-            <div style="background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px;">
-                <h4 style="margin: 0 0 8px 0; font-size: 0.85rem; color: #1f2937;">Description</h4>
-                <p style="font-size: 0.85rem; color: #64748b; line-height: 1.5; margin: 0;">
-                    {{ project.description|truncatechars:200 }}
-                </p>
-            </div>
-            {% endif %}
         </aside>
     </div>
 </div>
@@ -438,6 +512,405 @@
     console.log('PROJECT_ID:', PROJECT_ID);
     console.log('STAGE_DETAIL_URL:', STAGE_DETAIL_URL);
     
+    // Render waterfall chart
+    function renderWaterfallChart(stages) {
+        const container = document.getElementById('waterfallChartContainer');
+        const chartEl = document.getElementById('waterfallChart');
+        
+        // Store reference for drag handlers
+        window.waterfallChartEl = chartEl;
+        
+        if (!container || !chartEl) return;
+        
+        if (!stages || stages.length === 0) {
+            container.style.display = 'none';
+            return;
+        }
+        
+        container.style.display = 'block';
+        
+        // Filter stages with dates
+        const stagesWithDates = stages.filter(s => s.start_date && s.end_date);
+        
+        if (stagesWithDates.length === 0) {
+            chartEl.innerHTML = `
+                <div style="text-align: center; padding: 32px; color: #9ca3af;">
+                    <i class="fas fa-calendar-alt" style="font-size: 2rem; margin-bottom: 8px; opacity: 0.3;"></i>
+                    <p style="margin: 0; font-size: 0.875rem;">Add start and end dates to stages to view timeline</p>
+                </div>
+            `;
+            return;
+        }
+        
+        // Calculate date range
+        const dates = stagesWithDates.flatMap(s => [new Date(s.start_date), new Date(s.end_date)]);
+        const minDate = new Date(Math.min(...dates));
+        const maxDate = new Date(Math.max(...dates));
+        const totalDays = Math.ceil((maxDate - minDate) / (1000 * 60 * 60 * 24));
+        const totalMonths = Math.ceil((maxDate - minDate) / (1000 * 60 * 60 * 24 * 30));
+        const totalYears = Math.ceil((maxDate - minDate) / (1000 * 60 * 60 * 24 * 365));
+        
+        // Determine time unit and interval
+        let timeUnit, interval, unitLabel;
+        if (totalYears >= 2) {
+            timeUnit = 'year';
+            interval = Math.max(1, Math.floor(totalYears / 10));
+            unitLabel = 'Years';
+        } else if (totalMonths >= 2) {
+            timeUnit = 'month';
+            interval = Math.max(1, Math.floor(totalMonths / 10));
+            unitLabel = 'Months';
+        } else {
+            timeUnit = 'day';
+            interval = Math.max(1, Math.floor(totalDays / 10));
+            unitLabel = 'Days';
+        }
+        
+        // Generate axis labels
+        const axisLabels = [];
+        const numLabels = 6; // Show 6 labels on the axis
+        for (let i = 0; i <= numLabels; i++) {
+            const progress = i / numLabels;
+            let labelDate = new Date(minDate.getTime() + (maxDate - minDate) * progress);
+            let labelText;
+            
+            if (timeUnit === 'year') {
+                labelText = labelDate.getFullYear().toString();
+            } else if (timeUnit === 'month') {
+                labelText = labelDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+            } else {
+                labelText = labelDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            }
+            
+            axisLabels.push({
+                position: progress * 100,
+                label: labelText
+            });
+        }
+        
+        const chartHeight = 80 + (stagesWithDates.length * 50);
+        chartEl.style.height = chartHeight + 'px';
+        
+        let chartHtml = `
+            <div style="position: relative; height: ${chartHeight}px; padding: 20px 0 60px 0;">
+                <!-- Timeline axis -->
+                <div style="position: absolute; bottom: 0; left: 0; right: 0; height: 40px; border-top: 2px solid #e5e7eb;">
+                    ${axisLabels.map(label => `
+                        <div style="position: absolute; left: ${label.position}%; transform: translateX(-50%); top: 8px;">
+                            <div style="width: 2px; height: 8px; background: #9ca3af; margin: 0 auto;"></div>
+                            <div style="font-size: 0.7rem; color: #6b7280; margin-top: 4px; white-space: nowrap;">${label.label}</div>
+                        </div>
+                    `).join('')}
+                    <div style="position: absolute; top: -20px; left: 0; font-size: 0.7rem; color: #9ca3af; font-weight: 500;">${unitLabel}</div>
+                </div>
+        `;
+        
+        stagesWithDates.forEach((stage, index) => {
+            const startDate = new Date(stage.start_date);
+            const endDate = new Date(stage.end_date);
+            const daysFromStart = Math.ceil((startDate - minDate) / (1000 * 60 * 60 * 24));
+            const duration = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
+            const leftPercent = (daysFromStart / totalDays) * 100;
+            const widthPercent = (duration / totalDays) * 100;
+            const top = 20 + (index * 50);
+            const color = stage.is_completed ? '#10b981' : '#3b82f6';
+            
+            chartHtml += `
+                <div 
+                    class="waterfall-stage-bar" 
+                    data-stage-id="${stage.id}"
+                    data-start-date="${stage.start_date}"
+                    data-end-date="${stage.end_date}"
+                    style="position: absolute; top: ${top}px; left: ${leftPercent}%; width: ${widthPercent}%; height: 30px; background: ${color}; border-radius: 4px; display: flex; align-items: center; padding: 0 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); cursor: move;" 
+                    title="${stage.title}"
+                >
+                    <div class="waterfall-resize-handle waterfall-resize-left" style="position: absolute; left: 0; top: 0; bottom: 0; width: 8px; cursor: ew-resize; background: rgba(255,255,255,0.3); border-radius: 4px 0 0 4px;"></div>
+                    <span style="font-size: 0.75rem; color: white; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; text-align: center; pointer-events: none;">${stage.title}</span>
+                    <div class="waterfall-resize-handle waterfall-resize-right" style="position: absolute; right: 0; top: 0; bottom: 0; width: 8px; cursor: ew-resize; background: rgba(255,255,255,0.3); border-radius: 0 4px 4px 0;"></div>
+                </div>
+            `;
+        });
+        
+        chartHtml += '</div>';
+        chartEl.innerHTML = chartHtml;
+        
+        // Initialize drag handlers for waterfall bars
+        initWaterfallDragHandlers(stagesWithDates, minDate, maxDate, totalDays);
+    }
+    
+    // Initialize drag handlers for waterfall chart bars
+    function initWaterfallDragHandlers(stages, minDate, maxDate, totalDays) {
+        const chartEl = window.waterfallChartEl;
+        if (!chartEl) return;
+        
+        const bars = chartEl.querySelectorAll('.waterfall-stage-bar');
+        let isDragging = false;
+        let dragType = null; // 'move', 'resize-left', 'resize-right'
+        let currentBar = null;
+        let startX = 0;
+        let startLeft = 0;
+        let startWidth = 0;
+        let startDate = null;
+        let endDate = null;
+        let handleMouseMove = null;
+        let handleMouseUp = null;
+        
+        bars.forEach(bar => {
+            const resizeLeft = bar.querySelector('.waterfall-resize-left');
+            const resizeRight = bar.querySelector('.waterfall-resize-right');
+            
+            // Move entire bar
+            bar.addEventListener('mousedown', function(e) {
+                if (e.target === resizeLeft || e.target === resizeRight) return;
+                isDragging = true;
+                dragType = 'move';
+                currentBar = bar;
+                startX = e.clientX;
+                const rect = bar.getBoundingClientRect();
+                const chartRect = chartEl.getBoundingClientRect();
+                startLeft = ((rect.left - chartRect.left) / chartRect.width) * 100;
+                startWidth = (rect.width / chartRect.width) * 100;
+                startDate = new Date(bar.dataset.startDate);
+                endDate = new Date(bar.dataset.endDate);
+                bar.style.cursor = 'grabbing';
+                e.preventDefault();
+            });
+            
+            // Resize left edge
+            resizeLeft.addEventListener('mousedown', function(e) {
+                isDragging = true;
+                dragType = 'resize-left';
+                currentBar = bar;
+                startX = e.clientX;
+                const rect = bar.getBoundingClientRect();
+                const chartRect = chartEl.getBoundingClientRect();
+                startLeft = ((rect.left - chartRect.left) / chartRect.width) * 100;
+                startWidth = (rect.width / chartRect.width) * 100;
+                startDate = new Date(bar.dataset.startDate);
+                endDate = new Date(bar.dataset.endDate);
+                e.stopPropagation();
+                e.preventDefault();
+            });
+            
+            // Resize right edge
+            resizeRight.addEventListener('mousedown', function(e) {
+                isDragging = true;
+                dragType = 'resize-right';
+                currentBar = bar;
+                startX = e.clientX;
+                const rect = bar.getBoundingClientRect();
+                const chartRect = chartEl.getBoundingClientRect();
+                startLeft = ((rect.left - chartRect.left) / chartRect.width) * 100;
+                startWidth = (rect.width / chartRect.width) * 100;
+                startDate = new Date(bar.dataset.startDate);
+                endDate = new Date(bar.dataset.endDate);
+                e.stopPropagation();
+                e.preventDefault();
+            });
+        });
+        
+        // Create or update date popover
+        let datePopover = null;
+        function showDatePopover(x, y, dateStr, label) {
+            if (!datePopover) {
+                datePopover = document.createElement('div');
+                datePopover.id = 'waterfallDatePopover';
+                datePopover.style.cssText = 'position: fixed; background: #1e293b; color: white; padding: 8px 12px; border-radius: 6px; font-size: 0.8rem; font-weight: 500; z-index: 10001; pointer-events: none; box-shadow: 0 4px 12px rgba(0,0,0,0.15); white-space: nowrap; display: none;';
+                document.body.appendChild(datePopover);
+            }
+            
+            const date = new Date(dateStr);
+            const formattedDate = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+            datePopover.textContent = `${label}: ${formattedDate}`;
+            datePopover.style.display = 'block';
+            
+            // Position popover above the cursor/bar edge
+            // First get the popover width to center it properly
+            const popoverWidth = datePopover.offsetWidth || 150; // fallback width
+            datePopover.style.left = (x - popoverWidth / 2) + 'px';
+            datePopover.style.top = (y - 40) + 'px';
+        }
+        
+        function hideDatePopover() {
+            if (datePopover) {
+                datePopover.style.display = 'none';
+            }
+        }
+        
+        // Mouse move handler
+        handleMouseMove = function(e) {
+            if (!isDragging || !currentBar) return;
+            
+            const chartRect = chartEl.getBoundingClientRect();
+            const deltaX = e.clientX - startX;
+            const deltaPercent = (deltaX / chartRect.width) * 100;
+            
+            if (dragType === 'move') {
+                // Move entire bar
+                const newLeft = Math.max(0, Math.min(100 - startWidth, startLeft + deltaPercent));
+                const newStartDate = new Date(minDate.getTime() + ((newLeft / 100) * totalDays) * 24 * 60 * 60 * 1000);
+                const duration = (endDate - startDate) / (1000 * 60 * 60 * 24);
+                const newEndDate = new Date(newStartDate.getTime() + duration * 24 * 60 * 60 * 1000);
+                
+                currentBar.style.left = newLeft + '%';
+                currentBar.dataset.startDate = newStartDate.toISOString().split('T')[0];
+                currentBar.dataset.endDate = newEndDate.toISOString().split('T')[0];
+                
+                // Show popover for both dates
+                const barRect = currentBar.getBoundingClientRect();
+                showDatePopover(e.clientX, barRect.top, newStartDate.toISOString().split('T')[0], 'Start');
+            } else if (dragType === 'resize-left') {
+                // Resize from left
+                const newLeft = Math.max(0, Math.min(startLeft + startWidth - 1, startLeft + deltaPercent));
+                const newWidth = startWidth - (newLeft - startLeft);
+                const newStartDate = new Date(minDate.getTime() + ((newLeft / 100) * totalDays) * 24 * 60 * 60 * 1000);
+                
+                if (newWidth > 0 && newStartDate < endDate) {
+                    currentBar.style.left = newLeft + '%';
+                    currentBar.style.width = newWidth + '%';
+                    currentBar.dataset.startDate = newStartDate.toISOString().split('T')[0];
+                    
+                    // Show popover for start date at the left edge
+                    showDatePopover(e.clientX, e.clientY, newStartDate.toISOString().split('T')[0], 'Start');
+                }
+            } else if (dragType === 'resize-right') {
+                // Resize from right
+                const newWidth = Math.max(1, Math.min(100 - startLeft, startWidth + deltaPercent));
+                const newEndDate = new Date(minDate.getTime() + ((startLeft + newWidth) / 100) * totalDays * 24 * 60 * 60 * 1000);
+                
+                if (newEndDate > startDate) {
+                    currentBar.style.width = newWidth + '%';
+                    currentBar.dataset.endDate = newEndDate.toISOString().split('T')[0];
+                    
+                    // Show popover for end date at the right edge
+                    showDatePopover(e.clientX, e.clientY, newEndDate.toISOString().split('T')[0], 'End');
+                }
+            }
+        };
+        
+        // Mouse up handler - save changes
+        handleMouseUp = function(e) {
+            if (!isDragging || !currentBar) return;
+            
+            const stageId = currentBar.dataset.stageId;
+            const oldStartDate = startDate.toISOString().split('T')[0];
+            const oldEndDate = endDate.toISOString().split('T')[0];
+            const newStartDate = currentBar.dataset.startDate;
+            const newEndDate = currentBar.dataset.endDate;
+            
+            // Hide popover
+            hideDatePopover();
+            
+            // Format dates for notification
+            const formatDate = (dateStr) => {
+                const date = new Date(dateStr);
+                return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+            };
+            
+            // Determine what changed
+            let notificationMessage = '';
+            if (dragType === 'resize-left' && newStartDate !== oldStartDate) {
+                notificationMessage = `Start date updated to ${formatDate(newStartDate)}`;
+            } else if (dragType === 'resize-right' && newEndDate !== oldEndDate) {
+                notificationMessage = `End date updated to ${formatDate(newEndDate)}`;
+            } else if (dragType === 'move' && (newStartDate !== oldStartDate || newEndDate !== oldEndDate)) {
+                notificationMessage = `Stage dates updated: ${formatDate(newStartDate)} - ${formatDate(newEndDate)}`;
+            }
+            
+            // Update database
+            fetch(`/dashboard/mentor/projects/${PROJECT_ID}/stages/${stageId}/update-dates/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({
+                    start_date: newStartDate,
+                    end_date: newEndDate
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Show notification
+                    if (notificationMessage && typeof showNotification !== 'undefined') {
+                        showNotification(notificationMessage, 'success');
+                    }
+                    // Reload stages to update everything
+                    loadStages();
+                } else {
+                    console.error('Failed to update stage dates:', data.error);
+                    if (typeof showNotification !== 'undefined') {
+                        showNotification('Failed to update stage dates', 'error');
+                    }
+                    // Reload to restore correct state
+                    loadStages();
+                }
+            })
+            .catch(error => {
+                console.error('Error updating stage dates:', error);
+                if (typeof showNotification !== 'undefined') {
+                    showNotification('Error updating stage dates', 'error');
+                }
+                loadStages();
+            });
+            
+            // Reset
+            isDragging = false;
+            dragType = null;
+            if (currentBar) {
+                currentBar.style.cursor = 'move';
+            }
+            currentBar = null;
+            
+            // Remove event listeners
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+        };
+        
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', handleMouseUp);
+    }
+    
+    // Render project completion progress circle
+    function renderProjectProgress(stages) {
+        const progressCircle = document.getElementById('projectProgressCircle');
+        const completionText = document.getElementById('projectCompletionText');
+        
+        if (!progressCircle || !completionText) return;
+        
+        if (!stages || stages.length === 0) {
+            completionText.textContent = '0%';
+            progressCircle.style.strokeDashoffset = '326.73';
+            progressCircle.style.stroke = '#e5e7eb';
+            return;
+        }
+        
+        const completedCount = stages.filter(s => s.is_completed).length;
+        const totalCount = stages.length;
+        const percentage = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+        
+        const circumference = 326.73; // 2 * PI * radius (52)
+        const offset = circumference - (percentage / 100) * circumference;
+        
+        // Set color based on percentage
+        function getProgressColor(pct) {
+            if (pct >= 90) return '#059669'; // Dark green
+            if (pct >= 70) return '#10b981'; // Green
+            if (pct >= 40) return '#f59e0b'; // Orange
+            return '#ef4444'; // Red
+        }
+        
+        const color = getProgressColor(percentage);
+        progressCircle.style.stroke = color;
+        completionText.textContent = percentage + '%';
+        
+        // Animate the circle
+        setTimeout(() => {
+            progressCircle.style.strokeDashoffset = offset;
+        }, 100);
+    }
+    
     // Render stages from API data
     function renderStages(stages) {
         console.log('renderStages called with:', stages);
@@ -452,6 +925,10 @@
         if (!countEl) {
             console.error('stagesCount element not found!');
         }
+        
+        // Render charts and progress
+        renderWaterfallChart(stages);
+        renderProjectProgress(stages);
         
         if (!stages || stages.length === 0) {
             console.log('No stages to render');
@@ -480,25 +957,40 @@
             if (stage.is_completed) {
                 statusDot = '<span class="status-dot completed" title="Completed"></span>';
                 titleClass = 'style="text-decoration: line-through; color: #6b7280;"';
-            } else if (stage.is_pending_confirmation) {
-                statusDot = '<span class="status-dot draft" title="Draft"></span>';
-                titleText = `${stage.title} <span style="font-size: 0.7em; background: #f3f4f6; padding: 2px 6px; border-radius: 4px; margin-left: 6px;">Draft</span>`;
-                titleClass = 'style="color: #4b5563;"';
             } else {
                 statusDot = '<span class="status-dot pending" title="In Progress"></span>';
             }
             
+            // Progress bar (0% or 100% based on completion)
+            const progress = stage.is_completed ? 100 : 0;
+            const progressColor = stage.is_completed ? '#10b981' : '#e5e7eb';
+            
+            // Format dates for display
+            const formatDate = (dateStr) => {
+                if (!dateStr) return null;
+                const date = new Date(dateStr);
+                return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+            };
+            
+            const startDateDisplay = stage.start_date ? formatDate(stage.start_date) : null;
+            const endDateDisplay = stage.end_date ? formatDate(stage.end_date) : null;
+            
+            let dateRangeHtml = '';
+            if (startDateDisplay && endDateDisplay) {
+                dateRangeHtml = `<div class="stage-meta" style="margin-top: 4px;"><i class="far fa-calendar-alt" style="margin-right: 4px;"></i> ${startDateDisplay} - ${endDateDisplay}</div>`;
+            } else if (startDateDisplay) {
+                dateRangeHtml = `<div class="stage-meta" style="margin-top: 4px;"><i class="far fa-calendar-alt" style="margin-right: 4px;"></i> Starts ${startDateDisplay}</div>`;
+            } else if (endDateDisplay) {
+                dateRangeHtml = `<div class="stage-meta" style="margin-top: 4px;"><i class="far fa-calendar-alt" style="margin-right: 4px;"></i> Ends ${endDateDisplay}</div>`;
+            }
+            
             const targetDateHtml = stage.target_date_display 
-                ? `<div class="stage-meta"><i class="far fa-calendar-alt" style="margin-right: 4px;"></i> Due ${stage.target_date_display}</div>`
+                ? `<div class="stage-meta"><i class="far fa-calendar-check" style="margin-right: 4px;"></i> Due ${stage.target_date_display}</div>`
                 : '';
             
             const notesCountHtml = stage.notes_count > 0
                 ? `<div style="font-size: 0.8rem; color: #9ca3af;"><i class="far fa-comment" style="margin-right: 4px;"></i> ${stage.notes_count}</div>`
                 : '<div style="font-size: 0.8rem; color: #9ca3af;"></div>';
-            
-            const confirmBtn = stage.is_pending_confirmation
-                ? `<button class="action-icon-btn" onclick="confirmStage(${stage.id})" style="color: #10b981;" title="Confirm"><i class="fas fa-check"></i></button>`
-                : '';
             
             return `
                 <div class="stage-row" data-stage-id="${stage.id}">
@@ -510,11 +1002,20 @@
                             ${statusDot}
                             <span ${titleClass}>${titleText}</span>
                         </div>
+                        ${dateRangeHtml}
                         ${targetDateHtml}
+                        <div style="margin-top: 8px; width: 100%;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                                <span style="font-size: 0.75rem; color: #6b7280;">Progress</span>
+                                <span style="font-size: 0.75rem; color: #6b7280; font-weight: 500;">${progress}%</span>
+                            </div>
+                            <div style="height: 6px; background: #f3f4f6; border-radius: 3px; overflow: hidden;">
+                                <div style="height: 100%; width: ${progress}%; background: ${progressColor}; transition: width 0.3s;"></div>
+                            </div>
+                        </div>
                     </div>
                     ${notesCountHtml}
                     <div class="row-actions" onclick="event.stopPropagation();">
-                        ${confirmBtn}
                         <button class="action-icon-btn delete" onclick="deleteStage(${stage.id})">
                             <i class="fas fa-trash"></i>
                         </button>
@@ -586,6 +1087,9 @@
                     if (!data.success) {
                         console.error('Failed to reorder stages:', data.error);
                         // Reload stages to restore correct order
+                        loadStages();
+                    } else {
+                        // Re-render waterfall chart after successful reorder
                         loadStages();
                     }
                 })
@@ -699,15 +1203,6 @@
             btn.disabled = false;
             btn.style.opacity = '1';
         });
-    };
-    
-    window.confirmStage = function(id) {
-        if(confirm('Confirm this stage?')) {
-            fetch(`/dashboard/mentor/projects/${PROJECT_ID}/stages/${id}/confirm/`, {
-                method: 'POST',
-                headers: {'X-CSRFToken': '{{ csrf_token }}'}
-            }).then(() => loadStages());
-        }
     };
     
     window.deleteStage = function(id) {

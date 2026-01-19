@@ -260,6 +260,8 @@ class ProjectStage(models.Model):
     title = models.CharField(max_length=200)
     description = models.TextField(blank=True)
     order = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    start_date = models.DateField(blank=True, null=True, help_text="Start date for this stage")
+    end_date = models.DateField(blank=True, null=True, help_text="End date for this stage")
     target_date = models.DateField(blank=True, null=True)
     is_completed = models.BooleanField(default=False)
     completed_at = models.DateTimeField(blank=True, null=True)

@@ -224,26 +224,6 @@
                     ></textarea>
                 </div>
                 
-                <div class="create-stage-section">
-                    <label class="create-stage-section-label">Start Date (Optional)</label>
-                    <input 
-                        type="date" 
-                        id="stageStartDateInput" 
-                        name="start_date" 
-                        class="create-stage-input"
-                    >
-                </div>
-                
-                <div class="create-stage-section">
-                    <label class="create-stage-section-label">End Date (Optional)</label>
-                    <input 
-                        type="date" 
-                        id="stageEndDateInput" 
-                        name="end_date" 
-                        class="create-stage-input"
-                    >
-                </div>
-                
                 <div class="create-stage-section" style="margin-bottom: 0;">
                     <label class="create-stage-section-label">Target Date (Optional)</label>
                     <input 
@@ -297,8 +277,6 @@
     function resetCreateStageForm() {
         document.getElementById('stageTitleInput').value = '';
         document.getElementById('stageDescriptionInput').value = '';
-        document.getElementById('stageStartDateInput').value = '';
-        document.getElementById('stageEndDateInput').value = '';
         document.getElementById('stageTargetDateInput').value = '';
     }
     
@@ -319,17 +297,7 @@
         }
         
         const description = document.getElementById('stageDescriptionInput').value.trim();
-        const startDate = document.getElementById('stageStartDateInput').value;
-        const endDate = document.getElementById('stageEndDateInput').value;
         const targetDate = document.getElementById('stageTargetDateInput').value;
-        
-        // Validate dates: end_date should be after start_date if both are provided
-        if (startDate && endDate && new Date(endDate) < new Date(startDate)) {
-            alert('End date must be after start date');
-            btn.disabled = false;
-            btn.innerHTML = 'Create Stage';
-            return;
-        }
         
         // Get project ID from URL
         const projectId = window.location.pathname.match(/\/projects\/(\d+)\//)?.[1];
@@ -365,8 +333,6 @@
             body: JSON.stringify({
                 title: title,
                 description: description,
-                start_date: startDate || null,
-                end_date: endDate || null,
                 target_date: targetDate || null,
             })
         })

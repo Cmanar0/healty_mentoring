@@ -57,6 +57,7 @@ urlpatterns = [
     path('projects/<int:project_id>/stages/<int:stage_id>/edit/', views.edit_stage, name='edit_stage'),
     path('projects/<int:project_id>/stages/<int:stage_id>/confirm/', views.confirm_stage, name='confirm_stage'),
     path('projects/<int:project_id>/stages/<int:stage_id>/delete/', views.delete_stage, name='delete_stage'),
+    path('projects/<int:project_id>/stages/<int:stage_id>/update-dates/', views.update_stage_dates, name='update_stage_dates'),
     path('projects/<int:project_id>/stages/reorder/', views.reorder_stages, name='reorder_stages'),
     path('projects/<int:project_id>/stages/api/', views.get_stages_api, name='get_stages_api'),
 ]

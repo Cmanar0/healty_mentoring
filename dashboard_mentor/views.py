@@ -4757,7 +4757,17 @@ def create_stage(request, project_id):
             return JsonResponse({'success': False, 'error': 'Stage title is required'}, status=400)
         
         description = data.get('description', '').strip()
+        start_date = data.get('start_date') or None
+        end_date = data.get('end_date') or None
         target_date = data.get('target_date') or None
+        
+        # Validate dates: end_date should be after start_date if both are provided
+        if start_date and end_date:
+            from datetime import datetime
+            start = datetime.strptime(start_date, '%Y-%m-%d').date()
+            end = datetime.strptime(end_date, '%Y-%m-%d').date()
+            if end < start:
+                return JsonResponse({'success': False, 'error': 'End date must be after start date'}, status=400)
         
         # Get the next order value using project_id * 1000 as base
         # This ensures orders don't mix between different projects
@@ -4777,6 +4787,8 @@ def create_stage(request, project_id):
             project=project,
             title=title,
             description=description,
+            start_date=start_date,
+            end_date=end_date,
             target_date=target_date,
             order=Decimal(next_order),
             is_ai_generated=False,
@@ -4842,29 +4854,37 @@ def generate_stages_ai(request, project_id):
         # )
         # stages_data = response.get('stages', [])
         
-        # Mockup: Generate 3 sample stages
+        # Mockup: Generate 3 sample stages with start and end dates
         base_date = project.created_at.date() if hasattr(project.created_at, 'date') else timezone.now().date()
         
         mock_stages = [
             {
                 'title': 'Initial Planning & Research',
                 'description': 'Conduct thorough research and create a comprehensive plan based on your project goals and current situation.',
+                'start_date_offset': 0,
+                'end_date_offset': 14,
                 'target_date_offset': 14,
             },
             {
                 'title': 'Implementation & Execution',
                 'description': 'Begin implementing your plan with focused action steps and regular progress tracking.',
-                'target_date_offset': 30,
+                'start_date_offset': 14,
+                'end_date_offset': 45,
+                'target_date_offset': 45,
             },
             {
                 'title': 'Review & Optimization',
                 'description': 'Review progress, identify areas for improvement, and optimize your approach for better results.',
-                'target_date_offset': 60,
+                'start_date_offset': 45,
+                'end_date_offset': 75,
+                'target_date_offset': 75,
             },
         ]
         
         created_stages = []
         for i, stage_data in enumerate(mock_stages):
+            start_date = base_date + timedelta(days=stage_data['start_date_offset']) if stage_data.get('start_date_offset') is not None else None
+            end_date = base_date + timedelta(days=stage_data['end_date_offset']) if stage_data.get('end_date_offset') is not None else None
             target_date = base_date + timedelta(days=stage_data['target_date_offset']) if stage_data.get('target_date_offset') else None
             
             # Calculate order for this stage
@@ -4874,10 +4894,12 @@ def generate_stages_ai(request, project_id):
                 project=project,
                 title=stage_data['title'],
                 description=stage_data['description'],
+                start_date=start_date,
+                end_date=end_date,
                 target_date=target_date,
                 order=Decimal(stage_order),
                 is_ai_generated=True,
-                is_pending_confirmation=True,  # Require confirmation
+                is_pending_confirmation=False,  # No confirmation needed - save directly
             )
             created_stages.append(stage.id)
         
@@ -4932,6 +4954,53 @@ def edit_stage(request, project_id, stage_id):
         import logging
         logger = logging.getLogger(__name__)
         logger.error(f'Error editing stage: {str(e)}')
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+@require_POST
+def update_stage_dates(request, project_id, stage_id):
+    """Update stage start and end dates"""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+    
+    mentor_profile = request.user.mentor_profile
+    project = get_object_or_404(Project, id=project_id, supervised_by=mentor_profile)
+    
+    from dashboard_user.models import ProjectStage
+    stage = get_object_or_404(ProjectStage, id=stage_id, project=project)
+    
+    try:
+        data = json.loads(request.body)
+        start_date = data.get('start_date')
+        end_date = data.get('end_date')
+        
+        if not start_date or not end_date:
+            return JsonResponse({'success': False, 'error': 'Both start_date and end_date are required'}, status=400)
+        
+        from datetime import datetime
+        start = datetime.strptime(start_date, '%Y-%m-%d').date()
+        end = datetime.strptime(end_date, '%Y-%m-%d').date()
+        
+        if end < start:
+            return JsonResponse({'success': False, 'error': 'End date must be after start date'}, status=400)
+        
+        stage.start_date = start
+        stage.end_date = end
+        stage.save()
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Stage dates updated successfully'
+        })
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+    except ValueError as e:
+        return JsonResponse({'success': False, 'error': f'Invalid date format: {str(e)}'}, status=400)
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f'Error updating stage dates: {str(e)}')
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 
@@ -5024,6 +5093,8 @@ def get_stages_api(request, project_id):
                 'id': stage.id,
                 'title': stage.title,
                 'description': stage.description or '',
+                'start_date': stage.start_date.strftime('%Y-%m-%d') if stage.start_date else None,
+                'end_date': stage.end_date.strftime('%Y-%m-%d') if stage.end_date else None,
                 'target_date': stage.target_date.strftime('%Y-%m-%d') if stage.target_date else None,
                 'target_date_display': target_date_display,
                 'is_completed': stage.is_completed,
