@@ -4,6 +4,7 @@ from django.contrib import messages
 from django.contrib.auth import logout
 from django.conf import settings
 from accounts.models import MentorClientRelationship, MentorProfile, UserProfile, CustomUser
+from dashboard_user.models import Project, ProjectQuestionnaire, ProjectQuestionnaireAnswer
 from django.utils import timezone
 from datetime import timedelta
 from django.http import JsonResponse
@@ -12,6 +13,11 @@ from django.views.decorators.csrf import csrf_exempt
 from django.core.paginator import Paginator
 from general.models import Notification
 from general.email_service import EmailService
+from django.utils.http import urlsafe_base64_decode
+from django.utils.encoding import force_str
+from django.contrib.auth.tokens import default_token_generator
+from django.urls import reverse
+from urllib.parse import quote
 import json
 from decimal import Decimal
 
@@ -2020,4 +2026,267 @@ def session_detail(request, session_id):
         'start_local': start_local,
         'end_local': end_local,
         'duration_minutes': duration_minutes,
+    })
+
+
+def accept_project_assignment_secure(request, uidb64, token):
+    """
+    Secure link handler for project assignment emails.
+    Ensures correct user is logged in before accepting assignment.
+    """
+    # Validate token
+    try:
+        user_id = force_str(urlsafe_base64_decode(uidb64))
+        user = get_object_or_404(CustomUser, id=user_id)
+        
+        if not default_token_generator.check_token(user, token):
+            messages.error(request, 'Invalid or expired project assignment link.')
+            return redirect('general:index')
+    except Exception:
+        messages.error(request, 'Invalid project assignment link.')
+        return redirect('general:index')
+    
+    # Check if logout is requested (from email link)
+    if request.GET.get('logout') == 'true' and request.user.is_authenticated:
+        # Verify token matches current user
+        try:
+            if str(request.user.id) != user_id:
+                logout(request)
+                messages.info(request, 'Please log in with the correct account to accept the project assignment.')
+        except Exception:
+            logout(request)
+            messages.info(request, 'Please log in to accept the project assignment.')
+    
+    # Ensure correct user is logged in
+    if not request.user.is_authenticated or request.user.id != user.id:
+        messages.info(request, 'Please log in to view and accept your project assignment.')
+        next_url = reverse("general:dashboard_user:accept_project_assignment_secure", args=[uidb64, token])
+        if request.GET.get('logout') == 'true':
+            next_url += '?logout=true'
+        return redirect(f'/accounts/login/?next={quote(next_url)}')
+    
+    # User is authenticated and correct - redirect to projects list (will show pending assignments)
+    messages.info(request, 'You have a new project assignment waiting for your acceptance.')
+    return redirect('general:dashboard_user:projects_list')
+
+
+@login_required
+@require_POST
+def accept_project_assignment(request, project_id):
+    """Client accepts project assignment (after authentication)"""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'user':
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+    
+    project = get_object_or_404(Project, id=project_id)
+    
+    # Verify user is the assigned client
+    if project.project_owner != request.user.user_profile:
+        return JsonResponse({'success': False, 'error': 'You are not authorized to accept this project.'}, status=403)
+    
+    # Accept the project
+    project.assignment_status = 'accepted'
+    project.assignment_token = None
+    project.save()
+    
+    messages.success(request, f'Project "{project.title}" has been assigned to you!')
+    return JsonResponse({
+        'success': True,
+        'message': f'Project "{project.title}" has been assigned to you!',
+        'redirect_url': reverse('general:dashboard_user:project_detail', args=[project.id])
+    })
+
+
+@login_required
+@require_POST
+def reject_project_assignment(request, project_id):
+    """Client rejects project assignment"""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'user':
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+    
+    project = get_object_or_404(Project, id=project_id)
+    
+    # Verify user is the assigned client
+    if project.project_owner != request.user.user_profile:
+        return JsonResponse({'success': False, 'error': 'You are not authorized to reject this project.'}, status=403)
+    
+    # Remove assignment
+    project.project_owner = None
+    project.assignment_status = 'pending'
+    project.assignment_token = None
+    project.save()
+    
+    messages.info(request, f'Project "{project.title}" assignment has been rejected.')
+    return JsonResponse({
+        'success': True,
+        'message': f'Project "{project.title}" assignment has been rejected.'
+    })
+
+
+@login_required
+def projects_list(request):
+    """User's projects list page"""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'user':
+        return redirect('general:index')
+    
+    user_profile = request.user.user_profile
+    
+    # Get pending assignments (projects assigned but not accepted)
+    pending_projects = Project.objects.filter(
+        project_owner=user_profile,
+        assignment_status='assigned'  # 'assigned' means mentor assigned, awaiting client acceptance
+    ).select_related('template', 'supervised_by', 'supervised_by__user').order_by('-created_at')
+    
+    # Get accepted projects
+    accepted_projects = Project.objects.filter(
+        project_owner=user_profile,
+        assignment_status='accepted'
+    ).select_related('template', 'supervised_by', 'supervised_by__user').order_by('-created_at')
+    
+    # Get user's own projects (created by user, no supervisor)
+    own_projects = Project.objects.filter(
+        project_owner=user_profile,
+        supervised_by__isnull=True
+    ).select_related('template').order_by('-created_at')
+    
+    context = {
+        'pending_projects': pending_projects,
+        'accepted_projects': accepted_projects,
+        'own_projects': own_projects,
+        'pending_count': pending_projects.count(),
+    }
+    
+    return render(request, 'dashboard_user/projects_list.html', context)
+
+
+@login_required
+def project_detail(request, project_id):
+    """User's project detail page (also accessible by mentors)"""
+    project = get_object_or_404(
+        Project.objects.select_related('template', 'supervised_by', 'project_owner'),
+        id=project_id
+    )
+    
+    # Check if user is the owner or the supervisor (mentor)
+    is_owner = False
+    is_supervisor = False
+    
+    if hasattr(request.user, 'profile'):
+        if request.user.profile.role == 'user':
+            user_profile = request.user.user_profile
+            is_owner = (project.project_owner == user_profile)
+        elif request.user.profile.role == 'mentor':
+            mentor_profile = request.user.mentor_profile
+            is_supervisor = (project.supervised_by == mentor_profile)
+    
+    # Only allow access if user is owner or supervisor
+    if not (is_owner or is_supervisor):
+        return redirect('general:index')
+    
+    user_profile = getattr(request.user, 'user_profile', None)
+    
+    # Get questions for this project
+    # If project has a template, get template questions, otherwise get default questions
+    if project.template and project.template.has_default_questions:
+        # Get template-specific questions if they exist, otherwise fall back to default
+        questions = ProjectQuestionnaire.objects.filter(
+            template=project.template
+        ).order_by('order')
+        if not questions.exists():
+            questions = ProjectQuestionnaire.objects.filter(template__isnull=True).order_by('order')
+    elif project.template:
+        # Template without default questions - use template questions only
+        questions = ProjectQuestionnaire.objects.filter(template=project.template).order_by('order')
+    else:
+        # No template - use default questions
+        questions = ProjectQuestionnaire.objects.filter(template__isnull=True).order_by('order')
+    
+    # Get existing answers
+    answers = {answer.question_id: answer.answer for answer in 
+               ProjectQuestionnaireAnswer.objects.filter(project=project)}
+    
+    # Get active modules
+    active_modules = project.module_instances.filter(is_active=True).select_related('module').order_by('order')
+    
+    # Get stages
+    stages = project.stages.all().order_by('order')
+    
+    context = {
+        'project': project,
+        'user_profile': user_profile,
+        'questions': questions,
+        'answers': answers,
+        'questionnaire_completed': project.questionnaire_completed,
+        'active_modules': active_modules,
+        'stages': stages,
+        'is_owner': is_owner,
+        'is_supervisor': is_supervisor,
+    }
+    
+    return render(request, 'dashboard_user/project_detail.html', context)
+
+
+@login_required
+@require_POST
+def submit_questionnaire(request, project_id):
+    """Submit questionnaire answers for a project (accessible by owner or supervisor)"""
+    project = get_object_or_404(Project, id=project_id)
+    
+    # Check if user is the owner or the supervisor (mentor)
+    is_authorized = False
+    if hasattr(request.user, 'profile'):
+        if request.user.profile.role == 'user':
+            is_authorized = (project.project_owner == request.user.user_profile)
+        elif request.user.profile.role == 'mentor':
+            is_authorized = (project.supervised_by == request.user.mentor_profile)
+    
+    if not is_authorized:
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+    
+    # Get questions for validation
+    if project.template and project.template.has_default_questions:
+        questions = ProjectQuestionnaire.objects.filter(template=project.template).order_by('order')
+        if not questions.exists():
+            questions = ProjectQuestionnaire.objects.filter(template__isnull=True).order_by('order')
+    elif project.template:
+        questions = ProjectQuestionnaire.objects.filter(template=project.template).order_by('order')
+    else:
+        questions = ProjectQuestionnaire.objects.filter(template__isnull=True).order_by('order')
+    
+    # Validate required questions
+    errors = {}
+    data = json.loads(request.body)
+    answers_data = data.get('answers', {})
+    
+    for question in questions:
+        if question.is_required:
+            answer = answers_data.get(str(question.id), '').strip()
+            if not answer:
+                errors[str(question.id)] = f'This field is required.'
+    
+    if errors:
+        return JsonResponse({'success': False, 'errors': errors}, status=400)
+    
+    # Save answers
+    for question in questions:
+        answer_text = answers_data.get(str(question.id), '').strip()
+        if answer_text:
+            ProjectQuestionnaireAnswer.objects.update_or_create(
+                project=project,
+                question=question,
+                defaults={'answer': answer_text}
+            )
+        else:
+            # Remove answer if empty
+            ProjectQuestionnaireAnswer.objects.filter(project=project, question=question).delete()
+    
+    # Mark questionnaire as completed
+    from django.utils import timezone
+    project.questionnaire_completed = True
+    project.questionnaire_completed_at = timezone.now()
+    project.save()
+    
+    return JsonResponse({
+        'success': True,
+        'message': 'Questionnaire submitted successfully!',
+        'redirect_url': reverse('general:dashboard_user:project_detail', args=[project.id])
     })

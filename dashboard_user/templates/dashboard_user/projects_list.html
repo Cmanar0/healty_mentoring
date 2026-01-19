@@ -1,0 +1,345 @@
+{% extends "dashboard_user/base.html" %}
+{% load static %}
+
+{% block page_title %}My Projects{% endblock %}
+
+{% block dashboard_content %}
+<div class="dash-user-projects-page">
+  <div class="dash-user-projects-header">
+    <h1>My Projects</h1>
+  </div>
+
+  <div class="dash-user-projects-container">
+    <!-- Pending Assignments Section -->
+    {% if pending_projects %}
+      <div class="dash-user-projects-section">
+        <h2 class="dash-user-projects-section-title">
+          <i class="fas fa-clock"></i> Pending Assignments
+          <span class="dash-user-projects-count">({{ pending_projects.count }})</span>
+        </h2>
+        <div class="dash-user-projects-list">
+          {% for project in pending_projects %}
+            <div class="dash-user-project-card dash-user-project-pending">
+              <div class="dash-user-project-card-header">
+                <h3>{{ project.title }}</h3>
+                {% if project.template %}
+                  <span class="dash-user-project-badge">{{ project.template.name }}</span>
+                {% endif %}
+              </div>
+              {% if project.description %}
+                <p class="dash-user-project-description">{{ project.description|truncatewords:30 }}</p>
+              {% endif %}
+              {% if project.supervised_by %}
+                <p class="dash-user-project-mentor">
+                  <i class="fas fa-user-tie"></i> 
+                  Assigned by: {{ project.supervised_by.first_name }} {{ project.supervised_by.last_name }}
+                </p>
+              {% endif %}
+              <div class="dash-user-project-actions">
+                <button class="dash-user-btn-accept" onclick="acceptProject({{ project.id }})">
+                  <i class="fas fa-check"></i> Accept
+                </button>
+                <button class="dash-user-btn-reject" onclick="rejectProject({{ project.id }})">
+                  <i class="fas fa-times"></i> Reject
+                </button>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+
+    <!-- Accepted Projects Section -->
+    {% if accepted_projects %}
+      <div class="dash-user-projects-section">
+        <h2 class="dash-user-projects-section-title">
+          <i class="fas fa-check-circle"></i> Accepted Projects
+        </h2>
+        <div class="dash-user-projects-list">
+          {% for project in accepted_projects %}
+            <a href="{% url 'general:dashboard_user:project_detail' project.id %}" class="dash-user-project-link">
+              <div class="dash-user-project-card">
+                <div class="dash-user-project-card-header">
+                  <h3>{{ project.title }}</h3>
+                  {% if project.template %}
+                    <span class="dash-user-project-badge">{{ project.template.name }}</span>
+                  {% endif %}
+                </div>
+                {% if project.description %}
+                  <p class="dash-user-project-description">{{ project.description|truncatewords:30 }}</p>
+                {% endif %}
+                {% if project.supervised_by %}
+                  <p class="dash-user-project-mentor">
+                    <i class="fas fa-user-tie"></i> 
+                    Mentor: {{ project.supervised_by.first_name }} {{ project.supervised_by.last_name }}
+                  </p>
+                {% endif %}
+                <div class="dash-user-project-meta">
+                  <span><i class="fas fa-calendar"></i> Created: {{ project.created_at|date:"M d, Y" }}</span>
+                </div>
+              </div>
+            </a>
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+
+    <!-- Own Projects Section -->
+    {% if own_projects %}
+      <div class="dash-user-projects-section">
+        <h2 class="dash-user-projects-section-title">
+          <i class="fas fa-folder"></i> My Projects
+        </h2>
+        <div class="dash-user-projects-list">
+          {% for project in own_projects %}
+            <a href="{% url 'general:dashboard_user:project_detail' project.id %}" class="dash-user-project-link">
+              <div class="dash-user-project-card">
+                <div class="dash-user-project-card-header">
+                  <h3>{{ project.title }}</h3>
+                  {% if project.template %}
+                    <span class="dash-user-project-badge">{{ project.template.name }}</span>
+                  {% endif %}
+                </div>
+                {% if project.description %}
+                  <p class="dash-user-project-description">{{ project.description|truncatewords:30 }}</p>
+                {% endif %}
+                <div class="dash-user-project-meta">
+                  <span><i class="fas fa-calendar"></i> Created: {{ project.created_at|date:"M d, Y" }}</span>
+                </div>
+              </div>
+            </a>
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+
+    <!-- Empty State -->
+    {% if not pending_projects and not accepted_projects and not own_projects %}
+      <div class="dash-user-no-projects">
+        <i class="fas fa-project-diagram"></i>
+        <p>No projects yet</p>
+        <p class="dash-user-no-projects-subtitle">Projects assigned by your mentors will appear here</p>
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+<script>
+function acceptProject(projectId) {
+  fetch(`/dashboard/user/projects/${projectId}/accept/`, {
+    method: 'POST',
+    headers: {
+      'X-CSRFToken': '{{ csrf_token }}',
+      'Content-Type': 'application/json',
+    },
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      window.location.reload();
+    } else {
+      alert(data.error || 'Failed to accept project');
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    alert('An error occurred');
+  });
+}
+
+function rejectProject(projectId) {
+  if (!confirm('Are you sure you want to reject this project assignment?')) {
+    return;
+  }
+  
+  fetch(`/dashboard/user/projects/${projectId}/reject/`, {
+    method: 'POST',
+    headers: {
+      'X-CSRFToken': '{{ csrf_token }}',
+      'Content-Type': 'application/json',
+    },
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      window.location.reload();
+    } else {
+      alert(data.error || 'Failed to reject project');
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    alert('An error occurred');
+  });
+}
+</script>
+
+<style>
+.dash-user-projects-page {
+  padding: 32px;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.dash-user-projects-header {
+  margin-bottom: 32px;
+}
+
+.dash-user-projects-header h1 {
+  font-size: 2rem;
+  font-weight: 600;
+  color: #111827;
+  margin: 0;
+}
+
+.dash-user-projects-section {
+  margin-bottom: 48px;
+}
+
+.dash-user-projects-section-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dash-user-projects-count {
+  color: #6b7280;
+  font-weight: 400;
+}
+
+.dash-user-projects-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+.dash-user-project-link {
+  text-decoration: none;
+  color: inherit;
+}
+
+.dash-user-project-card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 24px;
+  transition: all 0.2s;
+}
+
+.dash-user-project-link .dash-user-project-card:hover {
+  border-color: #10b981;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.1);
+  transform: translateY(-2px);
+}
+
+.dash-user-project-pending {
+  border-left: 4px solid #f59e0b;
+}
+
+.dash-user-project-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.dash-user-project-card-header h3 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #111827;
+  margin: 0;
+  flex: 1;
+}
+
+.dash-user-project-badge {
+  background: #10b981;
+  color: #ffffff;
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  margin-left: 12px;
+}
+
+.dash-user-project-description {
+  color: #6b7280;
+  font-size: 0.875rem;
+  margin-bottom: 12px;
+  line-height: 1.5;
+}
+
+.dash-user-project-mentor {
+  color: #374151;
+  font-size: 0.875rem;
+  margin-bottom: 12px;
+}
+
+.dash-user-project-meta {
+  color: #9ca3af;
+  font-size: 0.75rem;
+  margin-top: 12px;
+}
+
+.dash-user-project-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.dash-user-btn-accept,
+.dash-user-btn-reject {
+  flex: 1;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.dash-user-btn-accept {
+  background: #10b981;
+  color: #ffffff;
+}
+
+.dash-user-btn-accept:hover {
+  background: #059669;
+}
+
+.dash-user-btn-reject {
+  background: #ef4444;
+  color: #ffffff;
+}
+
+.dash-user-btn-reject:hover {
+  background: #dc2626;
+}
+
+.dash-user-no-projects {
+  text-align: center;
+  padding: 64px 32px;
+  color: #6b7280;
+}
+
+.dash-user-no-projects i {
+  font-size: 4rem;
+  color: #d1d5db;
+  margin-bottom: 16px;
+}
+
+.dash-user-no-projects p {
+  font-size: 1.125rem;
+  margin-bottom: 8px;
+}
+
+.dash-user-no-projects-subtitle {
+  font-size: 0.875rem;
+  color: #9ca3af;
+}
+</style>
+{% endblock %}

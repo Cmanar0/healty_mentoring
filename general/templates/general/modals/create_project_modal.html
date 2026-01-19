@@ -28,13 +28,12 @@
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
     max-width: 1000px;
     width: 90%;
-    min-height: 600px;
     max-height: 90vh;
     overflow: hidden;
     position: relative;
     padding: 0;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
+    display: flex;
+    flex-direction: column;
 }
 
 .create-project-modal-close {
@@ -65,35 +64,45 @@
 }
 
 .create-project-modal-header {
-    grid-column: 1 / -1;
-    padding: 32px 32px 24px;
+    padding: 20px 24px 16px;
     border-bottom: 1px solid #e2e8f0;
     background: white;
+    flex-shrink: 0;
 }
 
 .create-project-modal-title {
-    font-size: 1.75rem;
+    font-size: 1.5rem;
     color: #1e293b;
-    margin-bottom: 8px;
-    font-weight: 800;
+    margin: 0;
+    font-weight: 700;
     letter-spacing: -0.025em;
+}
+
+.create-project-modal-body-wrapper {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    flex: 1;
+    overflow: hidden;
+    min-height: 0;
 }
 
 .create-project-modal-left {
     background: #f8fafc;
-    padding: 32px;
+    padding: 20px 24px;
     border-right: 1px solid #e2e8f0;
     overflow-y: auto;
     display: flex;
     flex-direction: column;
+    min-height: 0;
 }
 
 .create-project-modal-right {
     background: white;
-    padding: 32px;
+    padding: 20px 24px;
     overflow-y: auto;
     display: flex;
     flex-direction: column;
+    min-height: 0;
 }
 
 .create-project-modal-body {
@@ -101,15 +110,15 @@
 }
 
 .create-project-section {
-    margin-bottom: 28px;
+    margin-bottom: 20px;
 }
 
 .create-project-section-label {
     display: block;
-    font-weight: 700;
-    color: #1e293b;
-    margin-bottom: 12px;
-    font-size: 0.95rem;
+    font-weight: 600;
+    color: #475569;
+    margin-bottom: 6px;
+    font-size: 0.875rem;
 }
 
 /* Client Dropdown Styles */
@@ -227,14 +236,14 @@
 .project-type-selection {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 16px;
-    margin-bottom: 28px;
+    gap: 12px;
+    margin-bottom: 20px;
 }
 
 .project-type-option {
-    padding: 20px;
+    padding: 14px 16px;
     border: 2px solid #e2e8f0;
-    border-radius: 12px;
+    border-radius: 8px;
     cursor: pointer;
     transition: all 0.2s ease;
     text-align: center;
@@ -252,14 +261,14 @@
 }
 
 .project-type-option-title {
-    font-weight: 700;
+    font-weight: 600;
     color: #1e293b;
-    margin-bottom: 8px;
-    font-size: 1rem;
+    margin-bottom: 4px;
+    font-size: 0.9rem;
 }
 
 .project-type-option-desc {
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     color: #64748b;
 }
 
@@ -402,14 +411,98 @@
     box-sizing: border-box;
     font-family: inherit;
     resize: none;
-    min-height: 100px;
-    max-height: 200px;
+    min-height: 80px;
+    max-height: 150px;
     overflow-y: auto;
 }
 
 #projectDescriptionInput:focus {
     border-color: #10b981;
     box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+}
+
+/* Module Selection */
+.module-selection-container {
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 10px;
+    background: white;
+}
+
+.module-selection-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 8px;
+}
+
+.module-selection-item {
+    padding: 10px;
+    border: 2px solid #e2e8f0;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: white;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.module-selection-item:hover {
+    border-color: #10b981;
+    background: rgba(16, 185, 129, 0.05);
+}
+
+.module-selection-item.selected {
+    border-color: #10b981;
+    background: rgba(16, 185, 129, 0.1);
+}
+
+.module-selection-checkbox {
+    width: 18px;
+    height: 18px;
+    border: 2px solid #cbd5e1;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.2s ease;
+}
+
+.module-selection-item.selected .module-selection-checkbox {
+    background: #10b981;
+    border-color: #10b981;
+}
+
+.module-selection-item.selected .module-selection-checkbox::after {
+    content: '✓';
+    color: white;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.module-selection-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.module-selection-name {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: #1e293b;
+    margin: 0;
+}
+
+.module-selection-icon {
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: #64748b;
 }
 
 /* Disabled template dropdown */
@@ -426,13 +519,13 @@
 
 /* Modal Footer */
 .create-project-modal-footer {
-    grid-column: 1 / -1;
-    padding: 20px 32px;
+    padding: 16px 24px;
     border-top: 1px solid #e2e8f0;
     display: flex;
     gap: 12px;
     justify-content: flex-end;
     background: white;
+    flex-shrink: 0;
 }
 
 .create-project-btn {
@@ -491,8 +584,9 @@
             <h3 class="create-project-modal-title">Create New Project</h3>
         </div>
         
-        <!-- Left Column (Grey Background) -->
-        <div class="create-project-modal-left">
+        <div class="create-project-modal-body-wrapper">
+            <!-- Left Column (Grey Background) -->
+            <div class="create-project-modal-left">
             <!-- Project Title Input (always shown, always mandatory) -->
             <div class="create-project-section">
                 <label class="create-project-section-label">Project Title <span style="color: #ef4444;">*</span></label>
@@ -520,14 +614,24 @@
             </div>
             
             <!-- Project Description -->
-            <div class="create-project-section" style="margin-bottom: 0;">
+            <div class="create-project-section">
                 <label class="create-project-section-label">Description</label>
-                <textarea id="projectDescriptionInput" name="description" placeholder="Enter project description (optional)..." rows="4" maxlength="1000"></textarea>
+                <textarea id="projectDescriptionInput" name="description" placeholder="Enter project description (optional)..." rows="3" maxlength="1000"></textarea>
             </div>
-        </div>
-        
-        <!-- Right Column (White Background) -->
-        <div class="create-project-modal-right">
+            
+            <!-- Module Selection -->
+            <div class="create-project-section" style="margin-bottom: 0;">
+                <label class="create-project-section-label">Select Modules (Optional)</label>
+                <div class="module-selection-container" id="moduleSelectionContainer">
+                    <div class="module-selection-grid" id="moduleSelectionGrid">
+                        <!-- Module items will be populated here -->
+                    </div>
+                </div>
+            </div>
+            </div>
+            
+            <!-- Right Column (White Background) -->
+            <div class="create-project-modal-right">
             <!-- Project Type Selection -->
             <div class="create-project-section">
                 <label class="create-project-section-label">Project Type</label>
@@ -558,6 +662,7 @@
                         </div>
                     </div>
                 </div>
+            </div>
             </div>
         </div>
         
@@ -590,6 +695,9 @@
         fetchClients();
         fetchTemplates();
         
+        // Fetch modules
+        fetchModules();
+        
         // Show modal
         modal.style.display = 'flex';
         setTimeout(() => {
@@ -609,11 +717,16 @@
         }, 300);
     };
     
+    // Module selection
+    let selectedModuleIds = [];
+    let modules = [];
+    
     // Reset form
     function resetCreateProjectForm() {
         selectedClientId = null;
         selectedProjectType = null;
         selectedTemplateId = null;
+        selectedModuleIds = [];
         
         document.getElementById('clientSelectedText').textContent = 'Do not assign to anyone yet';
         document.getElementById('clientIdInput').value = '';
@@ -633,7 +746,60 @@
         selectedTemplateId = null;
         selectedProjectType = null;
         
+        // Reset module selection
+        document.querySelectorAll('.module-selection-item').forEach(item => {
+            item.classList.remove('selected');
+        });
+        
         document.getElementById('createProjectBtn').disabled = true;
+    }
+    
+    // Fetch modules
+    function fetchModules() {
+        fetch('{% url "general:dashboard_mentor:project_modules_api" %}')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    modules = data.modules || [];
+                    populateModuleSelection();
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching modules:', error);
+            });
+    }
+    
+    // Populate module selection
+    function populateModuleSelection() {
+        const container = document.getElementById('moduleSelectionGrid');
+        if (!container) return;
+        
+        container.innerHTML = '';
+        
+        modules.forEach(module => {
+            const item = document.createElement('div');
+            item.className = 'module-selection-item';
+            item.dataset.moduleId = module.id;
+            item.innerHTML = `
+                <div class="module-selection-checkbox"></div>
+                <div class="module-selection-info">
+                    <div class="module-selection-name">${module.name}</div>
+                </div>
+            `;
+            
+            item.addEventListener('click', function() {
+                const moduleId = parseInt(this.dataset.moduleId);
+                if (selectedModuleIds.includes(moduleId)) {
+                    selectedModuleIds = selectedModuleIds.filter(id => id !== moduleId);
+                    this.classList.remove('selected');
+                } else {
+                    selectedModuleIds.push(moduleId);
+                    this.classList.add('selected');
+                }
+            });
+            
+            container.appendChild(item);
+        });
     }
     
     // Fetch clients
@@ -951,8 +1117,10 @@
         
         const formData = {
             title: title,
+            description: document.getElementById('projectDescriptionInput').value.trim(),
             client_id: selectedClientId || null,
             project_type: selectedProjectType,
+            module_ids: selectedModuleIds,
         };
         
         if (selectedProjectType === 'template') {

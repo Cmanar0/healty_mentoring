@@ -88,3 +88,23 @@ def unresolved_tickets_count(request):
     return {
         'unresolved_tickets_count': 0,
     }
+
+def pending_project_assignments(request):
+    """
+    Context processor to provide pending project assignments count for user dashboard.
+    Similar to pending_sessions_count context processor.
+    """
+    if request.user.is_authenticated and hasattr(request.user, 'profile') and request.user.profile.role == 'user':
+        from dashboard_user.models import Project
+        from accounts.models import UserProfile
+        
+        try:
+            user_profile = request.user.user_profile
+            count = Project.objects.filter(
+                project_owner=user_profile,
+                assignment_status='assigned'  # 'assigned' means mentor assigned, awaiting client acceptance
+            ).count()
+            return {'pending_projects_count': count}
+        except Exception:
+            return {'pending_projects_count': 0}
+    return {'pending_projects_count': 0}

@@ -658,4 +658,68 @@ class EmailService:
             template_name='timezone_change_notification',
             context=context,
         )
+    
+    @staticmethod
+    def send_project_assignment_email(project, client_profile) -> bool:
+        """
+        Send email to client to accept project assignment.
+        
+        Email contains secure link that:
+        1. Logs out if wrong user is logged in
+        2. Forces login if not logged in
+        3. Redirects to project acceptance page after login
+        
+        Args:
+            project: Project instance
+            client_profile: UserProfile instance of the client
+            
+        Returns:
+            bool: True if email was sent successfully, False otherwise
+        """
+        from django.utils.http import urlsafe_base64_encode
+        from django.utils.encoding import force_bytes
+        from django.contrib.auth.tokens import default_token_generator
+        from django.urls import reverse
+        
+        try:
+            client_user = client_profile.user
+            
+            # Generate secure token
+            uidb64 = urlsafe_base64_encode(force_bytes(client_user.id))
+            token = default_token_generator.make_token(client_user)
+            
+            # Build secure URL with logout parameter
+            accept_url = reverse('general:dashboard_user:accept_project_assignment_secure', args=[uidb64, token])
+            accept_url += '?logout=true'  # Trigger logout if wrong user
+            
+            # Get mentor name
+            mentor_name = "Your mentor"
+            if project.supervised_by:
+                mentor_name = f"{project.supervised_by.first_name} {project.supervised_by.last_name}".strip()
+                if not mentor_name:
+                    mentor_name = project.supervised_by.user.email.split('@')[0]
+            
+            # Get client name
+            client_name = f"{client_profile.first_name} {client_profile.last_name}".strip()
+            if not client_name:
+                client_name = client_user.email.split('@')[0]
+            
+            context = {
+                'client_name': client_name,
+                'mentor_name': mentor_name,
+                'project': project,
+                'accept_url': EmailService.get_site_domain() + accept_url,
+            }
+            
+            return EmailService.send_email(
+                subject=f"New Project Assignment: {project.title}",
+                recipient_email=client_user.email,
+                template_name='project_assignment',
+                context=context,
+            )
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f'Error sending project assignment email: {str(e)}')
+            return False
 

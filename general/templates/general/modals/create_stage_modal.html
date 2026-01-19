@@ -1,0 +1,391 @@
+{% load static %}
+
+<style>
+/* Create Stage Modal Styles */
+#createStageModal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 10000;
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(4px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+#createStageModal.active {
+    opacity: 1;
+}
+
+.create-stage-modal-content {
+    background: white;
+    border-radius: 20px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    max-width: 600px;
+    width: 90%;
+    max-height: 90vh;
+    overflow: hidden;
+    position: relative;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.create-stage-modal-close {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    background: rgba(15, 23, 42, 0.1);
+    border: 1px solid rgba(15, 23, 42, 0.1);
+    color: #64748b;
+    font-size: 1rem;
+    cursor: pointer;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 20;
+}
+
+.create-stage-modal-close:hover {
+    background: #ef4444;
+    border-color: #ef4444;
+    color: white;
+    transform: rotate(90deg) scale(1.1);
+    box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
+}
+
+.create-stage-modal-header {
+    padding: 24px 24px 20px;
+    border-bottom: 1px solid #e2e8f0;
+    background: white;
+    flex-shrink: 0;
+}
+
+.create-stage-modal-title {
+    font-size: 1.5rem;
+    color: #1e293b;
+    margin: 0;
+    font-weight: 700;
+    letter-spacing: -0.025em;
+}
+
+.create-stage-modal-body {
+    padding: 24px;
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
+}
+
+.create-stage-section {
+    margin-bottom: 20px;
+}
+
+.create-stage-section-label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #475569;
+    margin-bottom: 6px;
+}
+
+.create-stage-input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-family: inherit;
+    transition: all 0.2s ease;
+    box-sizing: border-box;
+}
+
+.create-stage-input:focus {
+    outline: none;
+    border-color: #10b981;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+}
+
+.create-stage-textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-family: inherit;
+    resize: vertical;
+    min-height: 100px;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.create-stage-textarea:focus {
+    outline: none;
+    border-color: #10b981;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+}
+
+.create-stage-modal-footer {
+    padding: 16px 24px;
+    border-top: 1px solid #e2e8f0;
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    background: white;
+    flex-shrink: 0;
+}
+
+.create-stage-btn {
+    background: #10b981;
+    color: #ffffff;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.875rem;
+}
+
+.create-stage-btn:hover {
+    background: #059669;
+}
+
+.create-stage-btn:disabled {
+    background: #9ca3af;
+    cursor: not-allowed;
+}
+
+.cancel-stage-btn {
+    background: #f8fafc;
+    color: #475569;
+    padding: 10px 20px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.cancel-stage-btn:hover {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+}
+</style>
+
+<!-- Create Stage Modal -->
+<div id="createStageModal" class="modal-overlay">
+    <div class="create-stage-modal-content">
+        <button type="button" class="create-stage-modal-close" onclick="closeCreateStageModal()">
+            <i class="fas fa-times"></i>
+        </button>
+        
+        <div class="create-stage-modal-header">
+            <h3 class="create-stage-modal-title">Create New Stage</h3>
+        </div>
+        
+        <div class="create-stage-modal-body">
+            <form id="createStageForm">
+                {% csrf_token %}
+                <div class="create-stage-section">
+                    <label class="create-stage-section-label">
+                        Stage Title <span style="color: #ef4444;">*</span>
+                    </label>
+                    <input 
+                        type="text" 
+                        id="stageTitleInput" 
+                        name="title" 
+                        class="create-stage-input"
+                        placeholder="Enter stage title..." 
+                        maxlength="200" 
+                        required
+                    >
+                </div>
+                
+                <div class="create-stage-section">
+                    <label class="create-stage-section-label">Description</label>
+                    <textarea 
+                        id="stageDescriptionInput" 
+                        name="description" 
+                        class="create-stage-textarea"
+                        placeholder="Enter stage description (optional)..." 
+                        rows="4"
+                    ></textarea>
+                </div>
+                
+                <div class="create-stage-section" style="margin-bottom: 0;">
+                    <label class="create-stage-section-label">Target Date (Optional)</label>
+                    <input 
+                        type="date" 
+                        id="stageTargetDateInput" 
+                        name="target_date" 
+                        class="create-stage-input"
+                    >
+                </div>
+            </form>
+        </div>
+        
+        <div class="create-stage-modal-footer">
+            <button type="button" class="cancel-stage-btn" onclick="closeCreateStageModal()">Cancel</button>
+            <button type="button" class="create-stage-btn" id="createStageBtn" onclick="submitCreateStage()">Create Stage</button>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    'use strict';
+    
+    // Open modal (called from project detail page)
+    window.openCreateStageModalFromModal = function() {
+        const modal = document.getElementById('createStageModal');
+        if (!modal) return;
+        
+        modal.style.display = 'flex';
+        setTimeout(() => {
+            modal.classList.add('active');
+        }, 10);
+    };
+    
+    // Also expose as global function for direct calls
+    window.openCreateStageModal = window.openCreateStageModalFromModal;
+    
+    // Close modal
+    window.closeCreateStageModal = function() {
+        const modal = document.getElementById('createStageModal');
+        if (!modal) return;
+        
+        modal.classList.remove('active');
+        setTimeout(() => {
+            modal.style.display = 'none';
+            resetCreateStageForm();
+        }, 300);
+    };
+    
+    // Reset form
+    function resetCreateStageForm() {
+        document.getElementById('stageTitleInput').value = '';
+        document.getElementById('stageDescriptionInput').value = '';
+        document.getElementById('stageTargetDateInput').value = '';
+    }
+    
+    // Submit stage creation
+    window.submitCreateStage = function() {
+        const btn = document.getElementById('createStageBtn');
+        if (btn.disabled) return;
+        
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating...';
+        
+        const title = document.getElementById('stageTitleInput').value.trim();
+        if (!title) {
+            alert('Stage title is required');
+            btn.disabled = false;
+            btn.innerHTML = 'Create Stage';
+            return;
+        }
+        
+        const description = document.getElementById('stageDescriptionInput').value.trim();
+        const targetDate = document.getElementById('stageTargetDateInput').value;
+        
+        // Get project ID from URL
+        const projectId = window.location.pathname.match(/\/projects\/(\d+)\//)?.[1];
+        if (!projectId) {
+            alert('Project ID not found');
+            btn.disabled = false;
+            btn.innerHTML = 'Create Stage';
+            return;
+        }
+        
+        // Get CSRF token
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+        
+        fetch(`/dashboard/mentor/projects/${projectId}/stages/create/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                title: title,
+                description: description,
+                target_date: targetDate || null,
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                if (typeof showNotification !== 'undefined') {
+                    showNotification('Stage created successfully!', 'success');
+                }
+                closeCreateStageModal();
+                setTimeout(() => {
+                    window.location.reload();
+                }, 500);
+            } else {
+                if (typeof showNotification !== 'undefined') {
+                    showNotification(data.error || 'Failed to create stage', 'error');
+                } else {
+                    alert(data.error || 'Failed to create stage');
+                }
+                btn.disabled = false;
+                btn.innerHTML = 'Create Stage';
+            }
+        })
+        .catch(error => {
+            console.error('Error creating stage:', error);
+            if (typeof showNotification !== 'undefined') {
+                showNotification('An error occurred. Please try again.', 'error');
+            } else {
+                alert('An error occurred. Please try again.');
+            }
+            btn.disabled = false;
+            btn.innerHTML = 'Create Stage';
+        });
+    };
+    
+    // Handle ESC key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            const modal = document.getElementById('createStageModal');
+            if (modal && modal.classList.contains('active')) {
+                closeCreateStageModal();
+            }
+        }
+    });
+    
+    // Close modal when clicking outside
+    const modal = document.getElementById('createStageModal');
+    if (modal) {
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                closeCreateStageModal();
+            }
+        });
+    }
+})();
+</script>

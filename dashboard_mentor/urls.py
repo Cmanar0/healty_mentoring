@@ -45,9 +45,16 @@ urlpatterns = [
     path('reviews/secure/<str:uidb64>/<str:token>/', views.view_reviews_secure, name='view_reviews_secure'),
     path('clients/api/', views.clients_api, name='clients_api'),
     path('projects/templates/api/', views.project_templates_api, name='project_templates_api'),
+    path('projects/modules/api/', views.project_modules_api, name='project_modules_api'),
     path('projects/create/', views.create_project, name='create_project'),
     path('templates/', views.templates_list, name='templates_list'),
     path('projects/', views.projects_list, name='projects_list'),
     path('projects/<int:project_id>/', views.project_detail, name='project_detail'),
+    path('projects/<int:project_id>/stages/create/', views.create_stage, name='create_stage'),
+    path('projects/<int:project_id>/stages/generate-ai/', views.generate_stages_ai, name='generate_stages_ai'),
+    path('projects/<int:project_id>/stages/<int:stage_id>/edit/', views.edit_stage, name='edit_stage'),
+    path('projects/<int:project_id>/stages/<int:stage_id>/confirm/', views.confirm_stage, name='confirm_stage'),
+    path('projects/<int:project_id>/stages/<int:stage_id>/delete/', views.delete_stage, name='delete_stage'),
+    path('projects/<int:project_id>/stages/reorder/', views.reorder_stages, name='reorder_stages'),
 ]
 

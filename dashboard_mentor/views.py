@@ -7,7 +7,7 @@ from django.views.decorators.http import require_POST
 from django.utils.crypto import get_random_string
 from django.utils import timezone
 from accounts.models import CustomUser, UserProfile, MentorClientRelationship
-from dashboard_user.models import Project, ProjectTemplate
+from dashboard_user.models import Project, ProjectTemplate, ProjectModule, ProjectModuleInstance
 from dashboard_mentor.constants import (
     PREDEFINED_MENTOR_TYPES, PREDEFINED_TAGS, 
     PREDEFINED_LANGUAGES, PREDEFINED_CATEGORIES,
@@ -4096,6 +4096,13 @@ def client_detail(request, client_id):
     else:
         can_request_review = True
     
+    # Get projects supervised by this mentor for this client
+    from dashboard_user.models import Project
+    client_projects = Project.objects.filter(
+        project_owner=client_profile,
+        supervised_by=mentor_profile
+    ).select_related('template').order_by('-created_at')
+    
     return render(request, 'dashboard_mentor/client_detail.html', {
         'client_profile': client_profile,
         'relationship': relationship,
@@ -4104,6 +4111,7 @@ def client_detail(request, client_id):
         'review': review,
         'can_request_review': can_request_review,
         'request_error': request_error,
+        'client_projects': client_projects,
     })
 
 
@@ -4364,6 +4372,33 @@ def project_templates_api(request):
 
 
 @login_required
+def project_modules_api(request):
+    """API endpoint to fetch active project modules"""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        return JsonResponse({'success': False, 'modules': [], 'error': 'Unauthorized'}, status=403)
+    
+    try:
+        modules = ProjectModule.objects.filter(is_active=True).order_by('order', 'name')
+        modules_data = []
+        for module in modules:
+            modules_data.append({
+                'id': module.id,
+                'name': module.name,
+                'description': module.description,
+                'module_type': module.module_type,
+                'icon': module.icon,
+                'color': module.color,
+            })
+        
+        return JsonResponse({'success': True, 'modules': modules_data})
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f'Error fetching project modules: {str(e)}')
+        return JsonResponse({'success': False, 'modules': [], 'error': str(e)}, status=500)
+
+
+@login_required
 @require_POST
 def create_project(request):
     """Create a new project for a mentor"""
@@ -4402,6 +4437,7 @@ def create_project(request):
             return JsonResponse({'success': False, 'error': 'Project title is required'}, status=400)
         
         description = data.get('description', '').strip()
+        module_ids = data.get('module_ids', [])  # List of module IDs to add
         
         # Create project based on type
         if project_type == 'new':
@@ -4410,7 +4446,9 @@ def create_project(request):
                 description=description,
                 template=None,
                 project_owner=client_profile,
-                supervised_by=mentor_profile
+                supervised_by=mentor_profile,
+                created_by=request.user,
+                assignment_status='assigned' if client_profile else 'pending'
             )
         elif project_type == 'template':
             template_id = data.get('template_id')
@@ -4427,8 +4465,36 @@ def create_project(request):
                 description=description,
                 template=template,
                 project_owner=client_profile,
-                supervised_by=mentor_profile
+                supervised_by=mentor_profile,
+                created_by=request.user,
+                assignment_status='assigned' if client_profile else 'pending'
             )
+        
+        # Add selected modules to project
+        if module_ids:
+            for order, module_id in enumerate(module_ids, start=1):
+                try:
+                    module = ProjectModule.objects.get(id=module_id, is_active=True)
+                    ProjectModuleInstance.objects.get_or_create(
+                        project=project,
+                        module=module,
+                        defaults={
+                            'is_active': True,
+                            'order': order,
+                            'module_data': {},
+                        }
+                    )
+                except ProjectModule.DoesNotExist:
+                    continue  # Skip invalid module IDs
+        
+        # Create stages from template if project was created from a template
+        if project.template:
+            project.create_stages_from_template()
+        
+        # If project is assigned to client, send assignment email
+        if client_profile:
+            from general.email_service import EmailService
+            EmailService.send_project_assignment_email(project, client_profile)
         
         return JsonResponse({
             'success': True,
@@ -4547,8 +4613,330 @@ def project_detail(request, project_id):
         supervised_by=mentor_profile
     )
     
+    # Get questions for this project (same logic as user view)
+    from dashboard_user.models import ProjectQuestionnaire, ProjectQuestionnaireAnswer, ProjectModuleInstance
+    
+    if project.template and project.template.has_default_questions:
+        questions = ProjectQuestionnaire.objects.filter(template=project.template).order_by('order')
+        if not questions.exists():
+            questions = ProjectQuestionnaire.objects.filter(template__isnull=True).order_by('order')
+    elif project.template:
+        questions = ProjectQuestionnaire.objects.filter(template=project.template).order_by('order')
+    else:
+        questions = ProjectQuestionnaire.objects.filter(template__isnull=True).order_by('order')
+    
+    # Get existing answers
+    answers = {answer.question_id: answer.answer for answer in 
+               ProjectQuestionnaireAnswer.objects.filter(project=project)}
+    
+    # Get active modules
+    active_modules = project.module_instances.filter(is_active=True).select_related('module').order_by('order')
+    
+    # Get stages
+    stages = project.stages.all().order_by('order')
+    
     context = {
         'project': project,
+        'questions': questions,
+        'answers': answers,
+        'questionnaire_completed': project.questionnaire_completed,
+        'active_modules': active_modules,
+        'stages': stages,
     }
     
     return render(request, 'dashboard_mentor/projects/project_detail.html', context)
+
+
+@login_required
+@require_POST
+def create_stage(request, project_id):
+    """Create a new stage for a project"""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+    
+    mentor_profile = request.user.mentor_profile
+    project = get_object_or_404(Project, id=project_id, supervised_by=mentor_profile)
+    
+    if not project.questionnaire_completed:
+        return JsonResponse({'success': False, 'error': 'Questionnaire must be completed before creating stages'}, status=400)
+    
+    try:
+        data = json.loads(request.body)
+        title = data.get('title', '').strip()
+        if not title:
+            return JsonResponse({'success': False, 'error': 'Stage title is required'}, status=400)
+        
+        description = data.get('description', '').strip()
+        target_date = data.get('target_date') or None
+        
+        # Get the next order value using project_id * 1000 as base
+        # This ensures orders don't mix between different projects
+        from dashboard_user.models import ProjectStage
+        from decimal import Decimal
+        base_order = project.id * 1000
+        last_stage = project.stages.order_by('-order').first()
+        if last_stage and last_stage.order >= base_order:
+            # Get the relative order within this project
+            relative_order = int(last_stage.order) % 1000
+            next_order = base_order + relative_order + 1
+        else:
+            # First stage for this project
+            next_order = base_order + 1
+        
+        stage = ProjectStage.objects.create(
+            project=project,
+            title=title,
+            description=description,
+            target_date=target_date,
+            order=Decimal(next_order),
+            is_ai_generated=False,
+            is_pending_confirmation=False,
+        )
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Stage created successfully',
+            'stage_id': stage.id
+        })
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f'Error creating stage: {str(e)}')
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+@require_POST
+def generate_stages_ai(request, project_id):
+    """Generate stages using AI mockup (creates 3 sample stages)"""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+    
+    mentor_profile = request.user.mentor_profile
+    project = get_object_or_404(Project, id=project_id, supervised_by=mentor_profile)
+    
+    if not project.questionnaire_completed:
+        return JsonResponse({'success': False, 'error': 'Questionnaire must be completed before generating stages'}, status=400)
+    
+    try:
+        from dashboard_user.models import ProjectStage
+        from datetime import timedelta
+        
+        # Get questionnaire answers for context (for future AI integration)
+        from dashboard_user.models import ProjectQuestionnaireAnswer
+        answers = ProjectQuestionnaireAnswer.objects.filter(project=project).select_related('question')
+        
+        # Get the next order value using project_id * 1000 as base
+        # This ensures orders don't mix between different projects
+        from decimal import Decimal
+        base_order = project.id * 1000
+        last_stage = project.stages.order_by('-order').first()
+        if last_stage and last_stage.order >= Decimal(base_order):
+            # Get the relative order within this project
+            relative_order = int(last_stage.order) % 1000
+            next_order = base_order + relative_order + 1
+        else:
+            # First stage for this project
+            next_order = base_order + 1
+        
+        # AI Mockup: Generate 3 stages based on project context
+        # TODO: Replace with actual AI API call
+        # Expected API structure:
+        # response = ai_service.generate_stages(
+        #     project_title=project.title,
+        #     project_description=project.description,
+        #     questionnaire_answers=[{'question': a.question.question_text, 'answer': a.answer} for a in answers],
+        #     template=project.template.name if project.template else None
+        # )
+        # stages_data = response.get('stages', [])
+        
+        # Mockup: Generate 3 sample stages
+        base_date = project.created_at.date() if hasattr(project.created_at, 'date') else timezone.now().date()
+        
+        mock_stages = [
+            {
+                'title': 'Initial Planning & Research',
+                'description': 'Conduct thorough research and create a comprehensive plan based on your project goals and current situation.',
+                'target_date_offset': 14,
+            },
+            {
+                'title': 'Implementation & Execution',
+                'description': 'Begin implementing your plan with focused action steps and regular progress tracking.',
+                'target_date_offset': 30,
+            },
+            {
+                'title': 'Review & Optimization',
+                'description': 'Review progress, identify areas for improvement, and optimize your approach for better results.',
+                'target_date_offset': 60,
+            },
+        ]
+        
+        created_stages = []
+        for i, stage_data in enumerate(mock_stages):
+            target_date = base_date + timedelta(days=stage_data['target_date_offset']) if stage_data.get('target_date_offset') else None
+            
+            # Calculate order for this stage
+            stage_order = next_order + i
+            
+            stage = ProjectStage.objects.create(
+                project=project,
+                title=stage_data['title'],
+                description=stage_data['description'],
+                target_date=target_date,
+                order=Decimal(stage_order),
+                is_ai_generated=True,
+                is_pending_confirmation=True,  # Require confirmation
+            )
+            created_stages.append(stage.id)
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'{len(created_stages)} stages generated successfully. Please review and confirm them.',
+            'stages_count': len(created_stages),
+            'stage_ids': created_stages
+        })
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f'Error generating AI stages: {str(e)}')
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+@require_POST
+def edit_stage(request, project_id, stage_id):
+    """Edit an AI-generated stage (title and description)"""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+    
+    mentor_profile = request.user.mentor_profile
+    project = get_object_or_404(Project, id=project_id, supervised_by=mentor_profile)
+    
+    from dashboard_user.models import ProjectStage
+    stage = get_object_or_404(ProjectStage, id=stage_id, project=project)
+    
+    if not stage.is_pending_confirmation:
+        return JsonResponse({'success': False, 'error': 'Only AI-generated stages pending confirmation can be edited'}, status=400)
+    
+    try:
+        data = json.loads(request.body)
+        title = data.get('title', '').strip()
+        if not title:
+            return JsonResponse({'success': False, 'error': 'Stage title is required'}, status=400)
+        
+        description = data.get('description', '').strip()
+        
+        stage.title = title
+        stage.description = description
+        stage.save()
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Stage updated successfully'
+        })
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f'Error editing stage: {str(e)}')
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+@require_POST
+def confirm_stage(request, project_id, stage_id):
+    """Confirm an AI-generated stage (save it permanently)"""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+    
+    mentor_profile = request.user.mentor_profile
+    project = get_object_or_404(Project, id=project_id, supervised_by=mentor_profile)
+    
+    from dashboard_user.models import ProjectStage
+    stage = get_object_or_404(ProjectStage, id=stage_id, project=project)
+    
+    if not stage.is_pending_confirmation:
+        return JsonResponse({'success': False, 'error': 'Stage is not pending confirmation'}, status=400)
+    
+    try:
+        stage.is_pending_confirmation = False
+        stage.save()
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Stage confirmed successfully'
+        })
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f'Error confirming stage: {str(e)}')
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+@require_POST
+def delete_stage(request, project_id, stage_id):
+    """Delete a stage"""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+    
+    mentor_profile = request.user.mentor_profile
+    project = get_object_or_404(Project, id=project_id, supervised_by=mentor_profile)
+    
+    from dashboard_user.models import ProjectStage
+    stage = get_object_or_404(ProjectStage, id=stage_id, project=project)
+    
+    try:
+        stage.delete()
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Stage deleted successfully'
+        })
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f'Error deleting stage: {str(e)}')
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+@require_POST
+def reorder_stages(request, project_id):
+    """Reorder stages via drag and drop"""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+    
+    mentor_profile = request.user.mentor_profile
+    project = get_object_or_404(Project, id=project_id, supervised_by=mentor_profile)
+    
+    try:
+        data = json.loads(request.body)
+        orders = data.get('orders', [])  # List of {stage_id: int, order: int}
+        
+        from dashboard_user.models import ProjectStage
+        from decimal import Decimal
+        
+        for item in orders:
+            stage_id = item.get('stage_id')
+            new_order = item.get('order')
+            if stage_id and new_order:
+                ProjectStage.objects.filter(
+                    id=stage_id,
+                    project=project
+                ).update(order=Decimal(new_order))
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Stages reordered successfully'
+        })
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f'Error reordering stages: {str(e)}')
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)

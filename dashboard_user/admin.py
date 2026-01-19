@@ -1,5 +1,11 @@
 from django.contrib import admin
-from .models import Project, ProjectTemplate
+from .models import (
+    Project, ProjectTemplate, ProjectModule, ProjectModuleInstance,
+    ProjectQuestionnaire, ProjectQuestionnaireAnswer,
+    ProjectStage, ProjectStageTemplate, ProjectStageNote, 
+    ProjectStageNoteAttachment, ProjectStageNoteComment,
+    Task
+)
 
 
 @admin.register(ProjectTemplate)
@@ -73,3 +79,60 @@ class ProjectAdmin(admin.ModelAdmin):
         super().save_model(request, obj, form, change)
 
 admin.site.register(Project, ProjectAdmin)
+
+
+@admin.register(ProjectStage)
+class ProjectStageAdmin(admin.ModelAdmin):
+    list_display = ('title', 'project', 'order', 'is_completed', 'created_at')
+    list_filter = ('is_completed', 'created_from_template', 'project')
+    search_fields = ('title', 'description', 'project__title')
+    list_editable = ('is_completed',)
+    ordering = ('project', 'order')
+
+
+@admin.register(ProjectStageTemplate)
+class ProjectStageTemplateAdmin(admin.ModelAdmin):
+    list_display = ('title', 'template', 'order', 'default_target_date_offset')
+    list_filter = ('template',)
+    search_fields = ('title', 'description')
+    ordering = ('template', 'order')
+
+
+@admin.register(Task)
+class TaskAdmin(admin.ModelAdmin):
+    list_display = ('title', 'stage', 'user_active_backlog', 'mentor_backlog', 'completed', 'deadline', 'created_at')
+    list_filter = ('completed', 'assigned', 'is_ai_generated', 'stage__project')
+    search_fields = ('title', 'description')
+    date_hierarchy = 'created_at'
+    ordering = ('-created_at',)
+
+
+@admin.register(ProjectModule)
+class ProjectModuleAdmin(admin.ModelAdmin):
+    list_display = ('name', 'module_type', 'is_active', 'order')
+    list_filter = ('module_type', 'is_active')
+    search_fields = ('name', 'description')
+    list_editable = ('is_active', 'order')
+
+
+@admin.register(ProjectModuleInstance)
+class ProjectModuleInstanceAdmin(admin.ModelAdmin):
+    list_display = ('project', 'module', 'is_active', 'order')
+    list_filter = ('is_active', 'module')
+    search_fields = ('project__title', 'module__name')
+
+
+@admin.register(ProjectQuestionnaire)
+class ProjectQuestionnaireAdmin(admin.ModelAdmin):
+    list_display = ('question_text', 'template', 'question_type', 'is_required', 'order')
+    list_filter = ('template', 'question_type', 'is_required')
+    search_fields = ('question_text',)
+    ordering = ('template', 'order')
+
+
+@admin.register(ProjectQuestionnaireAnswer)
+class ProjectQuestionnaireAnswerAdmin(admin.ModelAdmin):
+    list_display = ('project', 'question', 'created_at')
+    list_filter = ('project', 'question__template')
+    search_fields = ('project__title', 'question__question_text', 'answer')
+    readonly_fields = ('created_at', 'updated_at')

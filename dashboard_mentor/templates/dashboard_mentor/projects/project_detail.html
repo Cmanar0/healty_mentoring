@@ -1,9 +1,359 @@
 {% extends "dashboard_mentor/base.html" %}
 {% load static %}
+{% load custom_filters %}
+
+{% block extra_css %}
+{{ block.super }}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.css">
+<style>
+.btn-ai-generate {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #4facfe 75%, #00f2fe 100%);
+  background-size: 200% 200%;
+  animation: gradient 3s ease infinite;
+  color: #ffffff;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.875rem;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+  white-space: nowrap;
+}
+
+.btn-ai-generate:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+}
+
+.btn-ai-generate:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+@keyframes gradient {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.btn-stage-action {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.75rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.btn-edit {
+  background: #3b82f6;
+  color: #ffffff;
+}
+
+.btn-edit:hover {
+  background: #2563eb;
+}
+
+.btn-confirm {
+  background: #10b981;
+  color: #ffffff;
+}
+
+.btn-confirm:hover {
+  background: #059669;
+}
+
+.btn-delete {
+  background: #ef4444;
+  color: #ffffff;
+}
+
+.btn-delete:hover {
+  background: #dc2626;
+}
+
+.stage-item {
+  transition: all 0.2s;
+}
+
+.stage-item:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.stage-drag-handle {
+  cursor: grab;
+}
+
+.stage-drag-handle:active {
+  cursor: grabbing;
+}
+
+.sortable-ghost {
+  opacity: 0.4;
+  background: #f3f4f6;
+}
+
+.sortable-chosen {
+  cursor: grabbing;
+}
+
+.sortable-drag {
+  opacity: 0.8;
+}
+</style>
+{% endblock %}
 
 {% block page_title %}Project: {{ project.title }}{% endblock %}
 
 {% block dashboard_content %}
+{% include 'general/modals/create_stage_modal.html' %}
+
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+<script>
+// Define global functions immediately (before DOM is ready)
+window.generateStagesAI = function() {
+  const btn = document.getElementById('generateStagesBtn');
+  if (!btn || btn.disabled) return;
+  
+  btn.disabled = true;
+  const originalText = btn.innerHTML;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
+  
+  const projectId = window.location.pathname.match(/\/projects\/(\d+)\//)?.[1];
+  if (!projectId) {
+    alert('Project ID not found');
+    btn.disabled = false;
+    btn.innerHTML = originalText;
+    return;
+  }
+  
+  function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      const cookies = document.cookie.split(';');
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+  
+  fetch(`/dashboard/mentor/projects/${projectId}/stages/generate-ai/`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': getCookie('csrftoken')
+    }
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      if (typeof showNotification !== 'undefined') {
+        showNotification('Stages generated successfully! Review and confirm them.', 'success');
+      }
+      setTimeout(() => {
+        window.location.reload();
+      }, 500);
+    } else {
+      if (typeof showNotification !== 'undefined') {
+        showNotification(data.error || 'Failed to generate stages', 'error');
+      } else {
+        alert(data.error || 'Failed to generate stages');
+      }
+      btn.disabled = false;
+      btn.innerHTML = originalText;
+    }
+  })
+  .catch(error => {
+    console.error('Error generating stages:', error);
+    if (typeof showNotification !== 'undefined') {
+      showNotification('An error occurred. Please try again.', 'error');
+    } else {
+      alert('An error occurred. Please try again.');
+    }
+    btn.disabled = false;
+    btn.innerHTML = originalText;
+  });
+};
+
+window.openCreateStageModal = function() {
+  // Wait for modal to be available (in case it's not loaded yet)
+  function tryOpenModal(attempts = 0) {
+    const modal = document.getElementById('createStageModal');
+    if (!modal) {
+      if (attempts < 10) {
+        setTimeout(() => tryOpenModal(attempts + 1), 50);
+        return;
+      }
+      console.error('Create stage modal not found after multiple attempts');
+      alert('Modal not available. Please refresh the page.');
+      return;
+    }
+    
+    modal.style.display = 'flex';
+    setTimeout(() => {
+      modal.classList.add('active');
+    }, 10);
+  }
+  
+  tryOpenModal();
+};
+
+window.editStage = function(stageId, currentTitle, currentDescription) {
+  const newTitle = prompt('Edit Stage Title:', currentTitle);
+  if (newTitle === null) return;
+  
+  const newDescription = prompt('Edit Stage Description:', currentDescription || '');
+  if (newDescription === null) return;
+  
+  const projectId = window.location.pathname.match(/\/projects\/(\d+)\//)?.[1];
+  if (!projectId) return;
+  
+  function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      const cookies = document.cookie.split(';');
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+  
+  fetch(`/dashboard/mentor/projects/${projectId}/stages/${stageId}/edit/`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': getCookie('csrftoken')
+    },
+    body: JSON.stringify({
+      title: newTitle,
+      description: newDescription
+    })
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      window.location.reload();
+    } else {
+      alert(data.error || 'Failed to update stage');
+    }
+  })
+  .catch(error => {
+    console.error('Error updating stage:', error);
+    alert('An error occurred. Please try again.');
+  });
+};
+
+window.confirmStage = function(stageId) {
+  if (!confirm('Confirm this AI-generated stage? It will be saved permanently.')) return;
+  
+  const projectId = window.location.pathname.match(/\/projects\/(\d+)\//)?.[1];
+  if (!projectId) return;
+  
+  function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      const cookies = document.cookie.split(';');
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+  
+  fetch(`/dashboard/mentor/projects/${projectId}/stages/${stageId}/confirm/`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': getCookie('csrftoken')
+    }
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      if (typeof showNotification !== 'undefined') {
+        showNotification('Stage confirmed successfully!', 'success');
+      }
+      window.location.reload();
+    } else {
+      alert(data.error || 'Failed to confirm stage');
+    }
+  })
+  .catch(error => {
+    console.error('Error confirming stage:', error);
+    alert('An error occurred. Please try again.');
+  });
+};
+
+window.deleteStage = function(stageId) {
+  if (!confirm('Are you sure you want to delete this stage?')) return;
+  
+  const projectId = window.location.pathname.match(/\/projects\/(\d+)\//)?.[1];
+  if (!projectId) return;
+  
+  function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      const cookies = document.cookie.split(';');
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+  
+  fetch(`/dashboard/mentor/projects/${projectId}/stages/${stageId}/delete/`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': getCookie('csrftoken')
+    }
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      if (typeof showNotification !== 'undefined') {
+        showNotification('Stage deleted successfully!', 'success');
+      }
+      window.location.reload();
+    } else {
+      alert(data.error || 'Failed to delete stage');
+    }
+  })
+  .catch(error => {
+    console.error('Error deleting stage:', error);
+    alert('An error occurred. Please try again.');
+  });
+};
+</script>
+
 <div class="dashboard-content-container" style="max-width: 980px;">
   <div style="margin-bottom: 24px;">
     <a href="{% url 'general:dashboard_mentor:projects_list' %}" class="btn btn-secondary" style="text-decoration: none; display: inline-flex; align-items: center; gap: 8px;">
@@ -166,11 +516,13 @@
         <div style="font-weight: 600; color: var(--dash-text-muted); margin-bottom: 8px;">Assigned To</div>
         <div style="color: var(--dash-text-main); font-weight: 500;">
           {% if project.project_owner %}
-            {% if project.project_owner.first_name or project.project_owner.last_name %}
-              {{ project.project_owner.first_name }} {{ project.project_owner.last_name }}
-            {% else %}
-              {{ project.project_owner.user.email }}
-            {% endif %}
+            <a href="{% url 'general:dashboard_mentor:client_detail' project.project_owner.id %}" style="color: #10b981; text-decoration: none; font-weight: 500;">
+              {% if project.project_owner.first_name or project.project_owner.last_name %}
+                {{ project.project_owner.first_name }} {{ project.project_owner.last_name }}
+              {% else %}
+                {{ project.project_owner.user.email }}
+              {% endif %}
+            </a>
             <div style="font-size: 0.85rem; color: var(--dash-text-muted); margin-top: 4px; font-weight: 400;">
               {{ project.project_owner.user.email }}
             </div>
@@ -218,13 +570,300 @@
     </div>
   </div>
 
-  <!-- Actions -->
-  {% if project.project_owner %}
-    <div style="margin-top: 24px;">
-      <a href="{% url 'general:dashboard_mentor:client_detail' project.project_owner.id %}" class="btn btn-primary" style="text-decoration: none; display: inline-flex; align-items: center; gap: 8px;">
-        <i class="fas fa-user"></i> View Client Profile
-      </a>
+  <!-- Questionnaire Section -->
+  {% if questions %}
+    <div class="dashboard-card" style="margin-top: 24px;">
+      <h2 class="card-title">Project Questionnaire</h2>
+      
+      {% if not project.questionnaire_completed %}
+        <form id="questionnaireForm" style="margin-top: 16px;">
+          {% csrf_token %}
+          {% for question in questions %}
+            <div style="margin-bottom: 20px;">
+              <label style="display: block; font-size: 0.875rem; font-weight: 600; color: #374151; margin-bottom: 6px;">
+                {{ question.question_text }}
+                {% if question.is_required %}
+                  <span style="color: #ef4444;">*</span>
+                {% endif %}
+              </label>
+              {% if question.help_text %}
+                <p style="font-size: 0.75rem; color: #6b7280; margin-bottom: 6px; font-style: italic;">{{ question.help_text }}</p>
+              {% endif %}
+              
+              {% if question.question_type == 'textarea' %}
+                <textarea 
+                  name="question_{{ question.id }}" 
+                  id="question_{{ question.id }}"
+                  style="width: 100%; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 0.875rem; font-family: inherit; resize: vertical; min-height: 80px;"
+                  rows="3"
+                  {% if question.is_required %}required{% endif %}
+                >{{ answers|get_item:question.id|default:'' }}</textarea>
+              {% elif question.question_type == 'date' %}
+                <input 
+                  type="date" 
+                  name="question_{{ question.id }}" 
+                  id="question_{{ question.id }}"
+                  style="width: 100%; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 0.875rem;"
+                  value="{{ answers|get_item:question.id|default:'' }}"
+                  {% if question.is_required %}required{% endif %}
+                >
+              {% else %}
+                <input 
+                  type="text" 
+                  name="question_{{ question.id }}" 
+                  id="question_{{ question.id }}"
+                  style="width: 100%; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 0.875rem;"
+                  value="{{ answers|get_item:question.id|default:'' }}"
+                  {% if question.is_required %}required{% endif %}
+                >
+              {% endif %}
+              <div style="color: #ef4444; font-size: 0.75rem; margin-top: 4px; display: none;" id="error_{{ question.id }}"></div>
+            </div>
+          {% endfor %}
+          
+          <div style="margin-top: 24px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+            <button type="submit" class="btn btn-primary" id="submitQuestionnaireBtn">
+              <i class="fas fa-check"></i> Submit Questionnaire
+            </button>
+          </div>
+        </form>
+      {% else %}
+        <div style="margin-top: 16px;">
+          <div style="background: #d1fae5; color: #065f46; padding: 12px 16px; border-radius: 8px; display: inline-flex; align-items: center; gap: 8px; font-weight: 500;">
+            <i class="fas fa-check-circle"></i> 
+            <span>Project Definition Complete</span>
+            {% if project.questionnaire_completed_at %}
+              <span style="font-size: 0.875rem; opacity: 0.8; margin-left: 8px;">Completed on {{ project.questionnaire_completed_at|date:"M d, Y" }}</span>
+            {% endif %}
+          </div>
+        </div>
+      {% endif %}
     </div>
   {% endif %}
+
+  <!-- Stages Section -->
+  {% if project.questionnaire_completed %}
+    <div class="dashboard-card" style="margin-top: 24px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; gap: 12px; flex-wrap: wrap;">
+        <h2 class="card-title" style="margin: 0;">Project Stages</h2>
+        <div style="display: flex; gap: 12px; align-items: center;">
+          <button class="btn btn-primary" onclick="openCreateStageModal()" style="white-space: nowrap;">
+            <i class="fas fa-plus"></i> Create Stage
+          </button>
+          <button class="btn-ai-generate" onclick="generateStagesAI()" id="generateStagesBtn" style="white-space: nowrap;">
+            <i class="fas fa-magic"></i> Generate Stages with AI
+          </button>
+        </div>
+      </div>
+      
+      {% if stages %}
+        <div id="stagesList" style="display: flex; flex-direction: column; gap: 16px; margin-top: 16px;">
+          {% for stage in stages %}
+            <div class="stage-item" data-stage-id="{{ stage.id }}" data-order="{{ stage.order }}" style="background: #ffffff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; cursor: move; {% if stage.is_pending_confirmation %}border-left: 4px solid #f59e0b;{% endif %}">
+              <div style="display: flex; align-items: flex-start; gap: 16px;">
+                <div class="stage-drag-handle" style="width: 32px; height: 32px; background: #10b981; color: #ffffff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 600; flex-shrink: 0; cursor: grab;">
+                  <i class="fas fa-grip-vertical" style="font-size: 0.75rem;"></i>
+                </div>
+                <div style="flex: 1; min-width: 0;">
+                  <h3 style="font-size: 1rem; font-weight: 600; color: #111827; margin: 0 0 8px 0;">{{ stage.title }}</h3>
+                  {% if stage.description %}
+                    <p style="font-size: 0.875rem; color: #6b7280; margin: 0; line-height: 1.5;">{{ stage.description }}</p>
+                  {% endif %}
+                  {% if stage.is_pending_confirmation %}
+                    <div style="margin-top: 8px; padding: 8px 12px; background: #fef3c7; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px; font-size: 0.75rem; color: #92400e; font-weight: 500;">
+                      <i class="fas fa-clock"></i> AI Generated - Pending Confirmation
+                    </div>
+                  {% endif %}
+                </div>
+                <div style="flex-shrink: 0; display: flex; flex-direction: column; gap: 8px; align-items: flex-end;">
+                  {% if stage.is_pending_confirmation %}
+                    <div style="display: flex; gap: 6px;">
+                      <button class="btn-stage-action btn-edit" onclick="editStage({{ stage.id }}, '{{ stage.title|escapejs }}', '{{ stage.description|escapejs }}')" style="padding: 6px 12px; font-size: 0.75rem;">
+                        <i class="fas fa-edit"></i> Edit
+                      </button>
+                      <button class="btn-stage-action btn-confirm" onclick="confirmStage({{ stage.id }})" style="padding: 6px 12px; font-size: 0.75rem;">
+                        <i class="fas fa-check"></i> Confirm
+                      </button>
+                      <button class="btn-stage-action btn-delete" onclick="deleteStage({{ stage.id }})" style="padding: 6px 12px; font-size: 0.75rem;">
+                        <i class="fas fa-trash"></i> Delete
+                      </button>
+                    </div>
+                  {% else %}
+                    {% if stage.is_completed %}
+                      <span style="color: #10b981; font-weight: 500; font-size: 0.875rem; display: flex; align-items: center; gap: 6px;">
+                        <i class="fas fa-check-circle"></i> Completed
+                      </span>
+                    {% else %}
+                      <span style="color: #f59e0b; font-weight: 500; font-size: 0.875rem;">Pending</span>
+                    {% endif %}
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p style="color: #9ca3af; font-style: italic; padding: 32px; text-align: center; margin: 16px 0 0 0;">
+          No stages created yet. Click "Create Stage" to get started.
+        </p>
+      {% endif %}
+    </div>
+  {% else %}
+    <div class="dashboard-card" style="margin-top: 24px;">
+      <h2 class="card-title">Project Stages</h2>
+      <p style="color: #9ca3af; font-style: italic; padding: 32px; text-align: center; margin: 16px 0 0 0;">
+        Complete the project questionnaire to create stages.
+      </p>
+    </div>
+  {% endif %}
+
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+
+// DOMContentLoaded handler for initialization
+document.addEventListener('DOMContentLoaded', function() {
+  // Questionnaire form handler
+  const form = document.getElementById('questionnaireForm');
+  if (form) {
+    form.addEventListener('submit', function(e) {
+      e.preventDefault();
+      
+      const submitBtn = document.getElementById('submitQuestionnaireBtn');
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
+      
+      const answers = {};
+      const inputs = form.querySelectorAll('input, textarea, select');
+      inputs.forEach(input => {
+        if (input.name && input.name.startsWith('question_')) {
+          const questionId = input.name.replace('question_', '');
+          answers[questionId] = input.value.trim();
+        }
+      });
+      
+      document.querySelectorAll('[id^="error_"]').forEach(el => {
+        el.style.display = 'none';
+        el.textContent = '';
+      });
+      
+      fetch('{% url "general:dashboard_user:submit_questionnaire" project.id %}', {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': '{{ csrf_token }}',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ answers: answers })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          window.location.reload();
+        } else {
+          if (data.errors) {
+            Object.keys(data.errors).forEach(questionId => {
+              const errorEl = document.getElementById('error_' + questionId);
+              if (errorEl) {
+                errorEl.textContent = data.errors[questionId];
+                errorEl.style.display = 'block';
+              }
+            });
+          }
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = '<i class="fas fa-check"></i> Submit Questionnaire';
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while submitting the questionnaire.');
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="fas fa-check"></i> Submit Questionnaire';
+      });
+    });
+  }
+  
+  // Initialize drag and drop for stages
+  {% if stages %}
+  // Wait for Sortable to be loaded
+  function initSortable() {
+    if (typeof Sortable === 'undefined') {
+      setTimeout(initSortable, 100);
+      return;
+    }
+    
+    const stagesList = document.getElementById('stagesList');
+    if (!stagesList) return;
+    
+    const projectId = parseInt(window.location.pathname.match(/\/projects\/(\d+)\//)?.[1]);
+    if (!projectId) {
+      console.error('Project ID not found');
+      return;
+    }
+    
+    new Sortable(stagesList, {
+      handle: '.stage-drag-handle',
+      animation: 150,
+      ghostClass: 'sortable-ghost',
+      chosenClass: 'sortable-chosen',
+      dragClass: 'sortable-drag',
+      onEnd: function(evt) {
+        const stageItems = stagesList.querySelectorAll('.stage-item');
+        const orders = [];
+        
+        // Calculate order using project_id * 1000 + index to avoid mixing between projects
+        stageItems.forEach((item, index) => {
+          const baseOrder = projectId * 1000;
+          const stageOrder = baseOrder + index + 1;
+          
+          orders.push({
+            stage_id: parseInt(item.dataset.stageId),
+            order: stageOrder
+          });
+        });
+        
+        function getCookie(name) {
+          let cookieValue = null;
+          if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+              const cookie = cookies[i].trim();
+              if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+              }
+            }
+          }
+          return cookieValue;
+        }
+        
+        fetch(`/dashboard/mentor/projects/${projectId}/stages/reorder/`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+          },
+          body: JSON.stringify({ orders: orders })
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (!data.success) {
+            console.error('Failed to reorder stages');
+            window.location.reload();
+          }
+        })
+        .catch(error => {
+          console.error('Error reordering stages:', error);
+          window.location.reload();
+        });
+      }
+    });
+  }
+  
+  // Initialize after DOM is ready
+  initSortable();
+  {% endif %}
+});
+</script>
 {% endblock %}

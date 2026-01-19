@@ -86,6 +86,44 @@
     {% endif %}
   </div>
 
+  <!-- Projects Section -->
+  {% if client_projects %}
+    <div class="dashboard-card" style="margin-bottom: 24px;">
+      <h2 class="card-title" style="margin-bottom: 20px;">Projects</h2>
+      <div style="display: flex; flex-direction: column; gap: 12px;">
+        {% for project in client_projects %}
+          <a href="{% url 'general:dashboard_mentor:project_detail' project.id %}" style="text-decoration: none; color: inherit; display: block;">
+            <div style="padding: 16px; border: 1px solid #e5e7eb; border-radius: 8px; background: #f9fafb; transition: all 0.2s ease; cursor: pointer;" onmouseover="this.style.background='#f3f4f6'; this.style.borderColor='#10b981';" onmouseout="this.style.background='#f9fafb'; this.style.borderColor='#e5e7eb';">
+              <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
+                <div style="flex: 1;">
+                  <div style="font-weight: 600; color: var(--dash-text-main); margin-bottom: 4px;">
+                    {{ project.title }}
+                  </div>
+                  {% if project.template %}
+                    <div style="font-size: 0.85rem; color: var(--dash-text-muted); margin-bottom: 4px;">
+                      <i class="fas fa-layer-group" style="margin-right: 4px;"></i>{{ project.template.name }}
+                    </div>
+                  {% endif %}
+                  {% if project.description %}
+                    <div style="font-size: 0.9rem; color: var(--dash-text-muted); margin-top: 8px;">
+                      {{ project.description|truncatewords:20 }}
+                    </div>
+                  {% endif %}
+                </div>
+                <span class="status-badge {% if project.assignment_status == 'accepted' %}confirmed-badge{% elif project.assignment_status == 'assigned' %}active-badge{% else %}inactive-badge{% endif %}" style="text-transform: capitalize; margin-left: 12px;">
+                  {{ project.get_assignment_status_display }}
+                </span>
+              </div>
+              <div style="font-size: 0.85rem; color: var(--dash-text-muted); margin-top: 8px; padding-top: 8px; border-top: 1px solid #e5e7eb;">
+                Created: {{ project.created_at|date:"M d, Y" }}
+              </div>
+            </div>
+          </a>
+        {% endfor %}
+      </div>
+    </div>
+  {% endif %}
+
   <!-- Review Section -->
   <div class="dashboard-card">
     <h2 class="card-title" style="margin-bottom: 20px;">Review</h2>

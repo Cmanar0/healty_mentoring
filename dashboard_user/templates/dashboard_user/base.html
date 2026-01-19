@@ -143,6 +143,16 @@
             <span class="sidebar-text">Your Mentors</span>
           </a>
         </li>
+        <li>
+          <a href="{% url 'general:dashboard_user:projects_list' %}" class="sidebar-link {% if request.resolver_match.url_name == 'projects_list' or request.resolver_match.url_name == 'project_detail' %}active{% endif %}" title="Projects">
+            <i class="fas fa-project-diagram sidebar-icon-with-badge">
+              {% if pending_projects_count > 0 %}
+                <span class="sidebar-badge">{{ pending_projects_count }}</span>
+              {% endif %}
+            </i>
+            <span class="sidebar-text">Projects</span>
+          </a>
+        </li>
         <li class="your-section-divider"></li>
         <li>
           <a href="/dashboard/user/profile/" class="sidebar-link sidebar-link-your {% if request.resolver_match.url_name == 'profile' %}active{% endif %}" title="Your Profile">

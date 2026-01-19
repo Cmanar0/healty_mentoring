@@ -1,0 +1,50 @@
+{% extends "emails/base.html" %}
+
+{% block title %}New Project Assignment{% endblock %}
+
+{% block content %}
+<h1>New Project Assignment</h1>
+
+<p class="content-text">
+  Hi{% if client_name %} {{ client_name }}{% endif %},
+</p>
+
+<p class="content-text">
+  {% if mentor_name %}{{ mentor_name }}{% else %}Your mentor{% endif %} has assigned you a new project:
+</p>
+
+<div style="background-color: #f9fafb; border-radius: 12px; padding: 24px; margin: 24px 0; border: 1px solid #e5e7eb;">
+  <h2 style="font-size: 18px; font-weight: 600; color: #111827; margin-top: 0; margin-bottom: 16px;">{{ project.title }}</h2>
+  
+  {% if project.description %}
+  <p class="content-text" style="font-size: 15px; color: #374151; margin-bottom: 12px;">
+    {{ project.description|truncatewords:50 }}
+  </p>
+  {% endif %}
+  
+  {% if project.template %}
+  <p class="content-text" style="font-size: 14px; color: #6b7280; margin-bottom: 0;">
+    <strong>Template:</strong> {{ project.template.name }}
+  </p>
+  {% endif %}
+</div>
+
+<p class="content-text">
+  Click the button below to accept this project assignment and get started:
+</p>
+
+<div style="text-align: center; margin: 32px 0;">
+  <a href="{{ accept_url }}" class="button" style="display: inline-block; padding: 14px 28px; background-color: #10b981; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">
+    Accept Project Assignment
+  </a>
+</div>
+
+<p class="content-text" style="font-size: 14px; color: #6b7280;">
+  If the button doesn't work, you can copy and paste this link into your browser:<br>
+  <a href="{{ accept_url }}" style="color: #10b981; word-break: break-all;">{{ accept_url }}</a>
+</p>
+
+<p class="content-text" style="margin-top: 32px; font-size: 14px; color: #6b7280;">
+  This link will ensure you're logged in with the correct account to accept the project.
+</p>
+{% endblock %}
