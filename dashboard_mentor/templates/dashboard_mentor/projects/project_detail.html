@@ -635,7 +635,8 @@
         chartEl.innerHTML = chartHtml;
         
         // Initialize drag handlers for waterfall bars
-        initWaterfallDragHandlers(stagesWithDates, minDate, maxDate, totalDays);
+        // Pass all stages (not just those with dates) for reordering
+        initWaterfallDragHandlers(stages, minDate, maxDate, totalDays);
     }
     
     // Initialize drag handlers for waterfall chart bars
@@ -645,34 +646,43 @@
         
         const bars = chartEl.querySelectorAll('.waterfall-stage-bar');
         let isDragging = false;
-        let dragType = null; // 'move', 'resize-left', 'resize-right'
+        let dragType = null; // 'move', 'resize-left', 'resize-right', 'reorder'
         let currentBar = null;
         let startX = 0;
+        let startY = 0;
         let startLeft = 0;
+        let startTop = 0;
         let startWidth = 0;
         let startDate = null;
         let endDate = null;
+        let startIndex = 0;
         let handleMouseMove = null;
         let handleMouseUp = null;
+        let dragThreshold = 5; // pixels to move before determining drag direction
         
-        bars.forEach(bar => {
+        bars.forEach((bar, index) => {
             const resizeLeft = bar.querySelector('.waterfall-resize-left');
             const resizeRight = bar.querySelector('.waterfall-resize-right');
             
-            // Move entire bar
+            // Move entire bar (can be horizontal or vertical)
             bar.addEventListener('mousedown', function(e) {
                 if (e.target === resizeLeft || e.target === resizeRight) return;
                 isDragging = true;
-                dragType = 'move';
+                dragType = null; // Will be determined after threshold
                 currentBar = bar;
                 startX = e.clientX;
+                startY = e.clientY;
                 const rect = bar.getBoundingClientRect();
                 const chartRect = chartEl.getBoundingClientRect();
                 startLeft = ((rect.left - chartRect.left) / chartRect.width) * 100;
+                startTop = rect.top - chartRect.top;
                 startWidth = (rect.width / chartRect.width) * 100;
                 startDate = new Date(bar.dataset.startDate);
                 endDate = new Date(bar.dataset.endDate);
+                startIndex = index;
                 bar.style.cursor = 'grabbing';
+                bar.style.zIndex = '1000';
+                bar.style.opacity = '0.7';
                 e.preventDefault();
             });
             
@@ -737,16 +747,70 @@
             }
         }
         
+        // Create placeholder indicator for reordering
+        let placeholderLine = null;
+        function showReorderPlaceholder(y) {
+            if (!placeholderLine) {
+                placeholderLine = document.createElement('div');
+                placeholderLine.id = 'waterfallReorderPlaceholder';
+                placeholderLine.style.cssText = 'position: absolute; left: 0; right: 0; height: 2px; background: #10b981; z-index: 999; pointer-events: none;';
+                chartEl.appendChild(placeholderLine);
+            }
+            placeholderLine.style.top = (y - chartEl.getBoundingClientRect().top) + 'px';
+            placeholderLine.style.display = 'block';
+        }
+        
+        function hideReorderPlaceholder() {
+            if (placeholderLine) {
+                placeholderLine.style.display = 'none';
+            }
+        }
+        
         // Mouse move handler
         handleMouseMove = function(e) {
             if (!isDragging || !currentBar) return;
             
             const chartRect = chartEl.getBoundingClientRect();
             const deltaX = e.clientX - startX;
+            const deltaY = e.clientY - startY;
             const deltaPercent = (deltaX / chartRect.width) * 100;
             
-            if (dragType === 'move') {
-                // Move entire bar
+            // Determine drag type if not yet determined
+            if (!dragType) {
+                const absDeltaX = Math.abs(deltaX);
+                const absDeltaY = Math.abs(deltaY);
+                
+                if (absDeltaX < dragThreshold && absDeltaY < dragThreshold) {
+                    return; // Wait for threshold
+                }
+                
+                // Determine primary direction
+                if (absDeltaY > absDeltaX) {
+                    dragType = 'reorder';
+                    hideDatePopover();
+                } else {
+                    dragType = 'move';
+                }
+            }
+            
+            if (dragType === 'reorder') {
+                // Vertical reordering
+                const currentY = e.clientY - chartRect.top;
+                const barHeight = 30;
+                const barSpacing = 50;
+                const allBars = Array.from(chartEl.querySelectorAll('.waterfall-stage-bar'));
+                const newIndex = Math.max(0, Math.min(allBars.length - 1, Math.round((currentY - 20) / barSpacing)));
+                
+                // Show placeholder at target position
+                const targetY = 20 + (newIndex * barSpacing);
+                showReorderPlaceholder(targetY);
+                
+                // Update visual position
+                currentBar.style.top = (currentY - barHeight / 2) + 'px';
+                currentBar.style.left = startLeft + '%';
+                currentBar.style.width = startWidth + '%';
+            } else if (dragType === 'move') {
+                // Move entire bar horizontally
                 const newLeft = Math.max(0, Math.min(100 - startWidth, startLeft + deltaPercent));
                 const newStartDate = new Date(minDate.getTime() + ((newLeft / 100) * totalDays) * 24 * 60 * 60 * 1000);
                 const duration = (endDate - startDate) / (1000 * 60 * 60 * 24);
@@ -792,74 +856,152 @@
         handleMouseUp = function(e) {
             if (!isDragging || !currentBar) return;
             
-            const stageId = currentBar.dataset.stageId;
-            const oldStartDate = startDate.toISOString().split('T')[0];
-            const oldEndDate = endDate.toISOString().split('T')[0];
-            const newStartDate = currentBar.dataset.startDate;
-            const newEndDate = currentBar.dataset.endDate;
-            
-            // Hide popover
+            // Hide placeholders
             hideDatePopover();
+            hideReorderPlaceholder();
             
-            // Format dates for notification
-            const formatDate = (dateStr) => {
-                const date = new Date(dateStr);
-                return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-            };
+            const stageId = currentBar.dataset.stageId;
             
-            // Determine what changed
-            let notificationMessage = '';
-            if (dragType === 'resize-left' && newStartDate !== oldStartDate) {
-                notificationMessage = `Start date updated to ${formatDate(newStartDate)}`;
-            } else if (dragType === 'resize-right' && newEndDate !== oldEndDate) {
-                notificationMessage = `End date updated to ${formatDate(newEndDate)}`;
-            } else if (dragType === 'move' && (newStartDate !== oldStartDate || newEndDate !== oldEndDate)) {
-                notificationMessage = `Stage dates updated: ${formatDate(newStartDate)} - ${formatDate(newEndDate)}`;
-            }
-            
-            // Update database
-            fetch(`/dashboard/mentor/projects/${PROJECT_ID}/stages/${stageId}/update-dates/`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': '{{ csrf_token }}'
-                },
-                body: JSON.stringify({
-                    start_date: newStartDate,
-                    end_date: newEndDate
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // Show notification
-                    if (notificationMessage && typeof showNotification !== 'undefined') {
-                        showNotification(notificationMessage, 'success');
-                    }
-                    // Reload stages to update everything
-                    loadStages();
+            if (dragType === 'reorder') {
+                // Handle reordering
+                const chartRect = chartEl.getBoundingClientRect();
+                const currentY = e.clientY - chartRect.top;
+                const barSpacing = 50;
+                const allBars = Array.from(chartEl.querySelectorAll('.waterfall-stage-bar'));
+                const newIndex = Math.max(0, Math.min(allBars.length - 1, Math.round((currentY - 20) / barSpacing)));
+                
+                if (newIndex !== startIndex) {
+                    // Calculate new orders
+                    const baseOrder = PROJECT_ID * 1000;
+                    const orders = [];
+                    
+                    // Get all bars in current order
+                    const allBars = Array.from(chartEl.querySelectorAll('.waterfall-stage-bar'));
+                    const sortedBars = allBars.sort((a, b) => {
+                        const aTop = parseFloat(a.style.top) || 0;
+                        const bTop = parseFloat(b.style.top) || 0;
+                        return aTop - bTop;
+                    });
+                    
+                    // Remove current bar from list
+                    const otherBars = sortedBars.filter(bar => bar !== currentBar);
+                    
+                    // Insert current bar at new position
+                    otherBars.splice(newIndex, 0, currentBar);
+                    
+                    // Calculate orders
+                    otherBars.forEach((bar, index) => {
+                        orders.push({
+                            stage_id: parseInt(bar.dataset.stageId),
+                            order: baseOrder + index + 1
+                        });
+                    });
+                    
+                    // Update database
+                    fetch(`/dashboard/mentor/projects/${PROJECT_ID}/stages/reorder/`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': '{{ csrf_token }}'
+                        },
+                        body: JSON.stringify({ orders: orders })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            if (typeof showNotification !== 'undefined') {
+                                showNotification('Stage order updated', 'success');
+                            }
+                            // Reload stages to update everything
+                            loadStages();
+                        } else {
+                            console.error('Failed to reorder stages:', data.error);
+                            if (typeof showNotification !== 'undefined') {
+                                showNotification('Failed to reorder stages', 'error');
+                            }
+                            loadStages();
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error reordering stages:', error);
+                        if (typeof showNotification !== 'undefined') {
+                            showNotification('Error reordering stages', 'error');
+                        }
+                        loadStages();
+                    });
                 } else {
-                    console.error('Failed to update stage dates:', data.error);
-                    if (typeof showNotification !== 'undefined') {
-                        showNotification('Failed to update stage dates', 'error');
-                    }
-                    // Reload to restore correct state
+                    // No change, just restore
                     loadStages();
                 }
-            })
-            .catch(error => {
-                console.error('Error updating stage dates:', error);
-                if (typeof showNotification !== 'undefined') {
-                    showNotification('Error updating stage dates', 'error');
+            } else {
+                // Handle date updates
+                const oldStartDate = startDate.toISOString().split('T')[0];
+                const oldEndDate = endDate.toISOString().split('T')[0];
+                const newStartDate = currentBar.dataset.startDate;
+                const newEndDate = currentBar.dataset.endDate;
+                
+                // Format dates for notification
+                const formatDate = (dateStr) => {
+                    const date = new Date(dateStr);
+                    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                };
+                
+                // Determine what changed
+                let notificationMessage = '';
+                if (dragType === 'resize-left' && newStartDate !== oldStartDate) {
+                    notificationMessage = `Start date updated to ${formatDate(newStartDate)}`;
+                } else if (dragType === 'resize-right' && newEndDate !== oldEndDate) {
+                    notificationMessage = `End date updated to ${formatDate(newEndDate)}`;
+                } else if (dragType === 'move' && (newStartDate !== oldStartDate || newEndDate !== oldEndDate)) {
+                    notificationMessage = `Stage dates updated: ${formatDate(newStartDate)} - ${formatDate(newEndDate)}`;
                 }
-                loadStages();
-            });
+                
+                // Update database
+                fetch(`/dashboard/mentor/projects/${PROJECT_ID}/stages/${stageId}/update-dates/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify({
+                        start_date: newStartDate,
+                        end_date: newEndDate
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Show notification
+                        if (notificationMessage && typeof showNotification !== 'undefined') {
+                            showNotification(notificationMessage, 'success');
+                        }
+                        // Reload stages to update everything
+                        loadStages();
+                    } else {
+                        console.error('Failed to update stage dates:', data.error);
+                        if (typeof showNotification !== 'undefined') {
+                            showNotification('Failed to update stage dates', 'error');
+                        }
+                        // Reload to restore correct state
+                        loadStages();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error updating stage dates:', error);
+                    if (typeof showNotification !== 'undefined') {
+                        showNotification('Error updating stage dates', 'error');
+                    }
+                    loadStages();
+                });
+            }
             
             // Reset
             isDragging = false;
             dragType = null;
             if (currentBar) {
                 currentBar.style.cursor = 'move';
+                currentBar.style.zIndex = '';
+                currentBar.style.opacity = '';
             }
             currentBar = null;
             
