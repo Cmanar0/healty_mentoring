@@ -592,7 +592,7 @@
         chartEl.style.height = chartHeight + 'px';
         
         let chartHtml = `
-            <div style="position: relative; height: ${chartHeight}px; padding: 20px 0 60px 0;">
+            <div class="waterfall-chart-inner" style="position: relative; height: ${chartHeight}px; padding: 20px 0 60px 0;">
                 <!-- Timeline axis -->
                 <div style="position: absolute; bottom: 0; left: 0; right: 0; height: 40px; border-top: 2px solid #e5e7eb;">
                     ${axisLabels.map(label => `
@@ -750,13 +750,18 @@
         // Create placeholder indicator for reordering
         let placeholderLine = null;
         function showReorderPlaceholder(y) {
+            // Find the inner chart container where bars are positioned
+            const chartInner = chartEl.querySelector('.waterfall-chart-inner');
+            if (!chartInner) return;
+            
             if (!placeholderLine) {
                 placeholderLine = document.createElement('div');
                 placeholderLine.id = 'waterfallReorderPlaceholder';
-                placeholderLine.style.cssText = 'position: absolute; left: 0; right: 0; height: 2px; background: #10b981; z-index: 999; pointer-events: none;';
-                chartEl.appendChild(placeholderLine);
+                placeholderLine.style.cssText = 'position: absolute; left: 0; right: 0; height: 2px; background: rgba(30, 41, 59, 0.6); z-index: 999; pointer-events: none;';
+                chartInner.appendChild(placeholderLine);
             }
-            placeholderLine.style.top = (y - chartEl.getBoundingClientRect().top) + 'px';
+            // y is already relative to the inner container (accounts for 20px top padding)
+            placeholderLine.style.top = y + 'px';
             placeholderLine.style.display = 'block';
         }
         
@@ -801,9 +806,26 @@
                 const allBars = Array.from(chartEl.querySelectorAll('.waterfall-stage-bar'));
                 const newIndex = Math.max(0, Math.min(allBars.length - 1, Math.round((currentY - 20) / barSpacing)));
                 
-                // Show placeholder at target position
-                const targetY = 20 + (newIndex * barSpacing);
-                showReorderPlaceholder(targetY);
+                // Only show placeholder if order would actually change
+                if (newIndex !== startIndex) {
+                    // Determine if dragging up or down from original position
+                    const isDraggingDown = newIndex > startIndex;
+                    
+                    // Show placeholder at target position
+                    // If dragging down, show line below the target bar; if dragging up, show above
+                    let targetY;
+                    if (isDraggingDown) {
+                        // Show line below the target bar (at the bottom of the bar + a bit)
+                        targetY = 20 + (newIndex * barSpacing) + barHeight + 2;
+                    } else {
+                        // Show line above the target bar (at the top of the bar)
+                        targetY = 20 + (newIndex * barSpacing);
+                    }
+                    showReorderPlaceholder(targetY);
+                } else {
+                    // Hide placeholder if order wouldn't change
+                    hideReorderPlaceholder();
+                }
                 
                 // Update visual position
                 currentBar.style.top = (currentY - barHeight / 2) + 'px';
@@ -865,26 +887,28 @@
             if (dragType === 'reorder') {
                 // Handle reordering
                 const chartRect = chartEl.getBoundingClientRect();
-                const currentY = e.clientY - chartRect.top;
+                const barHeight = 30;
                 const barSpacing = 50;
                 const allBars = Array.from(chartEl.querySelectorAll('.waterfall-stage-bar'));
-                const newIndex = Math.max(0, Math.min(allBars.length - 1, Math.round((currentY - 20) / barSpacing)));
+                
+                // Use the bar's current visual position to determine new index
+                const currentBarTop = parseFloat(currentBar.style.top) || startTop;
+                const newIndex = Math.max(0, Math.min(allBars.length - 1, Math.round((currentBarTop - 20 + barHeight / 2) / barSpacing)));
                 
                 if (newIndex !== startIndex) {
                     // Calculate new orders
                     const baseOrder = PROJECT_ID * 1000;
                     const orders = [];
                     
-                    // Get all bars in current order
-                    const allBars = Array.from(chartEl.querySelectorAll('.waterfall-stage-bar'));
-                    const sortedBars = allBars.sort((a, b) => {
-                        const aTop = parseFloat(a.style.top) || 0;
-                        const bTop = parseFloat(b.style.top) || 0;
-                        return aTop - bTop;
-                    });
+                    // Get all bars except the one being dragged, sorted by their original order
+                    const otherBars = allBars.filter(bar => bar !== currentBar);
                     
-                    // Remove current bar from list
-                    const otherBars = sortedBars.filter(bar => bar !== currentBar);
+                    // Sort other bars by their data-order attribute (original order)
+                    otherBars.sort((a, b) => {
+                        const aOrder = parseFloat(a.dataset.order) || 0;
+                        const bOrder = parseFloat(b.dataset.order) || 0;
+                        return aOrder - bOrder;
+                    });
                     
                     // Insert current bar at new position
                     otherBars.splice(newIndex, 0, currentBar);
