@@ -658,7 +658,7 @@ class EmailService:
             template_name='timezone_change_notification',
             context=context,
         )
-    
+
     @staticmethod
     def send_project_assignment_email(project, client_profile) -> bool:
         """

@@ -1,0 +1,453 @@
+{% extends "dashboard_mentor/base.html" %}
+{% load static %}
+{% load custom_filters %}
+
+{% block page_title %}{{ stage.title }} | {{ project.title }}{% endblock %}
+
+{% block extra_css %}
+{{ block.super }}
+<style>
+    /* Layout Grid - Consistent with Project Detail */
+    .roadmap-container {
+        display: grid;
+        grid-template-columns: 1fr 340px;
+        gap: 32px;
+        align-items: start;
+        margin: 0 auto;
+        max-width: 1200px;
+    }
+    
+    @media (max-width: 1024px) {
+        .roadmap-container {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    /* Main Content Area - Document Style but consistent styling */
+    .document-card {
+        background: #ffffff;
+        border-radius: 12px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        border: 1px solid #e5e7eb;
+        overflow: hidden;
+        min-height: 80vh;
+    }
+
+    .doc-header {
+        padding: 40px;
+        border-bottom: 1px solid #e5e7eb;
+        background: #fafafa;
+    }
+
+    .doc-kicker {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: #6b7280;
+        margin-bottom: 16px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .doc-title {
+        font-size: 2.5rem;
+        font-weight: 800;
+        color: #111827;
+        line-height: 1.1;
+        margin-bottom: 24px;
+        letter-spacing: -0.03em;
+    }
+
+    .doc-meta-row {
+        display: flex;
+        gap: 16px;
+        flex-wrap: wrap;
+    }
+
+    .meta-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 14px;
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        color: #374151;
+        font-weight: 500;
+    }
+    
+    .meta-chip.status-completed {
+        background: #ecfdf5;
+        border-color: #d1fae5;
+        color: #047857;
+    }
+    
+    .meta-chip.status-pending {
+        background: #eff6ff;
+        border-color: #dbeafe;
+        color: #1d4ed8;
+    }
+
+    .doc-body {
+        padding: 40px;
+        font-size: 1.1rem;
+        line-height: 1.8;
+        color: #374151;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    /* Notes / Discussion */
+    .notes-section {
+        padding: 40px;
+        background: #ffffff;
+    }
+    
+    .section-heading {
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: #94a3b8;
+        font-weight: 700;
+        margin-bottom: 24px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    .section-heading::after {
+        content: '';
+        height: 1px;
+        flex: 1;
+        background: #f1f5f9;
+        margin-top: 2px;
+    }
+
+    .note-composer {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 24px;
+        margin-bottom: 32px;
+        transition: all 0.2s;
+    }
+    .note-composer:focus-within {
+        background: white;
+        border-color: #cbd5e1;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    }
+    
+    .note-composer textarea {
+        width: 100%;
+        border: none;
+        background: transparent;
+        resize: vertical;
+        min-height: 80px;
+        font-size: 1rem;
+        outline: none;
+        color: #1f2937;
+        margin-bottom: 12px;
+    }
+
+    .note-item {
+        margin-bottom: 32px;
+        display: grid;
+        grid-template-columns: 48px 1fr;
+        gap: 16px;
+    }
+    
+    .note-avatar {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        background: #e2e8f0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        color: #64748b;
+        font-size: 1.2rem;
+        border: 2px solid white;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    
+    .note-box {
+        background: white;
+    }
+    
+    .note-header {
+        margin-bottom: 8px;
+        display: flex;
+        align-items: baseline;
+        gap: 10px;
+    }
+    
+    .note-author {
+        font-weight: 700;
+        color: #111827;
+        font-size: 0.95rem;
+    }
+    
+    .note-time {
+        font-size: 0.8rem;
+        color: #9ca3af;
+    }
+    
+    .note-role-badge {
+        font-size: 0.7rem;
+        padding: 2px 8px;
+        background: #f1f5f9;
+        color: #64748b;
+        border-radius: 12px;
+        text-transform: uppercase;
+        font-weight: 600;
+    }
+
+    /* Sidebar - Matching Project Detail Styling */
+    .project-sidebar {
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+    }
+
+    .project-meta-card {
+        background: #1e293b;
+        color: white;
+        border-radius: 12px;
+        padding: 24px;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .meta-bg-icon {
+        position: absolute;
+        bottom: -20px;
+        right: -20px;
+        font-size: 8rem;
+        opacity: 0.05;
+        transform: rotate(-15deg);
+    }
+
+    .project-title-lg {
+        font-size: 1.1rem;
+        font-weight: 700;
+        margin-bottom: 2px;
+        color: #e2e8f0;
+    }
+
+    .sidebar-actions {
+        background: white;
+        border-radius: 12px;
+        border: 1px solid #e5e7eb;
+        padding: 20px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+
+    .action-header {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        color: #94a3b8;
+        font-weight: 700;
+        margin-bottom: 12px;
+        letter-spacing: 0.05em;
+    }
+
+    .btn-block-action {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 12px;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        border: none;
+        font-size: 0.95rem;
+    }
+
+    .btn-complete {
+        background: #111827;
+        color: white;
+    }
+    .btn-complete:hover { background: #0f172a; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    
+    .btn-reopen {
+        background: white;
+        border: 1px solid #e5e7eb;
+        color: #374151;
+    }
+    .btn-reopen:hover { background: #f8fafc; border-color: #d1d5db; }
+    
+    .nav-btn-back {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        color: #64748b;
+        text-decoration: none;
+        font-weight: 500;
+        transition: color 0.2s;
+    }
+    .nav-btn-back:hover { color: #1e293b; }
+
+</style>
+{% endblock %}
+
+{% block dashboard_content %}
+<div class="dashboard-content-container" style="max-width: 1200px; margin: 0 auto;">
+    
+    <!-- Top Nav -->
+    <div style="margin-bottom: 24px;">
+        <a href="{% url 'general:dashboard_mentor:projects_list' %}" class="nav-btn-back">
+            Projects
+        </a>
+        <span style="margin: 0 8px; color: #cbd5e1;">/</span>
+        <a href="{% url 'general:dashboard_mentor:project_detail' project.id %}" class="nav-btn-back">
+            {{ project.title }}
+        </a>
+        <span style="margin: 0 8px; color: #cbd5e1;">/</span>
+        <span style="color: #1e293b; font-weight: 600;">{{ stage.title }}</span>
+    </div>
+
+    <div class="roadmap-container">
+        
+        <!-- Main Document -->
+        <main class="document-card">
+            <div class="doc-header">
+                <div class="doc-kicker">
+                    <i class="fas fa-layer-group"></i> Stage Detail
+                </div>
+                <h1 class="doc-title">{{ stage.title }}</h1>
+                
+                <div class="doc-meta-row">
+                    {% if stage.is_completed %}
+                        <div class="meta-chip status-completed">
+                            <i class="fas fa-check-circle"></i> Completed {{ stage.completed_at|date:"M d" }}
+                        </div>
+                    {% else %}
+                        <div class="meta-chip status-pending">
+                            <i class="fas fa-circle-notch"></i> In Progress
+                        </div>
+                    {% endif %}
+                    
+                    {% if stage.target_date %}
+                        <div class="meta-chip">
+                            <i class="far fa-calendar-alt"></i> Due {{ stage.target_date|date:"F j, Y" }}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="doc-body">
+                {% if stage.description %}
+                    {{ stage.description|linebreaks }}
+                {% else %}
+                    <div style="text-align: center; color: #9ca3af; padding: 20px; font-style: italic;">
+                        No description provided.
+                    </div>
+                {% endif %}
+            </div>
+            
+            <div class="notes-section">
+                <div class="section-heading">
+                    <i class="far fa-comments"></i> Discussion & Updates
+                </div>
+                
+                <form method="POST" action="" class="note-composer">
+                    {% csrf_token %}
+                    <textarea name="note_text" placeholder="Add an update, observation, or note about this stage..."></textarea>
+                    <div style="display: flex; justify-content: flex-end;">
+                        <button type="submit" class="btn btn-primary" style="padding: 8px 16px;">
+                            Post Update
+                        </button>
+                    </div>
+                </form>
+
+                <div class="notes-feed">
+                    {% for note in notes %}
+                        <div class="note-item">
+                            <div class="note-avatar">
+                                {{ note.author.first_name|first|default:"U" }}
+                            </div>
+                            <div class="note-box">
+                                <div class="note-header">
+                                    <span class="note-author">{{ note.author.first_name }} {{ note.author.last_name }}</span>
+                                    {% if note.author_role %}
+                                        <span class="note-role-badge">{{ note.author_role }}</span>
+                                    {% endif %}
+                                    <span class="note-time">{{ note.created_at|date:"M d, H:i" }}</span>
+                                </div>
+                                <div style="color: #4b5563; line-height: 1.6;">{{ note.text|linebreaksbr }}</div>
+                            </div>
+                        </div>
+                    {% empty %}
+                        <div style="text-align: center; padding: 32px; color: #cbd5e1; border: 2px dashed #f1f5f9; border-radius: 12px;">
+                            <i class="far fa-comment-dots" style="font-size: 2rem; margin-bottom: 12px;"></i>
+                            <p>No updates yet.</p>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </main>
+
+        <!-- Sidebar Context (Matching Project Detail) -->
+        <aside class="project-sidebar">
+            <!-- Project Context Card -->
+            <div class="project-meta-card" style="cursor: pointer;" onclick="window.location.href='{% url 'general:dashboard_mentor:project_detail' project.id %}';">
+                <i class="fas fa-map-signs meta-bg-icon"></i>
+                <div style="position: relative; z-index: 2;">
+                    <div style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.6; margin-bottom: 8px;">Parent Project</div>
+                    <div class="project-title-lg">{{ project.title }}</div>
+                    {% if project.template %}
+                        <div style="font-size: 0.85rem; opacity: 0.8; margin-top: 4px;">
+                            {{ project.template.name }}
+                        </div>
+                    {% endif %}
+                    
+                    <div style="margin-top: 20px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.1); font-size: 0.85rem; color: #94a3b8; display: flex; align-items: center; justify-content: space-between;">
+                        <span>Return to Roadmap</span>
+                        <i class="fas fa-arrow-right"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stage Actions -->
+            <div class="sidebar-actions">
+                <div class="action-header">Stage Status</div>
+                <form method="POST" action="">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="toggle_status">
+                    {% if stage.is_completed %}
+                        <button type="submit" class="btn-block-action btn-reopen">
+                            <i class="fas fa-undo"></i> Mark as In Progress
+                        </button>
+                    {% else %}
+                        <button type="submit" class="btn-block-action btn-complete">
+                            <i class="fas fa-check"></i> Mark as Complete
+                        </button>
+                    {% endif %}
+                </form>
+            </div>
+            
+            {% if stage.target_date %}
+            <div class="sidebar-actions">
+                <div class="action-header">Timeline</div>
+                <div style="display: flex; align-items: center; gap: 12px; font-weight: 500; color: #374151;">
+                    <div style="width: 40px; height: 40px; background: #f1f5f9; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #64748b;">
+                        <i class="fas fa-calendar-day"></i>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.8rem; color: #94a3b8;">Target Date</div>
+                        <div>{{ stage.target_date|date:"F j, Y" }}</div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+        </aside>
+
+    </div>
+</div>
+{% endblock %}

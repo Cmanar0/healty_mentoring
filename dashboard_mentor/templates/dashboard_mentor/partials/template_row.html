@@ -1,0 +1,58 @@
+<div class="template-row">
+    <!-- Icon/Image -->
+    <div class="t-icon">
+        {% if template.image %}
+            <img src="{{ template.image.url }}" alt="{{ template.name }}">
+        {% elif template.icon %}
+            <div style="color: {{ template.color|default:'#64748b' }};">
+                <i class="{{ template.icon }}"></i>
+            </div>
+        {% else %}
+            <i class="fas fa-layer-group"></i>
+        {% endif %}
+    </div>
+
+    <!-- Info -->
+    <div>
+        <div class="t-title">{{ template.name }}</div>
+        {% if template.description %}
+            <div class="t-desc">{{ template.description }}</div>
+        {% endif %}
+        {% if template.is_custom %}
+            <div style="font-size: 0.75rem; color: #6366f1; font-weight: 500; margin-top: 4px;">
+                <i class="fas fa-user-tag"></i> Custom Template
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Category -->
+    <div class="col-category">
+        <div class="category-badge">
+            {% if template.color %}
+                <div class="color-dot" style="background: {{ template.color }};"></div>
+            {% endif %}
+            {{ template.get_category_display|default:"General" }}
+        </div>
+    </div>
+
+    <!-- Status -->
+    <div class="col-status">
+        {% if template.is_active %}
+            <span class="status-badge status-active">Active</span>
+        {% else %}
+            <span class="status-badge status-inactive">Inactive</span>
+        {% endif %}
+    </div>
+
+    <!-- Stats -->
+    <div class="col-stats">
+        <div class="stat-text">
+            {{ template.projects.count }} Use{{ template.projects.count|pluralize }}
+        </div>
+    </div>
+
+    <!-- Action -->
+    <div style="text-align: right;">
+        <i class="fas fa-chevron-right chevron-icon"></i>
+    </div>
+</div>

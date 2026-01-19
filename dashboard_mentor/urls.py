@@ -48,13 +48,16 @@ urlpatterns = [
     path('projects/modules/api/', views.project_modules_api, name='project_modules_api'),
     path('projects/create/', views.create_project, name='create_project'),
     path('templates/', views.templates_list, name='templates_list'),
+    path('templates/create/', views.create_custom_template, name='create_custom_template'),
     path('projects/', views.projects_list, name='projects_list'),
     path('projects/<int:project_id>/', views.project_detail, name='project_detail'),
     path('projects/<int:project_id>/stages/create/', views.create_stage, name='create_stage'),
     path('projects/<int:project_id>/stages/generate-ai/', views.generate_stages_ai, name='generate_stages_ai'),
+    path('projects/<int:project_id>/stages/<int:stage_id>/', views.stage_detail, name='stage_detail'),
     path('projects/<int:project_id>/stages/<int:stage_id>/edit/', views.edit_stage, name='edit_stage'),
     path('projects/<int:project_id>/stages/<int:stage_id>/confirm/', views.confirm_stage, name='confirm_stage'),
     path('projects/<int:project_id>/stages/<int:stage_id>/delete/', views.delete_stage, name='delete_stage'),
     path('projects/<int:project_id>/stages/reorder/', views.reorder_stages, name='reorder_stages'),
+    path('projects/<int:project_id>/stages/api/', views.get_stages_api, name='get_stages_api'),
 ]
 

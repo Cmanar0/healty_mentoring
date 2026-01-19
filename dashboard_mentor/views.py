@@ -4517,17 +4517,56 @@ def create_project(request):
 
 @login_required
 def templates_list(request):
-    """List all project templates"""
+    """List all project templates (system + custom)"""
     if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
         return redirect('general:index')
     
-    templates = ProjectTemplate.objects.all().order_by('order', 'name')
+    mentor_profile = request.user.mentor_profile
+    
+    # Custom templates created by this mentor
+    custom_templates = ProjectTemplate.objects.filter(is_custom=True, author=mentor_profile).order_by('-created_at')
+    
+    # System templates (standard ones)
+    system_templates = ProjectTemplate.objects.filter(is_custom=False, is_active=True).order_by('order', 'name')
     
     context = {
-        'templates': templates,
+        'custom_templates': custom_templates,
+        'system_templates': system_templates,
     }
     
     return render(request, 'dashboard_mentor/templates_list.html', context)
+
+@login_required
+def create_custom_template(request):
+    """Create a new custom template"""
+    if request.method == 'POST':
+        if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+            messages.error(request, "Only mentors can create templates.")
+            return redirect('general:index')
+            
+        mentor_profile = request.user.mentor_profile
+        name = request.POST.get('name')
+        description = request.POST.get('description', '')
+        category = request.POST.get('category', 'other')
+        icon = request.POST.get('icon', 'fas fa-star')
+        
+        if name:
+            try:
+                ProjectTemplate.objects.create(
+                    name=name,
+                    description=description,
+                    category=category,
+                    icon=icon,
+                    is_custom=True,
+                    author=mentor_profile
+                )
+                messages.success(request, "Template created successfully.")
+            except Exception as e:
+                messages.error(request, f"Error creating template: {str(e)}")
+        else:
+            messages.error(request, "Template name is required.")
+            
+    return redirect('general:dashboard_mentor:templates_list')
 
 
 @login_required
@@ -4588,6 +4627,7 @@ def projects_list(request):
             continue
     
     context = {
+        'projects': projects,
         'assigned_projects': assigned_projects,
         'unassigned_projects': unassigned_projects,
         'clients': clients,
@@ -4632,8 +4672,7 @@ def project_detail(request, project_id):
     # Get active modules
     active_modules = project.module_instances.filter(is_active=True).select_related('module').order_by('order')
     
-    # Get stages
-    stages = project.stages.all().order_by('order')
+    # Stages will be loaded via API (client-side rendering)
     
     context = {
         'project': project,
@@ -4641,10 +4680,61 @@ def project_detail(request, project_id):
         'answers': answers,
         'questionnaire_completed': project.questionnaire_completed,
         'active_modules': active_modules,
-        'stages': stages,
     }
     
     return render(request, 'dashboard_mentor/projects/project_detail.html', context)
+
+
+@login_required
+def stage_detail(request, project_id, stage_id):
+    """Display project stage detail"""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        return redirect('general:index')
+    
+    mentor_profile = request.user.mentor_profile
+    project = get_object_or_404(Project, id=project_id, supervised_by=mentor_profile)
+    
+    from dashboard_user.models import ProjectStage, ProjectStageNote
+    stage = get_object_or_404(ProjectStage, id=stage_id, project=project)
+    
+    # Handle POST actions
+    if request.method == "POST":
+        action = request.POST.get("action")
+        
+        if action == "toggle_status":
+            stage.is_completed = not stage.is_completed
+            if stage.is_completed:
+                stage.completed_at = timezone.now()
+                stage.completed_by = request.user
+            else:
+                stage.completed_at = None
+                stage.completed_by = None
+            stage.save()
+            messages.success(request, f"Stage marked as {'completed' if stage.is_completed else 'incomplete'}.")
+            return redirect('dashboard_mentor:stage_detail', project_id=project.id, stage_id=stage.id)
+            
+        elif "note_text" in request.POST:
+            note_text = request.POST.get("note_text", "").strip()
+            if note_text:
+                ProjectStageNote.objects.create(
+                    stage=stage,
+                    author=request.user,
+                    text=note_text,
+                    author_role='mentor'
+                )
+                messages.success(request, "Note added.")
+                return redirect('dashboard_mentor:stage_detail', project_id=project.id, stage_id=stage.id)
+
+    # Get notes
+    notes = stage.notes.all().select_related('author', 'author__mentor_profile', 'author__user_profile')
+    
+    context = {
+        'project': project,
+        'stage': stage,
+        'notes': notes,
+    }
+    
+    return render(request, 'dashboard_mentor/projects/stage_detail.html', context)
 
 
 @login_required
@@ -4901,6 +4991,60 @@ def delete_stage(request, project_id, stage_id):
         logger = logging.getLogger(__name__)
         logger.error(f'Error deleting stage: {str(e)}')
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+def get_stages_api(request, project_id):
+    """API endpoint to fetch stages for a project"""
+    try:
+        if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+            return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+        
+        mentor_profile = request.user.mentor_profile
+        project = get_object_or_404(Project, id=project_id, supervised_by=mentor_profile)
+        
+        from dashboard_user.models import ProjectStage
+        from datetime import datetime
+        
+        stages = project.stages.all().order_by('order')
+        
+        stages_data = []
+        for stage in stages:
+            # Format date for display (remove leading zero from day)
+            target_date_display = None
+            if stage.target_date:
+                try:
+                    # Use format that works on all platforms
+                    target_date_display = stage.target_date.strftime('%b %d').replace(' 0', ' ')
+                except Exception:
+                    # Fallback if strftime fails
+                    target_date_display = stage.target_date.strftime('%b %d')
+            
+            stages_data.append({
+                'id': stage.id,
+                'title': stage.title,
+                'description': stage.description or '',
+                'target_date': stage.target_date.strftime('%Y-%m-%d') if stage.target_date else None,
+                'target_date_display': target_date_display,
+                'is_completed': stage.is_completed,
+                'is_pending_confirmation': stage.is_pending_confirmation,
+                'notes_count': stage.notes.count(),
+                'order': float(stage.order),
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'stages': stages_data,
+            'project_id': project.id
+        })
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f'Error in get_stages_api: {str(e)}', exc_info=True)
+        return JsonResponse({
+            'success': False,
+            'error': f'Server error: {str(e)}'
+        }, status=500)
 
 
 @login_required

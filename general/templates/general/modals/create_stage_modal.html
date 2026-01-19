@@ -343,9 +343,14 @@
                     showNotification('Stage created successfully!', 'success');
                 }
                 closeCreateStageModal();
-                setTimeout(() => {
-                    window.location.reload();
-                }, 500);
+                // Reload stages if loadStages function exists, otherwise reload page
+                if (typeof loadStages === 'function') {
+                    loadStages();
+                } else {
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 500);
+                }
             } else {
                 if (typeof showNotification !== 'undefined') {
                     showNotification(data.error || 'Failed to create stage', 'error');

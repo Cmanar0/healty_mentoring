@@ -1,572 +1,311 @@
 {% extends "dashboard_mentor/base.html" %}
 {% load static %}
+{% load custom_filters %}
 
-{% block page_title %}Projects{% endblock %}
+{% block page_title %}My Projects{% endblock %}
 
-{% block dashboard_content %}
-<div class="dashboard-content-container" style="max-width: 1200px;">
-  <div style="margin-bottom: 32px;">
-    <h1 style="font-size: 2rem; font-weight: 800; color: #1e293b; margin: 0;">Projects</h1>
-    <p style="color: #64748b; margin-top: 8px; font-size: 0.95rem;">Manage and view all your projects</p>
-  </div>
+{% block extra_css %}
+{{ block.super }}
+<style>
+    /* Projects List Container */
+    .projects-container {
+        max-width: 1200px;
+        margin: 0 auto;
+    }
 
-  <!-- Client Filter -->
-  <div style="margin-bottom: 24px;">
-    <label style="display: block; font-weight: 600; color: #1e293b; margin-bottom: 8px; font-size: 0.95rem;">Filter by Client</label>
-    <div class="client-filter-dropdown-container" id="clientFilterDropdownContainer" style="position: relative; width: 100%; max-width: 400px;">
-      <button type="button" class="client-filter-dropdown-trigger" id="clientFilterDropdownTrigger" style="
+    /* Header */
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 32px;
+    }
+
+    .page-title-group h1 {
+        font-size: 2rem;
+        font-weight: 800;
+        color: #111827;
+        margin: 0;
+        letter-spacing: -0.03em;
+    }
+    
+    .page-subtitle {
+        color: #6b7280;
+        margin-top: 8px;
+        font-size: 1rem;
+    }
+
+    /* Projects Grid/Table */
+    .projects-card {
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        border: 1px solid #e5e7eb;
+        overflow: hidden;
+    }
+
+    .project-row {
+        display: grid;
+        grid-template-columns: 60px 2fr 1.5fr 1fr 1fr 40px;
+        gap: 24px;
+        padding: 24px;
+        border-bottom: 1px solid #f3f4f6;
+        align-items: center;
+        transition: all 0.2s ease;
+        text-decoration: none;
+        color: inherit;
+    }
+    
+    .project-row:last-child {
+        border-bottom: none;
+    }
+    
+    .project-row:hover {
+        background: #f8fafc;
+    }
+    
+    .project-row-header {
+        display: grid;
+        grid-template-columns: 60px 2fr 1.5fr 1fr 1fr 40px;
+        gap: 24px;
+        padding: 16px 24px;
+        background: #f9fafb;
+        border-bottom: 1px solid #e5e7eb;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        color: #6b7280;
+        letter-spacing: 0.05em;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 1024px) {
+        .project-row, .project-row-header {
+            grid-template-columns: 60px 1fr 120px 40px;
+            gap: 16px;
+        }
+        .col-client, .col-progress {
+            display: none;
+        }
+    }
+
+    @media (max-width: 640px) {
+        .project-row, .project-row-header {
+            grid-template-columns: 50px 1fr 40px;
+        }
+        .col-template { display: none; }
+    }
+
+    /* Column Styles */
+    .p-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        background: #f1f5f9;
         display: flex;
         align-items: center;
-        justify-content: space-between;
-        width: 100%;
-        padding: 10px 16px;
+        justify-content: center;
+        font-size: 1.25rem;
+        color: #64748b;
+        border: 1px solid #e2e8f0;
+    }
+    
+    .p-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #1f2937;
+        margin-bottom: 4px;
+    }
+    .p-desc {
+        font-size: 0.85rem;
+        color: #6b7280;
+        display: -webkit-box;
+        -webkit-line-clamp: 1;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    .wrapper-template {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 12px;
         background: white;
         border: 1px solid #e2e8f0;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        color: #475569;
+        font-weight: 500;
+    }
+
+    .client-info {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .client-avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: #e2e8f0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: #64748b;
+    }
+    .client-name {
+        font-size: 0.9rem;
+        font-weight: 500;
+        color: #374151;
+    }
+
+    .status-badge {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+    .status-active { background: #dcfce7; color: #166534; }
+    .status-pending { background: #fef9c3; color: #854d0e; }
+
+    .btn-create {
+        background: #111827;
+        color: white;
+        padding: 12px 24px;
         border-radius: 8px;
-        color: #1e293b;
-        font-size: 0.95rem;
-        font-weight: 400;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        text-align: left;
-      ">
-        <span class="dropdown-selected-text" id="clientFilterSelectedText">
-          {% if selected_client %}
-            {% if selected_client.first_name or selected_client.last_name %}
-              {{ selected_client.first_name }} {{ selected_client.last_name }}
-            {% else %}
-              {{ selected_client.user.email }}
-            {% endif %}
-          {% else %}
-            All Clients
-          {% endif %}
-        </span>
-        <i class="fas fa-chevron-down"></i>
-      </button>
-      <div class="client-filter-dropdown-menu" id="clientFilterDropdownMenu">
-        <div class="client-filter-dropdown-search" style="
-          padding: 12px 16px;
-          border-bottom: 1px solid #e2e8f0;
-          position: sticky;
-          top: 0;
-          background: white;
-          z-index: 1001;
-        ">
-          <input type="text" id="clientFilterSearchInput" placeholder="Search clients..." autocomplete="off" style="
-            width: 100%;
-            padding: 8px 12px;
-            border: 1px solid #e2e8f0;
-            border-radius: 6px;
-            font-size: 0.9rem;
-            outline: none;
-          ">
-        </div>
-        <div id="clientFilterDropdownItems">
-          <!-- Client items will be populated here -->
-        </div>
-      </div>
-    </div>
-  </div>
+        font-weight: 600;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        transition: all 0.2s;
+    }
+    .btn-create:hover {
+        background: #000;
+        transform: translateY(-1px);
+        box-shadow: 0 6px 8px -1px rgba(0, 0, 0, 0.15);
+    }
 
-  <!-- Assigned Projects Section -->
-  {% if assigned_projects %}
-    <div style="margin-bottom: 40px;">
-      <h2 style="font-size: 1.5rem; font-weight: 700; color: #1e293b; margin-bottom: 20px;">
-        Assigned Projects
-        <span style="font-size: 0.9rem; font-weight: 400; color: #64748b; margin-left: 8px;">({{ assigned_projects.count }})</span>
-      </h2>
-      <div style="display: flex; flex-direction: column; gap: 16px;">
-        {% for project in assigned_projects %}
-          <a href="{% url 'general:dashboard_mentor:project_detail' project.id %}" style="text-decoration: none; color: inherit; display: block;">
-          <div class="project-row" style="
-            display: flex;
-            align-items: center;
-            gap: 24px;
-            padding: 20px;
-            background: white;
-            border: 1px solid #e2e8f0;
-            border-radius: 12px;
-            transition: all 0.2s ease;
-            width: 100%;
-            cursor: pointer;
-          ">
-            <!-- Project Template/Icon -->
-            <div style="flex-shrink: 0;">
-              {% if project.template %}
-                {% if project.template.image %}
-                  <img src="{{ project.template.image.url }}" alt="{{ project.template.name }}" style="
-                    width: 60px;
-                    height: 60px;
-                    object-fit: cover;
-                    border-radius: 10px;
-                    border: 1px solid #e2e8f0;
-                  ">
-                {% elif project.template.icon %}
-                  <div style="
-                    width: 60px;
-                    height: 60px;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    background: {{ project.template.color|default:'#10b981' }};
-                    border-radius: 10px;
-                    color: white;
-                    font-size: 1.5rem;
-                  ">
-                    <i class="{{ project.template.icon }}"></i>
-                  </div>
-                {% else %}
-                  <div style="
-                    width: 60px;
-                    height: 60px;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    background: #f1f5f9;
-                    border-radius: 10px;
-                    color: #64748b;
-                    font-size: 1.5rem;
-                  ">
-                    <i class="fas fa-project-diagram"></i>
-                  </div>
-                {% endif %}
-              {% else %}
-                <div style="
-                  width: 60px;
-                  height: 60px;
-                  display: flex;
-                  align-items: center;
-                  justify-content: center;
-                  background: #f1f5f9;
-                  border-radius: 10px;
-                  color: #64748b;
-                  font-size: 1.5rem;
-                ">
-                  <i class="fas fa-project-diagram"></i>
-                </div>
-              {% endif %}
-            </div>
-
-            <!-- Project Info -->
-            <div style="flex: 1; min-width: 0;">
-              <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px; flex-wrap: wrap;">
-                <h3 style="
-                  font-size: 1.1rem;
-                  font-weight: 700;
-                  color: #1e293b;
-                  margin: 0;
-                ">{{ project.title }}</h3>
-                {% if project.template %}
-                  <span style="
-                    padding: 4px 12px;
-                    background: #f1f5f9;
-                    color: #475569;
-                    border-radius: 6px;
-                    font-size: 0.85rem;
-                    font-weight: 600;
-                  ">{{ project.template.name }}</span>
-                {% endif %}
-              </div>
-              {% if project.description %}
-                <p style="
-                  color: #64748b;
-                  margin: 0 0 8px 0;
-                  font-size: 0.9rem;
-                  line-height: 1.5;
-                ">{{ project.description|truncatewords:25 }}</p>
-              {% endif %}
-              <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
-                <div style="display: flex; align-items: center; gap: 6px;">
-                  <i class="fas fa-user" style="color: #64748b; font-size: 0.85rem;"></i>
-                  <span style="color: #475569; font-size: 0.9rem; font-weight: 500;">
-                    {% if project.project_owner.first_name or project.project_owner.last_name %}
-                      {{ project.project_owner.first_name }} {{ project.project_owner.last_name }}
-                    {% else %}
-                      {{ project.project_owner.user.email }}
-                    {% endif %}
-                  </span>
-                </div>
-                <div style="display: flex; align-items: center; gap: 6px;">
-                  <i class="far fa-calendar" style="color: #64748b; font-size: 0.85rem;"></i>
-                  <span style="color: #64748b; font-size: 0.85rem;">{{ project.created_at|date:"M d, Y" }}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        {% endfor %}
-      </div>
-    </div>
-  {% endif %}
-
-  <!-- Unassigned Projects Section -->
-  {% if unassigned_projects %}
-    <div style="margin-bottom: 40px;">
-      <h2 style="font-size: 1.5rem; font-weight: 700; color: #1e293b; margin-bottom: 20px;">
-        Unassigned Projects
-        <span style="font-size: 0.9rem; font-weight: 400; color: #64748b; margin-left: 8px;">({{ unassigned_projects.count }})</span>
-      </h2>
-      <div style="display: flex; flex-direction: column; gap: 16px;">
-        {% for project in unassigned_projects %}
-          <a href="{% url 'general:dashboard_mentor:project_detail' project.id %}" style="text-decoration: none; color: inherit; display: block;">
-          <div class="project-row" style="
-            display: flex;
-            align-items: center;
-            gap: 24px;
-            padding: 20px;
-            background: white;
-            border: 1px solid #e2e8f0;
-            border-radius: 12px;
-            transition: all 0.2s ease;
-            width: 100%;
-            cursor: pointer;
-          ">
-            <!-- Project Template/Icon -->
-            <div style="flex-shrink: 0;">
-              {% if project.template %}
-                {% if project.template.image %}
-                  <img src="{{ project.template.image.url }}" alt="{{ project.template.name }}" style="
-                    width: 60px;
-                    height: 60px;
-                    object-fit: cover;
-                    border-radius: 10px;
-                    border: 1px solid #e2e8f0;
-                  ">
-                {% elif project.template.icon %}
-                  <div style="
-                    width: 60px;
-                    height: 60px;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    background: {{ project.template.color|default:'#10b981' }};
-                    border-radius: 10px;
-                    color: white;
-                    font-size: 1.5rem;
-                  ">
-                    <i class="{{ project.template.icon }}"></i>
-                  </div>
-                {% else %}
-                  <div style="
-                    width: 60px;
-                    height: 60px;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    background: #f1f5f9;
-                    border-radius: 10px;
-                    color: #64748b;
-                    font-size: 1.5rem;
-                  ">
-                    <i class="fas fa-project-diagram"></i>
-                  </div>
-                {% endif %}
-              {% else %}
-                <div style="
-                  width: 60px;
-                  height: 60px;
-                  display: flex;
-                  align-items: center;
-                  justify-content: center;
-                  background: #f1f5f9;
-                  border-radius: 10px;
-                  color: #64748b;
-                  font-size: 1.5rem;
-                ">
-                  <i class="fas fa-project-diagram"></i>
-                </div>
-              {% endif %}
-            </div>
-
-            <!-- Project Info -->
-            <div style="flex: 1; min-width: 0;">
-              <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px; flex-wrap: wrap;">
-                <h3 style="
-                  font-size: 1.1rem;
-                  font-weight: 700;
-                  color: #1e293b;
-                  margin: 0;
-                ">{{ project.title }}</h3>
-                {% if project.template %}
-                  <span style="
-                    padding: 4px 12px;
-                    background: #f1f5f9;
-                    color: #475569;
-                    border-radius: 6px;
-                    font-size: 0.85rem;
-                    font-weight: 600;
-                  ">{{ project.template.name }}</span>
-                {% endif %}
-                <span style="
-                  padding: 4px 12px;
-                  background: #fef2f2;
-                  color: #dc2626;
-                  border-radius: 6px;
-                  font-size: 0.85rem;
-                  font-weight: 600;
-                ">Unassigned</span>
-              </div>
-              {% if project.description %}
-                <p style="
-                  color: #64748b;
-                  margin: 0 0 8px 0;
-                  font-size: 0.9rem;
-                  line-height: 1.5;
-                ">{{ project.description|truncatewords:25 }}</p>
-              {% endif %}
-              <div style="display: flex; align-items: center; gap: 6px;">
-                <i class="far fa-calendar" style="color: #64748b; font-size: 0.85rem;"></i>
-                <span style="color: #64748b; font-size: 0.85rem;">{{ project.created_at|date:"M d, Y" }}</span>
-              </div>
-            </div>
-          </div>
-          </a>
-        {% endfor %}
-      </div>
-    </div>
-  {% endif %}
-
-  <!-- Empty State -->
-  {% if not assigned_projects and not unassigned_projects %}
-    <div style="
-      text-align: center;
-      padding: 60px 20px;
-      background: white;
-      border: 1px solid #e2e8f0;
-      border-radius: 12px;
-    ">
-      <i class="fas fa-project-diagram" style="font-size: 3rem; color: #cbd5e1; margin-bottom: 16px;"></i>
-      <p style="color: #64748b; font-size: 1rem; margin: 0;">
-        {% if selected_client %}
-          No projects found for this client
-        {% else %}
-          No projects available yet
-        {% endif %}
-      </p>
-    </div>
-  {% endif %}
-</div>
-
-<style>
-.client-filter-dropdown-menu {
-  position: absolute;
-  top: calc(100% + 8px);
-  left: 0;
-  right: 0;
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-  min-width: 200px;
-  padding: 0;
-  opacity: 0;
-  visibility: hidden;
-  transform: translateY(-10px);
-  transition: all 0.2s ease;
-  z-index: 1000;
-  max-height: 300px;
-  overflow-y: auto;
-}
-
-.client-filter-dropdown-container.active .client-filter-dropdown-trigger {
-  border-color: #10b981;
-}
-
-.client-filter-dropdown-container.active .client-filter-dropdown-trigger i {
-  transform: rotate(180deg);
-}
-
-.client-filter-dropdown-container.active .client-filter-dropdown-menu {
-  opacity: 1;
-  visibility: visible;
-  transform: translateY(0);
-}
-
-.client-filter-dropdown-trigger:hover {
-  border-color: #cbd5e1;
-  background: #f8fafc;
-}
-
-.client-filter-dropdown-search input:focus {
-  border-color: #10b981;
-}
-
-.client-filter-dropdown-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 20px;
-  color: #1e293b;
-  text-decoration: none;
-  transition: background 0.2s ease;
-  border: none;
-  background: transparent;
-  width: 100%;
-  cursor: pointer;
-  font-size: 0.95rem;
-  font-weight: 400;
-  text-align: left;
-}
-
-.client-filter-dropdown-item.first-item {
-  border-radius: 12px 12px 0 0;
-}
-
-.client-filter-dropdown-item.last-item {
-  border-radius: 0 0 12px 12px;
-}
-
-.client-filter-dropdown-item:hover {
-  background: #f1f5f9;
-  color: #1e293b;
-}
-
-.project-row:hover {
-  border-color: #cbd5e1;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  transform: translateY(-2px);
-}
+    .chevron-icon {
+        color: #cbd5e1;
+        transition: transform 0.2s;
+    }
+    .project-row:hover .chevron-icon {
+        color: #3b82f6;
+        transform: translateX(4px);
+    }
 </style>
+{% endblock %}
 
-<script>
-(function() {
-    'use strict';
+{% block dashboard_content %}
+{% include 'general/modals/create_project_modal.html' %}
+
+<div class="dashboard-content-container projects-container">
     
-    const clients = [
-        {% for client in clients %}
-        {
-            id: {{ client.id }},
-            first_name: '{{ client.first_name|escapejs }}',
-            last_name: '{{ client.last_name|escapejs }}',
-            email: '{{ client.email|escapejs }}'
-        }{% if not forloop.last %},{% endif %}
+    <div class="page-header">
+        <div class="page-title-group">
+            <h1>Projects</h1>
+            <p class="page-subtitle">Manage your mentoring programs and track progress.</p>
+        </div>
+        <button class="btn-create" onclick="openCreateProjectModal()">
+            <i class="fas fa-plus"></i> Create Project
+        </button>
+    </div>
+
+    <div class="projects-card">
+        <!-- Header Row -->
+        <div class="project-row-header">
+            <div></div> <!-- Icon -->
+            <div>Project Details</div>
+            <div class="col-template">Template</div>
+            <div class="col-client">Client</div>
+            <div class="col-progress">Status</div>
+            <div></div> <!-- Arrow -->
+        </div>
+
+        <!-- Project Rows -->
+        {% for project in projects %}
+        <a href="{% url 'general:dashboard_mentor:project_detail' project.id %}" class="project-row">
+            <!-- Icon -->
+            <div class="p-icon">
+                {% if project.template.icon %}
+                    <i class="{{ project.template.icon }}"></i>
+                {% else %}
+                    <i class="fas fa-cube"></i>
+                {% endif %}
+            </div>
+
+            <!-- Title/Desc -->
+            <div>
+                <div class="p-title">{{ project.title }}</div>
+                {% if project.description %}
+                    <div class="p-desc">{{ project.description }}</div>
+                {% endif %}
+            </div>
+
+            <!-- Template -->
+            <div class="col-template">
+                {% if project.template %}
+                    <div class="wrapper-template">
+                        <i class="{{ project.template.icon|default:'fas fa-layer-group' }}" style="color: #94a3b8;"></i>
+                        {{ project.template.name }}
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- Client -->
+            <div class="col-client">
+                {% if project.project_owner %}
+                    <div class="client-info">
+                        <div class="client-avatar">
+                            {{ project.project_owner.first_name|first|default:"U" }}
+                        </div>
+                        <div class="client-name">{{ project.project_owner.first_name }} {{ project.project_owner.last_name }}</div>
+                    </div>
+                {% else %}
+                    <span style="color: #9ca3af; font-size: 0.9rem; font-style: italic;">Unassigned</span>
+                {% endif %}
+            </div>
+
+            <!-- Status -->
+            <div class="col-progress">
+                <span class="status-badge status-active">Active</span>
+            </div>
+
+            <!-- Arrow -->
+            <div style="text-align: right;">
+                <i class="fas fa-chevron-right chevron-icon"></i>
+            </div>
+        </a>
+        {% empty %}
+            <div style="padding: 60px; text-align: center; color: #9ca3af;">
+                <div style="width: 80px; height: 80px; background: #f3f4f6; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 24px; font-size: 2rem; color: #cbd5e1;">
+                    <i class="fas fa-folder-open"></i>
+                </div>
+                <h3 style="color: #374151; font-weight: 600; margin-bottom: 8px;">No projects found</h3>
+                <p style="margin-bottom: 24px;">Get started by creating your first mentoring project.</p>
+                <button class="btn-create" onclick="openCreateProjectModal()">Create Project</button>
+            </div>
         {% endfor %}
-    ];
-    const selectedClientId = '{{ selected_client_id|escapejs }}';
-    
-    // Populate client filter dropdown
-    function populateClientFilterDropdown() {
-        const container = document.getElementById('clientFilterDropdownItems');
-        if (!container) return;
-        
-        container.innerHTML = '';
-        
-        // Add "All Clients" option
-        const allClientsItem = document.createElement('button');
-        allClientsItem.type = 'button';
-        allClientsItem.className = 'client-filter-dropdown-item first-item';
-        allClientsItem.textContent = 'All Clients';
-        allClientsItem.setAttribute('data-client-id', '');
-        allClientsItem.addEventListener('click', function() {
-            selectClientFilter(null, 'All Clients');
-        });
-        if (selectedClientId === '') {
-            allClientsItem.style.background = '#f1f5f9';
-        }
-        container.appendChild(allClientsItem);
-        
-        // Add client items
-        clients.forEach((client, index) => {
-            const item = document.createElement('button');
-            item.type = 'button';
-            item.className = 'client-filter-dropdown-item';
-            if (index === clients.length - 1) {
-                item.classList.add('last-item');
-            }
-            const name = `${client.first_name || ''} ${client.last_name || ''}`.trim() || client.email;
-            item.textContent = name;
-            item.setAttribute('data-client-id', client.id || '');
-            item.setAttribute('data-client-name', name);
-            item.setAttribute('data-client-email', client.email || '');
-            item.addEventListener('click', function() {
-                selectClientFilter(client.id, name);
-            });
-            if (selectedClientId === String(client.id)) {
-                item.style.background = '#f1f5f9';
-            }
-            container.appendChild(item);
-        });
-        
-        // Update first/last item classes if only "All Clients" is present
-        if (clients.length === 0) {
-            const allClientsItem = container.querySelector('.client-filter-dropdown-item');
-            if (allClientsItem) {
-                allClientsItem.classList.add('last-item');
-            }
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function openCreateProjectModal() {
+        const modal = document.getElementById('createProjectModal');
+        if (modal) {
+            modal.style.display = 'flex';
+            setTimeout(() => modal.classList.add('active'), 10);
         }
     }
-    
-    // Select client filter
-    function selectClientFilter(clientId, displayText) {
-        const url = new URL(window.location.href);
-        if (clientId) {
-            url.searchParams.set('client', clientId);
-        } else {
-            url.searchParams.delete('client');
-        }
-        window.location.href = url.toString();
-    }
-    
-    // Client filter dropdown toggle
-    document.addEventListener('click', function(e) {
-        const container = document.getElementById('clientFilterDropdownContainer');
-        const trigger = document.getElementById('clientFilterDropdownTrigger');
-        const menu = document.getElementById('clientFilterDropdownMenu');
-        const searchInput = document.getElementById('clientFilterSearchInput');
-        
-        if (container && trigger && menu) {
-            // If clicking inside search input, don't close dropdown
-            if (searchInput && searchInput.contains(e.target)) {
-                e.stopPropagation();
-                container.classList.add('active');
-                return;
-            }
-            
-            if (trigger.contains(e.target) || menu.contains(e.target)) {
-                if (e.target.closest('.client-filter-dropdown-item')) {
-                    // Item clicked, handled by selectClientFilter
-                    return;
-                }
-                // Don't toggle if clicking in search area
-                if (!e.target.closest('.client-filter-dropdown-search')) {
-                    container.classList.toggle('active');
-                }
-            } else {
-                container.classList.remove('active');
-            }
-        }
-    });
-    
-    // Client filter search
-    const clientFilterSearchInput = document.getElementById('clientFilterSearchInput');
-    if (clientFilterSearchInput) {
-        clientFilterSearchInput.addEventListener('input', function(e) {
-            const searchTerm = e.target.value.toLowerCase();
-            const items = document.querySelectorAll('#clientFilterDropdownItems .client-filter-dropdown-item');
-            
-            items.forEach((item, index) => {
-                const name = item.getAttribute('data-client-name') || '';
-                const email = item.getAttribute('data-client-email') || '';
-                const text = (name + ' ' + email).toLowerCase();
-                
-                if (index === 0) {
-                    // Always show "All Clients" option
-                    item.style.display = '';
-                } else if (text.includes(searchTerm)) {
-                    item.style.display = '';
-                } else {
-                    item.style.display = 'none';
-                }
-            });
-        });
-        // Prevent dropdown from closing when clicking inside search input
-        clientFilterSearchInput.addEventListener('click', function(e) {
-            e.stopPropagation();
-        });
-    }
-    
-    // Initialize on page load
-    document.addEventListener('DOMContentLoaded', function() {
-        populateClientFilterDropdown();
-    });
-})();
 </script>
 {% endblock %}

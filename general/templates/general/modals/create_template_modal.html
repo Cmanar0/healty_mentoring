@@ -1,0 +1,90 @@
+<div id="createTemplateModal" class="modal-overlay" style="display: none;">
+    <div class="modal-container">
+        <div class="modal-header">
+            <h3>Create New Template</h3>
+            <button class="modal-close" onclick="closeCreateTemplateModal()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <form method="POST" action="{% url 'general:dashboard_mentor:create_custom_template' %}">
+            {% csrf_token %}
+            <div class="modal-body">
+                <!-- Name -->
+                <div class="form-group">
+                    <label class="form-label">Template Name</label>
+                    <input type="text" name="name" class="form-input" placeholder="e.g. Advanced Leadership Program" required>
+                </div>
+
+                <!-- Description -->
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <textarea name="description" class="form-input" rows="3" placeholder="What is this template for?"></textarea>
+                </div>
+                
+                <!-- Category -->
+                <div class="form-group">
+                    <label class="form-label">Category</label>
+                    <select name="category" class="form-select">
+                        <option value="business">Business & Career</option>
+                        <option value="health">Health & Wellness</option>
+                        <option value="personal">Personal Development</option>
+                        <option value="academic">Academic</option>
+                        <option value="finance">Finance</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+
+                <!-- Icon Selection (Simplified) -->
+                <div class="form-group">
+                    <label class="form-label">Icon</label>
+                    <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                        {% with icons="fas fa-briefcase,fas fa-heartbeat,fas fa-brain,fas fa-graduation-cap,fas fa-chart-line,fas fa-star" %}
+                            {% for icon in icons.split|default:icons %}
+                            <label style="cursor: pointer;">
+                                <input type="radio" name="icon" value="{{ icon }}" {% if forloop.first %}checked{% endif %} style="display: none;">
+                                <div class="icon-option" style="
+                                    width: 40px; height: 40px; 
+                                    background: #f1f5f9; 
+                                    border-radius: 8px; 
+                                    display: flex; align-items: center; justify-content: center;
+                                    color: #64748b;
+                                    border: 2px solid transparent;
+                                    transition: all 0.2s;
+                                ">
+                                    <i class="{{ icon }}"></i>
+                                </div>
+                            </label>
+                            {% endfor %}
+                        {% endwith %}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel" onclick="closeCreateTemplateModal()">Cancel</button>
+                <button type="submit" class="btn-confirm">Create Template</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+    /* Reuse modal styles from filtered CSS or ensure basic styles here */
+    .icon-option:hover { background: #e2e8f0; }
+    input[type="radio"]:checked + .icon-option {
+        background: #eff6ff;
+        color: #3b82f6;
+        border-color: #3b82f6;
+    }
+</style>
+
+<script>
+    function closeCreateTemplateModal() {
+        const modal = document.getElementById('createTemplateModal');
+        if(modal) {
+            modal.classList.remove('active');
+            setTimeout(() => modal.style.display = 'none', 300);
+        }
+    }
+</script>

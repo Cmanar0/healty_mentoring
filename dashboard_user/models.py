@@ -40,10 +40,21 @@ class ProjectTemplate(models.Model):
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
 
+    # Custom Template Fields
+    is_custom = models.BooleanField(default=False, help_text="True if created by a mentor")
+    author = models.ForeignKey(
+        "accounts.MentorProfile", 
+        on_delete=models.CASCADE, 
+        null=True, 
+        blank=True, 
+        related_name="custom_templates",
+        help_text="The mentor who created this template"
+    )
+
     class Meta:
         verbose_name = "Project Template"
         verbose_name_plural = "Project Templates"
-        ordering = ['order', 'name']
+        ordering = ['-is_custom', 'order', 'name']
 
     def __str__(self):
         return self.name
