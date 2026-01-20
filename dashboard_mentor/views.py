@@ -4697,6 +4697,9 @@ def update_stage_completion_status(stage):
         if not stage.is_completed:
             stage.is_completed = True
             stage.completed_at = timezone.now()
+            # Update progress_status if not disabled
+            if not stage.is_disabled:
+                stage.progress_status = stage.calculate_progress_status()
             stage.save()
     else:
         # Otherwise, mark as in progress
@@ -4704,6 +4707,13 @@ def update_stage_completion_status(stage):
             stage.is_completed = False
             stage.completed_at = None
             stage.completed_by = None
+            # Update progress_status if not disabled
+            if not stage.is_disabled:
+                stage.progress_status = stage.calculate_progress_status()
+            stage.save()
+        elif not stage.is_disabled:
+            # Update progress_status even if not changing is_completed
+            stage.progress_status = stage.calculate_progress_status()
             stage.save()
 
 
@@ -4721,6 +4731,11 @@ def stage_detail(request, project_id, stage_id):
     
     # Update stage completion status based on tasks
     update_stage_completion_status(stage)
+    
+    # Update progress status based on dates and tasks
+    if not stage.is_disabled:
+        stage.progress_status = stage.calculate_progress_status()
+        stage.save()
     
     # Refresh stage from database to get updated status
     stage.refresh_from_db()
@@ -5029,6 +5044,44 @@ def update_stage_dates(request, project_id, stage_id):
         import logging
         logger = logging.getLogger(__name__)
         logger.error(f'Error updating stage dates: {str(e)}')
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+@require_POST
+def toggle_stage_disabled(request, project_id, stage_id):
+    """Toggle stage disabled status"""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+    
+    mentor_profile = request.user.mentor_profile
+    project = get_object_or_404(Project, id=project_id, supervised_by=mentor_profile)
+    
+    from dashboard_user.models import ProjectStage
+    stage = get_object_or_404(ProjectStage, id=stage_id, project=project)
+    
+    try:
+        data = json.loads(request.body)
+        is_disabled = data.get('is_disabled', False)
+        
+        stage.is_disabled = is_disabled
+        if not is_disabled:
+            # Recalculate progress status when enabling
+            stage.progress_status = stage.calculate_progress_status()
+        stage.save()
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Stage {"disabled" if is_disabled else "enabled"} successfully',
+            'is_disabled': stage.is_disabled,
+            'progress_status': stage.progress_status
+        })
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f'Error toggling stage disabled: {str(e)}')
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 

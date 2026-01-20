@@ -58,6 +58,7 @@ urlpatterns = [
     path('projects/<int:project_id>/stages/<int:stage_id>/confirm/', views.confirm_stage, name='confirm_stage'),
     path('projects/<int:project_id>/stages/<int:stage_id>/delete/', views.delete_stage, name='delete_stage'),
     path('projects/<int:project_id>/stages/<int:stage_id>/update-dates/', views.update_stage_dates, name='update_stage_dates'),
+    path('projects/<int:project_id>/stages/<int:stage_id>/toggle-disabled/', views.toggle_stage_disabled, name='toggle_stage_disabled'),
     path('projects/<int:project_id>/stages/<int:stage_id>/tasks/create/', views.create_task, name='create_task'),
     path('projects/<int:project_id>/stages/<int:stage_id>/tasks/generate-ai/', views.generate_tasks_ai, name='generate_tasks_ai'),
     path('projects/<int:project_id>/stages/<int:stage_id>/tasks/api/', views.get_tasks_api, name='get_tasks_api'),

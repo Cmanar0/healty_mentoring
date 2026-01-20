@@ -38,12 +38,18 @@
         background: #fafafa;
     }
 
+    .doc-kicker-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+    }
+
     .doc-kicker {
         font-size: 0.75rem;
         text-transform: uppercase;
         letter-spacing: 0.1em;
         color: #6b7280;
-        margin-bottom: 16px;
         font-weight: 600;
         display: flex;
         align-items: center;
@@ -88,6 +94,228 @@
         background: #eff6ff;
         border-color: #dbeafe;
         color: #1d4ed8;
+    }
+    
+    .meta-chip.status-disabled {
+        background: #f3f4f6;
+        border-color: #d1d5db;
+        color: #6b7280;
+    }
+
+    /* Stage Header Dropdown */
+    .stage-dropdown-container {
+        position: relative;
+    }
+
+    .stage-header-dropdown-trigger {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: transparent;
+        border: 1px solid #e5e7eb;
+        color: #64748b;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+    }
+
+    .stage-header-dropdown-trigger:hover {
+        background: #f1f5f9;
+        border-color: #cbd5e1;
+        color: #1f2937;
+    }
+
+    .stage-header-dropdown-menu {
+        position: absolute;
+        top: calc(100% + 8px);
+        right: 0;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        min-width: 180px;
+        padding: 0;
+        opacity: 0;
+        visibility: hidden;
+        transform: translateY(-10px);
+        transition: all 0.2s ease;
+        z-index: 1000;
+    }
+
+    .stage-dropdown-container.active .stage-header-dropdown-menu {
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(0);
+    }
+
+    .stage-header-dropdown-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 20px;
+        color: #1e293b;
+        text-decoration: none;
+        transition: background 0.2s ease;
+        border: none;
+        background: transparent;
+        width: 100%;
+        cursor: pointer;
+        font-size: 0.95rem;
+        font-weight: 400;
+        text-align: left;
+    }
+
+    .stage-header-dropdown-item:hover {
+        background: rgba(16, 185, 129, 0.1);
+        color: #10b981;
+    }
+
+    .stage-header-dropdown-item:first-child {
+        border-radius: 12px 12px 0 0;
+    }
+
+    .stage-header-dropdown-item:last-child {
+        border-radius: 0 0 12px 12px;
+    }
+
+    /* Progress Timeline */
+    .progress-timeline {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 24px;
+        padding: 20px;
+        background: #f8fafc;
+        border-radius: 12px;
+        border: 1px solid #e5e7eb;
+    }
+
+    .progress-timeline-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        flex: 1;
+        position: relative;
+        opacity: 0.4;
+        transition: opacity 0.3s ease;
+    }
+
+    .progress-timeline-item.active {
+        opacity: 1;
+    }
+
+    .progress-timeline-dot {
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: #cbd5e1;
+        border: 3px solid white;
+        box-shadow: 0 0 0 2px #cbd5e1;
+        transition: all 0.3s ease;
+        position: relative;
+        z-index: 2;
+    }
+
+    .progress-timeline-item.active .progress-timeline-dot {
+        width: 20px;
+        height: 20px;
+        box-shadow: 0 0 0 3px currentColor;
+    }
+
+    .progress-timeline-item[data-status="created"].active .progress-timeline-dot {
+        background: #fbbf24;
+        box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.3);
+        border-color: white;
+    }
+
+    .progress-timeline-item[data-status="in_progress"].active .progress-timeline-dot {
+        background: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+        border-color: white;
+    }
+
+    .progress-timeline-item[data-status="overdue"].active .progress-timeline-dot {
+        background: #ef4444;
+        box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.3);
+        border-color: white;
+    }
+
+    .progress-timeline-item[data-status="completed"].active .progress-timeline-dot {
+        background: #10b981;
+        box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.3);
+        border-color: white;
+    }
+
+    .progress-timeline-label {
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        transition: color 0.3s ease;
+    }
+
+    .progress-timeline-item.active .progress-timeline-label {
+        color: #1e293b;
+        font-weight: 700;
+    }
+
+    .progress-timeline-item[data-status="created"].active .progress-timeline-label {
+        color: #f59e0b;
+    }
+
+    .progress-timeline-item[data-status="in_progress"].active .progress-timeline-label {
+        color: #2563eb;
+    }
+
+    .progress-timeline-item[data-status="overdue"].active .progress-timeline-label {
+        color: #dc2626;
+    }
+
+    .progress-timeline-item[data-status="completed"].active .progress-timeline-label {
+        color: #059669;
+    }
+
+    .progress-timeline-line {
+        flex: 1;
+        height: 2px;
+        background: #e5e7eb;
+        position: relative;
+        margin: 0 4px;
+    }
+
+    .progress-timeline-line::after {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        height: 100%;
+        width: 0;
+        background: linear-gradient(to right, #cbd5e1, #94a3b8);
+        transition: width 0.5s ease;
+    }
+
+    /* Fill line up to active item */
+    .progress-timeline-item[data-status="created"].active ~ .progress-timeline-line::after {
+        width: 100%;
+        background: linear-gradient(to right, #fbbf24, #f59e0b);
+    }
+
+    .progress-timeline-item[data-status="in_progress"].active ~ .progress-timeline-line::after {
+        width: 100%;
+        background: linear-gradient(to right, #3b82f6, #2563eb);
+    }
+
+    .progress-timeline-item[data-status="overdue"].active ~ .progress-timeline-line::after {
+        width: 100%;
+        background: linear-gradient(to right, #ef4444, #dc2626);
+    }
+
+    .progress-timeline-item[data-status="completed"].active ~ .progress-timeline-line::after {
+        width: 100%;
+        background: linear-gradient(to right, #10b981, #059669);
     }
 
     .doc-body {
@@ -473,22 +701,54 @@
             <!-- Stage Document -->
             <div class="document-card">
                 <div class="doc-header">
-                    <div class="doc-kicker">
-                        <i class="fas fa-layer-group"></i> Stage Detail
+                    <div class="doc-kicker-row">
+                        <div class="doc-kicker">
+                            <i class="fas fa-layer-group"></i> Stage Detail
+                        </div>
+                        <div class="stage-dropdown-container" id="stageHeaderDropdown">
+                            <button class="stage-header-dropdown-trigger" onclick="toggleStageHeaderDropdown(event)">
+                                <i class="fas fa-ellipsis-v"></i>
+                            </button>
+                            <div class="stage-header-dropdown-menu" onclick="event.stopPropagation();">
+                                <button class="stage-header-dropdown-item" onclick="toggleStageDisabled(); event.stopPropagation();">
+                                    <i class="fas fa-{% if stage.is_disabled %}check{% else %}times{% endif %}"></i>
+                                    <span>{% if stage.is_disabled %}Enable{% else %}Disable{% endif %} Stage</span>
+                                </button>
+                            </div>
+                        </div>
                     </div>
                     <h1 class="doc-title">{{ stage.title }}</h1>
                     
-                    <div class="doc-meta-row">
-                        {% if stage.is_completed %}
-                            <div class="meta-chip status-completed">
-                                <i class="fas fa-check-circle"></i> Completed {{ stage.completed_at|date:"M d" }}
+                    {% if stage.is_disabled %}
+                        <div class="doc-meta-row">
+                            <div class="meta-chip status-disabled">
+                                <i class="fas fa-ban"></i> Disabled
                             </div>
-                        {% else %}
-                            <div class="meta-chip status-pending">
-                                <i class="fas fa-circle-notch"></i> In Progress
+                        </div>
+                    {% else %}
+                        <!-- Progress Status Timeline -->
+                        <div class="progress-timeline">
+                            <div class="progress-timeline-item {% if stage.progress_status == 'created' %}active{% endif %}" data-status="created">
+                                <div class="progress-timeline-dot"></div>
+                                <div class="progress-timeline-label">Created</div>
                             </div>
-                        {% endif %}
-                    </div>
+                            <div class="progress-timeline-line"></div>
+                            <div class="progress-timeline-item {% if stage.progress_status == 'in_progress' %}active{% endif %}" data-status="in_progress">
+                                <div class="progress-timeline-dot"></div>
+                                <div class="progress-timeline-label">In Progress</div>
+                            </div>
+                            <div class="progress-timeline-line"></div>
+                            <div class="progress-timeline-item {% if stage.progress_status == 'overdue' %}active{% endif %}" data-status="overdue">
+                                <div class="progress-timeline-dot"></div>
+                                <div class="progress-timeline-label">Overdue</div>
+                            </div>
+                            <div class="progress-timeline-line"></div>
+                            <div class="progress-timeline-item {% if stage.progress_status == 'completed' %}active{% endif %}" data-status="completed">
+                                <div class="progress-timeline-dot"></div>
+                                <div class="progress-timeline-label">Completed</div>
+                            </div>
+                        </div>
+                    {% endif %}
                 </div>
 
                 <div class="doc-body">
@@ -834,5 +1094,76 @@
 
     // Expose loadTasks to window for use in modals
     window.loadTasks = loadTasks;
+
+    // Toggle stage header dropdown
+    window.toggleStageHeaderDropdown = function(event) {
+        event.stopPropagation();
+        const container = document.getElementById('stageHeaderDropdown');
+        const menu = container.querySelector('.stage-header-dropdown-menu');
+        
+        const isActive = container.classList.contains('active');
+        
+        // Close all dropdowns
+        document.querySelectorAll('.stage-dropdown-container').forEach(dropdown => {
+            dropdown.classList.remove('active');
+        });
+        
+        if (!isActive) {
+            container.classList.add('active');
+        }
+    };
+
+    // Close dropdowns when clicking outside
+    document.addEventListener('click', function(event) {
+        if (!event.target.closest('.stage-dropdown-container')) {
+            document.querySelectorAll('.stage-dropdown-container').forEach(dropdown => {
+                dropdown.classList.remove('active');
+            });
+        }
+    });
+
+    // Toggle stage disabled status
+    window.toggleStageDisabled = function() {
+        const container = document.getElementById('stageHeaderDropdown');
+        container.classList.remove('active');
+        
+        const isCurrentlyDisabled = {{ stage.is_disabled|yesno:"true,false" }};
+        const newStatus = !isCurrentlyDisabled;
+        
+        fetch(`/dashboard/mentor/projects/${PROJECT_ID}/stages/${STAGE_ID}/toggle-disabled/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({
+                is_disabled: newStatus
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                if (typeof showNotification !== 'undefined') {
+                    showNotification(data.message || 'Stage status updated', 'success');
+                }
+                // Reload page to show updated status
+                window.location.reload();
+            } else {
+                if (typeof showNotification !== 'undefined') {
+                    showNotification(data.error || 'Failed to update stage status', 'error');
+                } else {
+                    alert('Error: ' + (data.error || 'Failed to update stage status'));
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            if (typeof showNotification !== 'undefined') {
+                showNotification('An error occurred. Please try again.', 'error');
+            } else {
+                alert('An error occurred. Please try again.');
+            }
+        });
+    };
 </script>
 {% endblock %}

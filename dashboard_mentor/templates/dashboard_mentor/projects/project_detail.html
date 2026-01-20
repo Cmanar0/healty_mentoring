@@ -34,6 +34,98 @@
     }
     .nav-btn-back:hover { color: #1e293b; }
 
+    /* Document Card Styles (matching stage detail page) */
+    .document-card {
+        background: #ffffff;
+        border-radius: 12px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        border: 1px solid #e5e7eb;
+        overflow: hidden;
+        margin-bottom: 24px;
+    }
+
+    .doc-header {
+        padding: 40px;
+        border-bottom: 1px solid #e5e7eb;
+        background: #fafafa;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 24px;
+    }
+
+    .doc-title {
+        font-size: 2.5rem;
+        font-weight: 800;
+        color: #111827;
+        line-height: 1.1;
+        margin-bottom: 0;
+        letter-spacing: -0.03em;
+        flex: 1;
+    }
+
+    .project-owner-header {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 16px;
+        align-items: center;
+        flex-shrink: 0;
+    }
+
+    .project-owner-info {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .project-owner-name {
+        font-size: 1rem;
+        font-weight: 600;
+        color: #111827;
+        text-decoration: none;
+        transition: opacity 0.2s;
+    }
+
+    .project-owner-name:hover {
+        opacity: 0.7;
+    }
+
+    .project-owner-label {
+        font-size: 0.75rem;
+        color: #6b7280;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .project-owner-avatar {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        background: #e5e7eb;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #374151;
+        flex-shrink: 0;
+    }
+
+    .project-owner-unassigned {
+        color: #ef4444;
+        font-size: 0.9rem;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .doc-body {
+        padding: 40px;
+        font-size: 1.1rem;
+        line-height: 1.8;
+        color: #374151;
+    }
+
     /* Primary Content Area */
     .roadmap-list-section {
         background: #ffffff;
@@ -433,6 +525,10 @@
         padding: 24px;
         position: relative;
         overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 24px;
     }
     
     .meta-bg-icon {
@@ -532,54 +628,37 @@
     <div class="roadmap-container">
         <!-- Main List -->
         <main>
-            <!-- Project Name, Description, and Progress -->
-            <div style="background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 24px; margin-bottom: 24px; display: grid; grid-template-columns: 1fr auto; gap: 24px; align-items: center;">
-                <!-- Project Info -->
-                <div>
-                    <h1 style="font-size: 1.75rem; font-weight: 700; color: #111827; margin: 0 0 12px 0;">{{ project.title }}</h1>
-                    {% if project.description %}
-                        <p style="font-size: 0.95rem; color: #64748b; line-height: 1.6; margin: 0;">{{ project.description }}</p>
-                    {% else %}
-                        <p style="font-size: 0.95rem; color: #9ca3af; font-style: italic; margin: 0;">No description provided</p>
-                    {% endif %}
-                </div>
-                
-                <!-- Project Completion Circle -->
-                <div style="display: flex; flex-direction: column; align-items: center;">
-                    <div class="profile-completion-circle" style="position: relative; width: 100px; height: 100px;">
-                        <svg width="100" height="100" viewBox="0 0 120 120" style="transform: scale(0.83);">
-                            <!-- Background circle -->
-                            <circle
-                                cx="60"
-                                cy="60"
-                                r="52"
-                                fill="none"
-                                stroke="#e5e7eb"
-                                stroke-width="8"
-                            />
-                            <!-- Progress circle -->
-                            <circle
-                                id="projectProgressCircle"
-                                cx="60"
-                                cy="60"
-                                r="52"
-                                fill="none"
-                                stroke="#10b981"
-                                stroke-width="8"
-                                stroke-linecap="round"
-                                stroke-dasharray="326.73"
-                                stroke-dashoffset="326.73"
-                                transform="rotate(-90 60 60)"
-                                style="transition: stroke-dashoffset 0.3s ease;"
-                            />
-                        </svg>
-                        <div class="completion-percentage" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-weight: 700; color: #111827; font-size: 1.1rem;">
-                            <span id="projectCompletionText">0%</span>
-                        </div>
+            <!-- Project Name, Description -->
+            <div class="document-card">
+                <div class="doc-header">
+                    <h1 class="doc-title">{{ project.title }}</h1>
+                    <div class="project-owner-header">
+                        {% if project.project_owner %}
+                            <div class="project-owner-info">
+                                <a href="{% url 'general:dashboard_mentor:client_detail' project.project_owner.id %}" class="project-owner-name">
+                                    {{ project.project_owner.first_name }} {{ project.project_owner.last_name }}
+                                </a>
+                                <div class="project-owner-label">Project Owner</div>
+                            </div>
+                            <div class="project-owner-avatar">
+                                {{ project.project_owner.first_name|make_list|first|default:"U" }}
+                            </div>
+                        {% else %}
+                            <div class="project-owner-unassigned">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                <span>Unassigned</span>
+                            </div>
+                        {% endif %}
                     </div>
-                    <p style="margin: 8px 0 0; font-size: 0.8rem; color: #6b7280; text-align: center;">
-                        Completed
-                    </p>
+                </div>
+                <div class="doc-body">
+                    {% if project.description %}
+                        {{ project.description|linebreaks }}
+                    {% else %}
+                        <div style="text-align: center; color: #9ca3af; padding: 20px; font-style: italic;">
+                            No description provided.
+                        </div>
+                    {% endif %}
                 </div>
             </div>
             {% if not project.questionnaire_completed %}
@@ -632,52 +711,66 @@
         <!-- Sidebar Info -->
         <aside class="project-sidebar">
             <div class="project-meta-card">
-                <div style="position: relative; z-index: 2;">
-                    <!-- Owner Section -->
-                    <div style="margin-bottom: 20px;">
-                        <div style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.7; margin-bottom: 8px;">Owner</div>
-                        <div class="project-owner-row">
-                            {% if project.project_owner %}
-                                <div class="owner-avatar">
-                                    {{ project.project_owner.first_name|make_list|first|default:"U" }}
-                                </div>
-                                <div>
-                                    <a href="{% url 'general:dashboard_mentor:client_detail' project.project_owner.id %}" style="text-decoration: none; color: inherit;">
-                                        <div style="font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">
-                                            {{ project.project_owner.first_name }} {{ project.project_owner.last_name }}
-                                        </div>
-                                    </a>
-                                    <div style="font-size: 0.8rem; opacity: 0.7;">Client</div>
-                                </div>
-                            {% else %}
-                                <div style="color: #fca5a5; font-size: 0.9rem;">
-                                    <i class="fas fa-exclamation-triangle"></i> Unassigned
-                                </div>
-                            {% endif %}
+                <!-- Project Completion Circle -->
+                <div style="display: flex; flex-direction: column; align-items: center;">
+                    <div class="profile-completion-circle" style="position: relative; width: 100px; height: 100px;">
+                        <svg width="100" height="100" viewBox="0 0 120 120" style="transform: scale(0.83);">
+                            <!-- Background circle -->
+                            <circle
+                                cx="60"
+                                cy="60"
+                                r="52"
+                                fill="none"
+                                stroke="rgba(255,255,255,0.2)"
+                                stroke-width="8"
+                            />
+                            <!-- Progress circle -->
+                            <circle
+                                id="projectProgressCircle"
+                                cx="60"
+                                cy="60"
+                                r="52"
+                                fill="none"
+                                stroke="#ffffff"
+                                stroke-width="8"
+                                stroke-linecap="round"
+                                stroke-dasharray="326.73"
+                                stroke-dashoffset="326.73"
+                                transform="rotate(-90 60 60)"
+                                style="transition: stroke-dashoffset 0.3s ease;"
+                            />
+                        </svg>
+                        <div class="completion-percentage" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-weight: 700; color: #ffffff; font-size: 1.1rem;">
+                            <span id="projectCompletionText">0%</span>
                         </div>
                     </div>
-                    
+                    <p style="margin: 8px 0 0; font-size: 0.8rem; color: rgba(255,255,255,0.8); text-align: center;">
+                        Completed
+                    </p>
+                </div>
+                
+                <div style="position: relative; z-index: 2; width: 100%;">
                     <!-- Modules Section -->
                     <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.1);">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
                             <div style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.7;">Modules</div>
-                            <button onclick="openManageModulesModal()" style="background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.2)'" onmouseout="this.style.background='rgba(255,255,255,0.15)'">
+                            <button onclick="openManageModulesModal()" style="width: auto; height: 40px; background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 6px 12px; border-radius: 6px; font-size: 0.75rem; cursor: pointer; transition: all 0.2s; white-space: nowrap; flex-shrink: 0;" onmouseover="this.style.background='rgba(255,255,255,0.2)'" onmouseout="this.style.background='rgba(255,255,255,0.15)'">
                                 <i class="fas fa-cog" style="margin-right: 4px;"></i> Manage
                             </button>
                         </div>
                         {% if active_modules %}
-                        <div style="display: flex; flex-direction: column; gap: 8px;">
+                        <div style="display: flex; flex-direction: column; gap: 10px;">
                             {% for module_instance in active_modules %}
-                                <a href="{% url 'general:dashboard_user:module_detail' project.id module_instance.id %}" style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: rgba(255,255,255,0.1); border-radius: 6px; text-decoration: none; color: white; transition: background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.15)'" onmouseout="this.style.background='rgba(255,255,255,0.1)'">
+                                <a href="{% url 'general:dashboard_user:module_detail' project.id module_instance.id %}" style="display: flex; align-items: center; gap: 12px; padding: 14px 16px; background: rgba(255,255,255,0.1); border-radius: 8px; text-decoration: none; color: white; transition: all 0.2s; min-height: 48px;" onmouseover="this.style.background='rgba(255,255,255,0.15)'" onmouseout="this.style.background='rgba(255,255,255,0.1)'">
                                     {% if module_instance.module.icon %}
-                                        <i class="{{ module_instance.module.icon }}" style="font-size: 0.9rem;"></i>
+                                        <i class="{{ module_instance.module.icon }}" style="font-size: 1.1rem; flex-shrink: 0;"></i>
                                     {% endif %}
-                                    <span style="font-size: 0.85rem; font-weight: 500;">{{ module_instance.module.name }}</span>
+                                    <span style="font-size: 0.9rem; font-weight: 500; line-height: 1.4;">{{ module_instance.module.name }}</span>
                                 </a>
                             {% endfor %}
                         </div>
                         {% else %}
-                        <div style="color: rgba(255,255,255,0.6); font-size: 0.85rem; font-style: italic; padding: 8px 0;">
+                        <div style="color: rgba(255,255,255,0.6); font-size: 0.85rem; font-style: italic; padding: 12px 0;">
                             No modules added yet
                         </div>
                         {% endif %}
@@ -744,8 +837,16 @@
         
         // Calculate date range
         const dates = stagesWithDates.flatMap(s => [new Date(s.start_date), new Date(s.end_date)]);
-        const minDate = new Date(Math.min(...dates));
-        const maxDate = new Date(Math.max(...dates));
+        const originalMinDate = new Date(Math.min(...dates));
+        const originalMaxDate = new Date(Math.max(...dates));
+        const originalRange = originalMaxDate - originalMinDate;
+        
+        // Extend the range by 10% on each side to allow dragging beyond boundaries
+        const paddingPercent = 0.1; // 10% padding on each side
+        const paddingMs = originalRange * paddingPercent;
+        const minDate = new Date(originalMinDate.getTime() - paddingMs);
+        const maxDate = new Date(originalMaxDate.getTime() + paddingMs);
+        
         const totalDays = Math.ceil((maxDate - minDate) / (1000 * 60 * 60 * 24));
         const totalMonths = Math.ceil((maxDate - minDate) / (1000 * 60 * 60 * 24 * 30));
         const totalYears = Math.ceil((maxDate - minDate) / (1000 * 60 * 60 * 24 * 365));
@@ -766,12 +867,13 @@
             unitLabel = 'Days';
         }
         
-        // Generate axis labels
+        // Generate axis labels (use original date range for labels, but position them on extended range)
         const axisLabels = [];
         const numLabels = 6; // Show 6 labels on the axis
         for (let i = 0; i <= numLabels; i++) {
             const progress = i / numLabels;
-            let labelDate = new Date(minDate.getTime() + (maxDate - minDate) * progress);
+            // Calculate label date based on original range
+            let labelDate = new Date(originalMinDate.getTime() + (originalMaxDate - originalMinDate) * progress);
             let labelText;
             
             if (timeUnit === 'year') {
@@ -782,8 +884,11 @@
                 labelText = labelDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
             }
             
+            // Calculate position on extended range
+            const extendedProgress = ((labelDate - minDate) / (maxDate - minDate)) * 100;
+            
             axisLabels.push({
-                position: progress * 100,
+                position: extendedProgress,
                 label: labelText
             });
         }
@@ -791,8 +896,21 @@
         const chartHeight = 80 + (stagesWithDates.length * 50);
         chartEl.style.height = chartHeight + 'px';
         
+        // Calculate today's position (on extended range)
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // Reset to start of day for accurate comparison
+        const todayPosition = today >= minDate && today <= maxDate 
+            ? ((today - minDate) / (maxDate - minDate)) * 100 
+            : null;
+        
         let chartHtml = `
             <div class="waterfall-chart-inner" style="position: relative; height: ${chartHeight}px; padding: 20px 0 60px 0;">
+                ${todayPosition !== null ? `
+                    <!-- Current time indicator line -->
+                    <div class="current-time-line" style="position: absolute; left: ${todayPosition}%; top: 0; bottom: 0; width: 2px; background: #ef4444; z-index: 100; pointer-events: none; transform: translateX(-50%);">
+                        <div style="position: absolute; top: -4px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 4px solid transparent; border-right: 4px solid transparent; border-top: 6px solid #ef4444;"></div>
+                    </div>
+                ` : ''}
                 <!-- Timeline axis -->
                 <div style="position: absolute; bottom: 0; left: 0; right: 0; height: 40px; border-top: 2px solid #e5e7eb;">
                     ${axisLabels.map(label => `
@@ -801,6 +919,12 @@
                             <div style="font-size: 0.7rem; color: #6b7280; margin-top: 4px; white-space: nowrap;">${label.label}</div>
                         </div>
                     `).join('')}
+                    ${todayPosition !== null ? `
+                        <div style="position: absolute; left: ${todayPosition}%; transform: translateX(-50%); top: -18px;">
+                            <div style="width: 2px; height: 8px; background: #ef4444; margin: 0 auto;"></div>
+                            <div style="font-size: 0.65rem; color: #ef4444; margin-top: 2px; white-space: nowrap; font-weight: 600;">Today</div>
+                        </div>
+                    ` : ''}
                     <div style="position: absolute; top: -20px; left: 0; font-size: 0.7rem; color: #9ca3af; font-weight: 500;">${unitLabel}</div>
                 </div>
         `;
@@ -1032,7 +1156,7 @@
                 currentBar.style.left = startLeft + '%';
                 currentBar.style.width = startWidth + '%';
             } else if (dragType === 'move') {
-                // Move entire bar horizontally
+                // Move entire bar horizontally - allow dragging beyond original boundaries
                 const newLeft = Math.max(0, Math.min(100 - startWidth, startLeft + deltaPercent));
                 const newStartDate = new Date(minDate.getTime() + ((newLeft / 100) * totalDays) * 24 * 60 * 60 * 1000);
                 const duration = (endDate - startDate) / (1000 * 60 * 60 * 24);
@@ -1046,7 +1170,7 @@
                 const barRect = currentBar.getBoundingClientRect();
                 showDatePopover(e.clientX, barRect.top, newStartDate.toISOString().split('T')[0], 'Start');
             } else if (dragType === 'resize-left') {
-                // Resize from left
+                // Resize from left - allow dragging beyond original boundaries
                 const newLeft = Math.max(0, Math.min(startLeft + startWidth - 1, startLeft + deltaPercent));
                 const newWidth = startWidth - (newLeft - startLeft);
                 const newStartDate = new Date(minDate.getTime() + ((newLeft / 100) * totalDays) * 24 * 60 * 60 * 1000);
@@ -1060,7 +1184,7 @@
                     showDatePopover(e.clientX, e.clientY, newStartDate.toISOString().split('T')[0], 'Start');
                 }
             } else if (dragType === 'resize-right') {
-                // Resize from right
+                // Resize from right - allow dragging beyond original boundaries
                 const newWidth = Math.max(1, Math.min(100 - startLeft, startWidth + deltaPercent));
                 const newEndDate = new Date(minDate.getTime() + ((startLeft + newWidth) / 100) * totalDays * 24 * 60 * 60 * 1000);
                 
