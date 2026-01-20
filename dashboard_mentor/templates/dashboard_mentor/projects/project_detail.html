@@ -958,18 +958,72 @@
                     break;
             }
             
+            // Calculate task progress for stages
+            const totalTasks = stage.tasks_total || 0;
+            const completedTasks = stage.tasks_completed || 0;
+            const taskProgress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+            
+            // Create progress bar effect for in_progress, overdue, and created stages
+            let barStyle = '';
+            let progressBarHtml = '';
+            
+            if (progressStatus === 'in_progress') {
+                if (totalTasks > 0) {
+                    // Transparent blue background with solid blue progress fill (has tasks)
+                    barStyle = `position: absolute; top: ${top}px; left: ${leftPercent}%; width: ${widthPercent}%; height: 30px; background: rgba(59, 130, 246, 0.2); border-radius: 4px; display: flex; align-items: center; padding: 0 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); cursor: move; overflow: hidden;`;
+                    progressBarHtml = `<div style="position: absolute; left: 0; top: 0; bottom: 0; width: ${taskProgress}%; background: #3b82f6; border-radius: 4px 0 0 4px; z-index: 1;"></div>`;
+                } else {
+                    // Transparent blue background only (no tasks)
+                    barStyle = `position: absolute; top: ${top}px; left: ${leftPercent}%; width: ${widthPercent}%; height: 30px; background: rgba(59, 130, 246, 0.2); border-radius: 4px; display: flex; align-items: center; padding: 0 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); cursor: move;`;
+                }
+            } else if (progressStatus === 'overdue') {
+                if (totalTasks > 0) {
+                    // Transparent red background with solid red progress fill (has tasks)
+                    barStyle = `position: absolute; top: ${top}px; left: ${leftPercent}%; width: ${widthPercent}%; height: 30px; background: rgba(239, 68, 68, 0.2); border-radius: 4px; display: flex; align-items: center; padding: 0 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); cursor: move; overflow: hidden;`;
+                    progressBarHtml = `<div style="position: absolute; left: 0; top: 0; bottom: 0; width: ${taskProgress}%; background: #ef4444; border-radius: 4px 0 0 4px; z-index: 1;"></div>`;
+                } else {
+                    // Transparent red background only (no tasks)
+                    barStyle = `position: absolute; top: ${top}px; left: ${leftPercent}%; width: ${widthPercent}%; height: 30px; background: rgba(239, 68, 68, 0.2); border-radius: 4px; display: flex; align-items: center; padding: 0 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); cursor: move;`;
+                }
+            } else if (progressStatus === 'created') {
+                if (totalTasks > 0 && completedTasks > 0) {
+                    // Transparent yellow background with solid yellow progress fill (has completed tasks)
+                    barStyle = `position: absolute; top: ${top}px; left: ${leftPercent}%; width: ${widthPercent}%; height: 30px; background: rgba(251, 191, 36, 0.2); border-radius: 4px; display: flex; align-items: center; padding: 0 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); cursor: move; overflow: hidden;`;
+                    progressBarHtml = `<div style="position: absolute; left: 0; top: 0; bottom: 0; width: ${taskProgress}%; background: #fbbf24; border-radius: 4px 0 0 4px; z-index: 1;"></div>`;
+                } else {
+                    // Transparent yellow background only (no tasks or no completed tasks)
+                    barStyle = `position: absolute; top: ${top}px; left: ${leftPercent}%; width: ${widthPercent}%; height: 30px; background: rgba(251, 191, 36, 0.2); border-radius: 4px; display: flex; align-items: center; padding: 0 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); cursor: move;`;
+                }
+            } else {
+                // Solid color for completed status
+                barStyle = `position: absolute; top: ${top}px; left: ${leftPercent}%; width: ${widthPercent}%; height: 30px; background: ${color}; border-radius: 4px; display: flex; align-items: center; padding: 0 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); cursor: move;`;
+            }
+            
+            // Determine text styling based on progress status
+            let textColor = 'white';
+            let textBackground = '';
+            let textShadow = '0 1px 2px rgba(0,0,0,0.3)';
+            
+            if (progressStatus === 'in_progress' || progressStatus === 'overdue' || progressStatus === 'created') {
+                // Light backgrounds - use dark text with semi-transparent background for readability
+                textColor = '#1e293b';
+                textBackground = 'background: rgba(255, 255, 255, 0.85); padding: 2px 8px; border-radius: 4px;';
+                textShadow = 'none';
+            }
+            
             chartHtml += `
                 <div 
                     class="waterfall-stage-bar" 
                     data-stage-id="${stage.id}"
                     data-start-date="${stage.start_date}"
                     data-end-date="${stage.end_date}"
-                    style="position: absolute; top: ${top}px; left: ${leftPercent}%; width: ${widthPercent}%; height: 30px; background: ${color}; border-radius: 4px; display: flex; align-items: center; padding: 0 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); cursor: move;" 
+                    style="${barStyle}"
                     title="${stage.title}"
                 >
-                    <div class="waterfall-resize-handle waterfall-resize-left" style="position: absolute; left: 0; top: 0; bottom: 0; width: 8px; cursor: ew-resize; background: rgba(255,255,255,0.3); border-radius: 4px 0 0 4px;"></div>
-                    <span style="font-size: 0.75rem; color: white; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; text-align: center; pointer-events: none;">${stage.title}</span>
-                    <div class="waterfall-resize-handle waterfall-resize-right" style="position: absolute; right: 0; top: 0; bottom: 0; width: 8px; cursor: ew-resize; background: rgba(255,255,255,0.3); border-radius: 0 4px 4px 0;"></div>
+                    ${progressBarHtml}
+                    <div class="waterfall-resize-handle waterfall-resize-left" style="position: absolute; left: 0; top: 0; bottom: 0; width: 8px; cursor: ew-resize; background: rgba(255,255,255,0.3); border-radius: 4px 0 0 4px; z-index: 3;"></div>
+                    <span style="font-size: 0.75rem; color: ${textColor}; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; text-align: center; pointer-events: none; position: relative; z-index: 2; text-shadow: ${textShadow}; ${textBackground}">${stage.title}</span>
+                    <div class="waterfall-resize-handle waterfall-resize-right" style="position: absolute; right: 0; top: 0; bottom: 0; width: 8px; cursor: ew-resize; background: rgba(255,255,255,0.3); border-radius: 0 4px 4px 0; z-index: 3;"></div>
                 </div>
             `;
         });
