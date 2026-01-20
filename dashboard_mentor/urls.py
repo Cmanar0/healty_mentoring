@@ -58,6 +58,11 @@ urlpatterns = [
     path('projects/<int:project_id>/stages/<int:stage_id>/confirm/', views.confirm_stage, name='confirm_stage'),
     path('projects/<int:project_id>/stages/<int:stage_id>/delete/', views.delete_stage, name='delete_stage'),
     path('projects/<int:project_id>/stages/<int:stage_id>/update-dates/', views.update_stage_dates, name='update_stage_dates'),
+    path('projects/<int:project_id>/stages/<int:stage_id>/tasks/create/', views.create_task, name='create_task'),
+    path('projects/<int:project_id>/stages/<int:stage_id>/tasks/generate-ai/', views.generate_tasks_ai, name='generate_tasks_ai'),
+    path('projects/<int:project_id>/stages/<int:stage_id>/tasks/api/', views.get_tasks_api, name='get_tasks_api'),
+    path('projects/<int:project_id>/stages/<int:stage_id>/tasks/<int:task_id>/toggle-complete/', views.toggle_task_complete, name='toggle_task_complete'),
+    path('projects/<int:project_id>/stages/<int:stage_id>/tasks/<int:task_id>/delete/', views.delete_task, name='delete_task'),
     path('projects/<int:project_id>/stages/reorder/', views.reorder_stages, name='reorder_stages'),
     path('projects/<int:project_id>/stages/api/', views.get_stages_api, name='get_stages_api'),
 ]

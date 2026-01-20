@@ -4685,6 +4685,28 @@ def project_detail(request, project_id):
     return render(request, 'dashboard_mentor/projects/project_detail.html', context)
 
 
+def update_stage_completion_status(stage):
+    """Update stage completion status based on tasks"""
+    from dashboard_user.models import Task
+    
+    total_tasks = Task.objects.filter(stage=stage).count()
+    completed_tasks = Task.objects.filter(stage=stage, completed=True).count()
+    
+    # If stage has at least one task and all tasks are completed, mark stage as completed
+    if total_tasks > 0 and completed_tasks == total_tasks:
+        if not stage.is_completed:
+            stage.is_completed = True
+            stage.completed_at = timezone.now()
+            stage.save()
+    else:
+        # Otherwise, mark as in progress
+        if stage.is_completed:
+            stage.is_completed = False
+            stage.completed_at = None
+            stage.completed_by = None
+            stage.save()
+
+
 @login_required
 def stage_detail(request, project_id, stage_id):
     """Display project stage detail"""
@@ -4697,23 +4719,15 @@ def stage_detail(request, project_id, stage_id):
     from dashboard_user.models import ProjectStage, ProjectStageNote
     stage = get_object_or_404(ProjectStage, id=stage_id, project=project)
     
+    # Update stage completion status based on tasks
+    update_stage_completion_status(stage)
+    
+    # Refresh stage from database to get updated status
+    stage.refresh_from_db()
+    
     # Handle POST actions
     if request.method == "POST":
-        action = request.POST.get("action")
-        
-        if action == "toggle_status":
-            stage.is_completed = not stage.is_completed
-            if stage.is_completed:
-                stage.completed_at = timezone.now()
-                stage.completed_by = request.user
-            else:
-                stage.completed_at = None
-                stage.completed_by = None
-            stage.save()
-            messages.success(request, f"Stage marked as {'completed' if stage.is_completed else 'incomplete'}.")
-            return redirect('general:dashboard_mentor:stage_detail', project_id=project.id, stage_id=stage.id)
-            
-        elif "note_text" in request.POST:
+        if "note_text" in request.POST:
             note_text = request.POST.get("note_text", "").strip()
             if note_text:
                 ProjectStageNote.objects.create(
@@ -4728,10 +4742,15 @@ def stage_detail(request, project_id, stage_id):
     # Get notes
     notes = stage.notes.all().select_related('author', 'author__mentor_profile', 'author__user_profile')
     
+    # Get tasks for this stage
+    from dashboard_user.models import Task
+    tasks = stage.backlog_tasks.all().order_by('order', 'created_at')
+    
     context = {
         'project': project,
         'stage': stage,
         'notes': notes,
+        'tasks': tasks,
     }
     
     return render(request, 'dashboard_mentor/projects/stage_detail.html', context)
@@ -4919,7 +4938,7 @@ def generate_stages_ai(request, project_id):
 @login_required
 @require_POST
 def edit_stage(request, project_id, stage_id):
-    """Edit an AI-generated stage (title and description)"""
+    """Edit a stage (title, description, and dates)"""
     if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
         return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
     
@@ -4927,10 +4946,9 @@ def edit_stage(request, project_id, stage_id):
     project = get_object_or_404(Project, id=project_id, supervised_by=mentor_profile)
     
     from dashboard_user.models import ProjectStage
-    stage = get_object_or_404(ProjectStage, id=stage_id, project=project)
+    from datetime import datetime
     
-    if not stage.is_pending_confirmation:
-        return JsonResponse({'success': False, 'error': 'Only AI-generated stages pending confirmation can be edited'}, status=400)
+    stage = get_object_or_404(ProjectStage, id=stage_id, project=project)
     
     try:
         data = json.loads(request.body)
@@ -4939,9 +4957,19 @@ def edit_stage(request, project_id, stage_id):
             return JsonResponse({'success': False, 'error': 'Stage title is required'}, status=400)
         
         description = data.get('description', '').strip()
+        start_date_str = data.get('start_date')
+        end_date_str = data.get('end_date')
+        
+        start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date() if start_date_str else None
+        end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date() if end_date_str else None
+
+        if start_date and end_date and start_date > end_date:
+            return JsonResponse({'success': False, 'error': 'End date cannot be before start date'}, status=400)
         
         stage.title = title
         stage.description = description
+        stage.start_date = start_date
+        stage.end_date = end_date
         stage.save()
         
         return JsonResponse({
@@ -5089,6 +5117,11 @@ def get_stages_api(request, project_id):
                     # Fallback if strftime fails
                     target_date_display = stage.target_date.strftime('%b %d')
             
+            # Get task counts
+            from dashboard_user.models import Task
+            total_tasks = Task.objects.filter(stage=stage).count()
+            completed_tasks = Task.objects.filter(stage=stage, completed=True).count()
+            
             stages_data.append({
                 'id': stage.id,
                 'title': stage.title,
@@ -5100,6 +5133,8 @@ def get_stages_api(request, project_id):
                 'is_completed': stage.is_completed,
                 'is_pending_confirmation': stage.is_pending_confirmation,
                 'notes_count': stage.notes.count(),
+                'tasks_total': total_tasks,
+                'tasks_completed': completed_tasks,
                 'order': float(stage.order),
             })
         
@@ -5154,4 +5189,292 @@ def reorder_stages(request, project_id):
         import logging
         logger = logging.getLogger(__name__)
         logger.error(f'Error reordering stages: {str(e)}')
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+@require_POST
+def create_task(request, project_id, stage_id):
+    """Create a new task for a stage"""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+    
+    mentor_profile = request.user.mentor_profile
+    project = get_object_or_404(Project, id=project_id, supervised_by=mentor_profile)
+    
+    from dashboard_user.models import ProjectStage, Task
+    from decimal import Decimal
+    
+    stage = get_object_or_404(ProjectStage, id=stage_id, project=project)
+    
+    try:
+        data = json.loads(request.body)
+        title = data.get('title', '').strip()
+        if not title:
+            return JsonResponse({'success': False, 'error': 'Task title is required'}, status=400)
+        
+        description = data.get('description', '').strip()
+        
+        # Calculate order for the new task
+        last_task = stage.backlog_tasks.order_by('-order').first()
+        if last_task:
+            next_order = last_task.order + Decimal('1')
+        else:
+            # Use stage order as base, then add task order
+            next_order = stage.order + Decimal('0.01')
+        
+        task = Task.objects.create(
+            stage=stage,
+            title=title,
+            description=description,
+            order=next_order,
+            created_by=request.user,
+            author_name=f"{request.user.profile.first_name} {request.user.profile.last_name}",
+            author_email=request.user.email,
+            author_role='mentor'
+        )
+        
+        # Update stage completion status based on tasks
+        update_stage_completion_status(stage)
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Task created successfully',
+            'task_id': task.id
+        })
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f'Error creating task: {str(e)}')
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+@require_POST
+def generate_tasks_ai(request, project_id, stage_id):
+    """Generate tasks using AI mockup (creates 3 sample tasks)"""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+    
+    mentor_profile = request.user.mentor_profile
+    project = get_object_or_404(Project, id=project_id, supervised_by=mentor_profile)
+    
+    from dashboard_user.models import ProjectStage, Task
+    from decimal import Decimal
+    
+    stage = get_object_or_404(ProjectStage, id=stage_id, project=project)
+    
+    try:
+        # AI Mockup: Generate 3 tasks based on stage context
+        # TODO: Replace with actual AI API call
+        # Expected API structure:
+        # response = ai_service.generate_tasks(
+        #     stage_title=stage.title,
+        #     stage_description=stage.description,
+        #     project_title=project.title,
+        #     project_description=project.description
+        # )
+        # tasks_data = response.get('tasks', [])
+        
+        mock_tasks = [
+            {
+                'title': 'Research and gather information',
+                'description': 'Conduct thorough research on the topic and gather all necessary information and resources.',
+            },
+            {
+                'title': 'Create initial draft',
+                'description': 'Develop a first draft based on the research findings and stage requirements.',
+            },
+            {
+                'title': 'Review and refine',
+                'description': 'Review the draft, identify areas for improvement, and refine the work.',
+            },
+        ]
+        
+        # Get the last task order to continue from there
+        last_task = stage.backlog_tasks.order_by('-order').first()
+        if last_task:
+            base_order = last_task.order
+        else:
+            # Use stage order as base, then add task order
+            base_order = stage.order + Decimal('0.01')
+        
+        created_tasks = []
+        for i, task_data in enumerate(mock_tasks):
+            task_order = base_order + Decimal(str(i + 1))
+            
+            task = Task.objects.create(
+                stage=stage,
+                title=task_data['title'],
+                description=task_data['description'],
+                order=task_order,
+                created_by=request.user,
+                author_name=f"{request.user.profile.first_name} {request.user.profile.last_name}",
+                author_email=request.user.email,
+                author_role='mentor',
+                is_ai_generated=True
+            )
+            created_tasks.append(task.id)
+        
+        # Update stage completion status based on tasks
+        update_stage_completion_status(stage)
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'{len(created_tasks)} tasks generated successfully.',
+            'tasks_count': len(created_tasks),
+            'task_ids': created_tasks
+        })
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f'Error generating AI tasks: {str(e)}')
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+@require_POST
+def toggle_task_complete(request, project_id, stage_id, task_id):
+    """Toggle task completion status"""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+    
+    mentor_profile = request.user.mentor_profile
+    project = get_object_or_404(Project, id=project_id, supervised_by=mentor_profile)
+    
+    from dashboard_user.models import ProjectStage, Task
+    stage = get_object_or_404(ProjectStage, id=stage_id, project=project)
+    task = get_object_or_404(Task, id=task_id, stage=stage)
+    
+    try:
+        data = json.loads(request.body)
+        completed = data.get('completed', False)
+        
+        task.completed = completed
+        task.save()
+        
+        # Update stage completion status based on tasks
+        update_stage_completion_status(stage)
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Task marked as {"completed" if completed else "incomplete"}'
+        })
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f'Error toggling task completion: {str(e)}')
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+@require_POST
+def delete_task(request, project_id, stage_id, task_id):
+    """Delete a task"""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+    
+    mentor_profile = request.user.mentor_profile
+    project = get_object_or_404(Project, id=project_id, supervised_by=mentor_profile)
+    
+    from dashboard_user.models import ProjectStage, Task
+    stage = get_object_or_404(ProjectStage, id=stage_id, project=project)
+    task = get_object_or_404(Task, id=task_id, stage=stage)
+    
+    try:
+        task.delete()
+        
+        # Update stage completion status based on tasks
+        update_stage_completion_status(stage)
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Task deleted successfully'
+        })
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f'Error deleting task: {str(e)}')
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+def get_tasks_api(request, project_id, stage_id):
+    """API endpoint to fetch tasks for a stage"""
+    try:
+        if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+            return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+        
+        mentor_profile = request.user.mentor_profile
+        project = get_object_or_404(Project, id=project_id, supervised_by=mentor_profile)
+        
+        from dashboard_user.models import ProjectStage
+        stage = get_object_or_404(ProjectStage, id=stage_id, project=project)
+        
+        tasks = stage.backlog_tasks.all().order_by('order', 'created_at')
+        
+        tasks_data = []
+        for task in tasks:
+            tasks_data.append({
+                'id': task.id,
+                'title': task.title,
+                'description': task.description or '',
+                'completed': task.completed,
+                'created_at': task.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+                'order': float(task.order),
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'tasks': tasks_data
+        })
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f'Error in get_tasks_api: {str(e)}', exc_info=True)
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+@require_POST
+def reorder_tasks(request, project_id, stage_id):
+    """Reorder tasks via drag and drop"""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+    
+    mentor_profile = request.user.mentor_profile
+    project = get_object_or_404(Project, id=project_id, supervised_by=mentor_profile)
+    
+    from dashboard_user.models import ProjectStage, Task
+    stage = get_object_or_404(ProjectStage, id=stage_id, project=project)
+    
+    try:
+        data = json.loads(request.body)
+        orders = data.get('orders', [])
+        
+        if not orders:
+            return JsonResponse({'success': False, 'error': 'No order data provided'}, status=400)
+        
+        # Batch update orders
+        from django.db import transaction
+        from decimal import Decimal
+        
+        with transaction.atomic():
+            for item in orders:
+                task_id = item.get('task_id')
+                new_order = item.get('order')
+                if task_id and new_order is not None:
+                    Task.objects.filter(id=task_id, stage=stage).update(order=Decimal(str(new_order)))
+        
+        return JsonResponse({'success': True, 'message': 'Task order updated successfully'})
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f'Error reordering tasks: {str(e)}')
         return JsonResponse({'success': False, 'error': str(e)}, status=500)

@@ -29,7 +29,7 @@
         box-shadow: 0 1px 3px rgba(0,0,0,0.05);
         border: 1px solid #e5e7eb;
         overflow: hidden;
-        min-height: 80vh;
+        margin-bottom: 24px;
     }
 
     .doc-header {
@@ -98,13 +98,226 @@
         border-bottom: 1px solid #e5e7eb;
     }
 
+    /* Backlog Section - Matching Roadmap Aesthetic */
+    .backlog-section {
+        background: #ffffff;
+        border-radius: 12px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        border: 1px solid #e5e7eb;
+        overflow: hidden;
+        margin-bottom: 24px;
+    }
+
+    .backlog-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 20px 24px;
+        background: #f9fafb;
+        border-bottom: 1px solid #f3f4f6;
+    }
+
+    .backlog-header h2 {
+        font-size: 1.125rem;
+        font-weight: 600;
+        color: #111827;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .backlog-header-actions {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+    }
+
+    .btn-ai-magic {
+        background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #d946ef 100%);
+        color: white;
+        border: none;
+        padding: 10px 18px;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 4px 15px rgba(139, 92, 246, 0.4);
+        font-size: 0.875rem;
+        height: 40px;
+        white-space: nowrap;
+    }
+    
+    .btn-ai-magic::before {
+        content: '';
+        position: absolute;
+        top: 0; left: -100%;
+        width: 100%; height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+        transition: 0.5s;
+    }
+    
+    .btn-ai-magic:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(139, 92, 246, 0.6);
+    }
+    
+    .btn-ai-magic:hover::before {
+        left: 100%;
+    }
+
+    .btn-ai-magic i {
+        font-size: 0.9em;
+    }
+
+    .btn-create-task {
+        padding: 10px 18px !important;
+        font-size: 0.875rem !important;
+        border-radius: 8px !important;
+        height: 40px;
+        white-space: nowrap;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+    }
+
+    .task-row {
+        display: grid;
+        grid-template-columns: 40px 40px 1fr auto;
+        gap: 12px;
+        padding: 16px 24px;
+        border-bottom: 1px solid #f3f4f6;
+        align-items: center;
+        transition: background 0.15s ease;
+        position: relative;
+        background: white;
+    }
+
+    .task-row:last-child {
+        border-bottom: none;
+    }
+
+    .task-row:hover {
+        background: #f8fafc;
+    }
+
+    .task-row:hover .drag-grip {
+        opacity: 0.5;
+        color: #94a3b8;
+    }
+    
+    .task-row:hover .row-actions {
+        opacity: 1;
+    }
+
+    /* Drag Handle */
+    .drag-grip {
+        cursor: grab;
+        color: #e5e7eb;
+        padding: 8px;
+        border-radius: 4px;
+        transition: all 0.2s;
+        opacity: 0;
+        user-select: none;
+        -webkit-user-select: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .drag-grip:hover {
+        background: #f1f5f9;
+        color: #64748b;
+        opacity: 1 !important;
+    }
+    .drag-grip:active {
+        cursor: grabbing;
+    }
+
+    /* Checkbox Styling */
+    .task-checkbox-container {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .task-checkbox-container input[type="checkbox"] {
+        width: 20px;
+        height: 20px;
+        cursor: pointer;
+        accent-color: #10b981;
+    }
+
+    /* Task Content */
+    .task-title {
+        font-size: 0.95rem;
+        font-weight: 500;
+        color: #1f2937;
+        transition: all 0.2s;
+    }
+
+    .task-title.completed {
+        text-decoration: line-through;
+        color: #94a3b8;
+    }
+
+    .task-description {
+        font-size: 0.85rem;
+        color: #64748b;
+        margin-top: 2px;
+    }
+
+    /* Row Actions */
+    .row-actions {
+        display: flex;
+        gap: 8px;
+        opacity: 0.3;
+        transition: opacity 0.2s;
+    }
+
+    .action-icon-btn {
+        background: transparent;
+        border: none;
+        padding: 6px;
+        font-size: 0.9rem;
+        color: #94a3b8;
+        cursor: pointer;
+        border-radius: 6px;
+        transition: all 0.2s;
+    }
+
+    .action-icon-btn:hover {
+        background: #f1f5f9;
+        color: #3b82f6;
+    }
+
+    .action-icon-btn.delete:hover {
+        color: #ef4444;
+        background: #fef2f2;
+    }
+
+    /* Sortable styles */
+    .sortable-ghost {
+        opacity: 0.4;
+        background: #f3f4f6;
+    }
+    .sortable-drag {
+        opacity: 0.8;
+    }
+
     /* Notes / Discussion */
     .notes-section {
         padding: 40px;
         background: #ffffff;
     }
     
-    .section-heading {
+    .section-heading-minimal {
         font-size: 0.9rem;
         text-transform: uppercase;
         letter-spacing: 0.05em;
@@ -115,13 +328,6 @@
         align-items: center;
         gap: 12px;
     }
-    .section-heading::after {
-        content: '';
-        height: 1px;
-        flex: 1;
-        background: #f1f5f9;
-        margin-top: 2px;
-    }
 
     .note-composer {
         background: #f8fafc;
@@ -129,12 +335,6 @@
         border-radius: 12px;
         padding: 24px;
         margin-bottom: 32px;
-        transition: all 0.2s;
-    }
-    .note-composer:focus-within {
-        background: white;
-        border-color: #cbd5e1;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
     }
     
     .note-composer textarea {
@@ -166,13 +366,6 @@
         justify-content: center;
         font-weight: 600;
         color: #64748b;
-        font-size: 1.2rem;
-        border: 2px solid white;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-    }
-    
-    .note-box {
-        background: white;
     }
     
     .note-header {
@@ -203,7 +396,7 @@
         font-weight: 600;
     }
 
-    /* Sidebar - Matching Project Detail Styling */
+    /* Sidebar Context */
     .project-sidebar {
         display: flex;
         flex-direction: column;
@@ -271,14 +464,11 @@
         background: #111827;
         color: white;
     }
-    .btn-complete:hover { background: #0f172a; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-    
     .btn-reopen {
         background: white;
         border: 1px solid #e5e7eb;
         color: #374151;
     }
-    .btn-reopen:hover { background: #f8fafc; border-color: #d1d5db; }
     
     .nav-btn-back {
         display: inline-flex;
@@ -290,11 +480,11 @@
         transition: color 0.2s;
     }
     .nav-btn-back:hover { color: #1e293b; }
-
 </style>
 {% endblock %}
 
 {% block dashboard_content %}
+{% include 'dashboard_mentor/projects/modals/create_task_modal.html' %}
 <div class="dashboard-content-container" style="max-width: 1200px; margin: 0 auto;">
     
     <!-- Top Nav -->
@@ -312,81 +502,113 @@
 
     <div class="roadmap-container">
         
-        <!-- Main Document -->
-        <main class="document-card">
-            <div class="doc-header">
-                <div class="doc-kicker">
-                    <i class="fas fa-layer-group"></i> Stage Detail
+        <!-- Main Content -->
+        <main>
+            <!-- Stage Document -->
+            <div class="document-card">
+                <div class="doc-header">
+                    <div class="doc-kicker">
+                        <i class="fas fa-layer-group"></i> Stage Detail
+                    </div>
+                    <h1 class="doc-title">{{ stage.title }}</h1>
+                    
+                    <div class="doc-meta-row">
+                        {% if stage.is_completed %}
+                            <div class="meta-chip status-completed">
+                                <i class="fas fa-check-circle"></i> Completed {{ stage.completed_at|date:"M d" }}
+                            </div>
+                        {% else %}
+                            <div class="meta-chip status-pending">
+                                <i class="fas fa-circle-notch"></i> In Progress
+                            </div>
+                        {% endif %}
+                    </div>
                 </div>
-                <h1 class="doc-title">{{ stage.title }}</h1>
-                
-                <div class="doc-meta-row">
-                    {% if stage.is_completed %}
-                        <div class="meta-chip status-completed">
-                            <i class="fas fa-check-circle"></i> Completed {{ stage.completed_at|date:"M d" }}
-                        </div>
+
+                <div class="doc-body">
+                    {% if stage.description %}
+                        {{ stage.description|linebreaks }}
                     {% else %}
-                        <div class="meta-chip status-pending">
-                            <i class="fas fa-circle-notch"></i> In Progress
+                        <div style="text-align: center; color: #9ca3af; padding: 20px; font-style: italic;">
+                            No description provided.
                         </div>
                     {% endif %}
-                    
                 </div>
-            </div>
-
-            <div class="doc-body">
-                {% if stage.description %}
-                    {{ stage.description|linebreaks }}
-                {% else %}
-                    <div style="text-align: center; color: #9ca3af; padding: 20px; font-style: italic;">
-                        No description provided.
-                    </div>
-                {% endif %}
             </div>
             
-            <div class="notes-section">
-                <div class="section-heading">
-                    <i class="far fa-comments"></i> Discussion & Updates
-                </div>
-                
-                <form method="POST" action="" class="note-composer">
-                    {% csrf_token %}
-                    <textarea name="note_text" placeholder="Add an update, observation, or note about this stage..."></textarea>
-                    <div style="display: flex; justify-content: flex-end;">
-                        <button type="submit" class="btn btn-primary" style="padding: 8px 16px;">
-                            Post Update
+            <!-- Stage Backlog Section -->
+            <div class="backlog-section">
+                <div class="backlog-header">
+                    <h2>
+                        <i class="fas fa-tasks"></i> Stage Backlog
+                        <span id="tasksCount" style="font-size: 0.8rem; color: #6b7280; font-weight: 500; margin-left: 8px;">
+                            0 Tasks
+                        </span>
+                    </h2>
+                    <div class="backlog-header-actions">
+                        <button onclick="generateTasksAI()" id="generateTasksBtn" class="btn-ai-magic" title="Auto-Generate Tasks with AI">
+                            <i class="fas fa-sparkles"></i> AI Generate
+                        </button>
+                        <button type="button" onclick="openCreateTaskModal()" class="btn btn-primary btn-create-task">
+                            <i class="fas fa-plus"></i> Create Task
                         </button>
                     </div>
-                </form>
+                </div>
+                
+                <div id="tasksList">
+                    <div style="padding: 48px; text-align: center; color: #9ca3af;">
+                        <i class="fas fa-circle-notch fa-spin" style="font-size: 24px; margin-bottom: 12px; opacity: 0.5;"></i>
+                        <p>Loading tasks...</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Discussion Section -->
+            <div class="document-card" style="min-height: auto;">
+                <div class="notes-section">
+                    <div class="section-heading-minimal">
+                        <i class="far fa-comments"></i> Discussion & Updates
+                    </div>
+                    
+                    <form method="POST" action="" class="note-composer">
+                        {% csrf_token %}
+                        <textarea name="note_text" placeholder="Add an update, observation, or note about this stage..."></textarea>
+                        <div style="display: flex; justify-content: flex-end;">
+                            <button type="submit" class="btn btn-primary" style="padding: 8px 16px;">
+                                Post Update
+                            </button>
+                        </div>
+                    </form>
 
-                <div class="notes-feed">
-                    {% for note in notes %}
-                        <div class="note-item">
-                            <div class="note-avatar">
-                                {{ note.author.first_name|first|default:"U" }}
-                            </div>
-                            <div class="note-box">
-                                <div class="note-header">
-                                    <span class="note-author">{{ note.author.first_name }} {{ note.author.last_name }}</span>
-                                    {% if note.author_role %}
-                                        <span class="note-role-badge">{{ note.author_role }}</span>
-                                    {% endif %}
-                                    <span class="note-time">{{ note.created_at|date:"M d, H:i" }}</span>
+                    <div class="notes-feed">
+                        {% for note in notes %}
+                            <div class="note-item">
+                                <div class="note-avatar">
+                                    {{ note.author.first_name|first|default:"U" }}
                                 </div>
-                                <div style="color: #4b5563; line-height: 1.6;">{{ note.text|linebreaksbr }}</div>
+                                <div class="note-box">
+                                    <div class="note-header">
+                                        <span class="note-author">{{ note.author.first_name }} {{ note.author.last_name }}</span>
+                                        {% if note.author_role %}
+                                            <span class="note-role-badge">{{ note.author_role }}</span>
+                                        {% endif %}
+                                        <span class="note-time">{{ note.created_at|date:"M d, H:i" }}</span>
+                                    </div>
+                                    <div style="color: #4b5563; line-height: 1.6;">{{ note.text|linebreaksbr }}</div>
+                                </div>
                             </div>
-                        </div>
-                    {% empty %}
-                        <div style="text-align: center; padding: 32px; color: #cbd5e1; border: 2px dashed #f1f5f9; border-radius: 12px;">
-                            <i class="far fa-comment-dots" style="font-size: 2rem; margin-bottom: 12px;"></i>
-                            <p>No updates yet.</p>
-                        </div>
-                    {% endfor %}
+                        {% empty %}
+                            <div style="text-align: center; padding: 32px; color: #cbd5e1; border: 2px dashed #f1f5f9; border-radius: 12px;">
+                                <i class="far fa-comment-dots" style="font-size: 2rem; margin-bottom: 12px;"></i>
+                                <p>No updates yet.</p>
+                            </div>
+                        {% endfor %}
+                    </div>
                 </div>
             </div>
         </main>
 
-        <!-- Sidebar Context (Matching Project Detail) -->
+        <!-- Sidebar Context -->
         <aside class="project-sidebar">
             <!-- Project Context Card -->
             <div class="project-meta-card" style="cursor: pointer;" onclick="window.location.href='{% url 'general:dashboard_mentor:project_detail' project.id %}';">
@@ -407,24 +629,6 @@
                 </div>
             </div>
 
-            <!-- Stage Actions -->
-            <div class="sidebar-actions">
-                <div class="action-header">Stage Status</div>
-                <form method="POST" action="">
-                    {% csrf_token %}
-                    <input type="hidden" name="action" value="toggle_status">
-                    {% if stage.is_completed %}
-                        <button type="submit" class="btn-block-action btn-reopen">
-                            <i class="fas fa-undo"></i> Mark as In Progress
-                        </button>
-                    {% else %}
-                        <button type="submit" class="btn-block-action btn-complete">
-                            <i class="fas fa-check"></i> Mark as Complete
-                        </button>
-                    {% endif %}
-                </form>
-            </div>
-            
             <div class="sidebar-actions">
                 <div class="action-header">Timeline</div>
                 {% if stage.start_date or stage.end_date %}
@@ -462,4 +666,207 @@
 
     </div>
 </div>
+
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+<script>
+    const PROJECT_ID = parseInt('{{ project.id }}');
+    const STAGE_ID = parseInt('{{ stage.id }}');
+    let taskSortable = null;
+
+    // Load tasks from API
+    function loadTasks() {
+        const tasksList = document.getElementById('tasksList');
+        const countEl = document.getElementById('tasksCount');
+        
+        fetch(`/dashboard/mentor/projects/${PROJECT_ID}/stages/${STAGE_ID}/tasks/api/`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    renderTasks(data.tasks);
+                    if (countEl) countEl.textContent = `${data.tasks.length} Task${data.tasks.length !== 1 ? 's' : ''}`;
+                } else {
+                    tasksList.innerHTML = `<div style="padding: 24px; text-align: center; color: #ef4444;">Error: ${data.error}</div>`;
+                }
+            })
+            .catch(error => {
+                console.error('Error loading tasks:', error);
+                tasksList.innerHTML = `<div style="padding: 24px; text-align: center; color: #ef4444;">Network error occurred.</div>`;
+            });
+    }
+
+    // Generate tasks with AI
+    window.generateTasksAI = function() {
+        const btn = document.getElementById('generateTasksBtn');
+        if (!btn) return;
+        
+        const originalContent = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Generating...';
+        btn.disabled = true;
+        btn.style.opacity = '0.7';
+        
+        fetch(`/dashboard/mentor/projects/${PROJECT_ID}/stages/${STAGE_ID}/tasks/generate-ai/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                if (typeof showNotification !== 'undefined') {
+                    showNotification(data.message || 'Tasks generated successfully!', 'success');
+                }
+                loadTasks(); // Reload tasks to show the new ones
+            } else {
+                if (typeof showNotification !== 'undefined') {
+                    showNotification(data.error || 'Failed to generate tasks', 'error');
+                } else {
+                    alert('Error: ' + (data.error || 'Unknown error occurred'));
+                }
+            }
+            btn.innerHTML = originalContent;
+            btn.disabled = false;
+            btn.style.opacity = '1';
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            if (typeof showNotification !== 'undefined') {
+                showNotification('A network error occurred. Please try again.', 'error');
+            } else {
+                alert('A network error occurred. Please try again.');
+            }
+            btn.innerHTML = originalContent;
+            btn.disabled = false;
+            btn.style.opacity = '1';
+        });
+    };
+
+    // Render tasks to DOM
+    function renderTasks(tasks) {
+        const tasksList = document.getElementById('tasksList');
+        const tasksCount = document.getElementById('tasksCount');
+        
+        // Update task count
+        if (tasksCount) {
+            const count = tasks ? tasks.length : 0;
+            tasksCount.textContent = `${count} Task${count !== 1 ? 's' : ''}`;
+        }
+        
+        if (!tasks || tasks.length === 0) {
+            tasksList.innerHTML = `
+                <div style="text-align: center; padding: 48px; color: #cbd5e1;">
+                    <i class="fas fa-tasks" style="font-size: 2rem; margin-bottom: 12px; opacity: 0.3;"></i>
+                    <p>No tasks yet. Create one to get started.</p>
+                </div>
+            `;
+            return;
+        }
+
+        tasksList.innerHTML = tasks.map(task => `
+            <div class="task-row" data-task-id="${task.id}">
+                <div class="drag-grip">
+                    <i class="fas fa-grip-lines"></i>
+                </div>
+                <div class="task-checkbox-container">
+                    <input type="checkbox" id="task_${task.id}" ${task.completed ? 'checked' : ''} onchange="toggleTaskComplete(${task.id}, this.checked)">
+                </div>
+                <div class="task-info">
+                    <div class="task-title ${task.completed ? 'completed' : ''}">${task.title}</div>
+                    ${task.description ? `<div class="task-description">${task.description}</div>` : ''}
+                </div>
+                <div class="row-actions">
+                    <button class="action-icon-btn delete" onclick="deleteTask(${task.id})" title="Delete task">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+        `).join('');
+
+        initTaskSortable();
+    }
+
+    // Initialize SortableJS for tasks
+    function initTaskSortable() {
+        const el = document.getElementById('tasksList');
+        if (!el || taskSortable) return;
+
+        taskSortable = new Sortable(el, {
+            animation: 150,
+            handle: '.drag-grip',
+            ghostClass: 'sortable-ghost',
+            dragClass: 'sortable-drag',
+            onEnd: function(evt) {
+                if (evt.newIndex === evt.oldIndex) return;
+                
+                const orders = [];
+                el.querySelectorAll('.task-row').forEach((row, index) => {
+                    orders.push({
+                        task_id: parseInt(row.dataset.taskId),
+                        order: (index + 1) * 10
+                    });
+                });
+                
+                // TODO: Implement task reordering endpoint
+                // fetch(`/dashboard/mentor/projects/${PROJECT_ID}/stages/${STAGE_ID}/tasks/reorder/`, {
+                //     method: 'POST',
+                //     headers: {
+                //         'Content-Type': 'application/json',
+                //         'X-CSRFToken': '{{ csrf_token }}'
+                //     },
+                //     body: JSON.stringify({ orders: orders })
+                // });
+            }
+        });
+    }
+
+    // Toggle task completion
+    window.toggleTaskComplete = function(taskId, completed) {
+        const titleEl = document.querySelector(`.task-row[data-task-id="${taskId}"] .task-title`);
+        if (titleEl) titleEl.classList.toggle('completed', completed);
+
+        fetch(`/dashboard/mentor/projects/${PROJECT_ID}/stages/${STAGE_ID}/tasks/${taskId}/toggle-complete/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({ completed: completed })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (!data.success) {
+                showNotification(data.error || 'Update failed', 'error');
+                loadTasks(); // Revert on failure
+            }
+        });
+    };
+
+    // Delete task
+    window.deleteTask = function(taskId) {
+        if (!confirm('Are you sure you want to delete this task?')) return;
+
+        fetch(`/dashboard/mentor/projects/${PROJECT_ID}/stages/${STAGE_ID}/tasks/${taskId}/delete/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showNotification('Task deleted', 'success');
+                loadTasks();
+            } else {
+                showNotification(data.error || 'Delete failed', 'error');
+            }
+        });
+    };
+
+    // Initial load
+    document.addEventListener('DOMContentLoaded', loadTasks);
+
+    // Expose loadTasks to window for use in modals
+    window.loadTasks = loadTasks;
+</script>
 {% endblock %}

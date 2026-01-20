@@ -191,9 +191,9 @@
             <i class="fas fa-times"></i>
         </button>
         
-        <div class="create-stage-modal-header">
-            <h3 class="create-stage-modal-title">Create New Stage</h3>
-        </div>
+            <div class="create-stage-modal-header">
+                <h3 class="create-stage-modal-title" id="createStageModalTitle">Create New Stage</h3>
+            </div>
         
         <div class="create-stage-modal-body">
             <form id="createStageForm">
@@ -249,6 +249,7 @@
         <div class="create-stage-modal-footer">
             <button type="button" class="cancel-stage-btn" onclick="closeCreateStageModal()">Cancel</button>
             <button type="button" class="create-stage-btn" id="createStageBtn" onclick="submitCreateStage()">Create Stage</button>
+            <input type="hidden" id="editingStageId" value="">
         </div>
     </div>
 </div>
@@ -289,7 +290,33 @@
         document.getElementById('stageDescriptionInput').value = '';
         document.getElementById('stageStartDateInput').value = '';
         document.getElementById('stageEndDateInput').value = '';
+        document.getElementById('editingStageId').value = '';
+        document.getElementById('createStageModalTitle').textContent = 'Create New Stage';
+        document.getElementById('createStageBtn').textContent = 'Create Stage';
     }
+
+    // Open modal for editing
+    window.openCreateStageModalForEdit = function(stage) {
+        const modal = document.getElementById('createStageModal');
+        if (!modal) return;
+        
+        // Populate form with stage data
+        document.getElementById('stageTitleInput').value = stage.title || '';
+        document.getElementById('stageDescriptionInput').value = stage.description || '';
+        document.getElementById('stageStartDateInput').value = stage.start_date || '';
+        document.getElementById('stageEndDateInput').value = stage.end_date || '';
+        document.getElementById('editingStageId').value = stage.id;
+        
+        // Update modal title and button
+        document.getElementById('createStageModalTitle').textContent = 'Edit Stage';
+        document.getElementById('createStageBtn').textContent = 'Update Stage';
+        
+        // Open modal
+        modal.style.display = 'flex';
+        setTimeout(() => {
+            modal.classList.add('active');
+        }, 10);
+    };
     
     // Submit stage creation
     window.submitCreateStage = function() {
@@ -324,9 +351,13 @@
         if (!projectId) {
             alert('Project ID not found');
             btn.disabled = false;
-            btn.innerHTML = 'Create Stage';
+            btn.innerHTML = btn.textContent.includes('Update') ? 'Update Stage' : 'Create Stage';
             return;
         }
+        
+        // Check if editing
+        const editingStageId = document.getElementById('editingStageId').value;
+        const isEditing = editingStageId !== '';
         
         // Get CSRF token
         function getCookie(name) {
@@ -344,7 +375,16 @@
             return cookieValue;
         }
         
-        fetch(`/dashboard/mentor/projects/${projectId}/stages/create/`, {
+        // Determine URL and method
+        const url = isEditing 
+            ? `/dashboard/mentor/projects/${projectId}/stages/${editingStageId}/edit/`
+            : `/dashboard/mentor/projects/${projectId}/stages/create/`;
+        
+        btn.innerHTML = isEditing 
+            ? '<i class="fas fa-spinner fa-spin"></i> Updating...'
+            : '<i class="fas fa-spinner fa-spin"></i> Creating...';
+        
+        fetch(url, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -361,7 +401,7 @@
         .then(data => {
             if (data.success) {
                 if (typeof showNotification !== 'undefined') {
-                    showNotification('Stage created successfully!', 'success');
+                    showNotification(isEditing ? 'Stage updated successfully!' : 'Stage created successfully!', 'success');
                 }
                 closeCreateStageModal();
                 // Reload stages if loadStages function exists, otherwise reload page
@@ -374,12 +414,12 @@
                 }
             } else {
                 if (typeof showNotification !== 'undefined') {
-                    showNotification(data.error || 'Failed to create stage', 'error');
+                    showNotification(data.error || (isEditing ? 'Failed to update stage' : 'Failed to create stage'), 'error');
                 } else {
-                    alert(data.error || 'Failed to create stage');
+                    alert(data.error || (isEditing ? 'Failed to update stage' : 'Failed to create stage'));
                 }
                 btn.disabled = false;
-                btn.innerHTML = 'Create Stage';
+                btn.innerHTML = isEditing ? 'Update Stage' : 'Create Stage';
             }
         })
         .catch(error => {

@@ -14,6 +14,7 @@
         grid-template-columns: 1fr 340px;
         gap: 32px;
         align-items: start;
+        margin-bottom: 120px; /* Extra space for dropdown menus */
     }
     
     @media (max-width: 1024px) {
@@ -39,7 +40,7 @@
         border-radius: 12px;
         box-shadow: 0 1px 3px rgba(0,0,0,0.05);
         border: 1px solid #e5e7eb;
-        overflow: hidden;
+        overflow: visible; /* Changed from hidden to allow dropdowns to show */
     }
 
     .roadmap-header {
@@ -63,12 +64,11 @@
 
     /* List Items (High Density) */
     .stage-row {
-        display: grid;
-        grid-template-columns: 40px 1fr auto auto;
-        gap: 16px;
-        padding: 12px 24px;
-        border-bottom: 1px solid #f3f4f6;
+        display: flex;
         align-items: center;
+        gap: 16px;
+        padding: 16px 24px;
+        border-bottom: 1px solid #f3f4f6;
         transition: background 0.15s ease;
         position: relative;
         background: white;
@@ -101,6 +101,7 @@
         opacity: 0; /* Hidden by default for clean look */
         user-select: none;
         -webkit-user-select: none;
+        flex-shrink: 0;
     }
     .drag-grip:hover {
         background: #f1f5f9;
@@ -125,8 +126,14 @@
 
     /* Stage Info */
     .stage-main {
+        flex: 1;
+        min-width: 0; /* Allows text truncation */
+    }
+
+    .stage-title-meta {
         display: flex;
-        flex-direction: column; 
+        flex-direction: column;
+        gap: 4px;
     }
 
     .stage-title {
@@ -141,10 +148,66 @@
     .stage-meta {
         font-size: 0.8rem;
         color: #6b7280;
-        margin-top: 2px;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+    }
+
+    /* Stage Progress Section */
+    .stage-progress-section {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 8px;
+        min-width: 180px;
+        flex-shrink: 0;
+    }
+
+    .stage-progress-bar-container {
+        width: 100%;
+        max-width: 200px;
+    }
+
+    .stage-progress-label {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 4px;
+        font-size: 0.75rem;
+        color: #6b7280;
+    }
+
+    .stage-progress-bar {
+        height: 6px;
+        background: #f3f4f6;
+        border-radius: 3px;
+        overflow: hidden;
+    }
+
+    .stage-progress-fill {
+        height: 100%;
+        transition: width 0.3s;
+    }
+
+    .stage-tasks-count {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.75rem;
+        color: #6b7280;
+    }
+
+    .stage-tasks-count i {
+        font-size: 0.85rem;
+        color: #9ca3af;
+    }
+
+    .stage-tasks-count.no-tasks {
+        color: #93c5fd; /* Light blue */
+    }
+
+    .stage-tasks-count.no-tasks i {
+        color: #93c5fd; /* Light blue */
     }
 
     /* Status Indicators */
@@ -165,6 +228,14 @@
         gap: 4px;
         opacity: 0;
         transition: opacity 0.2s;
+        position: relative;
+        flex-shrink: 0;
+    }
+    
+    /* Keep row actions visible when dropdown is active */
+    .stage-row .row-actions.has-active-dropdown,
+    .stage-row:hover .row-actions {
+        opacity: 1;
     }
     
     .action-icon-btn {
@@ -182,6 +253,124 @@
     .action-icon-btn.delete:hover {
         background: #fee2e2;
         color: #dc2626;
+    }
+
+    /* Stage Dropdown Menu */
+    .stage-dropdown-container {
+        position: relative;
+        z-index: 10; /* Ensure dropdown container is above other elements */
+    }
+
+    .stage-dropdown-trigger {
+        padding: 6px;
+        min-width: 28px; /* Make it square */
+        height: 28px;
+        border-radius: 6px;
+        color: #64748b;
+        border: none;
+        background: transparent;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+    }
+
+    .stage-dropdown-trigger:hover {
+        background: #f1f5f9;
+        color: #1f2937;
+    }
+
+    .stage-dropdown-menu {
+        position: absolute;
+        top: calc(100% + 8px);
+        bottom: auto;
+        right: 0;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        min-width: 180px;
+        padding: 0;
+        opacity: 0;
+        visibility: hidden;
+        transform: translateY(-10px);
+        transition: all 0.2s ease;
+        z-index: 1000;
+    }
+
+    .stage-dropdown-menu.dropdown-up {
+        top: auto;
+        bottom: calc(100% + 8px);
+        transform: translateY(10px);
+    }
+
+    .stage-dropdown-container.active .stage-dropdown-menu {
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(0);
+    }
+
+    .stage-dropdown-container.active .stage-dropdown-menu.dropdown-up {
+        transform: translateY(0);
+    }
+
+    .stage-dropdown-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 20px;
+        color: #1e293b;
+        text-decoration: none;
+        transition: background 0.2s ease;
+        border: none;
+        background: transparent;
+        width: 100%;
+        cursor: pointer;
+        font-size: 0.95rem;
+        font-weight: 400;
+        text-align: left;
+    }
+
+    .stage-dropdown-item.first-item {
+        border-radius: 12px 12px 0 0;
+    }
+
+    .stage-dropdown-item.last-item {
+        border-radius: 0 0 12px 12px;
+    }
+
+    .stage-dropdown-item:hover {
+        background: rgba(16, 185, 129, 0.1);
+        color: #10b981;
+    }
+
+    .stage-dropdown-item.first-item:hover {
+        border-radius: 12px 12px 0 0;
+    }
+
+    .stage-dropdown-item.last-item:hover {
+        border-radius: 0 0 12px 12px;
+    }
+
+    .stage-dropdown-item i {
+        width: 20px;
+        text-align: center;
+        color: #94a3b8;
+        font-size: 1.1rem;
+        flex-shrink: 0;
+    }
+
+    .stage-dropdown-item:hover i {
+        color: #10b981;
+    }
+
+    .stage-dropdown-item.delete-item:hover {
+        background: rgba(239, 68, 68, 0.1);
+        color: #ef4444;
+    }
+
+    .stage-dropdown-item.delete-item:hover i {
+        color: #ef4444;
     }
 
     /* Sidebar */
@@ -1052,9 +1241,19 @@
             return;
         }
         
-        const completedCount = stages.filter(s => s.is_completed).length;
-        const totalCount = stages.length;
-        const percentage = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+        // Calculate completion based on tasks across all stages
+        let totalTasks = 0;
+        let completedTasks = 0;
+        
+        stages.forEach(stage => {
+            const stageTotal = stage.tasks_total || 0;
+            const stageCompleted = stage.tasks_completed || 0;
+            totalTasks += stageTotal;
+            completedTasks += stageCompleted;
+        });
+        
+        // Calculate percentage
+        const percentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
         
         const circumference = 326.73; // 2 * PI * radius (52)
         const offset = circumference - (percentage / 100) * circumference;
@@ -1127,9 +1326,11 @@
                 statusDot = '<span class="status-dot pending" title="In Progress"></span>';
             }
             
-            // Progress bar (0% or 100% based on completion)
-            const progress = stage.is_completed ? 100 : 0;
-            const progressColor = stage.is_completed ? '#10b981' : '#e5e7eb';
+            // Calculate progress based on tasks
+            const totalTasks = stage.tasks_total || 0;
+            const completedTasks = stage.tasks_completed || 0;
+            const progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : (stage.is_completed ? 100 : 0);
+            const progressColor = progress === 100 ? '#10b981' : (progress > 0 ? '#3b82f6' : '#e5e7eb');
             
             // Format dates for display
             const formatDate = (dateStr) => {
@@ -1143,16 +1344,12 @@
             
             let dateRangeHtml = '';
             if (startDateDisplay && endDateDisplay) {
-                dateRangeHtml = `<div class="stage-meta" style="margin-top: 4px;"><i class="far fa-calendar-alt" style="margin-right: 4px;"></i> ${startDateDisplay} - ${endDateDisplay}</div>`;
+                dateRangeHtml = `<div class="stage-meta"><i class="far fa-calendar-alt" style="margin-right: 4px;"></i> ${startDateDisplay} - ${endDateDisplay}</div>`;
             } else if (startDateDisplay) {
-                dateRangeHtml = `<div class="stage-meta" style="margin-top: 4px;"><i class="far fa-calendar-alt" style="margin-right: 4px;"></i> Starts ${startDateDisplay}</div>`;
+                dateRangeHtml = `<div class="stage-meta"><i class="far fa-calendar-alt" style="margin-right: 4px;"></i> Starts ${startDateDisplay}</div>`;
             } else if (endDateDisplay) {
-                dateRangeHtml = `<div class="stage-meta" style="margin-top: 4px;"><i class="far fa-calendar-alt" style="margin-right: 4px;"></i> Ends ${endDateDisplay}</div>`;
+                dateRangeHtml = `<div class="stage-meta"><i class="far fa-calendar-alt" style="margin-right: 4px;"></i> Ends ${endDateDisplay}</div>`;
             }
-            
-            const notesCountHtml = stage.notes_count > 0
-                ? `<div style="font-size: 0.8rem; color: #9ca3af;"><i class="far fa-comment" style="margin-right: 4px;"></i> ${stage.notes_count}</div>`
-                : '<div style="font-size: 0.8rem; color: #9ca3af;"></div>';
             
             return `
                 <div class="stage-row" data-stage-id="${stage.id}">
@@ -1160,29 +1357,47 @@
                         <i class="fas fa-grip-lines"></i>
                     </div>
                     <div class="stage-main" onclick="window.location.href='${STAGE_DETAIL_URL}${stage.id}/';" style="cursor: pointer;">
-                        <div class="stage-title">
-                            ${statusDot}
-                            <span ${titleClass}>${titleText}</span>
-                        </div>
-                        ${dateRangeHtml}
-                        <div style="margin-top: 8px; width: 100%;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                                <span style="font-size: 0.75rem; color: #6b7280;">Progress</span>
-                                <span style="font-size: 0.75rem; color: #6b7280; font-weight: 500;">${progress}%</span>
+                        <div class="stage-title-meta">
+                            <div class="stage-title">
+                                ${statusDot}
+                                <span ${titleClass}>${titleText}</span>
                             </div>
-                            <div style="height: 6px; background: #f3f4f6; border-radius: 3px; overflow: hidden;">
-                                <div style="height: 100%; width: ${progress}%; background: ${progressColor}; transition: width 0.3s;"></div>
-                            </div>
+                            ${dateRangeHtml}
                         </div>
                     </div>
-                    ${notesCountHtml}
-                    <div class="row-actions" onclick="event.stopPropagation();">
-                        <button class="action-icon-btn delete" onclick="deleteStage(${stage.id})">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                        <button class="action-icon-btn" style="color: #3b82f6;" onclick="window.location.href='${STAGE_DETAIL_URL}${stage.id}/';">
-                            <i class="fas fa-chevron-right"></i>
-                        </button>
+                    <div class="stage-progress-section" onclick="event.stopPropagation();">
+                        <div class="stage-progress-bar-container">
+                            <div class="stage-progress-label">
+                                <span>Progress</span>
+                                <span style="font-weight: 500;">${progress}%</span>
+                            </div>
+                            <div class="stage-progress-bar">
+                                <div class="stage-progress-fill" style="width: ${progress}%; background: ${progressColor};"></div>
+                            </div>
+                        </div>
+                        <div class="stage-tasks-count ${totalTasks === 0 ? 'no-tasks' : ''}">
+                            ${totalTasks === 0 
+                                ? '<span style="color: #93c5fd;">no tasks yet</span>'
+                                : `<i class="fas fa-tasks"></i><span>${completedTasks}/${totalTasks}</span>`
+                            }
+                        </div>
+                    </div>
+                    <div class="row-actions" id="rowActions_${stage.id}" onclick="event.stopPropagation();">
+                        <div class="stage-dropdown-container" id="stageDropdown_${stage.id}">
+                            <button class="stage-dropdown-trigger" onclick="toggleStageDropdown(${stage.id}, event)">
+                                <i class="fas fa-ellipsis-v"></i>
+                            </button>
+                            <div class="stage-dropdown-menu" onclick="event.stopPropagation();">
+                                <button class="stage-dropdown-item first-item" onclick="editStage(${stage.id}); event.stopPropagation();">
+                                    <i class="fas fa-edit"></i>
+                                    <span>Edit</span>
+                                </button>
+                                <button class="stage-dropdown-item delete-item last-item" onclick="deleteStage(${stage.id}); event.stopPropagation();">
+                                    <i class="fas fa-trash"></i>
+                                    <span>Delete</span>
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             `;
@@ -1373,6 +1588,144 @@
                 headers: {'X-CSRFToken': '{{ csrf_token }}'}
             }).then(() => loadStages());
         }
+    };
+
+    // Toggle stage dropdown menu
+    window.toggleStageDropdown = function(stageId, event) {
+        event.stopPropagation();
+        const container = document.getElementById(`stageDropdown_${stageId}`);
+        if (!container) return;
+        
+        const menu = container.querySelector('.stage-dropdown-menu');
+        if (!menu) return;
+        
+        const isCurrentlyActive = container.classList.contains('active');
+        
+        // Close all other dropdowns first
+        document.querySelectorAll('.stage-dropdown-container').forEach(dropdown => {
+            if (dropdown !== container) {
+                dropdown.classList.remove('active');
+                const otherMenu = dropdown.querySelector('.stage-dropdown-menu');
+                if (otherMenu) {
+                    otherMenu.classList.remove('dropdown-up');
+                }
+            }
+        });
+        
+        // If clicking the same dropdown, toggle it off
+        if (isCurrentlyActive) {
+            container.classList.remove('active');
+            menu.classList.remove('dropdown-up');
+            // Remove has-active-dropdown class from row actions
+            const rowActions = container.closest('.row-actions');
+            if (rowActions) {
+                rowActions.classList.remove('has-active-dropdown');
+            }
+            return;
+        }
+        
+        // Get trigger button position relative to viewport
+        const trigger = container.querySelector('.stage-dropdown-trigger');
+        if (!trigger) return;
+        
+        const triggerRect = trigger.getBoundingClientRect();
+        const menuHeight = 100; // Approximate height of dropdown menu (2 items)
+        const spaceBelow = window.innerHeight - triggerRect.bottom;
+        const spaceAbove = triggerRect.top;
+        
+        // Check if it's the last stage row
+        const stageRow = container.closest('.stage-row');
+        const isLastRow = stageRow && !stageRow.nextElementSibling;
+        
+        // Determine if dropdown should appear above
+        if (spaceBelow < menuHeight + 8 || isLastRow) {
+            // Show above if not enough space below or it's the last row
+            menu.classList.add('dropdown-up');
+        } else {
+            // Show below
+            menu.classList.remove('dropdown-up');
+        }
+        
+        // Open the dropdown
+        container.classList.add('active');
+        
+        // Keep row actions visible when dropdown is active
+        const rowActions = document.getElementById(`rowActions_${stageId}`);
+        if (rowActions) {
+            rowActions.classList.add('has-active-dropdown');
+        }
+    };
+
+    // Close dropdowns when clicking outside
+    document.addEventListener('click', function(event) {
+        // Don't close if clicking inside a dropdown container (trigger or menu)
+        if (event.target.closest('.stage-dropdown-container')) {
+            return;
+        }
+        
+        // Close all dropdowns
+        document.querySelectorAll('.stage-dropdown-container').forEach(dropdown => {
+            dropdown.classList.remove('active');
+            const menu = dropdown.querySelector('.stage-dropdown-menu');
+            if (menu) {
+                menu.classList.remove('dropdown-up');
+            }
+            // Remove has-active-dropdown class from row actions
+            const rowActions = dropdown.closest('.row-actions');
+            if (rowActions) {
+                rowActions.classList.remove('has-active-dropdown');
+            }
+        });
+    });
+
+    // Edit stage - open modal with stage data
+    window.editStage = function(stageId) {
+        // Close dropdown
+        const container = document.getElementById(`stageDropdown_${stageId}`);
+        if (container) {
+            container.classList.remove('active');
+        }
+        
+        // Fetch stage data
+        fetch(`/dashboard/mentor/projects/${PROJECT_ID}/stages/api/`, {
+            method: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            credentials: 'same-origin'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data && data.success) {
+                const stage = data.stages.find(s => s.id === stageId);
+                if (stage) {
+                    // Open modal with stage data
+                    if (typeof openCreateStageModalForEdit !== 'undefined') {
+                        openCreateStageModalForEdit(stage);
+                    } else {
+                        // Fallback: open modal and populate manually
+                        openCreateStageModal();
+                        setTimeout(() => {
+                            document.getElementById('stageTitleInput').value = stage.title;
+                            document.getElementById('stageDescriptionInput').value = stage.description || '';
+                            if (stage.start_date) {
+                                document.getElementById('stageStartDateInput').value = stage.start_date;
+                            }
+                            if (stage.end_date) {
+                                document.getElementById('stageEndDateInput').value = stage.end_date;
+                            }
+                            document.getElementById('editingStageId').value = stageId;
+                            document.getElementById('createStageModalTitle').textContent = 'Edit Stage';
+                            document.getElementById('createStageBtn').textContent = 'Update Stage';
+                        }, 100);
+                    }
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching stage data:', error);
+            alert('Failed to load stage data. Please try again.');
+        });
     };
 </script>
 {% endblock %}
