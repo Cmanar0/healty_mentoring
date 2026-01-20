@@ -5160,6 +5160,13 @@ def get_stages_api(request, project_id):
         
         stages_data = []
         for stage in stages:
+            # Update progress status before returning
+            update_stage_completion_status(stage)
+            if not stage.is_disabled:
+                stage.progress_status = stage.calculate_progress_status()
+                stage.save()
+            stage.refresh_from_db()
+            
             # Format date for display (remove leading zero from day)
             target_date_display = None
             if stage.target_date:
@@ -5185,6 +5192,8 @@ def get_stages_api(request, project_id):
                 'target_date_display': target_date_display,
                 'is_completed': stage.is_completed,
                 'is_pending_confirmation': stage.is_pending_confirmation,
+                'progress_status': stage.progress_status,
+                'is_disabled': stage.is_disabled,
                 'notes_count': stage.notes.count(),
                 'tasks_total': total_tasks,
                 'tasks_completed': completed_tasks,

@@ -353,7 +353,9 @@
         flex-shrink: 0;
     }
     .status-dot.completed { background-color: #10b981; box-shadow: 0 0 0 2px #d1fae5; }
-    .status-dot.pending { background-color: #fbbf24; }
+    .status-dot.pending { background-color: #3b82f6; box-shadow: 0 0 0 2px #dbeafe; }
+    .status-dot.created { background-color: #fbbf24; box-shadow: 0 0 0 2px #fef3c7; }
+    .status-dot.overdue { background-color: #ef4444; box-shadow: 0 0 0 2px #fee2e2; }
     .status-dot.draft { background-color: #9ca3af; border: 1px dashed #6b7280; background: transparent; }
 
     /* Actions */
@@ -937,7 +939,24 @@
             const leftPercent = (daysFromStart / totalDays) * 100;
             const widthPercent = (duration / totalDays) * 100;
             const top = 20 + (index * 50);
-            const color = stage.is_completed ? '#10b981' : '#3b82f6';
+            
+            // Determine color based on progress_status
+            let color = '#3b82f6'; // default blue
+            const progressStatus = stage.progress_status || (stage.is_completed ? 'completed' : 'in_progress');
+            switch(progressStatus) {
+                case 'completed':
+                    color = '#10b981'; // green
+                    break;
+                case 'overdue':
+                    color = '#ef4444'; // red
+                    break;
+                case 'in_progress':
+                    color = '#3b82f6'; // blue
+                    break;
+                case 'created':
+                    color = '#fbbf24'; // yellow
+                    break;
+            }
             
             chartHtml += `
                 <div 
@@ -1454,18 +1473,53 @@
             let titleClass = '';
             let titleText = stage.title;
             
-            if (stage.is_completed) {
-                statusDot = '<span class="status-dot completed" title="Completed"></span>';
-                titleClass = 'style="text-decoration: line-through; color: #6b7280;"';
-            } else {
-                statusDot = '<span class="status-dot pending" title="In Progress"></span>';
+            // Determine status dot and colors based on progress_status
+            const progressStatus = stage.progress_status || (stage.is_completed ? 'completed' : 'in_progress');
+            let progressColor = '#e5e7eb';
+            let statusTitle = '';
+            
+            switch(progressStatus) {
+                case 'completed':
+                    statusDot = '<span class="status-dot completed" title="Completed"></span>';
+                    progressColor = '#10b981';
+                    statusTitle = 'Completed';
+                    titleClass = 'style="text-decoration: line-through; color: #6b7280;"';
+                    break;
+                case 'overdue':
+                    statusDot = '<span class="status-dot overdue" title="Overdue"></span>';
+                    progressColor = '#ef4444';
+                    statusTitle = 'Overdue';
+                    break;
+                case 'in_progress':
+                    statusDot = '<span class="status-dot pending" title="In Progress"></span>';
+                    progressColor = '#3b82f6';
+                    statusTitle = 'In Progress';
+                    break;
+                case 'created':
+                default:
+                    statusDot = '<span class="status-dot created" title="Created"></span>';
+                    progressColor = '#fbbf24';
+                    statusTitle = 'Created';
+                    break;
             }
             
             // Calculate progress based on tasks
             const totalTasks = stage.tasks_total || 0;
             const completedTasks = stage.tasks_completed || 0;
-            const progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : (stage.is_completed ? 100 : 0);
-            const progressColor = progress === 100 ? '#10b981' : (progress > 0 ? '#3b82f6' : '#e5e7eb');
+            const progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : (progressStatus === 'completed' ? 100 : 0);
+            
+            // Override progress color if progress is 0 (no tasks) or use status-based color
+            if (progress === 0 && progressStatus !== 'completed') {
+                progressColor = '#e5e7eb';
+            } else if (progressStatus === 'completed') {
+                progressColor = '#10b981';
+            } else if (progressStatus === 'overdue') {
+                progressColor = '#ef4444';
+            } else if (progressStatus === 'in_progress') {
+                progressColor = '#3b82f6';
+            } else if (progressStatus === 'created') {
+                progressColor = '#fbbf24';
+            }
             
             // Format dates for display
             const formatDate = (dateStr) => {
