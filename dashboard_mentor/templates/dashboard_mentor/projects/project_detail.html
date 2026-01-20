@@ -65,9 +65,9 @@
     /* List Items (High Density) */
     .stage-row {
         display: flex;
-        align-items: center;
-        gap: 16px;
-        padding: 16px 24px;
+        align-items: stretch;
+        gap: 0;
+        padding: 0;
         border-bottom: 1px solid #f3f4f6;
         transition: background 0.15s ease;
         position: relative;
@@ -82,13 +82,23 @@
         background: #f8fafc;
     }
     
-    .stage-row:hover .drag-grip {
-        opacity: 1;
+    /* Drag Grip Section */
+    .stage-drag-section {
+        padding: 16px 0px 16px 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        cursor: grab;
+    }
+    
+    .stage-row:hover .stage-drag-section .drag-grip {
+        opacity: 0.5;
         color: #94a3b8;
     }
     
-    .stage-row:hover .row-actions {
-        opacity: 1;
+    .stage-drag-section:active {
+        cursor: grabbing;
     }
 
     /* Drag Handle */
@@ -101,7 +111,6 @@
         opacity: 0; /* Hidden by default for clean look */
         user-select: none;
         -webkit-user-select: none;
-        flex-shrink: 0;
     }
     .drag-grip:hover {
         background: #f1f5f9;
@@ -110,8 +119,35 @@
     .drag-grip:active {
         cursor: grabbing;
     }
-    .stage-row:hover .drag-grip {
-        opacity: 0.5;
+    
+    /* Stage Main Wrapper (clickable area for stage detail) */
+    .stage-main-wrapper {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 16px 24px;
+        cursor: pointer;
+        transition: background 0.15s ease;
+        min-width: 0; /* Allows text truncation */
+    }
+    
+    .stage-main-wrapper:hover {
+        background: rgba(248, 250, 252, 0.5);
+    }
+    
+    /* Row Actions Section */
+    .row-actions-section {
+        padding: 16px 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+    
+    .stage-row:hover .row-actions-section .row-actions,
+    .stage-row .row-actions-section .row-actions.has-active-dropdown {
+        opacity: 1;
     }
     
     /* Sortable styles */
@@ -262,10 +298,10 @@
     }
 
     .stage-dropdown-trigger {
-        padding: 6px;
-        min-width: 28px; /* Make it square */
-        height: 28px;
-        border-radius: 6px;
+        padding: 0;
+        width: 32px; /* Slightly bigger */
+        height: 32px;
+        border-radius: 50%; /* Make it circular */
         color: #64748b;
         border: none;
         background: transparent;
@@ -274,6 +310,10 @@
         align-items: center;
         justify-content: center;
         transition: all 0.2s;
+    }
+    
+    .stage-dropdown-trigger i {
+        font-size: 1rem; /* Slightly bigger icon */
     }
 
     .stage-dropdown-trigger:hover {
@@ -1353,49 +1393,55 @@
             
             return `
                 <div class="stage-row" data-stage-id="${stage.id}">
-                    <div class="drag-grip">
-                        <i class="fas fa-grip-lines"></i>
-                    </div>
-                    <div class="stage-main" onclick="window.location.href='${STAGE_DETAIL_URL}${stage.id}/';" style="cursor: pointer;">
-                        <div class="stage-title-meta">
-                            <div class="stage-title">
-                                ${statusDot}
-                                <span ${titleClass}>${titleText}</span>
-                            </div>
-                            ${dateRangeHtml}
+                    <div class="stage-drag-section">
+                        <div class="drag-grip">
+                            <i class="fas fa-grip-lines"></i>
                         </div>
                     </div>
-                    <div class="stage-progress-section" onclick="event.stopPropagation();">
-                        <div class="stage-progress-bar-container">
-                            <div class="stage-progress-label">
-                                <span>Progress</span>
-                                <span style="font-weight: 500;">${progress}%</span>
-                            </div>
-                            <div class="stage-progress-bar">
-                                <div class="stage-progress-fill" style="width: ${progress}%; background: ${progressColor};"></div>
+                    <div class="stage-main-wrapper" onclick="window.location.href='${STAGE_DETAIL_URL}${stage.id}/';">
+                        <div class="stage-main">
+                            <div class="stage-title-meta">
+                                <div class="stage-title">
+                                    ${statusDot}
+                                    <span ${titleClass}>${titleText}</span>
+                                </div>
+                                ${dateRangeHtml}
                             </div>
                         </div>
-                        <div class="stage-tasks-count ${totalTasks === 0 ? 'no-tasks' : ''}">
-                            ${totalTasks === 0 
-                                ? '<span style="color: #93c5fd;">no tasks yet</span>'
-                                : `<i class="fas fa-tasks"></i><span>${completedTasks}/${totalTasks}</span>`
-                            }
+                        <div class="stage-progress-section">
+                            <div class="stage-progress-bar-container">
+                                <div class="stage-progress-label">
+                                    <span>Progress</span>
+                                    <span style="font-weight: 500;">${progress}%</span>
+                                </div>
+                                <div class="stage-progress-bar">
+                                    <div class="stage-progress-fill" style="width: ${progress}%; background: ${progressColor};"></div>
+                                </div>
+                            </div>
+                            <div class="stage-tasks-count ${totalTasks === 0 ? 'no-tasks' : ''}">
+                                ${totalTasks === 0 
+                                    ? '<span style="color: #93c5fd;">no tasks yet</span>'
+                                    : `<i class="fas fa-tasks"></i><span>${completedTasks}/${totalTasks}</span>`
+                                }
+                            </div>
                         </div>
                     </div>
-                    <div class="row-actions" id="rowActions_${stage.id}" onclick="event.stopPropagation();">
-                        <div class="stage-dropdown-container" id="stageDropdown_${stage.id}">
-                            <button class="stage-dropdown-trigger" onclick="toggleStageDropdown(${stage.id}, event)">
-                                <i class="fas fa-ellipsis-v"></i>
-                            </button>
-                            <div class="stage-dropdown-menu" onclick="event.stopPropagation();">
-                                <button class="stage-dropdown-item first-item" onclick="editStage(${stage.id}); event.stopPropagation();">
-                                    <i class="fas fa-edit"></i>
-                                    <span>Edit</span>
+                    <div class="row-actions-section" onclick="event.stopPropagation();">
+                        <div class="row-actions" id="rowActions_${stage.id}">
+                            <div class="stage-dropdown-container" id="stageDropdown_${stage.id}">
+                                <button class="stage-dropdown-trigger" onclick="toggleStageDropdown(${stage.id}, event)">
+                                    <i class="fas fa-ellipsis-v"></i>
                                 </button>
-                                <button class="stage-dropdown-item delete-item last-item" onclick="deleteStage(${stage.id}); event.stopPropagation();">
-                                    <i class="fas fa-trash"></i>
-                                    <span>Delete</span>
-                                </button>
+                                <div class="stage-dropdown-menu" onclick="event.stopPropagation();">
+                                    <button class="stage-dropdown-item first-item" onclick="editStage(${stage.id}); event.stopPropagation();">
+                                        <i class="fas fa-edit"></i>
+                                        <span>Edit</span>
+                                    </button>
+                                    <button class="stage-dropdown-item delete-item last-item" onclick="deleteStage(${stage.id}); event.stopPropagation();">
+                                        <i class="fas fa-trash"></i>
+                                        <span>Delete</span>
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1425,7 +1471,7 @@
         
         sortableInstance = new Sortable(el, {
             animation: 150,
-            handle: '.drag-grip',
+            handle: '.stage-drag-section',
             ghostClass: 'sortable-ghost',
             chosenClass: 'sortable-chosen',
             dragClass: 'sortable-drag',
