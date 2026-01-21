@@ -1,0 +1,254 @@
+{% load custom_filters %}
+
+<form id="questionnaireForm" class="mentor-questionnaire-form">
+    {% csrf_token %}
+    {% for question in questions %}
+        <div class="mentor-question-item">
+            <label class="mentor-question-label">
+                {{ question.question_text }}
+                {% if question.is_required %}
+                    <span class="mentor-required">*</span>
+                {% endif %}
+            </label>
+            {% if question.help_text %}
+                <p class="mentor-question-help">{{ question.help_text }}</p>
+            {% endif %}
+            
+            {% if question.question_type == 'textarea' %}
+                <textarea 
+                    name="question_{{ question.id }}" 
+                    id="question_{{ question.id }}"
+                    class="mentor-question-input"
+                    rows="4"
+                    {% if question.is_required %}required{% endif %}
+                >{{ answers|get_item:question.id|default:'' }}</textarea>
+            {% elif question.question_type == 'date' %}
+                <input 
+                    type="date" 
+                    name="question_{{ question.id }}" 
+                    id="question_{{ question.id }}"
+                    class="mentor-question-input"
+                    value="{{ answers|get_item:question.id|default:'' }}"
+                    {% if question.is_required %}required{% endif %}
+                >
+            {% elif question.question_type == 'number' %}
+                <input 
+                    type="number" 
+                    name="question_{{ question.id }}" 
+                    id="question_{{ question.id }}"
+                    class="mentor-question-input"
+                    value="{{ answers|get_item:question.id|default:'' }}"
+                    {% if question.is_required %}required{% endif %}
+                >
+            {% elif question.question_type == 'select' %}
+                <select 
+                    name="question_{{ question.id }}" 
+                    id="question_{{ question.id }}"
+                    class="mentor-question-input"
+                    {% if question.is_required %}required{% endif %}
+                >
+                    <option value="">Select an option</option>
+                    {% for option in question.options %}
+                        <option value="{{ option }}" {% if answers|get_item:question.id == option %}selected{% endif %}>
+                            {{ option }}
+                        </option>
+                    {% endfor %}
+                </select>
+            {% else %}
+                <input 
+                    type="text" 
+                    name="question_{{ question.id }}" 
+                    id="question_{{ question.id }}"
+                    class="mentor-question-input"
+                    value="{{ answers|get_item:question.id|default:'' }}"
+                    {% if question.is_required %}required{% endif %}
+                >
+            {% endif %}
+            <div class="mentor-question-error" id="error_{{ question.id }}"></div>
+        </div>
+    {% endfor %}
+    
+    <div class="mentor-questionnaire-actions">
+        <button type="submit" class="mentor-btn-submit">
+            <i class="fas fa-check"></i> Submit Questionnaire
+        </button>
+    </div>
+</form>
+
+<style>
+.mentor-questionnaire-form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.mentor-question-item {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.mentor-question-label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #1e293b;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.mentor-required {
+    color: #ef4444;
+}
+
+.mentor-question-help {
+    font-size: 0.8125rem;
+    color: #64748b;
+    margin: 0;
+}
+
+.mentor-question-input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-family: inherit;
+    transition: all 0.2s ease;
+    box-sizing: border-box;
+}
+
+.mentor-question-input:focus {
+    outline: none;
+    border-color: #10b981;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+}
+
+.mentor-question-input textarea {
+    resize: vertical;
+    min-height: 100px;
+}
+
+.mentor-question-error {
+    font-size: 0.75rem;
+    color: #ef4444;
+    margin-top: 4px;
+    display: none;
+}
+
+.mentor-question-error.show {
+    display: block;
+}
+
+.mentor-questionnaire-actions {
+    margin-top: 8px;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.mentor-btn-submit {
+    background: #10b981;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.875rem;
+}
+
+.mentor-btn-submit:hover {
+    background: #059669;
+}
+
+.mentor-btn-submit:disabled {
+    background: #9ca3af;
+    cursor: not-allowed;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('questionnaireForm');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const submitBtn = form.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
+            
+            // Collect answers
+            const answers = {};
+            const inputs = form.querySelectorAll('input, textarea, select');
+            inputs.forEach(input => {
+                if (input.name && input.name.startsWith('question_')) {
+                    const questionId = input.name.replace('question_', '');
+                    answers[questionId] = input.value.trim();
+                }
+            });
+            
+            // Clear previous errors
+            document.querySelectorAll('.mentor-question-error').forEach(el => {
+                el.classList.remove('show');
+                el.textContent = '';
+            });
+            
+            // Get project ID from template variable
+            {% if project %}
+            const projectId = {{ project.id }};
+            {% else %}
+            // Fallback: get from URL
+            const urlParts = window.location.pathname.split('/');
+            const idx = urlParts.indexOf('projects');
+            const projectId = idx !== -1 ? urlParts[idx + 1] : null;
+            {% endif %}
+            
+            if (!projectId) {
+                alert('Unable to determine project ID.');
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fas fa-check"></i> Submit Questionnaire';
+                return;
+            }
+            
+            fetch(`/dashboard/user/projects/${projectId}/questionnaire/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ answers: answers })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    window.location.reload();
+                } else {
+                    // Show errors
+                    if (data.errors) {
+                        Object.keys(data.errors).forEach(questionId => {
+                            const errorEl = document.getElementById('error_' + questionId);
+                            if (errorEl) {
+                                errorEl.textContent = data.errors[questionId];
+                                errorEl.classList.add('show');
+                            }
+                        });
+                    }
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '<i class="fas fa-check"></i> Submit Questionnaire';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while submitting the questionnaire.');
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fas fa-check"></i> Submit Questionnaire';
+            });
+        });
+    }
+});
+</script>
