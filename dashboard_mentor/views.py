@@ -4724,7 +4724,11 @@ def stage_detail(request, project_id, stage_id):
         return redirect('general:index')
     
     mentor_profile = request.user.mentor_profile
-    project = get_object_or_404(Project, id=project_id, supervised_by=mentor_profile)
+    project = get_object_or_404(
+        Project.objects.select_related('project_owner'),
+        id=project_id,
+        supervised_by=mentor_profile
+    )
     
     from dashboard_user.models import ProjectStage, ProjectStageNote
     stage = get_object_or_404(ProjectStage, id=stage_id, project=project)
@@ -5585,4 +5589,157 @@ def reorder_tasks(request, project_id, stage_id):
         import logging
         logger = logging.getLogger(__name__)
         logger.error(f'Error reordering tasks: {str(e)}')
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+def mentor_backlog(request):
+    """Display mentor's personal backlog"""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        return redirect('general:index')
+    
+    mentor_profile = request.user.mentor_profile
+    from dashboard_user.models import Task, Project, ProjectStage
+    from decimal import Decimal
+    
+    # Get all tasks in mentor's backlog
+    tasks = Task.objects.filter(mentor_backlog=mentor_profile).order_by('order', 'created_at')
+    
+    # Get all confirmed clients for filter
+    relationships = MentorClientRelationship.objects.filter(
+        mentor=mentor_profile,
+        confirmed=True
+    ).select_related('client', 'client__user').order_by('client__first_name', 'client__last_name')
+    
+    clients = [rel.client for rel in relationships]
+    
+    # Get all projects supervised by this mentor
+    projects = Project.objects.filter(supervised_by=mentor_profile).select_related('project_owner', 'template').order_by('-created_at')
+    
+    # Get stages for selected project (if any)
+    selected_client_id = request.GET.get('client_id', '')
+    selected_project_id = request.GET.get('project_id', '')
+    stages = []
+    
+    if selected_project_id:
+        try:
+            project = projects.filter(id=int(selected_project_id)).first()
+            if project:
+                stages = ProjectStage.objects.filter(project=project).order_by('order', 'created_at')
+        except (ValueError, TypeError):
+            pass
+    
+    context = {
+        'tasks': tasks,
+        'clients': clients,
+        'projects': projects,
+        'stages': stages,
+        'selected_client_id': selected_client_id,
+        'selected_project_id': selected_project_id,
+    }
+    
+    return render(request, 'dashboard_mentor/backlog.html', context)
+
+
+@login_required
+@require_POST
+def create_mentor_backlog_task(request):
+    """Create a new task in mentor's personal backlog"""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+    
+    mentor_profile = request.user.mentor_profile
+    from dashboard_user.models import Task
+    from decimal import Decimal
+    
+    try:
+        data = json.loads(request.body)
+        title = data.get('title', '').strip()
+        if not title:
+            return JsonResponse({'success': False, 'error': 'Task title is required'}, status=400)
+        
+        description = data.get('description', '').strip()
+        deadline = data.get('deadline') or None
+        priority = data.get('priority', 'medium')
+        
+        # Calculate order for the new task
+        last_task = Task.objects.filter(mentor_backlog=mentor_profile).order_by('-order').first()
+        if last_task:
+            next_order = last_task.order + Decimal('10')
+        else:
+            next_order = Decimal('10')
+        
+        task = Task.objects.create(
+            mentor_backlog=mentor_profile,
+            title=title,
+            description=description,
+            deadline=deadline,
+            priority=priority,
+            order=next_order,
+            created_by=request.user,
+            author_name=f"{request.user.profile.first_name} {request.user.profile.last_name}",
+            author_email=request.user.email,
+            author_role='mentor'
+        )
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Task created successfully',
+            'task_id': task.id
+        })
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f'Error creating mentor backlog task: {str(e)}')
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+@require_POST
+def edit_mentor_backlog_task(request, task_id):
+    """Edit an existing task in mentor's personal backlog"""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+    
+    mentor_profile = request.user.mentor_profile
+    from dashboard_user.models import Task
+    
+    task = get_object_or_404(Task, id=task_id, mentor_backlog=mentor_profile)
+    
+    try:
+        data = json.loads(request.body)
+        title = data.get('title', '').strip()
+        if not title:
+            return JsonResponse({'success': False, 'error': 'Task title is required'}, status=400)
+        
+        description = data.get('description', '').strip()
+        deadline = data.get('deadline') or None
+        priority = data.get('priority', 'medium')
+        
+        task.title = title
+        task.description = description
+        task.deadline = deadline
+        task.priority = priority
+        task.save()
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Task updated successfully',
+            'task': {
+                'id': task.id,
+                'title': task.title,
+                'description': task.description or '',
+                'deadline': task.deadline.strftime('%Y-%m-%d') if task.deadline else '',
+                'priority': task.priority,
+                'completed': task.completed,
+            }
+        })
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f'Error editing mentor backlog task: {str(e)}')
         return JsonResponse({'success': False, 'error': str(e)}, status=500)

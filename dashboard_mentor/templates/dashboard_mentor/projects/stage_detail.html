@@ -1082,6 +1082,63 @@
                 </div>
             </div>
 
+            <!-- Client Active Backlog Card -->
+            {% if project.project_owner %}
+                {% with owner_profile=project.project_owner %}
+                    {% with active_backlog_tasks=owner_profile.active_backlog_tasks.all|slice:":5" %}
+                        {% if active_backlog_tasks %}
+                            <div class="client-backlog-card" style="background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px; margin-top: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                                    <h3 style="font-size: 0.9rem; font-weight: 600; color: #111827; margin: 0; display: flex; align-items: center; gap: 8px;">
+                                        <i class="fas fa-clipboard-list" style="color: #10b981;"></i>
+                                        {{ owner_profile.first_name }}'s Active Backlog
+                                    </h3>
+                                    <a href="{% url 'general:dashboard_mentor:client_detail' owner_profile.id %}" style="font-size: 0.75rem; color: #10b981; text-decoration: none; font-weight: 500;">
+                                        View All
+                                    </a>
+                                </div>
+                                <div style="display: flex; flex-direction: column; gap: 8px;">
+                                    {% for task in active_backlog_tasks %}
+                                        <div style="display: flex; align-items: center; gap: 8px; padding: 8px; border-radius: 6px; transition: background 0.2s; {% if not forloop.last %}border-bottom: 1px solid #f3f4f6;{% endif %}" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
+                                            <input type="checkbox" {% if task.completed %}checked{% endif %} disabled style="width: 16px; height: 16px; cursor: not-allowed; opacity: 0.6;">
+                                            <div style="flex: 1; min-width: 0;">
+                                                <div style="font-size: 0.85rem; font-weight: 500; color: {% if task.completed %}#94a3b8{% else %}#1f2937{% endif %}; {% if task.completed %}text-decoration: line-through;{% endif %}">
+                                                    {{ task.title }}
+                                                </div>
+                                                {% if task.description %}
+                                                    <div style="font-size: 0.75rem; color: #64748b; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                                        {{ task.description }}
+                                                    </div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                                {% if owner_profile.active_backlog_tasks.count > 5 %}
+                                    <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #f3f4f6; text-align: center;">
+                                        <span style="font-size: 0.75rem; color: #6b7280;">
+                                            +{{ owner_profile.active_backlog_tasks.count|add:"-5" }} more task{{ owner_profile.active_backlog_tasks.count|add:"-5"|pluralize }}
+                                        </span>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        {% else %}
+                            <div class="client-backlog-card" style="background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px; margin-top: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                    <h3 style="font-size: 0.9rem; font-weight: 600; color: #111827; margin: 0; display: flex; align-items: center; gap: 8px;">
+                                        <i class="fas fa-clipboard-list" style="color: #10b981;"></i>
+                                        {{ owner_profile.first_name }}'s Active Backlog
+                                    </h3>
+                                </div>
+                                <div style="text-align: center; padding: 16px; color: #9ca3af; font-size: 0.85rem;">
+                                    <i class="fas fa-clipboard-list" style="font-size: 1.5rem; margin-bottom: 8px; opacity: 0.3;"></i>
+                                    <p style="margin: 0;">No tasks yet</p>
+                                </div>
+                            </div>
+                        {% endif %}
+                    {% endwith %}
+                {% endwith %}
+            {% endif %}
 
         </aside>
 

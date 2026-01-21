@@ -144,6 +144,12 @@
           </a>
         </li>
         <li>
+          <a href="{% url 'general:dashboard_user:active_backlog' %}" class="sidebar-link {% if request.resolver_match.url_name == 'active_backlog' %}active{% endif %}" title="Active Backlog">
+            <i class="fas fa-clipboard-list"></i>
+            <span class="sidebar-text">Active Backlog</span>
+          </a>
+        </li>
+        <li>
           <a href="{% url 'general:dashboard_user:projects_list' %}" class="sidebar-link {% if request.resolver_match.url_name == 'projects_list' or request.resolver_match.url_name == 'project_detail' %}active{% endif %}" title="Projects">
             <i class="fas fa-project-diagram sidebar-icon-with-badge">
               {% if pending_projects_count > 0 %}

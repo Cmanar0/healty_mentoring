@@ -1,0 +1,638 @@
+{% extends 'dashboard_user/base.html' %}
+{% load static %}
+
+{% block title %}Active Backlog{% endblock %}
+
+{% block extra_css %}
+{{ block.super }}
+<style>
+    .backlog-container {
+        width: 100%;
+        padding: 24px;
+    }
+
+    .backlog-header {
+        margin-bottom: 32px;
+    }
+
+    .backlog-header h1 {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #111827;
+        margin-bottom: 8px;
+    }
+
+    /* Backlog Layout */
+    .backlog-layout {
+        display: grid;
+        grid-template-columns: 1fr 320px;
+        gap: 24px;
+        align-items: start;
+    }
+
+    /* Sidebar Filter Card */
+    .backlog-sidebar {
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        padding: 24px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        position: sticky;
+        top: 24px;
+    }
+
+    .filter-section {
+        margin-bottom: 24px;
+    }
+
+    .filter-section:last-child {
+        margin-bottom: 0;
+    }
+
+    .filter-section-title {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: #111827;
+        margin-bottom: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .filter-radio-group {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .filter-radio-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+
+    .filter-radio-item:hover {
+        background: #f8fafc;
+    }
+
+    .filter-radio-item input[type="radio"] {
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+        accent-color: #10b981;
+    }
+
+    .filter-radio-item label {
+        font-size: 0.875rem;
+        color: #374151;
+        cursor: pointer;
+        flex: 1;
+    }
+
+    .filter-select {
+        width: 100%;
+        padding: 8px 12px;
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
+        font-size: 0.875rem;
+        background: white;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .filter-select:focus {
+        outline: none;
+        border-color: #10b981;
+        box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+    }
+
+    .filter-checkbox-group {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .filter-checkbox-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+
+    .filter-checkbox-item:hover {
+        background: #f8fafc;
+    }
+
+    .filter-checkbox-item input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+        accent-color: #10b981;
+    }
+
+    .filter-checkbox-item label {
+        font-size: 0.875rem;
+        color: #374151;
+        cursor: pointer;
+        flex: 1;
+    }
+
+    .stages-list {
+        max-height: 300px;
+        overflow-y: auto;
+        margin-top: 12px;
+    }
+
+    .stage-filter-item {
+        padding: 8px 12px;
+        border-radius: 6px;
+        margin-bottom: 4px;
+        font-size: 0.85rem;
+        color: #374151;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+
+    .stage-filter-item:hover {
+        background: #f8fafc;
+    }
+
+    .stage-filter-item.completed {
+        opacity: 0.6;
+    }
+
+    .backlog-section {
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        margin-bottom: 24px;
+    }
+
+    .backlog-header-section {
+        padding: 20px 24px;
+        border-bottom: 1px solid #e5e7eb;
+        background: #f9fafb;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .backlog-header-section h2 {
+        font-size: 1.125rem;
+        font-weight: 600;
+        color: #111827;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .backlog-header-actions {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+    }
+
+    /* Task Row Styling - Matching Stage Detail */
+    .task-row {
+        display: flex;
+        align-items: stretch;
+        gap: 0;
+        padding: 0;
+        border-bottom: 1px solid #f3f4f6;
+        transition: background 0.15s ease;
+        position: relative;
+        background: white;
+    }
+
+    .task-row:last-child {
+        border-bottom: none;
+    }
+
+    .task-row:hover {
+        background: #f8fafc;
+    }
+    
+    .task-checkbox-section {
+        padding: 16px 0px 16px 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    .task-checkbox-container input[type="checkbox"] {
+        width: 22px;
+        height: 22px;
+        min-width: 22px;
+        min-height: 22px;
+        max-width: 22px;
+        max-height: 22px;
+        cursor: pointer;
+        appearance: none;
+        -webkit-appearance: none;
+        border: 2px solid #cbd5e1;
+        border-radius: 4px;
+        background: white;
+        position: relative;
+        transition: all 0.2s ease;
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+
+    .task-checkbox-container input[type="checkbox"]:hover {
+        border-color: #10b981;
+        background: #f0fdf4;
+    }
+
+    .task-checkbox-container input[type="checkbox"]:checked {
+        background: #10b981;
+        border-color: #10b981;
+    }
+
+    .task-checkbox-container input[type="checkbox"]:checked::after {
+        content: '';
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -60%) rotate(45deg);
+        width: 5px;
+        height: 10px;
+        border: solid white;
+        border-width: 0 2px 2px 0;
+    }
+
+    .task-main-wrapper {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 16px 24px;
+        cursor: pointer;
+        transition: background 0.15s ease;
+        min-width: 0;
+    }
+    
+    .task-main-wrapper:hover {
+        background: rgba(248, 250, 252, 0.5);
+    }
+
+    .task-info {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .task-title {
+        font-size: 0.95rem;
+        font-weight: 500;
+        color: #1f2937;
+        transition: all 0.2s;
+        line-height: 1.4;
+    }
+
+    .task-title.completed {
+        text-decoration: line-through;
+        color: #94a3b8;
+    }
+
+    .task-description {
+        font-size: 0.85rem;
+        color: #64748b;
+        margin-top: 4px;
+        line-height: 1.5;
+    }
+
+    .task-source {
+        font-size: 0.75rem;
+        color: #94a3b8;
+        margin-top: 4px;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 48px;
+        color: #cbd5e1;
+    }
+
+    .empty-state i {
+        font-size: 3rem;
+        margin-bottom: 16px;
+        opacity: 0.3;
+    }
+
+    .fab-create {
+        background: #10b981;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        padding: 10px 20px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.875rem;
+    }
+
+    .fab-create:hover {
+        background: #059669;
+    }
+</style>
+{% endblock %}
+
+{% block dashboard_content %}
+<div class="backlog-container">
+    <div class="backlog-header">
+        <h1><i class="fas fa-clipboard-list"></i> Active Backlog</h1>
+        <p style="color: #6b7280; margin: 0;">Your personal tasks and assigned tasks from projects</p>
+    </div>
+
+    <div class="backlog-layout">
+        <!-- Main Content -->
+        <main>
+    <!-- Assigned Tasks from Stages -->
+    {% if assigned_tasks %}
+    <div class="backlog-section">
+        <div class="backlog-header-section">
+            <h2>
+                <i class="fas fa-tasks"></i> Assigned from Projects
+                <span style="font-size: 0.8rem; color: #6b7280; font-weight: 500; margin-left: 8px;">
+                    {{ assigned_tasks|length }} Task{{ assigned_tasks|length|pluralize }}
+                </span>
+            </h2>
+        </div>
+        
+        <div id="assignedTasksList">
+            {% for task in assigned_tasks %}
+            <div class="task-row" data-task-id="{{ task.id }}">
+                <div class="task-checkbox-section" onclick="event.stopPropagation();">
+                    <div class="task-checkbox-container">
+                        <input type="checkbox" id="assigned_task_{{ task.id }}" {% if task.completed %}checked{% endif %} onchange="toggleAssignedTaskComplete({{ task.id }}, this.checked); event.stopPropagation();">
+                    </div>
+                </div>
+                <div class="task-main-wrapper" onclick="event.stopPropagation();">
+                    <div class="task-info">
+                        <div class="task-title {% if task.completed %}completed{% endif %}">{{ task.title }}</div>
+                        {% if task.description %}
+                            <div class="task-description">{{ task.description }}</div>
+                        {% endif %}
+                        {% if task.stage %}
+                            <div class="task-source">
+                                <i class="fas fa-project-diagram"></i> From: {{ task.stage.project.title }} - {{ task.stage.title }}
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Active Backlog Tasks -->
+    <div class="backlog-section">
+        <div class="backlog-header-section">
+            <h2>
+                <i class="fas fa-tasks"></i> My Tasks
+                <span style="font-size: 0.8rem; color: #6b7280; font-weight: 500; margin-left: 8px;">
+                    {{ total_tasks }} Task{{ total_tasks|pluralize }}
+                </span>
+            </h2>
+            <div class="backlog-header-actions">
+                <button type="button" onclick="openCreateTaskModal()" class="fab-create">
+                    <i class="fas fa-plus"></i> Create Task
+                </button>
+            </div>
+        </div>
+        
+        <div id="tasksList">
+            {% if tasks %}
+                {% for task in tasks %}
+                <div class="task-row" data-task-id="{{ task.id }}">
+                    <div class="task-checkbox-section" onclick="event.stopPropagation();">
+                        <div class="task-checkbox-container">
+                            <input type="checkbox" id="task_{{ task.id }}" {% if task.completed %}checked{% endif %} onchange="toggleTaskComplete({{ task.id }}, this.checked); event.stopPropagation();">
+                        </div>
+                    </div>
+                    <div class="task-main-wrapper" onclick="event.stopPropagation();">
+                        <div class="task-info">
+                            <div class="task-title {% if task.completed %}completed{% endif %}">{{ task.title }}</div>
+                            {% if task.description %}
+                                <div class="task-description">{{ task.description }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="empty-state">
+                    <i class="fas fa-clipboard-list"></i>
+                    <p>No tasks yet. Create one to get started.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+        </main>
+
+        <!-- Sidebar Filters -->
+        <aside class="backlog-sidebar">
+            <div class="filter-section">
+                <div class="filter-section-title">Task Filter</div>
+                <div class="filter-radio-group">
+                    <div class="filter-radio-item">
+                        <input type="radio" id="filterAll" name="taskFilter" value="all" checked onchange="updateTaskFilter()">
+                        <label for="filterAll">All</label>
+                    </div>
+                    <div class="filter-radio-item">
+                        <input type="radio" id="filterProjectRelated" name="taskFilter" value="project_related" onchange="updateTaskFilter()">
+                        <label for="filterProjectRelated">Only Project Related Tasks</label>
+                    </div>
+                    <div class="filter-radio-item">
+                        <input type="radio" id="filterProjectNonrelated" name="taskFilter" value="project_nonrelated" onchange="updateTaskFilter()">
+                        <label for="filterProjectNonrelated">Only Project Nonrelated Tasks</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="filter-section" id="mentorProjectFilters">
+                <div class="filter-section-title">Mentor</div>
+                <select id="mentorFilter" class="filter-select" onchange="updateProjectFilter()">
+                    <option value="">All Mentors</option>
+                    {% for mentor in mentors %}
+                        <option value="{{ mentor.id }}" {% if selected_mentor_id == mentor.id|stringformat:"s" %}selected{% endif %}>
+                            {{ mentor.first_name }} {{ mentor.last_name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="filter-section" id="projectFilterSection">
+                <div class="filter-section-title">Project</div>
+                <select id="projectFilter" class="filter-select" onchange="updateStageFilter()">
+                    <option value="">All Projects</option>
+                    {% for project in projects %}
+                        {% if not selected_mentor_id or project.supervised_by.id|stringformat:"s" == selected_mentor_id %}
+                            <option value="{{ project.id }}" {% if selected_project_id == project.id|stringformat:"s" %}selected{% endif %}>
+                                {{ project.title }}
+                            </option>
+                        {% endif %}
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="filter-section" id="stageStatusFilterSection">
+                <div class="filter-section-title">Stage Progress Status</div>
+                <div class="filter-checkbox-group">
+                    <div class="filter-checkbox-item">
+                        <input type="checkbox" id="statusCreated" checked onchange="updateStageList()">
+                        <label for="statusCreated">Created</label>
+                    </div>
+                    <div class="filter-checkbox-item">
+                        <input type="checkbox" id="statusInProgress" checked onchange="updateStageList()">
+                        <label for="statusInProgress">In Progress</label>
+                    </div>
+                    <div class="filter-checkbox-item">
+                        <input type="checkbox" id="statusOverdue" checked onchange="updateStageList()">
+                        <label for="statusOverdue">Overdue</label>
+                    </div>
+                    <div class="filter-checkbox-item">
+                        <input type="checkbox" id="statusCompleted" checked onchange="updateStageList()">
+                        <label for="statusCompleted">Completed</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="filter-section" id="stagesListSection">
+                <div class="filter-section-title">Stages</div>
+                <div class="stages-list" id="stagesList">
+                    {% for stage in stages %}
+                        <div class="stage-filter-item {% if stage.progress_status == 'completed' %}completed{% endif %}" data-stage-id="{{ stage.id }}" data-status="{{ stage.progress_status }}">
+                            {{ stage.title }}
+                        </div>
+                    {% empty %}
+                        <div style="color: #9ca3af; font-size: 0.85rem; padding: 8px;">Select a project to view stages</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </aside>
+    </div>
+</div>
+
+{% include 'dashboard_user/popups/create_active_backlog_task_modal.html' %}
+{% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+<script>
+    function toggleTaskComplete(taskId, completed) {
+        // TODO: Implement API call to toggle task completion
+        console.log('Toggle task', taskId, completed);
+    }
+
+    function toggleAssignedTaskComplete(taskId, completed) {
+        // TODO: Implement API call to toggle assigned task completion
+        console.log('Toggle assigned task', taskId, completed);
+    }
+
+    // Note: window.openCreateTaskModal is defined in the modal template
+    // (create_active_backlog_task_modal.html) and is available globally
+
+    // Filter functions
+    function updateTaskFilter() {
+        const filterValue = document.querySelector('input[name="taskFilter"]:checked').value;
+        const mentorProjectFilters = document.getElementById('mentorProjectFilters');
+        const projectFilterSection = document.getElementById('projectFilterSection');
+        const stageStatusFilterSection = document.getElementById('stageStatusFilterSection');
+        const stagesListSection = document.getElementById('stagesListSection');
+        
+        if (filterValue === 'project_nonrelated') {
+            // Hide mentor and project filters
+            mentorProjectFilters.style.display = 'none';
+            projectFilterSection.style.display = 'none';
+            stageStatusFilterSection.style.display = 'none';
+            stagesListSection.style.display = 'none';
+        } else {
+            // Show mentor and project filters
+            mentorProjectFilters.style.display = 'block';
+            projectFilterSection.style.display = 'block';
+            stageStatusFilterSection.style.display = 'block';
+            stagesListSection.style.display = 'block';
+        }
+        
+        // TODO: Filter tasks based on selection
+        filterTasks();
+    }
+
+    function updateProjectFilter() {
+        const mentorId = document.getElementById('mentorFilter').value;
+        const projectFilter = document.getElementById('projectFilter');
+        
+        // Reload page with mentor filter
+        const url = new URL(window.location.href);
+        if (mentorId) {
+            url.searchParams.set('mentor_id', mentorId);
+        } else {
+            url.searchParams.delete('mentor_id');
+        }
+        url.searchParams.delete('project_id'); // Reset project when mentor changes
+        window.location.href = url.toString();
+    }
+
+    function updateStageFilter() {
+        const projectId = document.getElementById('projectFilter').value;
+        const mentorId = document.getElementById('mentorFilter').value;
+        
+        // Reload page with project filter
+        const url = new URL(window.location.href);
+        if (projectId) {
+            url.searchParams.set('project_id', projectId);
+        } else {
+            url.searchParams.delete('project_id');
+        }
+        if (mentorId) {
+            url.searchParams.set('mentor_id', mentorId);
+        }
+        window.location.href = url.toString();
+    }
+
+    function updateStageList() {
+        const statuses = [];
+        if (document.getElementById('statusCreated').checked) statuses.push('created');
+        if (document.getElementById('statusInProgress').checked) statuses.push('in_progress');
+        if (document.getElementById('statusOverdue').checked) statuses.push('overdue');
+        if (document.getElementById('statusCompleted').checked) statuses.push('completed');
+        
+        // Filter stages by status
+        const stageItems = document.querySelectorAll('.stage-filter-item');
+        stageItems.forEach(item => {
+            const status = item.dataset.status;
+            if (statuses.includes(status)) {
+                item.style.display = 'block';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    }
+
+    function filterTasks() {
+        // TODO: Implement task filtering logic based on selected filters
+        console.log('Filtering tasks...');
+    }
+
+    // Initialize filter visibility on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        updateTaskFilter();
+        updateStageList();
+    });
+</script>
+{% endblock %}

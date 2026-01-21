@@ -1,0 +1,548 @@
+<style>
+/* Modern Task Modal Styles */
+#createActiveBacklogTaskModal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 10000;
+    background: rgba(15, 23, 42, 0.4);
+    backdrop-filter: blur(8px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+#createActiveBacklogTaskModal.active {
+    opacity: 1;
+}
+
+.create-task-modal-content {
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    max-width: 580px;
+    width: 90%;
+    max-height: 90vh;
+    overflow: hidden;
+    position: relative;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid #e5e7eb;
+    transform: translateY(10px);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+#createActiveBacklogTaskModal.active .create-task-modal-content {
+    transform: translateY(0);
+}
+
+.create-task-modal-close {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: #f1f5f9;
+    border: none;
+    color: #64748b;
+    font-size: 0.875rem;
+    cursor: pointer;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+    z-index: 20;
+}
+
+.create-task-modal-close:hover {
+    background: #e2e8f0;
+    color: #1e293b;
+    transform: rotate(90deg);
+}
+
+.create-task-modal-header {
+    padding: 24px 32px;
+    background: white;
+    flex-shrink: 0;
+}
+
+.create-task-modal-title {
+    font-size: 1.25rem;
+    color: #111827;
+    margin: 0;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+}
+
+.create-task-modal-body {
+    padding: 0 32px 32px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.create-task-form {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.create-task-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.create-task-section-label {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 4px;
+}
+
+.create-task-input-wrapper {
+    position: relative;
+}
+
+.create-task-input {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    font-size: 0.95rem;
+    font-family: 'Inter', -apple-system, sans-serif;
+    color: #1e293b;
+    transition: all 0.2s ease;
+    box-sizing: border-box;
+    background: #fcfcfd;
+}
+
+.create-task-input:focus {
+    outline: none;
+    border-color: #111827;
+    background: white;
+    box-shadow: 0 0 0 4px rgba(17, 24, 39, 0.05);
+}
+
+.create-task-textarea {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    font-size: 0.95rem;
+    font-family: 'Inter', -apple-system, sans-serif;
+    color: #1e293b;
+    resize: none;
+    height: 120px;
+    transition: all 0.2s ease;
+    box-sizing: border-box;
+    background: #fcfcfd;
+}
+
+.create-task-textarea:focus {
+    outline: none;
+    border-color: #111827;
+    background: white;
+    box-shadow: 0 0 0 4px rgba(17, 24, 39, 0.05);
+}
+
+.create-task-meta-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+.create-task-select {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    font-size: 0.95rem;
+    font-family: 'Inter', -apple-system, sans-serif;
+    color: #1e293b;
+    background: #fcfcfd;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-sizing: border-box;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 16px;
+}
+
+.create-task-select:focus {
+    outline: none;
+    border-color: #111827;
+    background-color: white;
+    box-shadow: 0 0 0 4px rgba(17, 24, 39, 0.05);
+}
+
+.create-task-modal-footer {
+    padding: 24px 32px;
+    border-top: 1px solid #f1f5f9;
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    background: #f8fafc;
+    flex-shrink: 0;
+}
+
+.create-task-btn {
+    background: #111827;
+    color: #ffffff;
+    padding: 12px 24px;
+    border: none;
+    border-radius: 10px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-size: 0.875rem;
+}
+
+.create-task-btn:hover {
+    background: #000000;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.create-task-btn:active {
+    transform: translateY(0);
+}
+
+.create-task-btn:disabled {
+    background: #94a3b8;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.cancel-task-btn {
+    background: white;
+    color: #475569;
+    padding: 12px 24px;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.875rem;
+}
+
+.cancel-task-btn:hover {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+    color: #1e293b;
+}
+
+@media (max-width: 640px) {
+    .create-task-meta-grid {
+        grid-template-columns: 1fr;
+    }
+    .create-task-modal-content {
+        width: 95%;
+        margin: 10px;
+    }
+    .create-task-modal-body {
+        padding: 0 24px 24px;
+    }
+    .create-task-modal-header {
+        padding: 24px;
+    }
+    .create-task-modal-footer {
+        padding: 20px 24px;
+    }
+}
+</style>
+
+<!-- Create Active Backlog Task Modal -->
+<div id="createActiveBacklogTaskModal" class="modal-overlay">
+    <div class="create-task-modal-content">
+        <button type="button" class="create-task-modal-close" onclick="closeCreateActiveBacklogTaskModal()" title="Close (Esc)">
+            <i class="fas fa-times"></i>
+        </button>
+        
+        <div class="create-task-modal-header">
+            <h3 class="create-task-modal-title" id="createTaskModalTitle">Create New Active Task</h3>
+        </div>
+        
+        <div class="create-task-modal-body">
+            <form id="createTaskForm" class="create-task-form">
+                {% csrf_token %}
+                
+                <div class="create-task-section">
+                    <label class="create-task-section-label" for="taskTitleInput">
+                        Task Name <span style="color: #ef4444;">*</span>
+                    </label>
+                    <div class="create-task-input-wrapper">
+                        <input 
+                            type="text" 
+                            id="taskTitleInput" 
+                            name="title" 
+                            class="create-task-input"
+                            placeholder="e.g. Design system review" 
+                            maxlength="200" 
+                            required
+                        >
+                    </div>
+                </div>
+                
+                <div class="create-task-section">
+                    <label class="create-task-section-label" for="taskDescriptionInput">Description</label>
+                    <textarea 
+                        id="taskDescriptionInput" 
+                        name="description" 
+                        class="create-task-textarea"
+                        placeholder="Provide details about this task..." 
+                    ></textarea>
+                </div>
+                
+                <div class="create-task-meta-grid">
+                    <div class="create-task-section">
+                        <label class="create-task-section-label" for="taskDeadlineInput">Deadline (Optional)</label>
+                        <input 
+                            type="date" 
+                            id="taskDeadlineInput" 
+                            name="deadline" 
+                            class="create-task-input"
+                        >
+                    </div>
+                    
+                    <div class="create-task-section">
+                        <label class="create-task-section-label" for="taskPriorityInput">Priority</label>
+                        <select 
+                            id="taskPriorityInput" 
+                            name="priority" 
+                            class="create-task-select"
+                        >
+                            <option value="low">Low</option>
+                            <option value="medium" selected>Medium</option>
+                            <option value="high">High</option>
+                            <option value="urgent">Urgent</option>
+                        </select>
+                    </div>
+                </div>
+            </form>
+        </div>
+        
+        <div class="create-task-modal-footer">
+            <button type="button" class="cancel-task-btn" onclick="closeCreateActiveBacklogTaskModal()">Cancel</button>
+            <button type="button" class="create-task-btn" id="createTaskBtn" onclick="submitCreateTask()">
+                <span>Create Task</span>
+            </button>
+            <input type="hidden" id="editTaskId" value="">
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    'use strict';
+    
+    // Open modal (for create or edit)
+    window.openCreateActiveBacklogTaskModal = function(taskId = null, title = '', description = '', deadline = '', priority = 'medium') {
+        const modal = document.getElementById('createActiveBacklogTaskModal');
+        const modalTitle = document.getElementById('createTaskModalTitle');
+        const titleInput = document.getElementById('taskTitleInput');
+        const descInput = document.getElementById('taskDescriptionInput');
+        const deadlineInput = document.getElementById('taskDeadlineInput');
+        const priorityInput = document.getElementById('taskPriorityInput');
+        const editTaskId = document.getElementById('editTaskId');
+        const submitBtn = document.getElementById('createTaskBtn');
+        
+        if (!modal) return;
+        
+        // Set edit mode or create mode
+        if (taskId) {
+            // Edit mode
+            editTaskId.value = taskId;
+            modalTitle.textContent = 'Edit Task';
+            submitBtn.innerHTML = 'Save Changes';
+            if (titleInput) titleInput.value = title;
+            if (descInput) descInput.value = description;
+            if (deadlineInput) deadlineInput.value = deadline;
+            if (priorityInput) priorityInput.value = priority;
+        } else {
+            // Create mode
+            editTaskId.value = '';
+            modalTitle.textContent = 'Create New Active Task';
+            submitBtn.innerHTML = 'Create Task';
+            if (titleInput) titleInput.value = '';
+            if (descInput) descInput.value = '';
+            if (deadlineInput) deadlineInput.value = '';
+            if (priorityInput) priorityInput.value = 'medium';
+        }
+        
+        modal.style.display = 'flex';
+        setTimeout(() => {
+            modal.classList.add('active');
+        }, 10);
+    };
+    
+    // Wrapper function for onclick handlers (must be defined after openCreateActiveBacklogTaskModal)
+    window.openCreateTaskModal = function() {
+        window.openCreateActiveBacklogTaskModal();
+    };
+    
+    // Close modal
+    window.closeCreateActiveBacklogTaskModal = function() {
+        const modal = document.getElementById('createActiveBacklogTaskModal');
+        if (!modal) return;
+        
+        // Reset form immediately (including button state)
+        resetCreateTaskForm();
+        
+        modal.classList.remove('active');
+        setTimeout(() => {
+            modal.style.display = 'none';
+        }, 300);
+    };
+    
+    // Reset form
+    function resetCreateTaskForm() {
+        const titleInput = document.getElementById('taskTitleInput');
+        const descInput = document.getElementById('taskDescriptionInput');
+        const deadlineInput = document.getElementById('taskDeadlineInput');
+        const priorityInput = document.getElementById('taskPriorityInput');
+        const btn = document.getElementById('createTaskBtn');
+        const modalTitle = document.getElementById('createTaskModalTitle');
+        const editTaskId = document.getElementById('editTaskId');
+        
+        if (titleInput) titleInput.value = '';
+        if (descInput) descInput.value = '';
+        if (deadlineInput) deadlineInput.value = '';
+        if (priorityInput) priorityInput.value = 'medium';
+        if (editTaskId) editTaskId.value = '';
+        
+        // Reset button state
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = 'Create Task';
+        }
+        if (modalTitle) {
+            modalTitle.textContent = 'Create New Active Task';
+        }
+    }
+    
+    // Submit task creation or update
+    window.submitCreateTask = function() {
+        const btn = document.getElementById('createTaskBtn');
+        const editTaskId = document.getElementById('editTaskId');
+        if (btn.disabled) return;
+        
+        const isEditMode = editTaskId && editTaskId.value;
+        const title = document.getElementById('taskTitleInput').value.trim();
+        
+        if (!title) {
+            alert('Task name is required');
+            return;
+        }
+        
+        btn.disabled = true;
+        btn.innerHTML = isEditMode 
+            ? '<i class="fas fa-spinner fa-spin"></i> Saving...'
+            : '<i class="fas fa-spinner fa-spin"></i> Creating...';
+        
+        const description = document.getElementById('taskDescriptionInput').value.trim();
+        const deadline = document.getElementById('taskDeadlineInput').value || null;
+        const priority = document.getElementById('taskPriorityInput').value || 'medium';
+        
+        // Get CSRF token
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+        
+        const url = isEditMode
+            ? `/dashboard/mentor/backlog/tasks/${editTaskId.value}/edit/`
+            : `/dashboard/mentor/backlog/tasks/create/`;
+        
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                title: title,
+                description: description,
+                deadline: deadline,
+                priority: priority,
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                if (typeof showNotification !== 'undefined') {
+                    showNotification(isEditMode ? 'Task updated successfully!' : 'Task created successfully!', 'success');
+                }
+                closeCreateActiveBacklogTaskModal();
+                // Reload page to show new task
+                setTimeout(() => {
+                    window.location.reload();
+                }, 500);
+            } else {
+                if (typeof showNotification !== 'undefined') {
+                    showNotification(data.error || (isEditMode ? 'Failed to update task' : 'Failed to create task'), 'error');
+                } else {
+                    alert(data.error || (isEditMode ? 'Failed to update task' : 'Failed to create task'));
+                }
+                btn.disabled = false;
+                btn.innerHTML = isEditMode ? 'Save Changes' : 'Create Task';
+            }
+        })
+        .catch(error => {
+            console.error('Error saving task:', error);
+            if (typeof showNotification !== 'undefined') {
+                showNotification('An error occurred. Please try again.', 'error');
+            } else {
+                alert('An error occurred. Please try again.');
+            }
+            btn.disabled = false;
+            btn.innerHTML = isEditMode ? 'Save Changes' : 'Create Task';
+        });
+    };
+    
+    // Handle ESC key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            const modal = document.getElementById('createActiveBacklogTaskModal');
+            if (modal && modal.classList.contains('active')) {
+                closeCreateActiveBacklogTaskModal();
+            }
+        }
+    });
+    
+    // Close modal when clicking outside
+    const modal = document.getElementById('createActiveBacklogTaskModal');
+    if (modal) {
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                closeCreateActiveBacklogTaskModal();
+            }
+        });
+    }
+})();
+</script>

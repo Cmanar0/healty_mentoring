@@ -35,5 +35,8 @@ urlpatterns = [
     path('projects/<int:project_id>/reject/', views.reject_project_assignment, name='reject_project_assignment'),
     path('projects/<int:project_id>/questionnaire/', views.submit_questionnaire, name='submit_questionnaire'),
     path('projects/<int:project_id>/modules/<int:module_id>/', views.module_detail, name='module_detail'),
+    path('active-backlog/', views.active_backlog, name='active_backlog'),
+    path('active-backlog/tasks/create/', views.create_active_backlog_task, name='create_active_backlog_task'),
+    path('active-backlog/tasks/<int:task_id>/edit/', views.edit_active_backlog_task, name='edit_active_backlog_task'),
 ]
 

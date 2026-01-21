@@ -127,7 +127,7 @@
           </a>
         </li>
         <li>
-          <a href="#" class="sidebar-link" title="Backlog">
+          <a href="{% url 'general:dashboard_mentor:mentor_backlog' %}" class="sidebar-link {% if request.resolver_match.url_name == 'mentor_backlog' %}active{% endif %}" title="Backlog">
             <i class="fas fa-clipboard-list"></i>
             <span class="sidebar-text">Backlog</span>
           </a>

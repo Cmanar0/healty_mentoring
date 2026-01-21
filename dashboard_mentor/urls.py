@@ -67,5 +67,8 @@ urlpatterns = [
     path('projects/<int:project_id>/stages/<int:stage_id>/tasks/<int:task_id>/delete/', views.delete_task, name='delete_task'),
     path('projects/<int:project_id>/stages/reorder/', views.reorder_stages, name='reorder_stages'),
     path('projects/<int:project_id>/stages/api/', views.get_stages_api, name='get_stages_api'),
+    path('backlog/', views.mentor_backlog, name='mentor_backlog'),
+    path('backlog/tasks/create/', views.create_mentor_backlog_task, name='create_mentor_backlog_task'),
+    path('backlog/tasks/<int:task_id>/edit/', views.edit_mentor_backlog_task, name='edit_mentor_backlog_task'),
 ]
 
