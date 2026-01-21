@@ -70,6 +70,16 @@
         gap: 16px;
         align-items: center;
         flex-shrink: 0;
+        cursor: pointer;
+        transition: opacity 0.2s;
+        border-radius: 8px;
+        padding: 8px;
+        margin: -8px;
+    }
+
+    .project-owner-header:hover {
+        background: rgba(0, 0, 0, 0.02);
+        opacity: 0.8;
     }
 
     .project-owner-info {
@@ -84,10 +94,7 @@
         color: #111827;
         text-decoration: none;
         transition: opacity 0.2s;
-    }
-
-    .project-owner-name:hover {
-        opacity: 0.7;
+        pointer-events: none;
     }
 
     .project-owner-label {
@@ -634,24 +641,26 @@
             <div class="document-card">
                 <div class="doc-header">
                     <h1 class="doc-title">{{ project.title }}</h1>
-                    <div class="project-owner-header">
-                        {% if project.project_owner %}
+                    {% if project.project_owner %}
+                        <a href="{% url 'general:dashboard_mentor:client_detail' project.project_owner.id %}" class="project-owner-header" style="text-decoration: none;">
                             <div class="project-owner-info">
-                                <a href="{% url 'general:dashboard_mentor:client_detail' project.project_owner.id %}" class="project-owner-name">
+                                <div class="project-owner-name">
                                     {{ project.project_owner.first_name }} {{ project.project_owner.last_name }}
-                                </a>
+                                </div>
                                 <div class="project-owner-label">Project Owner</div>
                             </div>
                             <div class="project-owner-avatar">
                                 {{ project.project_owner.first_name|make_list|first|default:"U" }}
                             </div>
-                        {% else %}
+                        </a>
+                    {% else %}
+                        <div class="project-owner-header">
                             <div class="project-owner-unassigned">
                                 <i class="fas fa-exclamation-triangle"></i>
                                 <span>Unassigned</span>
                             </div>
-                        {% endif %}
-                    </div>
+                        </div>
+                    {% endif %}
                 </div>
                 <div class="doc-body">
                     {% if project.description %}
@@ -714,9 +723,9 @@
         <aside class="project-sidebar">
             <div class="project-meta-card">
                 <!-- Project Completion Circle -->
-                <div style="display: flex; flex-direction: column; align-items: center;">
-                    <div class="profile-completion-circle" style="position: relative; width: 100px; height: 100px;">
-                        <svg width="100" height="100" viewBox="0 0 120 120" style="transform: scale(0.83);">
+                <div style="display: flex; flex-direction: column; align-items: center; padding-top: 24px;">
+                    <div class="profile-completion-circle" style="position: relative; width: 140px; height: 140px;">
+                        <svg width="140" height="140" viewBox="0 0 120 120" style="transform: scale(1.17);">
                             <!-- Background circle -->
                             <circle
                                 cx="60"
@@ -742,11 +751,11 @@
                                 style="transition: stroke-dashoffset 0.3s ease;"
                             />
                         </svg>
-                        <div class="completion-percentage" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-weight: 700; color: #ffffff; font-size: 1.1rem;">
+                        <div class="completion-percentage" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-weight: 700; color: #ffffff; font-size: 1.3rem;">
                             <span id="projectCompletionText">0%</span>
                         </div>
                     </div>
-                    <p style="margin: 8px 0 0; font-size: 0.8rem; color: rgba(255,255,255,0.8); text-align: center;">
+                    <p style="margin: 12px 0 0; font-size: 0.85rem; color: rgba(255,255,255,0.8); text-align: center;">
                         Completed
                     </p>
                 </div>

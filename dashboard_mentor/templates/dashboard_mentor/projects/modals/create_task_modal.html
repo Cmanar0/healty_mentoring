@@ -196,7 +196,7 @@
         </button>
         
         <div class="create-task-modal-header">
-            <h3 class="create-task-modal-title">Create New Task</h3>
+            <h3 class="create-task-modal-title" id="createTaskModalTitle">Create New Task</h3>
         </div>
         
         <div class="create-task-modal-body">
@@ -233,6 +233,7 @@
         <div class="create-task-modal-footer">
             <button type="button" class="cancel-task-btn" onclick="closeCreateTaskModal()">Cancel</button>
             <button type="button" class="create-task-btn" id="createTaskBtn" onclick="submitCreateTask()">Create Task</button>
+            <input type="hidden" id="editTaskId" value="">
         </div>
     </div>
 </div>
@@ -241,10 +242,33 @@
 (function() {
     'use strict';
     
-    // Open modal
-    window.openCreateTaskModal = function() {
+    // Open modal (for create or edit)
+    window.openCreateTaskModal = function(taskId = null, title = '', description = '') {
         const modal = document.getElementById('createTaskModal');
+        const modalTitle = document.getElementById('createTaskModalTitle');
+        const titleInput = document.getElementById('taskTitleInput');
+        const descInput = document.getElementById('taskDescriptionInput');
+        const editTaskId = document.getElementById('editTaskId');
+        const submitBtn = document.getElementById('createTaskBtn');
+        
         if (!modal) return;
+        
+        // Set edit mode or create mode
+        if (taskId) {
+            // Edit mode
+            editTaskId.value = taskId;
+            modalTitle.textContent = 'Edit Task';
+            submitBtn.innerHTML = 'Save Changes';
+            if (titleInput) titleInput.value = title;
+            if (descInput) descInput.value = description;
+        } else {
+            // Create mode
+            editTaskId.value = '';
+            modalTitle.textContent = 'Create New Task';
+            submitBtn.innerHTML = 'Create Task';
+            if (titleInput) titleInput.value = '';
+            if (descInput) descInput.value = '';
+        }
         
         modal.style.display = 'flex';
         setTimeout(() => {
@@ -271,32 +295,41 @@
         const titleInput = document.getElementById('taskTitleInput');
         const descInput = document.getElementById('taskDescriptionInput');
         const btn = document.getElementById('createTaskBtn');
+        const modalTitle = document.getElementById('createTaskModalTitle');
+        const editTaskId = document.getElementById('editTaskId');
         
         if (titleInput) titleInput.value = '';
         if (descInput) descInput.value = '';
+        if (editTaskId) editTaskId.value = '';
         
         // Reset button state
         if (btn) {
             btn.disabled = false;
             btn.innerHTML = 'Create Task';
         }
+        if (modalTitle) {
+            modalTitle.textContent = 'Create New Task';
+        }
     }
     
-    // Submit task creation
+    // Submit task creation or update
     window.submitCreateTask = function() {
         const btn = document.getElementById('createTaskBtn');
+        const editTaskId = document.getElementById('editTaskId');
         if (btn.disabled) return;
         
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating...';
-        
+        const isEditMode = editTaskId && editTaskId.value;
         const title = document.getElementById('taskTitleInput').value.trim();
+        
         if (!title) {
             alert('Task name is required');
-            btn.disabled = false;
-            btn.innerHTML = 'Create Task';
             return;
         }
+        
+        btn.disabled = true;
+        btn.innerHTML = isEditMode 
+            ? '<i class="fas fa-spinner fa-spin"></i> Saving...'
+            : '<i class="fas fa-spinner fa-spin"></i> Creating...';
         
         const description = document.getElementById('taskDescriptionInput').value.trim();
         
@@ -305,7 +338,7 @@
         if (!stageId) {
             alert('Stage ID not found');
             btn.disabled = false;
-            btn.innerHTML = 'Create Task';
+            btn.innerHTML = isEditMode ? 'Save Changes' : 'Create Task';
             return;
         }
         
@@ -328,7 +361,11 @@
         // Get project ID from URL
         const projectId = window.location.pathname.match(/\/projects\/(\d+)\//)?.[1];
         
-        fetch(`/dashboard/mentor/projects/${projectId}/stages/${stageId}/tasks/create/`, {
+        const url = isEditMode
+            ? `/dashboard/mentor/projects/${projectId}/stages/${stageId}/tasks/${editTaskId.value}/edit/`
+            : `/dashboard/mentor/projects/${projectId}/stages/${stageId}/tasks/create/`;
+        
+        fetch(url, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -343,7 +380,7 @@
         .then(data => {
             if (data.success) {
                 if (typeof showNotification !== 'undefined') {
-                    showNotification('Task created successfully!', 'success');
+                    showNotification(isEditMode ? 'Task updated successfully!' : 'Task created successfully!', 'success');
                 }
                 closeCreateTaskModal();
                 // Reload tasks if function exists, otherwise reload page
@@ -356,23 +393,23 @@
                 }
             } else {
                 if (typeof showNotification !== 'undefined') {
-                    showNotification(data.error || 'Failed to create task', 'error');
+                    showNotification(data.error || (isEditMode ? 'Failed to update task' : 'Failed to create task'), 'error');
                 } else {
-                    alert(data.error || 'Failed to create task');
+                    alert(data.error || (isEditMode ? 'Failed to update task' : 'Failed to create task'));
                 }
                 btn.disabled = false;
-                btn.innerHTML = 'Create Task';
+                btn.innerHTML = isEditMode ? 'Save Changes' : 'Create Task';
             }
         })
         .catch(error => {
-            console.error('Error creating task:', error);
+            console.error('Error saving task:', error);
             if (typeof showNotification !== 'undefined') {
                 showNotification('An error occurred. Please try again.', 'error');
             } else {
                 alert('An error occurred. Please try again.');
             }
             btn.disabled = false;
-            btn.innerHTML = 'Create Task';
+            btn.innerHTML = isEditMode ? 'Save Changes' : 'Create Task';
         });
     };
     

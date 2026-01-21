@@ -5315,6 +5315,52 @@ def create_task(request, project_id, stage_id):
 
 @login_required
 @require_POST
+def edit_task(request, project_id, stage_id, task_id):
+    """Edit an existing task"""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+    
+    mentor_profile = request.user.mentor_profile
+    project = get_object_or_404(Project, id=project_id, supervised_by=mentor_profile)
+    
+    from dashboard_user.models import ProjectStage, Task
+    
+    stage = get_object_or_404(ProjectStage, id=stage_id, project=project)
+    task = get_object_or_404(Task, id=task_id, stage=stage)
+    
+    try:
+        data = json.loads(request.body)
+        title = data.get('title', '').strip()
+        if not title:
+            return JsonResponse({'success': False, 'error': 'Task title is required'}, status=400)
+        
+        description = data.get('description', '').strip()
+        
+        task.title = title
+        task.description = description
+        task.save()
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Task updated successfully',
+            'task': {
+                'id': task.id,
+                'title': task.title,
+                'description': task.description or '',
+                'completed': task.completed,
+            }
+        })
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f'Error editing task: {str(e)}')
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+@require_POST
 def generate_tasks_ai(request, project_id, stage_id):
     """Generate tasks using AI mockup (creates 3 sample tasks)"""
     if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':

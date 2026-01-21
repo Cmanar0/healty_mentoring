@@ -34,8 +34,8 @@
 
     .doc-header {
         padding: 40px;
-        border-bottom: 1px solid #e5e7eb;
-        background: #fafafa;
+        border-bottom: none;
+        background: #ffffff;
     }
 
     .doc-kicker-row {
@@ -184,11 +184,14 @@
         display: flex;
         align-items: center;
         gap: 8px;
-        margin-top: 24px;
-        padding: 20px;
-        background: #f8fafc;
-        border-radius: 12px;
-        border: 1px solid #e5e7eb;
+        padding: 20px 40px;
+        background: #f1f5f9;
+        border-top: 1px solid #e5e7eb;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .progress-timeline-disabled {
+        justify-content: center;
     }
 
     .progress-timeline-item {
@@ -236,7 +239,7 @@
         border-color: white;
     }
 
-    .progress-timeline-item[data-status="overdue"].active .progress-timeline-dot {
+    .progress-timeline-item[data-status="in_progress"][data-overdue="true"].active .progress-timeline-dot {
         background: #ef4444;
         box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.3);
         border-color: white;
@@ -245,6 +248,12 @@
     .progress-timeline-item[data-status="completed"].active .progress-timeline-dot {
         background: #10b981;
         box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.3);
+        border-color: white;
+    }
+
+    .progress-timeline-item[data-status="disabled"].active .progress-timeline-dot {
+        background: #6b7280;
+        box-shadow: 0 0 0 3px rgba(107, 114, 128, 0.3);
         border-color: white;
     }
 
@@ -270,12 +279,16 @@
         color: #2563eb;
     }
 
-    .progress-timeline-item[data-status="overdue"].active .progress-timeline-label {
+    .progress-timeline-item[data-status="in_progress"][data-overdue="true"].active .progress-timeline-label {
         color: #dc2626;
     }
 
     .progress-timeline-item[data-status="completed"].active .progress-timeline-label {
         color: #059669;
+    }
+
+    .progress-timeline-item[data-status="disabled"].active .progress-timeline-label {
+        color: #4b5563;
     }
 
     .progress-timeline-line {
@@ -293,29 +306,25 @@
         top: 0;
         height: 100%;
         width: 0;
-        background: linear-gradient(to right, #cbd5e1, #94a3b8);
+        background: #cbd5e1;
         transition: width 0.5s ease;
     }
 
     /* Fill line up to active item */
     .progress-timeline-item[data-status="created"].active ~ .progress-timeline-line::after {
         width: 100%;
-        background: linear-gradient(to right, #fbbf24, #f59e0b);
     }
 
     .progress-timeline-item[data-status="in_progress"].active ~ .progress-timeline-line::after {
         width: 100%;
-        background: linear-gradient(to right, #3b82f6, #2563eb);
     }
 
-    .progress-timeline-item[data-status="overdue"].active ~ .progress-timeline-line::after {
+    .progress-timeline-item[data-status="in_progress"][data-overdue="true"].active ~ .progress-timeline-line::after {
         width: 100%;
-        background: linear-gradient(to right, #ef4444, #dc2626);
     }
 
     .progress-timeline-item[data-status="completed"].active ~ .progress-timeline-line::after {
         width: 100%;
-        background: linear-gradient(to right, #10b981, #059669);
     }
 
     .doc-body {
@@ -323,6 +332,7 @@
         font-size: 1.1rem;
         line-height: 1.8;
         color: #374151;
+        background: #ffffff;
         border-bottom: 1px solid #e5e7eb;
     }
 
@@ -382,13 +392,13 @@
     }
     .fab-create:hover { background: #2563eb; }
 
+    /* Task Row - Matching Stage Row Styling */
     .task-row {
-        display: grid;
-        grid-template-columns: 40px 40px 1fr auto;
-        gap: 12px;
-        padding: 16px 24px;
+        display: flex;
+        align-items: stretch;
+        gap: 0;
+        padding: 0;
         border-bottom: 1px solid #f3f4f6;
-        align-items: center;
         transition: background 0.15s ease;
         position: relative;
         background: white;
@@ -401,14 +411,24 @@
     .task-row:hover {
         background: #f8fafc;
     }
-
-    .task-row:hover .drag-grip {
+    
+    /* Drag Grip Section */
+    .task-drag-section {
+        padding: 16px 0px 16px 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        cursor: grab;
+    }
+    
+    .task-row:hover .task-drag-section .drag-grip {
         opacity: 0.5;
         color: #94a3b8;
     }
     
-    .task-row:hover .row-actions {
-        opacity: 1;
+    .task-drag-section:active {
+        cursor: grabbing;
     }
 
     /* Drag Handle */
@@ -434,26 +454,93 @@
         cursor: grabbing;
     }
 
-    /* Checkbox Styling */
+    /* Checkbox Section */
+    .task-checkbox-section {
+        padding: 16px 0px 16px 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    /* Checkbox Styling - Modern */
     .task-checkbox-container {
         display: flex;
         align-items: center;
         justify-content: center;
+        flex-shrink: 0;
+    }
+
+    /* Task Main Wrapper (clickable area) */
+    .task-main-wrapper {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 16px 24px;
+        cursor: pointer;
+        transition: background 0.15s ease;
+        min-width: 0;
+    }
+    
+    .task-main-wrapper:hover {
+        background: rgba(248, 250, 252, 0.5);
     }
 
     .task-checkbox-container input[type="checkbox"] {
-        width: 20px;
-        height: 20px;
+        width: 22px;
+        height: 22px;
+        min-width: 22px;
+        min-height: 22px;
+        max-width: 22px;
+        max-height: 22px;
         cursor: pointer;
-        accent-color: #10b981;
+        appearance: none;
+        -webkit-appearance: none;
+        border: 2px solid #cbd5e1;
+        border-radius: 4px;
+        background: white;
+        position: relative;
+        transition: all 0.2s ease;
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
     }
 
-    /* Task Content */
+    .task-checkbox-container input[type="checkbox"]:hover {
+        border-color: #10b981;
+        background: #f0fdf4;
+    }
+
+    .task-checkbox-container input[type="checkbox"]:checked {
+        background: #10b981;
+        border-color: #10b981;
+    }
+
+    .task-checkbox-container input[type="checkbox"]:checked::after {
+        content: '';
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -60%) rotate(45deg);
+        width: 5px;
+        height: 10px;
+        border: solid white;
+        border-width: 0 2px 2px 0;
+    }
+
+    /* Task Info */
+    .task-info {
+        flex: 1;
+        min-width: 0;
+    }
+
     .task-title {
         font-size: 0.95rem;
         font-weight: 500;
         color: #1f2937;
         transition: all 0.2s;
+        line-height: 1.4;
     }
 
     .task-title.completed {
@@ -464,37 +551,160 @@
     .task-description {
         font-size: 0.85rem;
         color: #64748b;
-        margin-top: 2px;
+        margin-top: 4px;
+        line-height: 1.5;
     }
 
-    /* Row Actions */
-    .row-actions {
+    /* Row Actions Section */
+    .task-row-actions-section {
+        padding: 16px 24px 16px 12px;
         display: flex;
-        gap: 8px;
-        opacity: 0.3;
-        transition: opacity 0.2s;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+    
+    .task-row:hover .task-row-actions-section .task-row-actions,
+    .task-row .task-row-actions-section .task-row-actions.has-active-dropdown {
+        opacity: 1;
     }
 
-    .action-icon-btn {
-        background: transparent;
+    .task-row-actions {
+        display: flex;
+        gap: 4px;
+        opacity: 0;
+        transition: opacity 0.2s;
+        position: relative;
+        flex-shrink: 0;
+    }
+    
+    .task-row .task-row-actions.has-active-dropdown,
+    .task-row:hover .task-row-actions {
+        opacity: 1;
+    }
+
+    /* Task Dropdown */
+    .task-dropdown-container {
+        position: relative;
+        z-index: 10;
+    }
+
+    .task-dropdown-trigger {
+        padding: 0;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        color: #64748b;
         border: none;
-        padding: 6px;
-        font-size: 0.9rem;
-        color: #94a3b8;
+        background: transparent;
         cursor: pointer;
-        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
         transition: all 0.2s;
     }
+    
+    .task-dropdown-trigger i {
+        font-size: 1rem;
+    }
 
-    .action-icon-btn:hover {
+    .task-dropdown-trigger:hover {
         background: #f1f5f9;
-        color: #3b82f6;
+        color: #1f2937;
     }
 
-    .action-icon-btn.delete:hover {
-        color: #ef4444;
-        background: #fef2f2;
+    .task-dropdown-menu {
+        position: absolute;
+        top: calc(100% + 8px);
+        bottom: auto;
+        right: 0;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        min-width: 180px;
+        padding: 0;
+        opacity: 0;
+        visibility: hidden;
+        transform: translateY(-10px);
+        transition: all 0.2s ease;
+        z-index: 1000;
     }
+
+    .task-dropdown-menu.dropdown-up {
+        top: auto;
+        bottom: calc(100% + 8px);
+        transform: translateY(10px);
+    }
+
+    .task-dropdown-container.active .task-dropdown-menu {
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(0);
+    }
+
+    .task-dropdown-container.active .task-dropdown-menu.dropdown-up {
+        transform: translateY(0);
+    }
+
+    .task-dropdown-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 20px;
+        color: #1e293b;
+        text-decoration: none;
+        transition: background 0.2s ease;
+        border: none;
+        background: transparent;
+        width: 100%;
+        cursor: pointer;
+        font-size: 0.95rem;
+        font-weight: 400;
+        text-align: left;
+    }
+
+    .task-dropdown-item.first-item {
+        border-radius: 12px 12px 0 0;
+    }
+
+    .task-dropdown-item.last-item {
+        border-radius: 0 0 12px 12px;
+    }
+
+    .task-dropdown-item:hover {
+        background: rgba(16, 185, 129, 0.1);
+        color: #10b981;
+    }
+
+    .task-dropdown-item.first-item:hover {
+        border-radius: 12px 12px 0 0;
+    }
+
+    .task-dropdown-item.last-item:hover {
+        border-radius: 0 0 12px 12px;
+    }
+
+    .task-dropdown-item i {
+        width: 20px;
+        text-align: center;
+        color: #94a3b8;
+        font-size: 1.1rem;
+        flex-shrink: 0;
+    }
+
+    .task-dropdown-item:hover i {
+        color: #10b981;
+    }
+
+    .task-dropdown-item.delete-item:hover {
+        background: rgba(239, 68, 68, 0.1);
+        color: #ef4444;
+    }
+
+    .task-dropdown-item.delete-item:hover i {
+        color: #ef4444;
+    }
+
 
     /* Sortable styles */
     .sortable-ghost {
@@ -719,37 +929,54 @@
                     </div>
                     <h1 class="doc-title">{{ stage.title }}</h1>
                     
-                    {% if stage.is_disabled %}
-                        <div class="doc-meta-row">
-                            <div class="meta-chip status-disabled">
-                                <i class="fas fa-ban"></i> Disabled
-                            </div>
-                        </div>
-                    {% else %}
-                        <!-- Progress Status Timeline -->
-                        <div class="progress-timeline">
-                            <div class="progress-timeline-item {% if stage.progress_status == 'created' %}active{% endif %}" data-status="created">
-                                <div class="progress-timeline-dot"></div>
-                                <div class="progress-timeline-label">Created</div>
-                            </div>
-                            <div class="progress-timeline-line"></div>
-                            <div class="progress-timeline-item {% if stage.progress_status == 'in_progress' %}active{% endif %}" data-status="in_progress">
-                                <div class="progress-timeline-dot"></div>
-                                <div class="progress-timeline-label">In Progress</div>
-                            </div>
-                            <div class="progress-timeline-line"></div>
-                            <div class="progress-timeline-item {% if stage.progress_status == 'overdue' %}active{% endif %}" data-status="overdue">
-                                <div class="progress-timeline-dot"></div>
-                                <div class="progress-timeline-label">Overdue</div>
-                            </div>
-                            <div class="progress-timeline-line"></div>
-                            <div class="progress-timeline-item {% if stage.progress_status == 'completed' %}active{% endif %}" data-status="completed">
-                                <div class="progress-timeline-dot"></div>
-                                <div class="progress-timeline-label">Completed</div>
-                            </div>
-                        </div>
-                    {% endif %}
+                    <div class="doc-meta-row">
+                        {% if stage.start_date or stage.end_date %}
+                            {% if stage.start_date %}
+                                <div class="meta-chip">
+                                    <i class="far fa-calendar-alt" style="margin-right: 4px;"></i>
+                                    <span style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.7; margin-right: 4px;">Start:</span>
+                                    {{ stage.start_date|date:"M j, Y" }}
+                                </div>
+                            {% endif %}
+                            {% if stage.end_date %}
+                                <div class="meta-chip">
+                                    <i class="far fa-calendar-check" style="margin-right: 4px;"></i>
+                                    <span style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.7; margin-right: 4px;">End:</span>
+                                    {{ stage.end_date|date:"M j, Y" }}
+                                </div>
+                            {% endif %}
+                        {% endif %}
+                    </div>
                 </div>
+
+                <!-- Progress Status Timeline -->
+                {% if stage.is_disabled %}
+                    <div class="progress-timeline progress-timeline-disabled">
+                        <div class="progress-timeline-item active" data-status="disabled">
+                            <div class="progress-timeline-dot"></div>
+                            <div class="progress-timeline-label">Disabled</div>
+                        </div>
+                    </div>
+                {% else %}
+                    <div class="progress-timeline">
+                        <div class="progress-timeline-item {% if stage.progress_status == 'created' %}active{% endif %}" data-status="created">
+                            <div class="progress-timeline-dot"></div>
+                            <div class="progress-timeline-label">Created</div>
+                        </div>
+                        <div class="progress-timeline-line"></div>
+                        <div class="progress-timeline-item {% if stage.progress_status == 'in_progress' or stage.progress_status == 'overdue' %}active{% endif %}" data-status="in_progress" data-overdue="{% if stage.progress_status == 'overdue' %}true{% else %}false{% endif %}">
+                            <div class="progress-timeline-dot"></div>
+                            <div class="progress-timeline-label">
+                                {% if stage.progress_status == 'overdue' %}Overdue{% else %}In Progress{% endif %}
+                            </div>
+                        </div>
+                        <div class="progress-timeline-line"></div>
+                        <div class="progress-timeline-item {% if stage.progress_status == 'completed' %}active{% endif %}" data-status="completed">
+                            <div class="progress-timeline-dot"></div>
+                            <div class="progress-timeline-label">Completed</div>
+                        </div>
+                    </div>
+                {% endif %}
 
                 <div class="doc-body">
                     {% if stage.description %}
@@ -855,38 +1082,6 @@
                 </div>
             </div>
 
-            <div class="sidebar-actions">
-                <div class="action-header">Timeline</div>
-                {% if stage.start_date or stage.end_date %}
-                    {% if stage.start_date %}
-                        <div style="display: flex; align-items: center; gap: 12px; font-weight: 500; color: #374151; margin-bottom: 12px;">
-                            <div style="width: 40px; height: 40px; background: #f1f5f9; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #64748b;">
-                                <i class="fas fa-play-circle"></i>
-                            </div>
-                            <div>
-                                <div style="font-size: 0.8rem; color: #94a3b8;">Start Date</div>
-                                <div>{{ stage.start_date|date:"F j, Y" }}</div>
-                            </div>
-                        </div>
-                    {% endif %}
-                    {% if stage.end_date %}
-                        <div style="display: flex; align-items: center; gap: 12px; font-weight: 500; color: #374151; margin-bottom: 12px;">
-                            <div style="width: 40px; height: 40px; background: #f1f5f9; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #64748b;">
-                                <i class="fas fa-stop-circle"></i>
-                            </div>
-                            <div>
-                                <div style="font-size: 0.8rem; color: #94a3b8;">End Date</div>
-                                <div>{{ stage.end_date|date:"F j, Y" }}</div>
-                            </div>
-                        </div>
-                    {% endif %}
-                {% endif %}
-                {% if not stage.start_date and not stage.end_date %}
-                    <div style="text-align: center; padding: 16px; color: #9ca3af; font-size: 0.85rem; font-style: italic;">
-                        No timeline dates set
-                    </div>
-                {% endif %}
-            </div>
 
         </aside>
 
@@ -988,22 +1183,42 @@
             return;
         }
 
-        tasksList.innerHTML = tasks.map(task => `
+        tasksList.innerHTML = tasks.map((task, index) => `
             <div class="task-row" data-task-id="${task.id}">
-                <div class="drag-grip">
-                    <i class="fas fa-grip-lines"></i>
+                <div class="task-drag-section">
+                    <div class="drag-grip">
+                        <i class="fas fa-grip-lines"></i>
+                    </div>
                 </div>
-                <div class="task-checkbox-container">
-                    <input type="checkbox" id="task_${task.id}" ${task.completed ? 'checked' : ''} onchange="toggleTaskComplete(${task.id}, this.checked)">
+                <div class="task-checkbox-section" onclick="event.stopPropagation();">
+                    <div class="task-checkbox-container">
+                        <input type="checkbox" id="task_${task.id}" ${task.completed ? 'checked' : ''} onchange="toggleTaskComplete(${task.id}, this.checked); event.stopPropagation();">
+                    </div>
                 </div>
-                <div class="task-info">
-                    <div class="task-title ${task.completed ? 'completed' : ''}">${task.title}</div>
-                    ${task.description ? `<div class="task-description">${task.description}</div>` : ''}
+                <div class="task-main-wrapper" onclick="event.stopPropagation();" ondblclick="editTask(${task.id}); event.stopPropagation();">
+                    <div class="task-info">
+                        <div class="task-title ${task.completed ? 'completed' : ''}">${task.title}</div>
+                        ${task.description ? `<div class="task-description">${task.description}</div>` : ''}
+                    </div>
                 </div>
-                <div class="row-actions">
-                    <button class="action-icon-btn delete" onclick="deleteTask(${task.id})" title="Delete task">
-                        <i class="fas fa-trash"></i>
-                    </button>
+                <div class="task-row-actions-section" onclick="event.stopPropagation();">
+                    <div class="task-row-actions" id="taskRowActions_${task.id}">
+                        <div class="task-dropdown-container" id="taskDropdown_${task.id}">
+                            <button class="task-dropdown-trigger" onclick="toggleTaskDropdown(${task.id}, event)">
+                                <i class="fas fa-ellipsis-v"></i>
+                            </button>
+                            <div class="task-dropdown-menu" onclick="event.stopPropagation();">
+                                <button class="task-dropdown-item first-item" onclick="editTask(${task.id}); event.stopPropagation();">
+                                    <i class="fas fa-edit"></i>
+                                    <span>Edit</span>
+                                </button>
+                                <button class="task-dropdown-item delete-item last-item" onclick="deleteTask(${task.id}); event.stopPropagation();">
+                                    <i class="fas fa-trash"></i>
+                                    <span>Delete</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         `).join('');
@@ -1018,7 +1233,7 @@
 
         taskSortable = new Sortable(el, {
             animation: 150,
-            handle: '.drag-grip',
+            handle: '.task-drag-section',
             ghostClass: 'sortable-ghost',
             dragClass: 'sortable-drag',
             onEnd: function(evt) {
@@ -1044,6 +1259,110 @@
             }
         });
     }
+
+    // Toggle task dropdown with positioning logic
+    window.toggleTaskDropdown = function(taskId, event) {
+        event.stopPropagation();
+        const container = document.getElementById(`taskDropdown_${taskId}`);
+        if (!container) return;
+        
+        const menu = container.querySelector('.task-dropdown-menu');
+        if (!menu) return;
+        
+        const isCurrentlyActive = container.classList.contains('active');
+        
+        // Close all other dropdowns first
+        document.querySelectorAll('.task-dropdown-container').forEach(dropdown => {
+            if (dropdown !== container) {
+                dropdown.classList.remove('active');
+                const otherMenu = dropdown.querySelector('.task-dropdown-menu');
+                if (otherMenu) {
+                    otherMenu.classList.remove('dropdown-up');
+                }
+            }
+        });
+        
+        // If clicking the same dropdown, toggle it off
+        if (isCurrentlyActive) {
+            container.classList.remove('active');
+            menu.classList.remove('dropdown-up');
+            const rowActions = container.closest('.task-row-actions');
+            if (rowActions) {
+                rowActions.classList.remove('has-active-dropdown');
+            }
+            return;
+        }
+        
+        // Get trigger button position relative to viewport
+        const trigger = container.querySelector('.task-dropdown-trigger');
+        if (!trigger) return;
+        
+        const triggerRect = trigger.getBoundingClientRect();
+        const menuHeight = 100; // Approximate height of dropdown menu (2 items)
+        const spaceBelow = window.innerHeight - triggerRect.bottom;
+        const spaceAbove = triggerRect.top;
+        
+        // Check if it's the last task row
+        const taskRow = container.closest('.task-row');
+        const isLastRow = taskRow && !taskRow.nextElementSibling;
+        
+        // Determine if dropdown should appear above
+        if (spaceBelow < menuHeight + 8 || isLastRow) {
+            // Show above if not enough space below or it's the last row
+            menu.classList.add('dropdown-up');
+        } else {
+            // Show below
+            menu.classList.remove('dropdown-up');
+        }
+        
+        // Open the dropdown
+        container.classList.add('active');
+        
+        // Keep row actions visible when dropdown is active
+        const rowActions = document.getElementById(`taskRowActions_${taskId}`);
+        if (rowActions) {
+            rowActions.classList.add('has-active-dropdown');
+        }
+    };
+
+    // Close task dropdowns when clicking outside
+    document.addEventListener('click', function(event) {
+        if (!event.target.closest('.task-dropdown-container')) {
+            document.querySelectorAll('.task-dropdown-container').forEach(dropdown => {
+                dropdown.classList.remove('active');
+                const menu = dropdown.querySelector('.task-dropdown-menu');
+                if (menu) {
+                    menu.classList.remove('dropdown-up');
+                }
+                const rowActions = dropdown.closest('.task-row-actions');
+                if (rowActions) {
+                    rowActions.classList.remove('has-active-dropdown');
+                }
+            });
+        }
+    });
+
+    // Edit task function
+    window.editTask = function(taskId) {
+        // Find task data
+        const taskRow = document.querySelector(`.task-row[data-task-id="${taskId}"]`);
+        if (!taskRow) return;
+        
+        const titleEl = taskRow.querySelector('.task-title');
+        const descEl = taskRow.querySelector('.task-description');
+        
+        const title = titleEl ? titleEl.textContent.trim() : '';
+        const description = descEl ? descEl.textContent.trim() : '';
+        
+        // Close dropdown
+        const container = document.getElementById(`taskDropdown_${taskId}`);
+        if (container) {
+            container.classList.remove('active');
+        }
+        
+        // Open modal in edit mode
+        openCreateTaskModal(taskId, title, description);
+    };
 
     // Toggle task completion
     window.toggleTaskComplete = function(taskId, completed) {
