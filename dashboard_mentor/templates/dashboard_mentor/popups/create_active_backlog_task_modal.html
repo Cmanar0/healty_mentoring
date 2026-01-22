@@ -499,10 +499,15 @@
                     showNotification(isEditMode ? 'Task updated successfully!' : 'Task created successfully!', 'success');
                 }
                 closeCreateActiveBacklogTaskModal();
-                // Reload page to show new task
-                setTimeout(() => {
-                    window.location.reload();
-                }, 500);
+                // Reload tasks dynamically if loadTasks function exists
+                if (typeof loadTasks === 'function') {
+                    loadTasks();
+                } else {
+                    // Fallback: reload page
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 500);
+                }
             } else {
                 if (typeof showNotification !== 'undefined') {
                     showNotification(data.error || (isEditMode ? 'Failed to update task' : 'Failed to create task'), 'error');

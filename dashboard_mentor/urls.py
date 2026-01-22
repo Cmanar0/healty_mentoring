@@ -19,6 +19,7 @@ urlpatterns = [
     path('my-sessions/delete-availability-slot/', views.delete_availability_slot, name='delete_availability_slot'),
     path('clients/', views.clients_list, name='clients_list'),
     path('clients/<int:client_id>/', views.client_detail, name='client_detail'),
+    path('clients/<int:client_id>/active-backlog/api/', views.get_client_active_backlog_api, name='get_client_active_backlog_api'),
     path('clients/<int:client_id>/request-review/', views.request_review, name='request_review'),
     path('invite-client/', views.invite_client, name='invite_client'),
     path('my-sessions/invite-session/', views.invite_session, name='invite_session'),
@@ -68,7 +69,10 @@ urlpatterns = [
     path('projects/<int:project_id>/stages/reorder/', views.reorder_stages, name='reorder_stages'),
     path('projects/<int:project_id>/stages/api/', views.get_stages_api, name='get_stages_api'),
     path('backlog/', views.mentor_backlog, name='mentor_backlog'),
+    path('backlog/api/', views.get_mentor_backlog_tasks_api, name='get_mentor_backlog_tasks_api'),
     path('backlog/tasks/create/', views.create_mentor_backlog_task, name='create_mentor_backlog_task'),
     path('backlog/tasks/<int:task_id>/edit/', views.edit_mentor_backlog_task, name='edit_mentor_backlog_task'),
+    path('backlog/tasks/<int:task_id>/toggle-complete/', views.toggle_mentor_backlog_task_complete, name='toggle_mentor_backlog_task_complete'),
+    path('backlog/tasks/<int:task_id>/delete/', views.delete_mentor_backlog_task, name='delete_mentor_backlog_task'),
 ]
 

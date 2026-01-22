@@ -5743,3 +5743,161 @@ def edit_mentor_backlog_task(request, task_id):
         logger = logging.getLogger(__name__)
         logger.error(f'Error editing mentor backlog task: {str(e)}')
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+def get_mentor_backlog_tasks_api(request):
+    """API endpoint to get mentor backlog tasks"""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+    
+    mentor_profile = request.user.mentor_profile
+    from dashboard_user.models import Task
+    
+    try:
+        tasks = Task.objects.filter(mentor_backlog=mentor_profile).order_by('order', 'created_at')
+        
+        tasks_data = []
+        for task in tasks:
+            tasks_data.append({
+                'id': task.id,
+                'title': task.title,
+                'description': task.description or '',
+                'completed': task.completed,
+                'deadline': task.deadline.strftime('%Y-%m-%d') if task.deadline else None,
+                'priority': task.priority,
+                'status': task.status,
+                'created_at': task.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+                'order': float(task.order),
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'tasks': tasks_data
+        })
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f'Error in get_mentor_backlog_tasks_api: {str(e)}', exc_info=True)
+        return JsonResponse({
+            'success': False,
+            'error': f'Server error: {str(e)}'
+        }, status=500)
+
+
+@login_required
+@require_POST
+def toggle_mentor_backlog_task_complete(request, task_id):
+    """Toggle mentor backlog task completion status"""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+    
+    mentor_profile = request.user.mentor_profile
+    from dashboard_user.models import Task
+    task = get_object_or_404(Task, id=task_id, mentor_backlog=mentor_profile)
+    
+    try:
+        data = json.loads(request.body)
+        completed = data.get('completed', False)
+        
+        task.completed = completed
+        task.save()
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Task marked as {"completed" if completed else "incomplete"}'
+        })
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f'Error toggling mentor backlog task completion: {str(e)}')
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+@require_POST
+def delete_mentor_backlog_task(request, task_id):
+    """Delete a mentor backlog task"""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+    
+    mentor_profile = request.user.mentor_profile
+    from dashboard_user.models import Task
+    task = get_object_or_404(Task, id=task_id, mentor_backlog=mentor_profile)
+    
+    try:
+        task.delete()
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Task deleted successfully'
+        })
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f'Error deleting mentor backlog task: {str(e)}')
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+def get_client_active_backlog_api(request, client_id):
+    """API endpoint to get client's active backlog tasks"""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+    
+    mentor_profile = request.user.mentor_profile
+    from accounts.models import UserProfile
+    from dashboard_user.models import Task
+    
+    # Verify the client belongs to this mentor
+    from accounts.models import MentorClientRelationship
+    relationship = MentorClientRelationship.objects.filter(
+        mentor=mentor_profile,
+        client_id=client_id,
+        confirmed=True
+    ).first()
+    
+    if not relationship:
+        return JsonResponse({'success': False, 'error': 'Client not found or not authorized'}, status=404)
+    
+    client_profile = get_object_or_404(UserProfile, id=client_id)
+    
+    try:
+        # Get tasks in client's active backlog (limit to 5 for sidebar display)
+        tasks = Task.objects.filter(
+            user_active_backlog=client_profile
+        ).order_by('order', 'created_at')[:5]
+        
+        tasks_data = []
+        for task in tasks:
+            tasks_data.append({
+                'id': task.id,
+                'title': task.title,
+                'description': task.description or '',
+                'completed': task.completed,
+                'deadline': task.deadline.strftime('%Y-%m-%d') if task.deadline else None,
+                'priority': task.priority,
+                'status': task.status,
+                'created_at': task.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+                'order': float(task.order),
+            })
+        
+        # Get total count for "more tasks" display
+        total_count = Task.objects.filter(user_active_backlog=client_profile).count()
+        
+        return JsonResponse({
+            'success': True,
+            'tasks': tasks_data,
+            'total_count': total_count,
+            'client_name': client_profile.first_name
+        })
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f'Error in get_client_active_backlog_api: {str(e)}', exc_info=True)
+        return JsonResponse({
+            'success': False,
+            'error': f'Server error: {str(e)}'
+        }, status=500)

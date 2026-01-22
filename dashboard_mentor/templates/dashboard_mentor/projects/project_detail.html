@@ -187,6 +187,22 @@
         background: #f8fafc;
     }
     
+    /* Disabled stage styling - only apply to content, NOT the row itself or dropdown */
+    .stage-row-disabled {
+        background: #f9fafb !important;
+    }
+    
+    .stage-row-disabled:hover {
+        background: #f3f4f6 !important;
+    }
+    
+    /* Apply opacity only to content sections, leaving dropdown completely untouched */
+    .stage-row-disabled .stage-main-wrapper,
+    .stage-row-disabled .stage-drag-section,
+    .stage-row-disabled .stage-progress-section {
+        opacity: 0.7;
+    }
+    
     /* Drag Grip Section */
     .stage-drag-section {
         padding: 16px 0px 16px 24px;
@@ -760,46 +776,28 @@
                     </p>
                 </div>
                 
-                <div style="position: relative; z-index: 2; width: 100%;">
-                    <!-- Modules Section -->
-                    <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.1);">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                            <div style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.7;">Modules</div>
-                            <button onclick="openManageModulesModal()" style="width: auto; height: 40px; background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 6px 12px; border-radius: 6px; font-size: 0.75rem; cursor: pointer; transition: all 0.2s; white-space: nowrap; flex-shrink: 0;" onmouseover="this.style.background='rgba(255,255,255,0.2)'" onmouseout="this.style.background='rgba(255,255,255,0.15)'">
-                                <i class="fas fa-cog" style="margin-right: 4px;"></i> Manage
-                            </button>
-                        </div>
-                        {% if active_modules %}
-                        <div style="display: flex; flex-direction: column; gap: 10px;">
-                            {% for module_instance in active_modules %}
-                                <a href="{% url 'general:dashboard_user:module_detail' project.id module_instance.id %}" style="display: flex; align-items: center; gap: 12px; padding: 14px 16px; background: rgba(255,255,255,0.1); border-radius: 8px; text-decoration: none; color: white; transition: all 0.2s; min-height: 48px;" onmouseover="this.style.background='rgba(255,255,255,0.15)'" onmouseout="this.style.background='rgba(255,255,255,0.1)'">
-                                    {% if module_instance.module.icon %}
-                                        <i class="{{ module_instance.module.icon }}" style="font-size: 1.1rem; flex-shrink: 0;"></i>
-                                    {% endif %}
-                                    <span style="font-size: 0.9rem; font-weight: 500; line-height: 1.4;">{{ module_instance.module.name }}</span>
-                                </a>
-                            {% endfor %}
-                        </div>
-                        {% else %}
-                        <div style="color: rgba(255,255,255,0.6); font-size: 0.85rem; font-style: italic; padding: 12px 0;">
-                            No modules added yet
-                        </div>
-                        {% endif %}
-                    </div>
-                </div>
             </div>
 
-            <div class="mini-stats">
-                <div class="stat-box">
-                    <div class="stat-val">{{ active_modules.count|default:"0" }}</div>
-                    <div class="stat-label">Modules</div>
+            <!-- Client Active Backlog Card -->
+            {% if project.project_owner %}
+                <div id="clientActiveBacklogCard" class="client-backlog-card" style="background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px; margin-top: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                        <h3 id="clientBacklogTitle" style="font-size: 0.9rem; font-weight: 600; color: #111827; margin: 0; display: flex; align-items: center; gap: 8px;">
+                            <i class="fas fa-clipboard-list" style="color: #10b981;"></i>
+                            <span id="clientBacklogName">{{ project.project_owner.first_name }}</span>'s Active Backlog
+                        </h3>
+                        <a href="{% url 'general:dashboard_mentor:client_detail' project.project_owner.id %}" style="font-size: 0.75rem; color: #10b981; text-decoration: none; font-weight: 500;">
+                            View All
+                        </a>
+                    </div>
+                    <div id="clientActiveBacklogList" style="display: flex; flex-direction: column; gap: 8px;">
+                        <div style="padding: 16px; text-align: center; color: #9ca3af;">
+                            <i class="fas fa-circle-notch fa-spin" style="font-size: 1rem; margin-bottom: 8px; opacity: 0.5;"></i>
+                            <p style="margin: 0; font-size: 0.85rem;">Loading...</p>
+                        </div>
+                    </div>
                 </div>
-                <!-- Add more stats here like Days Remaining or Completion % -->
-                 <div class="stat-box">
-                    <div class="stat-val" style="color: #10b981;">Active</div>
-                    <div class="stat-label">Status</div>
-                </div>
-            </div>
+            {% endif %}
         </aside>
     </div>
 </div>
@@ -932,8 +930,8 @@
                     `).join('')}
                     ${todayPosition !== null ? `
                         <div style="position: absolute; left: ${todayPosition}%; transform: translateX(-50%); top: -18px;">
-                            <div style="width: 2px; height: 8px; background: #ef4444; margin: 0 auto;"></div>
-                            <div style="font-size: 0.65rem; color: #ef4444; margin-top: 2px; white-space: nowrap; font-weight: 600;">Today</div>
+                            <div style="width: 2px; background: #ef4444; margin: 0 auto;"></div>
+                            <div style="font-size: 0.65rem; color: #ef4444; margin-bottom: 12px; white-space: nowrap; font-weight: 600;">Today</div>
                         </div>
                     ` : ''}
                     <div style="position: absolute; top: -20px; left: 0; font-size: 0.7rem; color: #9ca3af; font-weight: 500;">${unitLabel}</div>
@@ -949,22 +947,27 @@
             const widthPercent = (duration / totalDays) * 100;
             const top = 20 + (index * 50);
             
-            // Determine color based on progress_status
+            // Check if stage is disabled first - disabled stages get grey styling
+            const isDisabled = stage.is_disabled || false;
+            
+            // Determine color based on progress_status (only if not disabled)
             let color = '#3b82f6'; // default blue
             const progressStatus = stage.progress_status || (stage.is_completed ? 'completed' : 'in_progress');
-            switch(progressStatus) {
-                case 'completed':
-                    color = '#10b981'; // green
-                    break;
-                case 'overdue':
-                    color = '#ef4444'; // red
-                    break;
-                case 'in_progress':
-                    color = '#3b82f6'; // blue
-                    break;
-                case 'created':
-                    color = '#fbbf24'; // yellow
-                    break;
+            if (!isDisabled) {
+                switch(progressStatus) {
+                    case 'completed':
+                        color = '#10b981'; // green
+                        break;
+                    case 'overdue':
+                        color = '#ef4444'; // red
+                        break;
+                    case 'in_progress':
+                        color = '#3b82f6'; // blue
+                        break;
+                    case 'created':
+                        color = '#fbbf24'; // yellow
+                        break;
+                }
             }
             
             // Calculate task progress for stages
@@ -976,7 +979,10 @@
             let barStyle = '';
             let progressBarHtml = '';
             
-            if (progressStatus === 'in_progress') {
+            if (isDisabled) {
+                // Disabled stage - grey styling
+                barStyle = `position: absolute; top: ${top}px; left: ${leftPercent}%; width: ${widthPercent}%; height: 30px; background: #f3f4f6; border: 1px solid #d1d5db; border-radius: 4px; display: flex; align-items: center; padding: 0 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); cursor: move; opacity: 0.7;`;
+            } else if (progressStatus === 'in_progress') {
                 if (totalTasks > 0) {
                     // Transparent blue background with solid blue progress fill (has tasks)
                     barStyle = `position: absolute; top: ${top}px; left: ${leftPercent}%; width: ${widthPercent}%; height: 30px; background: rgba(59, 130, 246, 0.2); border-radius: 4px; display: flex; align-items: center; padding: 0 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); cursor: move; overflow: hidden;`;
@@ -1008,12 +1014,17 @@
                 barStyle = `position: absolute; top: ${top}px; left: ${leftPercent}%; width: ${widthPercent}%; height: 30px; background: ${color}; border-radius: 4px; display: flex; align-items: center; padding: 0 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); cursor: move;`;
             }
             
-            // Determine text styling based on progress status
+            // Determine text styling based on progress status or disabled state
             let textColor = 'white';
             let textBackground = '';
             let textShadow = '0 1px 2px rgba(0,0,0,0.3)';
             
-            if (progressStatus === 'in_progress' || progressStatus === 'overdue' || progressStatus === 'created') {
+            if (isDisabled) {
+                // Disabled stage - grey text
+                textColor = '#6b7280';
+                textBackground = '';
+                textShadow = 'none';
+            } else if (progressStatus === 'in_progress' || progressStatus === 'overdue' || progressStatus === 'created') {
                 // Light backgrounds - use dark text with semi-transparent background for readability
                 textColor = '#1e293b';
                 textBackground = 'background: rgba(255, 255, 255, 0.85); padding: 2px 8px; border-radius: 4px;';
@@ -1043,6 +1054,48 @@
         // Initialize drag handlers for waterfall bars
         // Pass all stages (not just those with dates) for reordering
         initWaterfallDragHandlers(stages, minDate, maxDate, totalDays);
+        
+        // Add double-click navigation to stage bars
+        const bars = chartEl.querySelectorAll('.waterfall-stage-bar');
+        bars.forEach(bar => {
+            let mouseDownX = 0;
+            let mouseDownY = 0;
+            let hasMoved = false;
+            const moveThreshold = 5; // pixels
+            
+            bar.addEventListener('mousedown', function(e) {
+                // Don't interfere with resize handles
+                if (e.target.classList.contains('waterfall-resize-handle')) {
+                    return;
+                }
+                mouseDownX = e.clientX;
+                mouseDownY = e.clientY;
+                hasMoved = false;
+            });
+            
+            bar.addEventListener('mousemove', function(e) {
+                // Check if mouse moved significantly (dragging, not clicking)
+                if (Math.abs(e.clientX - mouseDownX) > moveThreshold || 
+                    Math.abs(e.clientY - mouseDownY) > moveThreshold) {
+                    hasMoved = true;
+                }
+            });
+            
+            bar.addEventListener('dblclick', function(e) {
+                // Don't navigate if user was dragging/resizing
+                if (hasMoved || e.target.classList.contains('waterfall-resize-handle')) {
+                    return;
+                }
+                
+                e.preventDefault();
+                e.stopPropagation();
+                
+                const stageId = bar.dataset.stageId;
+                if (stageId) {
+                    window.location.href = `${STAGE_DETAIL_URL}${stageId}/`;
+                }
+            });
+        });
     }
     
     // Initialize drag handlers for waterfall chart bars
@@ -1052,7 +1105,7 @@
         
         const bars = chartEl.querySelectorAll('.waterfall-stage-bar');
         let isDragging = false;
-        let dragType = null; // 'move', 'resize-left', 'resize-right', 'reorder'
+        let dragType = null; // 'move', 'resize-left', 'resize-right', 'move-and-reorder'
         let currentBar = null;
         let startX = 0;
         let startY = 0;
@@ -1064,13 +1117,15 @@
         let startIndex = 0;
         let handleMouseMove = null;
         let handleMouseUp = null;
-        let dragThreshold = 5; // pixels to move before determining drag direction
+        let dragThreshold = 5; // pixels to move before starting drag
+        let hasMovedHorizontally = false;
+        let hasMovedVertically = false;
         
         bars.forEach((bar, index) => {
             const resizeLeft = bar.querySelector('.waterfall-resize-left');
             const resizeRight = bar.querySelector('.waterfall-resize-right');
             
-            // Move entire bar (can be horizontal or vertical)
+            // Move entire bar (can be horizontal and/or vertical simultaneously)
             bar.addEventListener('mousedown', function(e) {
                 if (e.target === resizeLeft || e.target === resizeRight) return;
                 isDragging = true;
@@ -1086,6 +1141,8 @@
                 startDate = new Date(bar.dataset.startDate);
                 endDate = new Date(bar.dataset.endDate);
                 startIndex = index;
+                hasMovedHorizontally = false;
+                hasMovedVertically = false;
                 bar.style.cursor = 'grabbing';
                 bar.style.zIndex = '1000';
                 bar.style.opacity = '0.7';
@@ -1186,7 +1243,7 @@
             const deltaY = e.clientY - startY;
             const deltaPercent = (deltaX / chartRect.width) * 100;
             
-            // Determine drag type if not yet determined
+            // Determine drag type if not yet determined (for resize handles, this is already set)
             if (!dragType) {
                 const absDeltaX = Math.abs(deltaX);
                 const absDeltaY = Math.abs(deltaY);
@@ -1195,50 +1252,91 @@
                     return; // Wait for threshold
                 }
                 
-                // Determine primary direction
-                if (absDeltaY > absDeltaX) {
-                    dragType = 'reorder';
-                    hideDatePopover();
-                } else {
-                    dragType = 'move';
-                }
+                // For main bar drag, allow simultaneous horizontal and vertical movement
+                dragType = 'move-and-reorder';
             }
             
-            if (dragType === 'reorder') {
+            if (dragType === 'move-and-reorder') {
+                // Handle both horizontal (date) and vertical (reorder) movement simultaneously
+                const currentY = e.clientY - chartRect.top;
+                const barHeight = 30;
+                const barSpacing = 50;
+                const allBars = Array.from(chartEl.querySelectorAll('.waterfall-stage-bar'));
+                
                 // Vertical reordering
+                const newIndex = Math.max(0, Math.min(allBars.length - 1, Math.round((currentY - 20) / barSpacing)));
+                
+                // Only show placeholder if order would actually change
+                if (newIndex !== startIndex) {
+                    hasMovedVertically = true;
+                    // Determine if dragging up or down from original position
+                    const isDraggingDown = newIndex > startIndex;
+                    
+                    // Show placeholder at target position
+                    let targetY;
+                    if (isDraggingDown) {
+                        targetY = 20 + (newIndex * barSpacing) + barHeight + 2;
+                    } else {
+                        targetY = 20 + (newIndex * barSpacing);
+                    }
+                    showReorderPlaceholder(targetY);
+                } else {
+                    hideReorderPlaceholder();
+                }
+                
+                // Horizontal date movement
+                const absDeltaX = Math.abs(deltaX);
+                if (absDeltaX >= dragThreshold) {
+                    hasMovedHorizontally = true;
+                    const newLeft = Math.max(0, Math.min(100 - startWidth, startLeft + deltaPercent));
+                    const newStartDate = new Date(minDate.getTime() + ((newLeft / 100) * totalDays) * 24 * 60 * 60 * 1000);
+                    const duration = (endDate - startDate) / (1000 * 60 * 60 * 24);
+                    const newEndDate = new Date(newStartDate.getTime() + duration * 24 * 60 * 60 * 1000);
+                    
+                    currentBar.style.left = newLeft + '%';
+                    currentBar.dataset.startDate = newStartDate.toISOString().split('T')[0];
+                    currentBar.dataset.endDate = newEndDate.toISOString().split('T')[0];
+                    
+                    // Show popover for dates
+                    const barRect = currentBar.getBoundingClientRect();
+                    showDatePopover(e.clientX, barRect.top, newStartDate.toISOString().split('T')[0], 'Start');
+                }
+                
+                // Update visual position (both horizontal and vertical)
+                currentBar.style.top = (currentY - barHeight / 2) + 'px';
+                if (!hasMovedHorizontally) {
+                    // Keep original horizontal position if not moved horizontally
+                    currentBar.style.left = startLeft + '%';
+                }
+                currentBar.style.width = startWidth + '%';
+            } else if (dragType === 'reorder') {
+                // Vertical reordering only (legacy support)
                 const currentY = e.clientY - chartRect.top;
                 const barHeight = 30;
                 const barSpacing = 50;
                 const allBars = Array.from(chartEl.querySelectorAll('.waterfall-stage-bar'));
                 const newIndex = Math.max(0, Math.min(allBars.length - 1, Math.round((currentY - 20) / barSpacing)));
                 
-                // Only show placeholder if order would actually change
                 if (newIndex !== startIndex) {
-                    // Determine if dragging up or down from original position
+                    hasMovedVertically = true;
                     const isDraggingDown = newIndex > startIndex;
-                    
-                    // Show placeholder at target position
-                    // If dragging down, show line below the target bar; if dragging up, show above
                     let targetY;
                     if (isDraggingDown) {
-                        // Show line below the target bar (at the bottom of the bar + a bit)
                         targetY = 20 + (newIndex * barSpacing) + barHeight + 2;
                     } else {
-                        // Show line above the target bar (at the top of the bar)
                         targetY = 20 + (newIndex * barSpacing);
                     }
                     showReorderPlaceholder(targetY);
                 } else {
-                    // Hide placeholder if order wouldn't change
                     hideReorderPlaceholder();
                 }
                 
-                // Update visual position
                 currentBar.style.top = (currentY - barHeight / 2) + 'px';
                 currentBar.style.left = startLeft + '%';
                 currentBar.style.width = startWidth + '%';
             } else if (dragType === 'move') {
-                // Move entire bar horizontally - allow dragging beyond original boundaries
+                // Horizontal movement only (legacy support)
+                hasMovedHorizontally = true;
                 const newLeft = Math.max(0, Math.min(100 - startWidth, startLeft + deltaPercent));
                 const newStartDate = new Date(minDate.getTime() + ((newLeft / 100) * totalDays) * 24 * 60 * 60 * 1000);
                 const duration = (endDate - startDate) / (1000 * 60 * 60 * 24);
@@ -1248,7 +1346,6 @@
                 currentBar.dataset.startDate = newStartDate.toISOString().split('T')[0];
                 currentBar.dataset.endDate = newEndDate.toISOString().split('T')[0];
                 
-                // Show popover for both dates
                 const barRect = currentBar.getBoundingClientRect();
                 showDatePopover(e.clientX, barRect.top, newStartDate.toISOString().split('T')[0], 'Start');
             } else if (dragType === 'resize-left') {
@@ -1290,8 +1387,8 @@
             
             const stageId = currentBar.dataset.stageId;
             
-            if (dragType === 'reorder') {
-                // Handle reordering
+            // Handle simultaneous move-and-reorder
+            if (dragType === 'move-and-reorder') {
                 const chartRect = chartEl.getBoundingClientRect();
                 const barHeight = 30;
                 const barSpacing = 50;
@@ -1301,25 +1398,26 @@
                 const currentBarTop = parseFloat(currentBar.style.top) || startTop;
                 const newIndex = Math.max(0, Math.min(allBars.length - 1, Math.round((currentBarTop - 20 + barHeight / 2) / barSpacing)));
                 
-                if (newIndex !== startIndex) {
-                    // Calculate new orders
+                const oldStartDate = startDate.toISOString().split('T')[0];
+                const oldEndDate = endDate.toISOString().split('T')[0];
+                const newStartDate = currentBar.dataset.startDate;
+                const newEndDate = currentBar.dataset.endDate;
+                
+                // Track what needs to be updated
+                const needsReorder = hasMovedVertically && newIndex !== startIndex;
+                const needsDateUpdate = hasMovedHorizontally && (newStartDate !== oldStartDate || newEndDate !== oldEndDate);
+                
+                // Update reorder if needed
+                if (needsReorder) {
                     const baseOrder = PROJECT_ID * 1000;
                     const orders = [];
-                    
-                    // Get all bars except the one being dragged, sorted by their original order
                     const otherBars = allBars.filter(bar => bar !== currentBar);
-                    
-                    // Sort other bars by their data-order attribute (original order)
                     otherBars.sort((a, b) => {
                         const aOrder = parseFloat(a.dataset.order) || 0;
                         const bOrder = parseFloat(b.dataset.order) || 0;
                         return aOrder - bOrder;
                     });
-                    
-                    // Insert current bar at new position
                     otherBars.splice(newIndex, 0, currentBar);
-                    
-                    // Calculate orders
                     otherBars.forEach((bar, index) => {
                         orders.push({
                             stage_id: parseInt(bar.dataset.stageId),
@@ -1327,7 +1425,128 @@
                         });
                     });
                     
-                    // Update database
+                    fetch(`/dashboard/mentor/projects/${PROJECT_ID}/stages/reorder/`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': '{{ csrf_token }}'
+                        },
+                        body: JSON.stringify({ orders: orders })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // If also updating dates, do that next; otherwise reload
+                            if (needsDateUpdate) {
+                                updateStageDates();
+                            } else {
+                                if (typeof showNotification !== 'undefined') {
+                                    showNotification('Stage order updated', 'success');
+                                }
+                                loadStages();
+                            }
+                        } else {
+                            console.error('Failed to reorder stages:', data.error);
+                            if (typeof showNotification !== 'undefined') {
+                                showNotification('Failed to reorder stages', 'error');
+                            }
+                            loadStages();
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error reordering stages:', error);
+                        if (typeof showNotification !== 'undefined') {
+                            showNotification('Error reordering stages', 'error');
+                        }
+                        loadStages();
+                    });
+                }
+                
+                // Update dates if needed
+                const updateStageDates = () => {
+                    const formatDate = (dateStr) => {
+                        const date = new Date(dateStr);
+                        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                    };
+                    
+                    fetch(`/dashboard/mentor/projects/${PROJECT_ID}/stages/${stageId}/update-dates/`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': '{{ csrf_token }}'
+                        },
+                        body: JSON.stringify({
+                            start_date: newStartDate,
+                            end_date: newEndDate
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            let message = '';
+                            if (needsReorder && needsDateUpdate) {
+                                message = `Stage order and dates updated: ${formatDate(newStartDate)} - ${formatDate(newEndDate)}`;
+                            } else if (needsDateUpdate) {
+                                message = `Stage dates updated: ${formatDate(newStartDate)} - ${formatDate(newEndDate)}`;
+                            } else if (needsReorder) {
+                                message = 'Stage order updated';
+                            }
+                            
+                            if (message && typeof showNotification !== 'undefined') {
+                                showNotification(message, 'success');
+                            }
+                            loadStages();
+                        } else {
+                            console.error('Failed to update stage dates:', data.error);
+                            if (typeof showNotification !== 'undefined') {
+                                showNotification('Failed to update stage dates', 'error');
+                            }
+                            loadStages();
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error updating stage dates:', error);
+                        if (typeof showNotification !== 'undefined') {
+                            showNotification('Error updating stage dates', 'error');
+                        }
+                        loadStages();
+                    });
+                };
+                
+                // If only date update needed (no reorder), do it directly
+                if (needsDateUpdate && !needsReorder) {
+                    updateStageDates();
+                } else if (!needsReorder && !needsDateUpdate) {
+                    // No changes, just restore
+                    loadStages();
+                }
+            } else if (dragType === 'reorder') {
+                // Handle reordering only
+                const chartRect = chartEl.getBoundingClientRect();
+                const barHeight = 30;
+                const barSpacing = 50;
+                const allBars = Array.from(chartEl.querySelectorAll('.waterfall-stage-bar'));
+                
+                const currentBarTop = parseFloat(currentBar.style.top) || startTop;
+                const newIndex = Math.max(0, Math.min(allBars.length - 1, Math.round((currentBarTop - 20 + barHeight / 2) / barSpacing)));
+                
+                if (newIndex !== startIndex) {
+                    const baseOrder = PROJECT_ID * 1000;
+                    const orders = [];
+                    const otherBars = allBars.filter(bar => bar !== currentBar);
+                    otherBars.sort((a, b) => {
+                        const aOrder = parseFloat(a.dataset.order) || 0;
+                        const bOrder = parseFloat(b.dataset.order) || 0;
+                        return aOrder - bOrder;
+                    });
+                    otherBars.splice(newIndex, 0, currentBar);
+                    otherBars.forEach((bar, index) => {
+                        orders.push({
+                            stage_id: parseInt(bar.dataset.stageId),
+                            order: baseOrder + index + 1
+                        });
+                    });
+                    
                     fetch(`/dashboard/mentor/projects/${PROJECT_ID}/stages/reorder/`, {
                         method: 'POST',
                         headers: {
@@ -1342,7 +1561,6 @@
                             if (typeof showNotification !== 'undefined') {
                                 showNotification('Stage order updated', 'success');
                             }
-                            // Reload stages to update everything
                             loadStages();
                         } else {
                             console.error('Failed to reorder stages:', data.error);
@@ -1360,23 +1578,20 @@
                         loadStages();
                     });
                 } else {
-                    // No change, just restore
                     loadStages();
                 }
             } else {
-                // Handle date updates
+                // Handle date updates only (move or resize)
                 const oldStartDate = startDate.toISOString().split('T')[0];
                 const oldEndDate = endDate.toISOString().split('T')[0];
                 const newStartDate = currentBar.dataset.startDate;
                 const newEndDate = currentBar.dataset.endDate;
                 
-                // Format dates for notification
                 const formatDate = (dateStr) => {
                     const date = new Date(dateStr);
                     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
                 };
                 
-                // Determine what changed
                 let notificationMessage = '';
                 if (dragType === 'resize-left' && newStartDate !== oldStartDate) {
                     notificationMessage = `Start date updated to ${formatDate(newStartDate)}`;
@@ -1386,7 +1601,6 @@
                     notificationMessage = `Stage dates updated: ${formatDate(newStartDate)} - ${formatDate(newEndDate)}`;
                 }
                 
-                // Update database
                 fetch(`/dashboard/mentor/projects/${PROJECT_ID}/stages/${stageId}/update-dates/`, {
                     method: 'POST',
                     headers: {
@@ -1401,18 +1615,15 @@
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
-                        // Show notification
                         if (notificationMessage && typeof showNotification !== 'undefined') {
                             showNotification(notificationMessage, 'success');
                         }
-                        // Reload stages to update everything
                         loadStages();
                     } else {
                         console.error('Failed to update stage dates:', data.error);
                         if (typeof showNotification !== 'undefined') {
                             showNotification('Failed to update stage dates', 'error');
                         }
-                        // Reload to restore correct state
                         loadStages();
                     }
                 })
@@ -1458,11 +1669,15 @@
             return;
         }
         
-        // Calculate completion based on tasks across all stages
+        // Calculate completion based on tasks across all stages (exclude disabled stages)
         let totalTasks = 0;
         let completedTasks = 0;
         
         stages.forEach(stage => {
+            // Skip disabled stages in completion calculation
+            if (stage.is_disabled) {
+                return;
+            }
             const stageTotal = stage.tasks_total || 0;
             const stageCompleted = stage.tasks_completed || 0;
             totalTasks += stageTotal;
@@ -1535,35 +1750,49 @@
             let statusDot = '';
             let titleClass = '';
             let titleText = stage.title;
+            const isDisabled = stage.is_disabled || false;
+            let rowClass = 'stage-row';
             
-            // Determine status dot and colors based on progress_status
+            if (isDisabled) {
+                rowClass = 'stage-row stage-row-disabled';
+            }
+            
+            // Determine status dot and colors based on progress_status (or disabled)
             const progressStatus = stage.progress_status || (stage.is_completed ? 'completed' : 'in_progress');
             let progressColor = '#e5e7eb';
             let statusTitle = '';
             
-            switch(progressStatus) {
-                case 'completed':
-                    statusDot = '<span class="status-dot completed" title="Completed"></span>';
-                    progressColor = '#10b981';
-                    statusTitle = 'Completed';
-                    titleClass = 'style="text-decoration: line-through; color: #6b7280;"';
-                    break;
-                case 'overdue':
-                    statusDot = '<span class="status-dot overdue" title="Overdue"></span>';
-                    progressColor = '#ef4444';
-                    statusTitle = 'Overdue';
-                    break;
-                case 'in_progress':
-                    statusDot = '<span class="status-dot pending" title="In Progress"></span>';
-                    progressColor = '#3b82f6';
-                    statusTitle = 'In Progress';
-                    break;
-                case 'created':
-                default:
-                    statusDot = '<span class="status-dot created" title="Created"></span>';
-                    progressColor = '#fbbf24';
-                    statusTitle = 'Created';
-                    break;
+            if (isDisabled) {
+                // Disabled stage styling
+                statusDot = '<span class="status-dot" style="background-color: #9ca3af; border: 1px solid #d1d5db; box-shadow: none;" title="Disabled"></span>';
+                progressColor = '#9ca3af';
+                statusTitle = 'Disabled';
+                titleClass = 'style="color: #6b7280; opacity: 0.7;"';
+            } else {
+                switch(progressStatus) {
+                    case 'completed':
+                        statusDot = '<span class="status-dot completed" title="Completed"></span>';
+                        progressColor = '#10b981';
+                        statusTitle = 'Completed';
+                        titleClass = 'style="text-decoration: line-through; color: #6b7280;"';
+                        break;
+                    case 'overdue':
+                        statusDot = '<span class="status-dot overdue" title="Overdue"></span>';
+                        progressColor = '#ef4444';
+                        statusTitle = 'Overdue';
+                        break;
+                    case 'in_progress':
+                        statusDot = '<span class="status-dot pending" title="In Progress"></span>';
+                        progressColor = '#3b82f6';
+                        statusTitle = 'In Progress';
+                        break;
+                    case 'created':
+                    default:
+                        statusDot = '<span class="status-dot created" title="Created"></span>';
+                        progressColor = '#fbbf24';
+                        statusTitle = 'Created';
+                        break;
+                }
             }
             
             // Calculate progress based on tasks
@@ -1572,7 +1801,10 @@
             const progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : (progressStatus === 'completed' ? 100 : 0);
             
             // Override progress color if progress is 0 (no tasks) or use status-based color
-            if (progress === 0 && progressStatus !== 'completed') {
+            if (isDisabled) {
+                // Keep disabled color
+                progressColor = '#9ca3af';
+            } else if (progress === 0 && progressStatus !== 'completed') {
                 progressColor = '#e5e7eb';
             } else if (progressStatus === 'completed') {
                 progressColor = '#10b981';
@@ -1604,7 +1836,7 @@
             }
             
             return `
-                <div class="stage-row" data-stage-id="${stage.id}">
+                <div class="${rowClass}" data-stage-id="${stage.id}">
                     <div class="stage-drag-section">
                         <div class="drag-grip">
                             <i class="fas fa-grip-lines"></i>
@@ -1785,6 +2017,109 @@
             });
     }
     
+    // Load client active backlog
+    function loadActiveBacklog() {
+        {% if project.project_owner %}
+        const clientId = {{ project.project_owner.id }};
+        const container = document.getElementById('clientActiveBacklogList');
+        const titleEl = document.getElementById('clientBacklogName');
+        
+        if (!container) return;
+        
+        fetch(`/dashboard/mentor/clients/${clientId}/active-backlog/api/`, {
+            method: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            credentials: 'same-origin'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data && data.success) {
+                renderActiveBacklog(data.tasks || [], data.total_count || 0, data.client_name || '');
+            } else {
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 16px; color: #9ca3af; font-size: 0.85rem;">
+                        <i class="fas fa-exclamation-triangle" style="font-size: 1rem; margin-bottom: 8px; opacity: 0.3;"></i>
+                        <p style="margin: 0;">Error loading tasks</p>
+                    </div>
+                `;
+            }
+        })
+        .catch(error => {
+            console.error('Error loading active backlog:', error);
+            container.innerHTML = `
+                <div style="text-align: center; padding: 16px; color: #9ca3af; font-size: 0.85rem;">
+                    <i class="fas fa-exclamation-triangle" style="font-size: 1rem; margin-bottom: 8px; opacity: 0.3;"></i>
+                    <p style="margin: 0;">Error loading tasks</p>
+                </div>
+            `;
+        });
+        {% endif %}
+    }
+    
+    // Render active backlog tasks
+    function renderActiveBacklog(tasks, totalCount, clientName) {
+        const container = document.getElementById('clientActiveBacklogList');
+        if (!container) return;
+        
+        if (tasks.length === 0) {
+            container.innerHTML = `
+                <div style="text-align: center; padding: 16px; color: #9ca3af; font-size: 0.85rem;">
+                    <i class="fas fa-clipboard-list" style="font-size: 1.5rem; margin-bottom: 8px; opacity: 0.3;"></i>
+                    <p style="margin: 0;">No tasks yet</p>
+                </div>
+            `;
+            return;
+        }
+        
+        let html = '<div style="display: flex; flex-direction: column; gap: 8px;">';
+        tasks.forEach((task, index) => {
+            const completedStyle = task.completed ? 'text-decoration: line-through; color: #94a3b8;' : 'color: #1f2937;';
+            const borderStyle = index < tasks.length - 1 ? 'border-bottom: 1px solid #f3f4f6;' : '';
+            const descriptionHtml = task.description ? `
+                <div style="font-size: 0.75rem; color: #64748b; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                    ${escapeHtml(task.description)}
+                </div>
+            ` : '';
+            
+            html += `
+                <div style="display: flex; align-items: center; gap: 8px; padding: 8px; border-radius: 6px; transition: background 0.2s; ${borderStyle}" 
+                     onmouseover="this.style.background='#f8fafc'" 
+                     onmouseout="this.style.background='transparent'">
+                    <input type="checkbox" ${task.completed ? 'checked' : ''} disabled style="width: 16px; height: 16px; cursor: not-allowed; opacity: 0.6;">
+                    <div style="flex: 1; min-width: 0;">
+                        <div style="font-size: 0.85rem; font-weight: 500; ${completedStyle}">
+                            ${escapeHtml(task.title)}
+                        </div>
+                        ${descriptionHtml}
+                    </div>
+                </div>
+            `;
+        });
+        html += '</div>';
+        
+        // Add "more tasks" indicator if there are more than 5
+        if (totalCount > 5) {
+            html += `
+                <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #f3f4f6; text-align: center;">
+                    <span style="font-size: 0.75rem; color: #6b7280;">
+                        +${totalCount - 5} more task${totalCount - 5 !== 1 ? 's' : ''}
+                    </span>
+                </div>
+            `;
+        }
+        
+        container.innerHTML = html;
+    }
+    
+    // Helper function to escape HTML
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
     // Initialize immediately - script runs after DOM is ready
     console.log('Script execution started');
     console.log('Document ready state:', document.readyState);
@@ -1793,12 +2128,14 @@
     try {
         console.log('Attempting to call loadStages()');
         loadStages();
+        loadActiveBacklog();
     } catch (error) {
         console.error('Error calling loadStages:', error);
         // Fallback to DOMContentLoaded
         document.addEventListener('DOMContentLoaded', function() {
             console.log('DOMContentLoaded - calling loadStages()');
             loadStages();
+            loadActiveBacklog();
         });
     }
 
