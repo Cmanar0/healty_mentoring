@@ -110,6 +110,27 @@ class Project(models.Model):
 
     def __str__(self):
         return self.title
+    
+    def save(self, *args, **kwargs):
+        """Override save to recalculate stage statuses when target_completion_date changes"""
+        # Check if target_completion_date is being changed
+        if self.pk:
+            try:
+                old_project = Project.objects.get(pk=self.pk)
+                target_date_changed = old_project.target_completion_date != self.target_completion_date
+            except Project.DoesNotExist:
+                target_date_changed = False
+        else:
+            target_date_changed = False
+        
+        # Save the project first
+        super().save(*args, **kwargs)
+        
+        # If target_completion_date changed, recalculate all stage statuses
+        if target_date_changed:
+            for stage in self.stages.filter(is_disabled=False):
+                stage.progress_status = stage.calculate_progress_status()
+                stage.save(update_fields=['progress_status'])
 
     def create_stages_from_template(self):
         """
@@ -307,6 +328,10 @@ class ProjectStage(models.Model):
         """
         Calculate and return the current progress status based on dates and tasks.
         Priority: completed > overdue > in_progress > created
+        
+        A stage is considered overdue if:
+        1. Today is past the stage's end_date, OR
+        2. The stage's end_date is later than the project's target_completion_date
         """
         from datetime import date
         
@@ -314,11 +339,18 @@ class ProjectStage(models.Model):
         
         # Check if completed (highest priority)
         # Must have at least one task and all tasks completed
-        total_tasks = self.backlog_tasks.count()
-        completed_tasks = self.backlog_tasks.filter(completed=True).count()
+        # Only check tasks if the stage has been saved (has a primary key)
+        if self.pk:
+            total_tasks = self.backlog_tasks.count()
+            completed_tasks = self.backlog_tasks.filter(completed=True).count()
+            
+            if total_tasks > 0 and completed_tasks == total_tasks:
+                return 'completed'
         
-        if total_tasks > 0 and completed_tasks == total_tasks:
-            return 'completed'
+        # Check if stage end_date is past project target_completion_date (overdue)
+        if self.end_date and hasattr(self, 'project') and self.project and self.project.target_completion_date:
+            if self.end_date > self.project.target_completion_date:
+                return 'overdue'
         
         # Check dates
         if self.start_date and self.end_date:

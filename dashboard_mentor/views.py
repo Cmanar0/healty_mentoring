@@ -4653,6 +4653,45 @@ def project_detail(request, project_id):
         supervised_by=mentor_profile
     )
     
+    # Handle POST requests (update or delete)
+    if request.method == 'POST':
+        import json
+        try:
+            data = json.loads(request.body)
+            action = data.get('action')
+            
+            if action == 'update':
+                title = data.get('title', '').strip()
+                if not title:
+                    return JsonResponse({'success': False, 'error': 'Project title is required'}, status=400)
+                
+                project.title = title
+                project.description = data.get('description', '').strip()
+                project.save()
+                
+                return JsonResponse({
+                    'success': True,
+                    'message': 'Project updated successfully'
+                })
+            
+            elif action == 'delete':
+                project.delete()
+                return JsonResponse({
+                    'success': True,
+                    'message': 'Project deleted successfully'
+                })
+            
+            else:
+                return JsonResponse({'success': False, 'error': 'Invalid action'}, status=400)
+        
+        except json.JSONDecodeError:
+            return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f'Error in project_detail POST: {str(e)}')
+            return JsonResponse({'success': False, 'error': str(e)}, status=500)
+    
     # Get questions for this project (same logic as user view)
     from dashboard_user.models import ProjectQuestionnaire, ProjectQuestionnaireAnswer, ProjectModuleInstance
     

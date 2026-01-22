@@ -36,6 +36,7 @@
 
     /* Document Card Styles (matching stage detail page) */
     .document-card {
+        min-height: 248px;
         background: #ffffff;
         border-radius: 12px;
         box-shadow: 0 1px 3px rgba(0,0,0,0.05);
@@ -52,6 +53,197 @@
         justify-content: space-between;
         align-items: flex-start;
         gap: 24px;
+    }
+    
+    .doc-header-left {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 40px;
+    }
+    
+    .doc-header-right {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 16px;
+    }
+    
+    .project-info-row {
+        display: flex;
+        gap: 32px;
+        flex-wrap: wrap;
+    }
+    
+    .project-info-item {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+    
+    .project-info-label {
+        font-size: 0.75rem;
+        color: #6b7280;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+    
+    .project-info-value {
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: #111827;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .project-info-value a {
+        color: #111827;
+        text-decoration: none;
+        transition: opacity 0.2s;
+    }
+    
+    .project-info-value a:hover {
+        opacity: 0.7;
+    }
+    
+    .project-info-avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: #e5e7eb;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: #374151;
+        flex-shrink: 0;
+    }
+    
+    .project-info-avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        border-radius: 50%;
+    }
+    
+    .project-info-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 0.85rem;
+        font-weight: 500;
+    }
+    
+    .project-info-status.completed {
+        background: #ecfdf5;
+        color: #047857;
+    }
+    
+    .project-info-status.pending {
+        background: #fef3c7;
+        color: #92400e;
+    }
+    
+    .project-settings-dropdown-container {
+        position: relative;
+        z-index: 10;
+    }
+    
+    .project-settings-dropdown-trigger {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: transparent;
+        border: 1px solid #e5e7eb;
+        color: #64748b;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+    }
+    
+    .project-settings-dropdown-trigger:hover {
+        background: #f1f5f9;
+        border-color: #cbd5e1;
+        color: #1f2937;
+    }
+    
+    .project-settings-dropdown-trigger i {
+        font-size: 1.1rem;
+    }
+    
+    .project-settings-dropdown-menu {
+        position: absolute;
+        top: calc(100% + 8px);
+        right: 0;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        min-width: 180px;
+        padding: 0;
+        opacity: 0;
+        visibility: hidden;
+        transform: translateY(-10px);
+        transition: all 0.2s ease;
+        z-index: 1000;
+    }
+    
+    .project-settings-dropdown-container.active .project-settings-dropdown-menu {
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(0);
+    }
+    
+    .project-settings-dropdown-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 20px;
+        color: #1e293b;
+        text-decoration: none;
+        transition: background 0.2s ease;
+        border: none;
+        background: transparent;
+        width: 100%;
+        cursor: pointer;
+        font-size: 0.95rem;
+        font-weight: 400;
+        text-align: left;
+    }
+    
+    .project-settings-dropdown-item.first-item {
+        border-radius: 12px 12px 0 0;
+    }
+    
+    .project-settings-dropdown-item.last-item {
+        border-radius: 0 0 12px 12px;
+    }
+    
+    .project-settings-dropdown-item:hover {
+        background: rgba(16, 185, 129, 0.1);
+        color: #10b981;
+    }
+    
+    .project-settings-dropdown-item.delete-item:hover {
+        background: rgba(239, 68, 68, 0.1);
+        color: #ef4444;
+    }
+    
+    .project-settings-dropdown-item i {
+        width: 20px;
+        text-align: center;
+        color: #94a3b8;
+        font-size: 1.1rem;
+        flex-shrink: 0;
+    }
+    
+    .project-settings-dropdown-item:hover i {
+        color: inherit;
     }
 
     .doc-title {
@@ -131,6 +323,10 @@
         font-size: 1.1rem;
         line-height: 1.8;
         color: #374151;
+    }
+    
+    .doc-body p {
+        margin: 0;
     }
 
     /* Primary Content Area */
@@ -636,6 +832,7 @@
 {% block dashboard_content %}
 {% include 'general/modals/create_stage_modal.html' %}
 {% include 'dashboard_user/projects/modals/manage_modules_modal.html' %}
+{% include 'dashboard_mentor/popups/project_settings.html' %}
 
 <div class="dashboard-content-container" style="max-width: 1200px; margin: 0 auto;">
     
@@ -656,27 +853,99 @@
             <!-- Project Name, Description -->
             <div class="document-card">
                 <div class="doc-header">
-                    <h1 class="doc-title">{{ project.title }}</h1>
-                    {% if project.project_owner %}
-                        <a href="{% url 'general:dashboard_mentor:client_detail' project.project_owner.id %}" class="project-owner-header" style="text-decoration: none;">
-                            <div class="project-owner-info">
-                                <div class="project-owner-name">
-                                    {{ project.project_owner.first_name }} {{ project.project_owner.last_name }}
+                    <div class="doc-header-left">
+                        <h1 class="doc-title">{{ project.title }}</h1>
+                        <div class="project-info-row">
+                            <!-- Project Owner -->
+                            <div class="project-info-item">
+                                <div class="project-info-label">Project Owner</div>
+                                <div class="project-info-value">
+                                    {% if project.project_owner %}
+                                        {% if project.project_owner.profile_picture %}
+                                            <img src="{{ project.project_owner.profile_picture.url }}" alt="{{ project.project_owner.first_name }}" class="project-info-avatar">
+                                        {% else %}
+                                            <div class="project-info-avatar">
+                                                {{ project.project_owner.first_name|make_list|first|default:"U" }}
+                                            </div>
+                                        {% endif %}
+                                        <a href="{% url 'general:dashboard_mentor:client_detail' project.project_owner.id %}">
+                                            {{ project.project_owner.first_name }} {{ project.project_owner.last_name }}
+                                        </a>
+                                    {% else %}
+                                        <span style="color: #ef4444; font-size: 0.9rem;">
+                                            <i class="fas fa-exclamation-triangle"></i> Unassigned
+                                        </span>
+                                    {% endif %}
                                 </div>
-                                <div class="project-owner-label">Project Owner</div>
                             </div>
-                            <div class="project-owner-avatar">
-                                {{ project.project_owner.first_name|make_list|first|default:"U" }}
+                            
+                            <!-- Project Supervisor -->
+                            <div class="project-info-item">
+                                <div class="project-info-label">Project Supervisor</div>
+                                <div class="project-info-value">
+                                    {% if project.supervised_by %}
+                                        {% if project.supervised_by.profile_picture %}
+                                            <img src="{{ project.supervised_by.profile_picture.url }}" alt="{{ project.supervised_by.first_name }}" class="project-info-avatar">
+                                        {% else %}
+                                            <div class="project-info-avatar" style="background: #dbeafe; color: #1e40af;">
+                                                {{ project.supervised_by.first_name|make_list|first|default:"M" }}
+                                            </div>
+                                        {% endif %}
+                                        <span>{{ project.supervised_by.first_name }} {{ project.supervised_by.last_name }}</span>
+                                    {% else %}
+                                        <span style="color: #9ca3af; font-size: 0.9rem; font-style: italic;">Not assigned</span>
+                                    {% endif %}
+                                </div>
                             </div>
-                        </a>
-                    {% else %}
-                        <div class="project-owner-header">
-                            <div class="project-owner-unassigned">
-                                <i class="fas fa-exclamation-triangle"></i>
-                                <span>Unassigned</span>
+                            
+                            <!-- Project Definition -->
+                            <div class="project-info-item">
+                                <div class="project-info-label">Project Definition</div>
+                                <div class="project-info-value">
+                                    {% if project.questionnaire_completed %}
+                                        <span class="project-info-status completed">
+                                            <i class="fas fa-check-circle"></i> Completed
+                                        </span>
+                                    {% else %}
+                                        <span class="project-info-status pending">
+                                            <i class="fas fa-clock"></i> Pending
+                                        </span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            <!-- Target Completion Date -->
+                            <div class="project-info-item">
+                                <div class="project-info-label">Target Date</div>
+                                <div class="project-info-value">
+                                    {% if project.target_completion_date %}
+                                        <i class="far fa-calendar-check" style="color: #6b7280; font-size: 0.9rem;"></i>
+                                        <span>{{ project.target_completion_date|date:"M j, Y" }}</span>
+                                    {% else %}
+                                        <span style="color: #9ca3af; font-size: 0.9rem; font-style: italic;">Not set</span>
+                                    {% endif %}
+                                </div>
                             </div>
                         </div>
-                    {% endif %}
+                    </div>
+                    
+                    <div class="doc-header-right">
+                        <div class="project-settings-dropdown-container" id="projectSettingsDropdown">
+                            <button class="project-settings-dropdown-trigger" onclick="toggleProjectSettingsDropdown(event)">
+                                <i class="fas fa-ellipsis-v"></i>
+                            </button>
+                            <div class="project-settings-dropdown-menu" onclick="event.stopPropagation();">
+                                <button class="project-settings-dropdown-item first-item" onclick="openProjectSettingsModal(); event.stopPropagation();">
+                                    <i class="fas fa-edit"></i>
+                                    <span>Edit Project</span>
+                                </button>
+                                <button class="project-settings-dropdown-item delete-item last-item" onclick="deleteProject(); event.stopPropagation();">
+                                    <i class="fas fa-trash"></i>
+                                    <span>Delete Project</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <div class="doc-body">
                     {% if project.description %}
@@ -776,6 +1045,33 @@
                     </p>
                 </div>
                 
+                <div style="position: relative; z-index: 2; width: 100%;">
+                    <!-- Modules Section -->
+                    <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.1);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                            <div style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.7;">Modules</div>
+                            <button onclick="openManageModulesModal()" style="width: auto; height: 40px; background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 6px 12px; border-radius: 6px; font-size: 0.75rem; cursor: pointer; transition: all 0.2s; white-space: nowrap; flex-shrink: 0;" onmouseover="this.style.background='rgba(255,255,255,0.2)'" onmouseout="this.style.background='rgba(255,255,255,0.15)'">
+                                <i class="fas fa-cog" style="margin-right: 4px;"></i> Manage
+                            </button>
+                        </div>
+                        {% if active_modules %}
+                        <div style="display: flex; flex-direction: column; gap: 10px;">
+                            {% for module_instance in active_modules %}
+                                <a href="{% url 'general:dashboard_user:module_detail' project.id module_instance.id %}" style="display: flex; align-items: center; gap: 12px; padding: 14px 16px; background: rgba(255,255,255,0.1); border-radius: 8px; text-decoration: none; color: white; transition: all 0.2s; min-height: 48px;" onmouseover="this.style.background='rgba(255,255,255,0.15)'" onmouseout="this.style.background='rgba(255,255,255,0.1)'">
+                                    {% if module_instance.module.icon %}
+                                        <i class="{{ module_instance.module.icon }}" style="font-size: 1.1rem; flex-shrink: 0;"></i>
+                                    {% endif %}
+                                    <span style="font-size: 0.9rem; font-weight: 500; line-height: 1.4;">{{ module_instance.module.name }}</span>
+                                </a>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <div style="color: rgba(255,255,255,0.6); font-size: 0.85rem; font-style: italic; padding: 12px 0;">
+                            No modules added yet
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
             </div>
 
             <!-- Client Active Backlog Card -->
@@ -809,10 +1105,16 @@
     console.log('Stages script block loaded');
     const PROJECT_ID = parseInt('{{ project.id }}');
     const STAGE_DETAIL_URL = '{% url "general:dashboard_mentor:stage_detail" project.id 0 %}'.replace('/0/', '/');
+    {% if project.target_completion_date %}
+    const TARGET_COMPLETION_DATE = '{{ project.target_completion_date|date:"Y-m-d" }}';
+    {% else %}
+    const TARGET_COMPLETION_DATE = null;
+    {% endif %}
     let sortableInstance = null;
     
     console.log('PROJECT_ID:', PROJECT_ID);
     console.log('STAGE_DETAIL_URL:', STAGE_DETAIL_URL);
+    console.log('TARGET_COMPLETION_DATE:', TARGET_COMPLETION_DATE);
     
     // Render waterfall chart
     function renderWaterfallChart(stages) {
@@ -912,11 +1214,29 @@
             ? ((today - minDate) / (maxDate - minDate)) * 100 
             : null;
         
+        // Calculate target completion date position (on extended range)
+        let targetDatePosition = null;
+        {% if project.target_completion_date %}
+        if (TARGET_COMPLETION_DATE) {
+            const targetDate = new Date(TARGET_COMPLETION_DATE);
+            targetDate.setHours(0, 0, 0, 0); // Reset to start of day for accurate comparison
+            targetDatePosition = targetDate >= minDate && targetDate <= maxDate 
+                ? ((targetDate - minDate) / (maxDate - minDate)) * 100 
+                : null;
+        }
+        {% endif %}
+        
         let chartHtml = `
             <div class="waterfall-chart-inner" style="position: relative; height: ${chartHeight}px; padding: 20px 0 60px 0;">
                 ${todayPosition !== null ? `
-                    <!-- Current time indicator line -->
-                    <div class="current-time-line" style="position: absolute; left: ${todayPosition}%; top: 0; bottom: 0; width: 2px; background: #ef4444; z-index: 100; pointer-events: none; transform: translateX(-50%);">
+                    <!-- Today indicator line (blue) -->
+                    <div class="current-time-line" style="position: absolute; left: ${todayPosition}%; top: 0; bottom: 0; width: 2px; background: #3b82f6; z-index: 100; pointer-events: none; transform: translateX(-50%);">
+                        <div style="position: absolute; top: -4px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 4px solid transparent; border-right: 4px solid transparent; border-top: 6px solid #3b82f6;"></div>
+                    </div>
+                ` : ''}
+                ${targetDatePosition !== null ? `
+                    <!-- Target completion date indicator line (red) -->
+                    <div class="target-date-line" style="position: absolute; left: ${targetDatePosition}%; top: 0; bottom: 0; width: 2px; background: #ef4444; z-index: 100; pointer-events: none; transform: translateX(-50%);">
                         <div style="position: absolute; top: -4px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 4px solid transparent; border-right: 4px solid transparent; border-top: 6px solid #ef4444;"></div>
                     </div>
                 ` : ''}
@@ -930,8 +1250,14 @@
                     `).join('')}
                     ${todayPosition !== null ? `
                         <div style="position: absolute; left: ${todayPosition}%; transform: translateX(-50%); top: -18px;">
+                            <div style="width: 2px; background: #3b82f6; margin: 0 auto;"></div>
+                            <div style="font-size: 0.65rem; color: #3b82f6; margin-bottom: 12px; white-space: nowrap; font-weight: 600;">Today</div>
+                        </div>
+                    ` : ''}
+                    ${targetDatePosition !== null ? `
+                        <div style="position: absolute; left: ${targetDatePosition}%; transform: translateX(-50%); top: -18px;">
                             <div style="width: 2px; background: #ef4444; margin: 0 auto;"></div>
-                            <div style="font-size: 0.65rem; color: #ef4444; margin-bottom: 12px; white-space: nowrap; font-weight: 600;">Today</div>
+                            <div style="font-size: 0.65rem; color: #ef4444; margin-bottom: 12px; white-space: nowrap; font-weight: 600;">Target Date</div>
                         </div>
                     ` : ''}
                     <div style="position: absolute; top: -20px; left: 0; font-size: 0.7rem; color: #9ca3af; font-weight: 500;">${unitLabel}</div>

@@ -2308,7 +2308,9 @@ def submit_questionnaire(request, project_id):
     if errors:
         return JsonResponse({'success': False, 'errors': errors}, status=400)
     
-    # Save answers
+    # Save answers and extract special fields
+    target_completion_date = None
+    
     for question in questions:
         answer_text = answers_data.get(str(question.id), '').strip()
         if answer_text:
@@ -2317,14 +2319,24 @@ def submit_questionnaire(request, project_id):
                 question=question,
                 defaults={'answer': answer_text}
             )
+            
+            # Extract target completion date if this is the target completion date question
+            if question.question_type == 'date' and 'target completion date' in question.question_text.lower():
+                try:
+                    from datetime import datetime
+                    target_completion_date = datetime.strptime(answer_text, '%Y-%m-%d').date()
+                except (ValueError, TypeError):
+                    pass
         else:
             # Remove answer if empty
             ProjectQuestionnaireAnswer.objects.filter(project=project, question=question).delete()
     
-    # Mark questionnaire as completed
+    # Mark questionnaire as completed and update target completion date
     from django.utils import timezone
     project.questionnaire_completed = True
     project.questionnaire_completed_at = timezone.now()
+    if target_completion_date:
+        project.target_completion_date = target_completion_date
     project.save()
     
     return JsonResponse({
