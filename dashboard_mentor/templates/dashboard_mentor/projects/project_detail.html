@@ -961,7 +961,18 @@
                 <div style="background: #fffbeb; border: 1px solid #fcd34d; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
                     <h3 style="margin: 0 0 8px 0; font-size: 1rem; color: #92400e;">Setup Required</h3>
                     <p style="margin: 0 0 16px 0; color: #b45309; font-size: 0.875rem;">Project details missing. Complete the questionnaire to unlock stage management.</p>
-                    {% include "dashboard_mentor/partials/questionnaire_form.html" with questions=questions answers=answers project=project %}
+                    <div style="margin-top: 24px;">
+                        {% include "general/reusable/slide_questionnaire.html" with questions=questions answers=answers %}
+                        <script>
+                            // Set submit URL for the slide questionnaire
+                            document.addEventListener('DOMContentLoaded', function() {
+                                const form = document.getElementById('slideQuestionnaireForm');
+                                if (form) {
+                                    form.dataset.submitUrl = '{% url "general:dashboard_user:submit_questionnaire" project.id %}';
+                                }
+                            });
+                        </script>
+                    </div>
                 </div>
             {% endif %}
 

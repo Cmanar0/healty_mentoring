@@ -1,0 +1,748 @@
+{% load custom_filters %}
+
+<div id="slideQuestionnaireContainer" class="slide-questionnaire-container">
+    <form id="slideQuestionnaireForm" class="slide-questionnaire-form">
+        {% csrf_token %}
+        
+        <!-- Progress Indicator -->
+        <div class="slide-questionnaire-progress">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <div class="progress-text">
+                <span id="currentSlide">1</span> / <span id="totalSlides">{{ questions|length }}</span>
+            </div>
+        </div>
+
+        <!-- Slides Container -->
+        <div class="slide-questionnaire-slides" id="slidesContainer">
+            {% for question in questions %}
+            <div class="question-slide {% if forloop.first %}active{% endif %}" data-question-id="{{ question.id }}" data-slide-index="{{ forloop.counter0 }}">
+                <div class="question-slide-content">
+                    <div class="question-header">
+                        <h3 class="question-title">
+                            {{ question.question_text }}
+                            {% if question.is_required %}
+                                <span class="required-indicator">*</span>
+                            {% endif %}
+                        </h3>
+                        {% if question.help_text %}
+                            <p class="question-help">{{ question.help_text }}</p>
+                        {% endif %}
+                    </div>
+
+                    <div class="question-input-wrapper">
+                        {% if question.question_type == 'textarea' %}
+                            <textarea 
+                                name="question_{{ question.id }}" 
+                                id="question_{{ question.id }}"
+                                class="question-input"
+                                rows="6"
+                                placeholder="Type your answer here..."
+                                {% if question.is_required %}required{% endif %}
+                                data-question-id="{{ question.id }}"
+                            >{{ answers|get_item:question.id|default:'' }}</textarea>
+                        {% elif question.question_type == 'date' %}
+                            <input 
+                                type="date" 
+                                name="question_{{ question.id }}" 
+                                id="question_{{ question.id }}"
+                                class="question-input"
+                                value="{{ answers|get_item:question.id|default:'' }}"
+                                {% if question.is_required %}required{% endif %}
+                                data-question-id="{{ question.id }}"
+                            >
+                        {% elif question.question_type == 'number' %}
+                            <input 
+                                type="number" 
+                                name="question_{{ question.id }}" 
+                                id="question_{{ question.id }}"
+                                class="question-input"
+                                value="{{ answers|get_item:question.id|default:'' }}"
+                                placeholder="Enter a number..."
+                                {% if question.is_required %}required{% endif %}
+                                data-question-id="{{ question.id }}"
+                            >
+                        {% elif question.question_type == 'select' %}
+                            <select 
+                                name="question_{{ question.id }}" 
+                                id="question_{{ question.id }}"
+                                class="question-input"
+                                {% if question.is_required %}required{% endif %}
+                                data-question-id="{{ question.id }}"
+                            >
+                                <option value="">Select an option</option>
+                                {% for option in question.options %}
+                                    <option value="{{ option }}" {% if answers|get_item:question.id == option %}selected{% endif %}>
+                                        {{ option }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        {% elif question.question_type == 'multiselect' %}
+                            <div class="multiselect-wrapper" data-question-id="{{ question.id }}" data-answer-value="{{ answers|get_item:question.id|default:'' }}">
+                                {% for option in question.options %}
+                                    <label class="multiselect-option">
+                                        <input 
+                                            type="checkbox" 
+                                            name="question_{{ question.id }}" 
+                                            value="{{ option }}"
+                                            data-question-id="{{ question.id }}"
+                                        >
+                                        <span>{{ option }}</span>
+                                    </label>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <input 
+                                type="text" 
+                                name="question_{{ question.id }}" 
+                                id="question_{{ question.id }}"
+                                class="question-input"
+                                value="{{ answers|get_item:question.id|default:'' }}"
+                                placeholder="Type your answer here..."
+                                {% if question.is_required %}required{% endif %}
+                                data-question-id="{{ question.id }}"
+                            >
+                        {% endif %}
+                        <div class="question-error" id="error_{{ question.id }}"></div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Navigation Buttons -->
+        <div class="slide-questionnaire-navigation">
+            <button type="button" class="btn-nav btn-prev" id="prevBtn" onclick="previousSlide()" style="display: none;">
+                <i class="fas fa-arrow-left"></i> Previous
+            </button>
+            <button type="button" class="btn-nav btn-next" id="nextBtn" onclick="nextSlide()">
+                Continue <i class="fas fa-arrow-right"></i>
+            </button>
+            <button type="submit" class="btn-nav btn-submit" id="submitBtn" style="display: none;">
+                <i class="fas fa-check"></i> Submit
+            </button>
+        </div>
+    </form>
+</div>
+
+<style>
+/* Slide Questionnaire Container */
+.slide-questionnaire-container {
+    background: white;
+    border-radius: 16px;
+    padding: 32px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    max-width: 700px;
+    margin: 0 auto;
+}
+
+/* Progress Indicator */
+.slide-questionnaire-progress {
+    margin-bottom: 32px;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 6px;
+    background: #e5e7eb;
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 12px;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #111827 0%, #374151 100%);
+    border-radius: 3px;
+    transition: width 0.3s ease;
+    width: 0%;
+}
+
+.progress-text {
+    text-align: center;
+    font-size: 0.875rem;
+    color: #6b7280;
+    font-weight: 500;
+}
+
+/* Slides Container */
+.slide-questionnaire-slides {
+    position: relative;
+    min-height: 400px;
+    margin-bottom: 32px;
+}
+
+.question-slide {
+    display: none;
+    animation: fadeIn 0.4s ease;
+}
+
+.question-slide.active {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateX(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.question-slide-content {
+    padding: 24px 0;
+}
+
+.question-header {
+    margin-bottom: 32px;
+}
+
+.question-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #111827;
+    margin: 0 0 12px 0;
+    line-height: 1.4;
+}
+
+.required-indicator {
+    color: #ef4444;
+    margin-left: 4px;
+}
+
+.question-help {
+    font-size: 0.95rem;
+    color: #6b7280;
+    margin: 0;
+    line-height: 1.6;
+}
+
+.question-input-wrapper {
+    margin-top: 24px;
+}
+
+.question-input {
+    width: 100%;
+    padding: 14px 16px;
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-family: inherit;
+    color: #111827;
+    transition: all 0.2s ease;
+    box-sizing: border-box;
+    background: #f9fafb;
+}
+
+.question-input:focus {
+    outline: none;
+    border-color: #111827;
+    background: white;
+    box-shadow: 0 0 0 4px rgba(17, 24, 39, 0.1);
+}
+
+.question-input::placeholder {
+    color: #9ca3af;
+}
+
+textarea.question-input {
+    resize: vertical;
+    min-height: 150px;
+    line-height: 1.6;
+    font-family: inherit;
+}
+
+select.question-input {
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 16px center;
+    background-size: 20px;
+    padding-right: 48px;
+}
+
+/* Multiselect Styles */
+.multiselect-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.multiselect-option {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: #f9fafb;
+}
+
+.multiselect-option:hover {
+    border-color: #111827;
+    background: white;
+}
+
+.multiselect-option input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+    accent-color: #111827;
+}
+
+.multiselect-option input[type="checkbox"]:checked + span {
+    font-weight: 600;
+    color: #111827;
+}
+
+.multiselect-option span {
+    flex: 1;
+    color: #374151;
+    font-size: 0.95rem;
+}
+
+/* Error Message */
+.question-error {
+    font-size: 0.875rem;
+    color: #dc2626;
+    margin-top: 8px;
+    display: none;
+    align-items: center;
+    gap: 6px;
+}
+
+.question-error.show {
+    display: flex;
+}
+
+.question-error::before {
+    content: '\f06a';
+    font-family: 'Font Awesome 5 Free';
+    font-weight: 900;
+    font-size: 0.875rem;
+}
+
+/* Navigation Buttons */
+.slide-questionnaire-navigation {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    padding-top: 24px;
+    border-top: 1px solid #e5e7eb;
+}
+
+.btn-nav {
+    padding: 12px 24px;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-prev {
+    background: #f3f4f6;
+    color: #374151;
+}
+
+.btn-prev:hover {
+    background: #e5e7eb;
+    color: #111827;
+}
+
+.btn-next {
+    background: #111827;
+    color: white;
+    margin-left: auto;
+}
+
+.btn-next:hover {
+    background: #000;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.btn-submit {
+    background: #10b981;
+    color: white;
+    margin-left: auto;
+}
+
+.btn-submit:hover {
+    background: #059669;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.btn-nav:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+    .slide-questionnaire-container {
+        padding: 24px;
+    }
+
+    .question-title {
+        font-size: 1.25rem;
+    }
+
+    .slide-questionnaire-navigation {
+        flex-direction: column;
+    }
+
+    .btn-nav {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .btn-next,
+    .btn-submit {
+        margin-left: 0;
+    }
+}
+</style>
+
+<script>
+(function() {
+    'use strict';
+    
+    let currentSlide = 0;
+    const slides = document.querySelectorAll('.question-slide');
+    const totalSlides = slides.length;
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const submitBtn = document.getElementById('submitBtn');
+    const progressFill = document.getElementById('progressFill');
+    const currentSlideSpan = document.getElementById('currentSlide');
+    const form = document.getElementById('slideQuestionnaireForm');
+    
+    // Initialize
+    if (totalSlides === 0) {
+        console.warn('No questions found in slide questionnaire');
+        return;
+    }
+    
+    updateProgress();
+    updateNavigation();
+    
+    // Save answers to localStorage as user progresses
+    function saveAnswers() {
+        const answers = {};
+        const inputs = form.querySelectorAll('input, textarea, select');
+        inputs.forEach(input => {
+            if (input.name && input.name.startsWith('question_')) {
+                const questionId = input.name.replace('question_', '');
+                if (input.type === 'checkbox') {
+                    // Handle multiselect checkboxes
+                    if (!answers[questionId]) {
+                        answers[questionId] = [];
+                    }
+                    if (input.checked) {
+                        answers[questionId].push(input.value);
+                    }
+                } else {
+                    answers[questionId] = input.value;
+                }
+            }
+        });
+        
+        // Convert multiselect arrays to comma-separated strings
+        Object.keys(answers).forEach(key => {
+            if (Array.isArray(answers[key])) {
+                answers[key] = answers[key].join(',');
+            }
+        });
+        
+        localStorage.setItem('slideQuestionnaireAnswers', JSON.stringify(answers));
+    }
+    
+    // Load answers from localStorage and template
+    function loadAnswers() {
+        // First, load from template (server-side answers)
+        const multiselectWrappers = form.querySelectorAll('.multiselect-wrapper[data-answer-value]');
+        multiselectWrappers.forEach(wrapper => {
+            const answerValue = wrapper.dataset.answerValue;
+            if (answerValue) {
+                const values = answerValue.split(',').map(v => v.trim());
+                const checkboxes = wrapper.querySelectorAll('input[type="checkbox"]');
+                checkboxes.forEach(checkbox => {
+                    if (values.includes(checkbox.value)) {
+                        checkbox.checked = true;
+                    }
+                });
+            }
+        });
+        
+        // Then, load from localStorage (user's progress)
+        const saved = localStorage.getItem('slideQuestionnaireAnswers');
+        if (saved) {
+            try {
+                const answers = JSON.parse(saved);
+                Object.keys(answers).forEach(questionId => {
+                    const inputs = form.querySelectorAll(`[name="question_${questionId}"]`);
+                    inputs.forEach(input => {
+                        if (input.type === 'checkbox') {
+                            // Handle multiselect
+                            const value = answers[questionId];
+                            if (typeof value === 'string') {
+                                const values = value.split(',').map(v => v.trim());
+                                input.checked = values.includes(input.value);
+                            }
+                        } else {
+                            input.value = answers[questionId];
+                        }
+                    });
+                });
+            } catch (e) {
+                console.error('Error loading saved answers:', e);
+            }
+        }
+    }
+    
+    // Load answers on page load
+    loadAnswers();
+    
+    // Save answers on input change
+    form.addEventListener('input', saveAnswers);
+    form.addEventListener('change', saveAnswers);
+    
+    function showSlide(index) {
+        if (index < 0 || index >= totalSlides) return;
+        
+        // Hide all slides
+        slides.forEach(slide => slide.classList.remove('active'));
+        
+        // Show current slide
+        slides[index].classList.add('active');
+        currentSlide = index;
+        
+        // Focus on first input in slide
+        const firstInput = slides[index].querySelector('.question-input, input[type="checkbox"]');
+        if (firstInput && firstInput.type !== 'checkbox') {
+            setTimeout(() => firstInput.focus(), 300);
+        }
+        
+        updateProgress();
+        updateNavigation();
+    }
+    
+    function updateProgress() {
+        const progress = ((currentSlide + 1) / totalSlides) * 100;
+        progressFill.style.width = progress + '%';
+        currentSlideSpan.textContent = currentSlide + 1;
+    }
+    
+    function updateNavigation() {
+        // Previous button
+        if (currentSlide === 0) {
+            prevBtn.style.display = 'none';
+        } else {
+            prevBtn.style.display = 'inline-flex';
+        }
+        
+        // Next/Submit button
+        if (currentSlide === totalSlides - 1) {
+            nextBtn.style.display = 'none';
+            submitBtn.style.display = 'inline-flex';
+        } else {
+            nextBtn.style.display = 'inline-flex';
+            submitBtn.style.display = 'none';
+        }
+    }
+    
+    function validateCurrentSlide() {
+        const currentSlideEl = slides[currentSlide];
+        const requiredInputs = currentSlideEl.querySelectorAll('[required]');
+        let isValid = true;
+        
+        // Clear previous errors
+        const errorEl = currentSlideEl.querySelector('.question-error');
+        if (errorEl) {
+            errorEl.classList.remove('show');
+            errorEl.textContent = '';
+        }
+        
+        for (let input of requiredInputs) {
+            if (input.type === 'checkbox') {
+                // For multiselect, check if at least one is checked
+                const checkboxes = currentSlideEl.querySelectorAll(`[name="${input.name}"]`);
+                const checked = Array.from(checkboxes).some(cb => cb.checked);
+                if (!checked) {
+                    isValid = false;
+                    if (errorEl) {
+                        errorEl.textContent = 'Please select at least one option';
+                        errorEl.classList.add('show');
+                    }
+                    break;
+                }
+            } else {
+                if (!input.value.trim()) {
+                    isValid = false;
+                    input.focus();
+                    if (errorEl) {
+                        errorEl.textContent = 'This field is required';
+                        errorEl.classList.add('show');
+                    }
+                    break;
+                }
+            }
+        }
+        
+        return isValid;
+    }
+    
+    // Global functions for navigation buttons
+    window.nextSlide = function() {
+        if (validateCurrentSlide()) {
+            saveAnswers();
+            showSlide(currentSlide + 1);
+        }
+    };
+    
+    window.previousSlide = function() {
+        showSlide(currentSlide - 1);
+    };
+    
+    // Form submission
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        if (!validateCurrentSlide()) {
+            return;
+        }
+        
+        const submitBtnEl = form.querySelector('button[type="submit"]');
+        const originalText = submitBtnEl.innerHTML;
+        submitBtnEl.disabled = true;
+        submitBtnEl.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
+        
+        // Collect all answers
+        const answers = {};
+        const inputs = form.querySelectorAll('input, textarea, select');
+        inputs.forEach(input => {
+            if (input.name && input.name.startsWith('question_')) {
+                const questionId = input.name.replace('question_', '');
+                if (input.type === 'checkbox') {
+                    // Handle multiselect checkboxes
+                    if (!answers[questionId]) {
+                        answers[questionId] = [];
+                    }
+                    if (input.checked) {
+                        answers[questionId].push(input.value);
+                    }
+                } else {
+                    const value = input.value.trim();
+                    if (value) {
+                        answers[questionId] = value;
+                    }
+                }
+            }
+        });
+        
+        // Convert multiselect arrays to comma-separated strings
+        Object.keys(answers).forEach(key => {
+            if (Array.isArray(answers[key])) {
+                answers[key] = answers[key].join(',');
+            }
+        });
+        
+        // Get submit URL from data attribute or use default
+        const submitUrl = form.dataset.submitUrl || window.slideQuestionnaireSubmitUrl;
+        
+        if (!submitUrl) {
+            console.error('Submit URL not found. Set data-submit-url on form or window.slideQuestionnaireSubmitUrl');
+            alert('Configuration error: Submit URL not found');
+            submitBtnEl.disabled = false;
+            submitBtnEl.innerHTML = originalText;
+            return;
+        }
+        
+        // Submit via fetch
+        fetch(submitUrl, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': form.querySelector('[name=csrfmiddlewaretoken]').value,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ answers: answers })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Clear saved answers
+                localStorage.removeItem('slideQuestionnaireAnswers');
+                
+                // Show success message or redirect
+                if (data.redirect_url) {
+                    window.location.href = data.redirect_url;
+                } else {
+                    window.location.reload();
+                }
+            } else {
+                // Show errors
+                if (data.errors) {
+                    Object.keys(data.errors).forEach(questionId => {
+                        const slide = form.querySelector(`[data-question-id="${questionId}"]`);
+                        if (slide) {
+                            const errorEl = slide.querySelector('.question-error');
+                            if (errorEl) {
+                                errorEl.textContent = data.errors[questionId];
+                                errorEl.classList.add('show');
+                            }
+                            // Show the slide with error
+                            showSlide(Array.from(slides).indexOf(slide.closest('.question-slide')));
+                        }
+                    });
+                } else {
+                    alert(data.error || 'Failed to submit questionnaire');
+                }
+                submitBtnEl.disabled = false;
+                submitBtnEl.innerHTML = originalText;
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while submitting the questionnaire.');
+            submitBtnEl.disabled = false;
+            submitBtnEl.innerHTML = originalText;
+        });
+    });
+    
+    // Keyboard navigation
+    document.addEventListener('keydown', function(e) {
+        if (!form.closest('.slide-questionnaire-container')) return;
+        
+        if (e.key === 'Enter' && e.ctrlKey) {
+            // Ctrl+Enter to submit on last slide
+            if (currentSlide === totalSlides - 1) {
+                form.dispatchEvent(new Event('submit'));
+            } else {
+                nextSlide();
+            }
+            e.preventDefault();
+        } else if (e.key === 'ArrowLeft' && e.ctrlKey) {
+            previousSlide();
+            e.preventDefault();
+        } else if (e.key === 'ArrowRight' && e.ctrlKey) {
+            nextSlide();
+            e.preventDefault();
+        }
+    });
+})();
+</script>

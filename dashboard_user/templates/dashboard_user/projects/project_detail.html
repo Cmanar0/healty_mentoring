@@ -74,80 +74,16 @@
         <h2>Project Questionnaire</h2>
         
         {% if not project.questionnaire_completed %}
-          <form id="questionnaireForm" class="dash-user-questionnaire-form">
-            {% csrf_token %}
-            {% for question in questions %}
-              <div class="dash-user-question-item">
-                <label class="dash-user-question-label">
-                  {{ question.question_text }}
-                  {% if question.is_required %}
-                    <span class="dash-user-required">*</span>
-                  {% endif %}
-                </label>
-                {% if question.help_text %}
-                  <p class="dash-user-question-help">{{ question.help_text }}</p>
-                {% endif %}
-                
-                {% if question.question_type == 'textarea' %}
-                  <textarea 
-                    name="question_{{ question.id }}" 
-                    id="question_{{ question.id }}"
-                    class="dash-user-question-input"
-                    rows="4"
-                    {% if question.is_required %}required{% endif %}
-                  >{{ answers|get_item:question.id|default:'' }}</textarea>
-                {% elif question.question_type == 'date' %}
-                  <input 
-                    type="date" 
-                    name="question_{{ question.id }}" 
-                    id="question_{{ question.id }}"
-                    class="dash-user-question-input"
-                    value="{{ answers|get_item:question.id|default:'' }}"
-                    {% if question.is_required %}required{% endif %}
-                  >
-                {% elif question.question_type == 'number' %}
-                  <input 
-                    type="number" 
-                    name="question_{{ question.id }}" 
-                    id="question_{{ question.id }}"
-                    class="dash-user-question-input"
-                    value="{{ answers|get_item:question.id|default:'' }}"
-                    {% if question.is_required %}required{% endif %}
-                  >
-                {% elif question.question_type == 'select' %}
-                  <select 
-                    name="question_{{ question.id }}" 
-                    id="question_{{ question.id }}"
-                    class="dash-user-question-input"
-                    {% if question.is_required %}required{% endif %}
-                  >
-                    <option value="">Select an option</option>
-                    {% for option in question.options %}
-                      <option value="{{ option }}" {% if answers|get_item:question.id == option %}selected{% endif %}>
-                        {{ option }}
-                      </option>
-                    {% endfor %}
-                  </select>
-                {% else %}
-                  <input 
-                    type="text" 
-                    name="question_{{ question.id }}" 
-                    id="question_{{ question.id }}"
-                    class="dash-user-question-input"
-                    value="{{ answers|get_item:question.id|default:'' }}"
-                    {% if question.is_required %}required{% endif %}
-                  >
-                {% endif %}
-                <div class="dash-user-question-error" id="error_{{ question.id }}"></div>
-              </div>
-            {% endfor %}
-            
-            <div class="dash-user-questionnaire-actions">
-              <button type="submit" class="dash-user-btn-submit">
-                <i class="fas fa-check"></i> Submit Questionnaire
-              </button>
-            </div>
-          </form>
+          {% include "general/reusable/slide_questionnaire.html" with questions=questions answers=answers %}
+          <script>
+            // Set submit URL for the slide questionnaire
+            document.addEventListener('DOMContentLoaded', function() {
+              const form = document.getElementById('slideQuestionnaireForm');
+              if (form) {
+                form.dataset.submitUrl = '{% url "general:dashboard_user:submit_questionnaire" project.id %}';
+              }
+            });
+          </script>
         {% else %}
           <div class="dash-user-questionnaire-completed">
             <div class="dash-user-questionnaire-completed-badge">
