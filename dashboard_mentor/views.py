@@ -108,10 +108,28 @@ def dashboard(request):
         logger = logging.getLogger(__name__)
         logger.error(f"Error fetching upcoming sessions: {str(e)}")
     
+    # Get templates and modules for the create project modal
+    mentor_profile = request.user.mentor_profile if hasattr(request.user, 'mentor_profile') else None
+    templates = []
+    modules = []
+    
+    if mentor_profile:
+        # Get templates with no author OR templates authored by this mentor
+        templates = ProjectTemplate.objects.filter(
+            Q(author__isnull=True) | Q(author=mentor_profile)
+        ).order_by('order', 'name')
+        
+        # Get all active modules (or all if none are active)
+        modules = ProjectModule.objects.filter(is_active=True).order_by('order', 'name')
+        if not modules.exists():
+            modules = ProjectModule.objects.all().order_by('order', 'name')
+    
     return render(request, 'dashboard_mentor/dashboard_mentor.html', {
         'debug': settings.DEBUG,
         'upcoming_sessions': upcoming_sessions,
         'has_more_sessions': has_more_sessions,
+        'project_templates': templates,
+        'project_modules': modules,
     })
 
 @login_required
@@ -4351,7 +4369,35 @@ def project_templates_api(request):
         return JsonResponse({'success': False, 'templates': [], 'error': 'Unauthorized'}, status=403)
     
     try:
-        templates = ProjectTemplate.objects.filter(is_active=True).order_by('order', 'name')
+        mentor_profile = request.user.mentor_profile
+        
+        # Filter templates:
+        # - Templates with author=None: show to everyone
+        # - Templates with author=mentor_profile: show only to that mentor
+        from django.db.models import Q
+        
+        # Filter templates:
+        # - Templates with author=None: show to everyone (regardless of is_active)
+        # - Templates with author=mentor_profile: show only to that mentor (regardless of is_active)
+        # Priority: show active templates first, but also show inactive if no active ones exist
+        from django.db.models import Q
+        
+        # Get templates with no author OR templates authored by this mentor
+        # Show all templates matching author criteria (both active and inactive)
+        # This ensures existing templates show up even if is_active is not set
+        templates = ProjectTemplate.objects.filter(
+            Q(author__isnull=True) | Q(author=mentor_profile)
+        ).order_by('order', 'name')
+        
+        # Debug logging
+        import logging
+        logger = logging.getLogger(__name__)
+        total_templates = ProjectTemplate.objects.count()
+        templates_with_no_author = ProjectTemplate.objects.filter(author__isnull=True).count()
+        templates_with_this_author = ProjectTemplate.objects.filter(author=mentor_profile).count()
+        active_templates = ProjectTemplate.objects.filter(is_active=True).count()
+        logger.info(f'Template API: Total={total_templates}, NoAuthor={templates_with_no_author}, ThisAuthor={templates_with_this_author}, Active={active_templates}, Returning={templates.count()}')
+        
         templates_data = []
         for template in templates:
             templates_data.append({
@@ -4367,7 +4413,7 @@ def project_templates_api(request):
     except Exception as e:
         import logging
         logger = logging.getLogger(__name__)
-        logger.error(f'Error fetching project templates: {str(e)}')
+        logger.error(f'Error fetching project templates: {str(e)}', exc_info=True)
         return JsonResponse({'success': False, 'templates': [], 'error': str(e)}, status=500)
 
 
@@ -4378,7 +4424,18 @@ def project_modules_api(request):
         return JsonResponse({'success': False, 'modules': [], 'error': 'Unauthorized'}, status=403)
     
     try:
+        # Get all active modules first
         modules = ProjectModule.objects.filter(is_active=True).order_by('order', 'name')
+        
+        # If no active modules found, get all modules (fallback) - this ensures modules are shown even if is_active is not set
+        if not modules.exists():
+            modules = ProjectModule.objects.all().order_by('order', 'name')
+        
+        # Debug logging
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f'Found {modules.count()} modules')
+        
         modules_data = []
         for module in modules:
             modules_data.append({
@@ -4394,7 +4451,7 @@ def project_modules_api(request):
     except Exception as e:
         import logging
         logger = logging.getLogger(__name__)
-        logger.error(f'Error fetching project modules: {str(e)}')
+        logger.error(f'Error fetching project modules: {str(e)}', exc_info=True)
         return JsonResponse({'success': False, 'modules': [], 'error': str(e)}, status=500)
 
 
@@ -4496,9 +4553,11 @@ def create_project(request):
             from general.email_service import EmailService
             EmailService.send_project_assignment_email(project, client_profile)
         
+        from django.urls import reverse
         return JsonResponse({
             'success': True,
             'message': 'Project created successfully',
+            'redirect_url': reverse('general:dashboard_mentor:project_detail', args=[project.id]),
             'project': {
                 'id': project.id,
                 'title': project.title,
@@ -4523,11 +4582,21 @@ def templates_list(request):
     
     mentor_profile = request.user.mentor_profile
     
-    # Custom templates created by this mentor
-    custom_templates = ProjectTemplate.objects.filter(is_custom=True, author=mentor_profile).order_by('-created_at')
+    # Filter templates:
+    # - Templates with author=None: show to everyone
+    # - Templates with author=mentor_profile: show only to that mentor
+    from django.db.models import Q
     
-    # System templates (standard ones)
-    system_templates = ProjectTemplate.objects.filter(is_custom=False, is_active=True).order_by('order', 'name')
+    # Custom templates created by this mentor
+    custom_templates = ProjectTemplate.objects.filter(
+        is_custom=True,
+        author=mentor_profile
+    ).order_by('-created_at')
+    
+    # System templates (standard ones) - show templates with no author or templates authored by this mentor
+    system_templates = ProjectTemplate.objects.filter(
+        Q(is_custom=False) & Q(is_active=True) & (Q(author__isnull=True) | Q(author=mentor_profile))
+    ).order_by('order', 'name')
     
     context = {
         'custom_templates': custom_templates,
@@ -4547,26 +4616,355 @@ def create_custom_template(request):
         mentor_profile = request.user.mentor_profile
         name = request.POST.get('name')
         description = request.POST.get('description', '')
-        category = request.POST.get('category', 'other')
         icon = request.POST.get('icon', 'fas fa-star')
         
         if name:
             try:
-                ProjectTemplate.objects.create(
+                # Create the template (questionnaire will be auto-created via signal)
+                template = ProjectTemplate.objects.create(
                     name=name,
                     description=description,
-                    category=category,
                     icon=icon,
                     is_custom=True,
                     author=mentor_profile
                 )
+                
                 messages.success(request, "Template created successfully.")
+                return redirect('general:dashboard_mentor:template_detail', template_id=template.id)
             except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f'Error creating template: {str(e)}', exc_info=True)
                 messages.error(request, f"Error creating template: {str(e)}")
         else:
             messages.error(request, "Template name is required.")
             
     return redirect('general:dashboard_mentor:templates_list')
+
+
+@login_required
+def template_detail(request, template_id):
+    """Detail view for a project template"""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        messages.error(request, "Access denied.")
+        return redirect('general:index')
+        
+    template = get_object_or_404(ProjectTemplate, id=template_id)
+    
+    # Ensure mentor can only view their own custom templates or system templates
+    if template.is_custom and template.author != request.user.mentor_profile:
+        messages.error(request, "Access denied.")
+        return redirect('general:dashboard_mentor:templates_list')
+        
+    # Get questionnaire and questions
+    questionnaire = None
+    questions = []
+    if hasattr(template, 'questionnaire'):
+        questionnaire = template.questionnaire
+        questions = questionnaire.questions.all().order_by('order')
+    
+    return render(request, 'dashboard_mentor/templates/template_detail.html', {
+        'template': template,
+        'questionnaire': questionnaire,
+        'questions': questions
+    })
+
+
+@login_required
+def generate_questions_ai(request, template_id):
+    """Generate questionnaire questions using AI via AJAX"""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        return JsonResponse({'success': False, 'error': 'Access denied.'}, status=403)
+        
+    template = get_object_or_404(ProjectTemplate, id=template_id)
+    
+    # Ensure mentor can only modify their own custom templates
+    if not template.is_custom or template.author != request.user.mentor_profile:
+        return JsonResponse({'success': False, 'error': 'Access denied.'}, status=403)
+        
+    try:
+        # AI Mockup: Generate questions based on template context
+        # TODO: Replace with actual AI API call when AI service is implemented
+        # For now, generate contextual questions based on template name and description
+        
+        import json
+        
+        # Generate contextual questions based on template
+        template_lower = template.name.lower()
+        description_lower = template.description.lower() if template.description else ""
+        
+        # Default questions that work for any template
+        default_questions = [
+            {
+                'text': f'What is your current situation related to {template.name}?',
+                'type': 'textarea',
+                'help_text': 'Describe where you are right now in relation to your goal.',
+            },
+            {
+                'text': f'What specific outcomes do you want to achieve with {template.name}?',
+                'type': 'textarea',
+                'help_text': 'Be as specific as possible about what you want to achieve.',
+            },
+            {
+                'text': 'What is your target completion date?',
+                'type': 'date',
+                'help_text': 'When would you like to achieve this goal?',
+            },
+            {
+                'text': 'What challenges or obstacles do you anticipate?',
+                'type': 'textarea',
+                'help_text': 'List any potential difficulties you might face.',
+            },
+            {
+                'text': 'What resources or support do you have available?',
+                'type': 'textarea',
+                'help_text': 'Consider time, money, people, skills, or other resources.',
+            },
+        ]
+        
+        # Customize questions based on template type
+        if 'health' in template_lower or 'wellness' in template_lower or 'fitness' in template_lower:
+            default_questions[0]['text'] = 'What is your current health status or fitness level?'
+            default_questions[1]['text'] = 'What are your specific health or wellness goals?'
+        elif 'business' in template_lower or 'career' in template_lower:
+            default_questions[0]['text'] = 'What is your current business or career situation?'
+            default_questions[1]['text'] = 'What are your specific business or career objectives?'
+        elif 'finance' in template_lower or 'trading' in template_lower or 'money' in template_lower:
+            default_questions[0]['text'] = 'What is your current financial situation?'
+            default_questions[1]['text'] = 'What are your specific financial goals?'
+        
+        ai_response = default_questions
+        
+        # Process and save questions
+        from dashboard_user.models import Questionnaire, Question
+        
+        # Get or create questionnaire for template
+        questionnaire, created = Questionnaire.objects.get_or_create(template=template)
+        
+        # Start numbering from existing questions count
+        existing_count = questionnaire.questions.count()
+        
+        new_questions = []
+        for i, q_data in enumerate(ai_response, start=existing_count + 1):
+            q_text = q_data.get('text', '').strip()
+            if not q_text:
+                continue
+                
+            q_type = q_data.get('type', 'text').lower()
+            if q_type not in ['text', 'textarea', 'number', 'date', 'select', 'multiselect']:
+                q_type = 'text'
+                
+            q_options = []
+            options_val = q_data.get('options', '')
+            if q_type in ['select', 'multiselect'] and options_val:
+                if isinstance(options_val, str):
+                    q_options = [opt.strip() for opt in options_val.split(',') if opt.strip()]
+                elif isinstance(options_val, list):
+                    q_options = options_val
+            
+            question = Question.objects.create(
+                questionnaire=questionnaire,
+                question_text=q_text,
+                question_type=q_type,
+                order=i,
+                help_text=q_data.get('help_text', ''),
+                options=q_options
+            )
+            
+            new_questions.append({
+                'id': question.id,
+                'text': question.question_text,
+                'type': question.get_question_type_display(),
+                'help_text': question.help_text,
+                'order': question.order
+            })
+            
+        return JsonResponse({'success': True, 'questions': new_questions})
+        
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f'Error generating questions: {str(e)}', exc_info=True)
+        return JsonResponse({'success': False, 'error': f"AI generation failed: {str(e)}"})
+
+
+@login_required
+@require_POST
+def create_question(request, template_id):
+    """Create a new question for template's questionnaire"""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        return JsonResponse({'success': False, 'error': 'Access denied.'}, status=403)
+    
+    template = get_object_or_404(ProjectTemplate, id=template_id)
+    
+    # Ensure mentor can only modify their own custom templates
+    if not template.is_custom or template.author != request.user.mentor_profile:
+        return JsonResponse({'success': False, 'error': 'Access denied.'}, status=403)
+    
+    # Get or create questionnaire
+    from dashboard_user.models import Questionnaire, Question
+    questionnaire, created = Questionnaire.objects.get_or_create(template=template)
+    
+    try:
+        data = json.loads(request.body)
+        question_text = data.get('question_text', '').strip()
+        question_type = data.get('question_type', 'text')
+        is_required = data.get('is_required', True)
+        help_text = data.get('help_text', '').strip()
+        options = data.get('options', [])
+        
+        if not question_text:
+            return JsonResponse({'success': False, 'error': 'Question text is required.'}, status=400)
+        
+        # Get next order
+        last_question = questionnaire.questions.order_by('-order').first()
+        next_order = (last_question.order + 1) if last_question else 1
+        
+        question = Question.objects.create(
+            questionnaire=questionnaire,
+            question_text=question_text,
+            question_type=question_type,
+            is_required=is_required,
+            help_text=help_text,
+            options=options if isinstance(options, list) else [],
+            order=next_order
+        )
+        
+        return JsonResponse({
+            'success': True,
+            'question': {
+                'id': question.id,
+                'question_text': question.question_text,
+                'question_type': question.question_type,
+                'is_required': question.is_required,
+                'help_text': question.help_text,
+                'options': question.options,
+                'order': question.order
+            }
+        })
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f'Error creating question: {str(e)}', exc_info=True)
+        return JsonResponse({'success': False, 'error': f"Error creating question: {str(e)}"}, status=500)
+
+
+@login_required
+def update_question(request, question_id):
+    """Get or update an existing question"""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        return JsonResponse({'success': False, 'error': 'Access denied.'}, status=403)
+    
+    from dashboard_user.models import Question
+    question = get_object_or_404(Question, id=question_id)
+    template = question.questionnaire.template
+    
+    # Ensure mentor can only modify their own custom templates
+    if not template.is_custom or template.author != request.user.mentor_profile:
+        return JsonResponse({'success': False, 'error': 'Access denied.'}, status=403)
+    
+    if request.method == 'GET':
+        # Return question data for editing
+        return JsonResponse({
+            'success': True,
+            'question': {
+                'id': question.id,
+                'question_text': question.question_text,
+                'question_type': question.question_type,
+                'is_required': question.is_required,
+                'help_text': question.help_text,
+                'options': question.options,
+                'order': question.order
+            }
+        })
+    
+    # POST - Update question
+    try:
+        data = json.loads(request.body)
+        question.question_text = data.get('question_text', question.question_text).strip()
+        question.question_type = data.get('question_type', question.question_type)
+        question.is_required = data.get('is_required', question.is_required)
+        question.help_text = data.get('help_text', question.help_text).strip()
+        question.options = data.get('options', question.options) if isinstance(data.get('options'), list) else question.options
+        question.save()
+        
+        return JsonResponse({
+            'success': True,
+            'question': {
+                'id': question.id,
+                'question_text': question.question_text,
+                'question_type': question.question_type,
+                'is_required': question.is_required,
+                'help_text': question.help_text,
+                'options': question.options,
+                'order': question.order
+            }
+        })
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f'Error updating question: {str(e)}', exc_info=True)
+        return JsonResponse({'success': False, 'error': f"Error updating question: {str(e)}"}, status=500)
+
+
+@login_required
+@require_POST
+def delete_question(request, question_id):
+    """Delete a question"""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        return JsonResponse({'success': False, 'error': 'Access denied.'}, status=403)
+    
+    from dashboard_user.models import Question
+    question = get_object_or_404(Question, id=question_id)
+    template = question.questionnaire.template
+    
+    # Ensure mentor can only modify their own custom templates
+    if not template.is_custom or template.author != request.user.mentor_profile:
+        return JsonResponse({'success': False, 'error': 'Access denied.'}, status=403)
+    
+    try:
+        question.delete()
+        return JsonResponse({'success': True})
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f'Error deleting question: {str(e)}', exc_info=True)
+        return JsonResponse({'success': False, 'error': f"Error deleting question: {str(e)}"}, status=500)
+
+
+@login_required
+@require_POST
+def reorder_questions(request, template_id):
+    """Reorder questions via drag-and-drop"""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        return JsonResponse({'success': False, 'error': 'Access denied.'}, status=403)
+    
+    template = get_object_or_404(ProjectTemplate, id=template_id)
+    
+    # Ensure mentor can only modify their own custom templates
+    if not template.is_custom or template.author != request.user.mentor_profile:
+        return JsonResponse({'success': False, 'error': 'Access denied.'}, status=403)
+    
+    from dashboard_user.models import Question
+    try:
+        data = json.loads(request.body)
+        question_orders = data.get('orders', [])  # List of {id: question_id, order: new_order}
+        
+        for item in question_orders:
+            question_id = item.get('id')
+            new_order = item.get('order')
+            if question_id and new_order is not None:
+                Question.objects.filter(
+                    id=question_id,
+                    questionnaire__template=template
+                ).update(order=new_order)
+        
+        return JsonResponse({'success': True})
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f'Error reordering questions: {str(e)}', exc_info=True)
+        return JsonResponse({'success': False, 'error': f"Error reordering questions: {str(e)}"}, status=500)
 
 
 @login_required
@@ -4626,6 +5024,16 @@ def projects_list(request):
         except Exception:
             continue
     
+    # Get templates and modules for the create project modal
+    templates = ProjectTemplate.objects.filter(
+        Q(author__isnull=True) | Q(author=mentor_profile)
+    ).order_by('order', 'name')
+    
+    # Get all active modules (or all if none are active)
+    modules = ProjectModule.objects.filter(is_active=True).order_by('order', 'name')
+    if not modules.exists():
+        modules = ProjectModule.objects.all().order_by('order', 'name')
+    
     context = {
         'projects': projects,
         'assigned_projects': assigned_projects,
@@ -4633,6 +5041,8 @@ def projects_list(request):
         'clients': clients,
         'selected_client_id': client_id,
         'selected_client': selected_client,
+        'project_templates': templates,
+        'project_modules': modules,
     }
     
     return render(request, 'dashboard_mentor/projects/projects_list.html', context)
@@ -4692,21 +5102,25 @@ def project_detail(request, project_id):
             logger.error(f'Error in project_detail POST: {str(e)}')
             return JsonResponse({'success': False, 'error': str(e)}, status=500)
     
-    # Get questions for this project (same logic as user view)
-    from dashboard_user.models import ProjectQuestionnaire, ProjectQuestionnaireAnswer, ProjectModuleInstance
+    # Get questions for this project
+    from dashboard_user.models import QuestionnaireResponse, ProjectModuleInstance
     
-    if project.template and project.template.has_default_questions:
-        questions = ProjectQuestionnaire.objects.filter(template=project.template).order_by('order')
-        if not questions.exists():
-            questions = ProjectQuestionnaire.objects.filter(template__isnull=True).order_by('order')
-    elif project.template:
-        questions = ProjectQuestionnaire.objects.filter(template=project.template).order_by('order')
-    else:
-        questions = ProjectQuestionnaire.objects.filter(template__isnull=True).order_by('order')
+    questions = []
+    answers = {}
     
-    # Get existing answers
-    answers = {answer.question_id: answer.answer for answer in 
-               ProjectQuestionnaireAnswer.objects.filter(project=project)}
+    if project.template and hasattr(project.template, 'questionnaire'):
+        questionnaire = project.template.questionnaire
+        questions = questionnaire.questions.all().order_by('order')
+        
+        # Get existing response if exists
+        try:
+            questionnaire_response = QuestionnaireResponse.objects.get(
+                project=project,
+                questionnaire=questionnaire
+            )
+            answers = questionnaire_response.answers
+        except QuestionnaireResponse.DoesNotExist:
+            pass
     
     # Get active modules
     active_modules = project.module_instances.filter(is_active=True).select_related('module').order_by('order')
@@ -4904,8 +5318,17 @@ def generate_stages_ai(request, project_id):
         from datetime import timedelta
         
         # Get questionnaire answers for context (for future AI integration)
-        from dashboard_user.models import ProjectQuestionnaireAnswer
-        answers = ProjectQuestionnaireAnswer.objects.filter(project=project).select_related('question')
+        from dashboard_user.models import QuestionnaireResponse
+        answers = {}
+        if project.template and hasattr(project.template, 'questionnaire'):
+            try:
+                response = QuestionnaireResponse.objects.get(
+                    project=project,
+                    questionnaire=project.template.questionnaire
+                )
+                answers = response.answers
+            except QuestionnaireResponse.DoesNotExist:
+                pass
         
         # Get the next order value using project_id * 1000 as base
         # This ensures orders don't mix between different projects

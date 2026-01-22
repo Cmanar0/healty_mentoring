@@ -6,22 +6,20 @@
 {% block extra_css %}
 {{ block.super }}
 <style>
-    /* Consistent Container */
     .templates-container {
         max-width: 1200px;
         margin: 0 auto;
     }
 
-    /* Page Header */
     .page-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 32px;
+        margin-bottom: 40px;
     }
 
     .page-title-group h1 {
-        font-size: 2rem;
+        font-size: 2.25rem;
         font-weight: 800;
         color: #111827;
         margin: 0;
@@ -31,164 +29,143 @@
     .page-subtitle {
         color: #6b7280;
         margin-top: 8px;
-        font-size: 1rem;
+        font-size: 1.1rem;
     }
 
-    /* List Card */
-    .templates-card {
+    /* Template Cards Grid */
+    .template-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 24px;
+        margin-bottom: 48px;
+    }
+
+    .template-card {
         background: white;
-        border-radius: 16px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        border-radius: 20px;
+        padding: 24px;
         border: 1px solid #e5e7eb;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        text-decoration: none;
+        display: flex;
+        flex-direction: column;
+        position: relative;
         overflow: hidden;
     }
 
-    /* Grid Layout */
-    .template-headers {
-        display: grid;
-        grid-template-columns: 60px 2fr 1.5fr 1fr 100px 40px;
-        gap: 24px;
-        padding: 16px 24px;
-        background: #f9fafb;
-        border-bottom: 1px solid #e5e7eb;
-        font-size: 0.75rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        color: #6b7280;
-        letter-spacing: 0.05em;
+    .template-card:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        border-color: #111827;
     }
 
-    .template-row {
-        display: grid;
-        grid-template-columns: 60px 2fr 1.5fr 1fr 100px 40px;
-        gap: 24px;
-        padding: 24px;
-        border-bottom: 1px solid #f3f4f6;
-        align-items: center;
-        transition: all 0.2s ease;
-        text-decoration: none;
-        color: inherit;
-    }
-
-    .template-row:last-child { border-bottom: none; }
-    
-    .template-row:hover {
+    .template-card-icon {
+        width: 56px;
+        height: 56px;
+        border-radius: 14px;
         background: #f8fafc;
-        transform: translateY(-1px);
-    }
-
-    /* Responsive */
-    @media (max-width: 1024px) {
-        .template-row, .template-headers {
-            grid-template-columns: 60px 1fr 120px 40px;
-            gap: 16px;
-        }
-        .col-category, .col-stats { display: none; }
-    }
-
-    @media (max-width: 640px) {
-        .template-row, .template-headers {
-            grid-template-columns: 50px 1fr 40px;
-        }
-        .col-status { display: none; }
-    }
-
-    /* Column Styles */
-    .t-icon {
-        width: 48px;
-        height: 48px;
-        border-radius: 12px;
-        background: #f1f5f9;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 1.25rem;
-        color: #64748b;
-        border: 1px solid #e2e8f0;
-        overflow: hidden;
+        font-size: 1.5rem;
+        margin-bottom: 20px;
+        color: #111827;
+        border: 1px solid #f1f5f9;
+        transition: all 0.3s ease;
     }
-    .t-icon img { width: 100%; height: 100%; object-fit: cover; }
 
-    .t-title {
-        font-size: 1.1rem;
-        font-weight: 600;
-        color: #1f2937;
-        margin-bottom: 4px;
+    .template-card:hover .template-card-icon {
+        background: #111827;
+        color: white;
+        border-color: #111827;
     }
-    
-    .t-desc {
-        font-size: 0.85rem;
-        color: #6b7280;
-        line-height: 1.4;
+
+    .template-card-title {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: #111827;
+        margin-bottom: 8px;
+    }
+
+    .template-card-desc {
+        font-size: 0.9rem;
+        color: #64748b;
+        line-height: 1.5;
+        margin-bottom: 20px;
+        flex: 1;
         display: -webkit-box;
-        -webkit-line-clamp: 1;
+        -webkit-line-clamp: 3;
         -webkit-box-orient: vertical;
         overflow: hidden;
     }
 
-    .category-badge {
-        display: inline-flex;
+    .template-card-footer {
+        display: flex;
+        justify-content: space-between;
         align-items: center;
-        gap: 8px;
-        padding: 6px 12px;
-        background: #f8fafc;
-        border: 1px solid #e2e8f0;
-        border-radius: 8px;
-        font-size: 0.85rem;
-        color: #475569;
-        font-weight: 500;
+        padding-top: 16px;
+        border-top: 1px solid #f1f5f9;
     }
 
-    .status-badge {
+    .template-badge {
+        font-size: 0.75rem;
+        font-weight: 600;
         padding: 4px 10px;
         border-radius: 6px;
-        font-size: 0.75rem;
-        font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 0.05em;
     }
-    .status-active { background: #dcfce7; color: #166534; }
-    .status-inactive { background: #fef2f2; color: #b91c1c; }
 
-    .color-dot {
-        width: 12px;
-        height: 12px;
-        border-radius: 4px;
-        border: 1px solid rgba(0,0,0,0.1);
-    }
-    
-    .stat-text {
-        font-size: 0.85rem;
-        color: #64748b;
+    .badge-custom { background: #eff6ff; color: #1d4ed8; }
+    .badge-system { background: #f8fafc; color: #64748b; }
+
+    .template-usage {
+        font-size: 0.8rem;
+        color: #94a3b8;
         font-weight: 500;
     }
 
-    .chevron-icon {
-        color: #cbd5e1;
-        transition: transform 0.2s;
+    .section-title {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: #111827;
+        margin-bottom: 24px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
     }
-    .template-row:hover .chevron-icon {
-        color: #3b82f6;
-        transform: translateX(4px);
+
+    .section-title i {
+        font-size: 1.1rem;
+        width: 28px;
+        height: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
     }
 
     .btn-create {
         background: #111827;
         color: white;
-        padding: 10px 20px;
-        border-radius: 8px;
+        padding: 12px 24px;
+        border-radius: 12px;
         font-weight: 600;
         border: none;
         cursor: pointer;
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: 10px;
         transition: all 0.2s;
         text-decoration: none;
-        font-size: 0.95rem;
+        font-size: 1rem;
     }
-    .btn-create:hover { background: #000; }
 
+    .btn-create:hover {
+        background: #000;
+        transform: translateY(-2px);
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    }
 </style>
 {% endblock %}
 
@@ -206,83 +183,54 @@
         </button>
     </div>
 
-    <!-- Custom Templates Section -->
-    {% if custom_templates %}
-    <div style="margin-bottom: 40px;">
-        <h2 style="font-size: 1.25rem; font-weight: 700; color: #1e293b; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
-            <i class="fas fa-user-edit" style="color: #6366f1;"></i> My Custom Templates
-        </h2>
-        <div class="templates-card">
-            <!-- Header -->
-            <div class="template-headers">
-                <div></div>
-                <div>Template Details</div>
-                <div class="col-category">Category</div>
-                <div class="col-status">Status</div>
-                <div class="col-stats">Usage</div>
-                <div></div>
+    <!-- My Custom Templates -->
+    <h2 class="section-title">
+        <i class="fas fa-user-edit" style="background: #eff6ff; color: #1d4ed8;"></i>
+        My Custom Templates
+    </h2>
+    <div class="template-grid">
+        {% for template in custom_templates %}
+        <a href="{% url 'general:dashboard_mentor:template_detail' template.id %}" class="template-card">
+            <div class="template-card-icon">
+                <i class="{{ template.icon|default:'fas fa-layer-group' }}"></i>
             </div>
-
-            {% for template in custom_templates %}
-                {% include "dashboard_mentor/partials/template_row.html" %}
-            {% endfor %}
+            <div class="template-card-title">{{ template.name }}</div>
+            <div class="template-card-desc">{{ template.description|truncatewords:20 }}</div>
+            <div class="template-card-footer">
+                <span class="template-badge badge-custom">Custom</span>
+                <span class="template-usage">{{ template.projects.count }} use{{ template.projects.count|pluralize }}</span>
+            </div>
+        </a>
+        {% empty %}
+        <div style="grid-column: 1/-1; padding: 40px; text-align: center; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 20px; color: #64748b;">
+            <p>You haven't created any custom templates yet.</p>
         </div>
+        {% endfor %}
     </div>
-    {% endif %}
 
-    <!-- System Templates Section -->
-    <div style="margin-bottom: 40px;">
-        {% if custom_templates %}
-        <h2 style="font-size: 1.25rem; font-weight: 700; color: #1e293b; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
-            <i class="fas fa-cube" style="color: #64748b;"></i> System Templates
-        </h2>
-        {% endif %}
-        
-        <div class="templates-card">
-            <!-- Header -->
-            <div class="template-headers">
-                <div></div>
-                <div>Template Details</div>
-                <div class="col-category">Category</div>
-                <div class="col-status">Status</div>
-                <div class="col-stats">Usage</div>
-                <div></div>
+    <!-- System Templates -->
+    <h2 class="section-title">
+        <i class="fas fa-cube" style="background: #f1f5f9; color: #64748b;"></i>
+        System Templates
+    </h2>
+    <div class="template-grid">
+        {% for template in system_templates %}
+        <a href="{% url 'general:dashboard_mentor:template_detail' template.id %}" class="template-card">
+            <div class="template-card-icon">
+                <i class="{{ template.icon|default:'fas fa-layer-group' }}"></i>
             </div>
-
-            {% if system_templates %}
-                {% for template in system_templates %}
-                    {% include "dashboard_mentor/partials/template_row.html" %}
-                {% endfor %}
-            {% else %}
-                <div style="padding: 40px; text-align: center; color: #9ca3af;">
-                    <p>No system templates available.</p>
-                </div>
-            {% endif %}
+            <div class="template-card-title">{{ template.name }}</div>
+            <div class="template-card-desc">{{ template.description|truncatewords:20 }}</div>
+            <div class="template-card-footer">
+                <span class="template-badge badge-system">System</span>
+                <span class="template-usage">{{ template.projects.count }} use{{ template.projects.count|pluralize }}</span>
+            </div>
+        </a>
+        {% empty %}
+        <div style="grid-column: 1/-1; padding: 40px; text-align: center; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 20px; color: #64748b;">
+            <p>No system templates available.</p>
         </div>
+        {% endfor %}
     </div>
-    
-    {% if not custom_templates and not system_templates %}
-        <div style="padding: 60px; text-align: center; color: #9ca3af; background: white; border-radius: 12px; border: 1px solid #e5e7eb;">
-            <div style="width: 80px; height: 80px; background: #f3f4f6; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 24px; font-size: 2rem; color: #cbd5e1;">
-                <i class="fas fa-copy"></i>
-            </div>
-            <h3 style="color: #374151; font-weight: 600; margin-bottom: 8px;">No templates found</h3>
-            <p>Create templates to speed up project creation.</p>
-        </div>
-    {% endif %}
-
 </div>
-{% endblock %}
-
-{% block scripts %}
-{{ block.super }}
-<script>
-    function openCreateTemplateModal() {
-        const modal = document.getElementById('createTemplateModal');
-        if (modal) {
-            modal.style.display = 'flex';
-            setTimeout(() => modal.classList.add('active'), 10);
-        }
-    }
-</script>
 {% endblock %}

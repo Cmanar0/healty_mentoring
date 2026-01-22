@@ -757,11 +757,19 @@
     // Fetch modules
     function fetchModules() {
         fetch('{% url "general:dashboard_mentor:project_modules_api" %}')
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
             .then(data => {
                 if (data.success) {
                     modules = data.modules || [];
+                    console.log('Fetched modules:', modules);
                     populateModuleSelection();
+                } else {
+                    console.error('Error fetching modules:', data.error);
                 }
             })
             .catch(error => {

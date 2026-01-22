@@ -4,7 +4,7 @@ from django.contrib import messages
 from django.contrib.auth import logout
 from django.conf import settings
 from accounts.models import MentorClientRelationship, MentorProfile, UserProfile, CustomUser
-from dashboard_user.models import Project, ProjectQuestionnaire, ProjectQuestionnaireAnswer, Task
+from dashboard_user.models import Project, Questionnaire, Question, QuestionnaireResponse, Task
 from django.utils import timezone
 from datetime import timedelta
 from django.http import JsonResponse
@@ -2185,24 +2185,24 @@ def project_detail(request, project_id):
     user_profile = getattr(request.user, 'user_profile', None)
     
     # Get questions for this project
-    # If project has a template, get template questions, otherwise get default questions
-    if project.template and project.template.has_default_questions:
-        # Get template-specific questions if they exist, otherwise fall back to default
-        questions = ProjectQuestionnaire.objects.filter(
-            template=project.template
-        ).order_by('order')
-        if not questions.exists():
-            questions = ProjectQuestionnaire.objects.filter(template__isnull=True).order_by('order')
-    elif project.template:
-        # Template without default questions - use template questions only
-        questions = ProjectQuestionnaire.objects.filter(template=project.template).order_by('order')
-    else:
-        # No template - use default questions
-        questions = ProjectQuestionnaire.objects.filter(template__isnull=True).order_by('order')
+    # If project has a template with questionnaire, get those questions
+    questions = []
+    answers = {}
+    questionnaire_response = None
     
-    # Get existing answers
-    answers = {answer.question_id: answer.answer for answer in 
-               ProjectQuestionnaireAnswer.objects.filter(project=project)}
+    if project.template and hasattr(project.template, 'questionnaire'):
+        questionnaire = project.template.questionnaire
+        questions = questionnaire.questions.all().order_by('order')
+        
+        # Get existing response if exists
+        try:
+            questionnaire_response = QuestionnaireResponse.objects.get(
+                project=project,
+                questionnaire=questionnaire
+            )
+            answers = questionnaire_response.answers
+        except QuestionnaireResponse.DoesNotExist:
+            pass
     
     # Get active modules
     active_modules = project.module_instances.filter(is_active=True).select_related('module').order_by('order')
@@ -2284,15 +2284,12 @@ def submit_questionnaire(request, project_id):
     if not is_authorized:
         return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
     
-    # Get questions for validation
-    if project.template and project.template.has_default_questions:
-        questions = ProjectQuestionnaire.objects.filter(template=project.template).order_by('order')
-        if not questions.exists():
-            questions = ProjectQuestionnaire.objects.filter(template__isnull=True).order_by('order')
-    elif project.template:
-        questions = ProjectQuestionnaire.objects.filter(template=project.template).order_by('order')
-    else:
-        questions = ProjectQuestionnaire.objects.filter(template__isnull=True).order_by('order')
+    # Get questionnaire for this project
+    if not project.template or not hasattr(project.template, 'questionnaire'):
+        return JsonResponse({'success': False, 'error': 'No questionnaire found for this template'}, status=400)
+    
+    questionnaire = project.template.questionnaire
+    questions = questionnaire.questions.all().order_by('order')
     
     # Validate required questions
     errors = {}
@@ -2308,17 +2305,14 @@ def submit_questionnaire(request, project_id):
     if errors:
         return JsonResponse({'success': False, 'errors': errors}, status=400)
     
-    # Save answers and extract special fields
+    # Save answers as JSON and extract special fields
     target_completion_date = None
+    answers_dict = {}
     
     for question in questions:
         answer_text = answers_data.get(str(question.id), '').strip()
         if answer_text:
-            ProjectQuestionnaireAnswer.objects.update_or_create(
-                project=project,
-                question=question,
-                defaults={'answer': answer_text}
-            )
+            answers_dict[str(question.id)] = answer_text
             
             # Extract target completion date if this is the target completion date question
             if question.question_type == 'date' and 'target completion date' in question.question_text.lower():
@@ -2327,9 +2321,13 @@ def submit_questionnaire(request, project_id):
                     target_completion_date = datetime.strptime(answer_text, '%Y-%m-%d').date()
                 except (ValueError, TypeError):
                     pass
-        else:
-            # Remove answer if empty
-            ProjectQuestionnaireAnswer.objects.filter(project=project, question=question).delete()
+    
+    # Create or update questionnaire response
+    QuestionnaireResponse.objects.update_or_create(
+        project=project,
+        questionnaire=questionnaire,
+        defaults={'answers': answers_dict}
+    )
     
     # Mark questionnaire as completed and update target completion date
     from django.utils import timezone

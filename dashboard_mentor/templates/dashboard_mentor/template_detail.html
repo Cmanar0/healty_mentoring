@@ -1,0 +1,382 @@
+{% extends "dashboard_mentor/base.html" %}
+{% load static %}
+
+{% block page_title %}Template: {{ template.name }}{% endblock %}
+
+{% block extra_css %}
+{{ block.super }}
+<style>
+    .template-detail-container {
+        max-width: 1000px;
+        margin: 0 auto;
+    }
+
+    .back-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        color: #64748b;
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 0.95rem;
+        margin-bottom: 24px;
+        transition: color 0.2s;
+    }
+
+    .back-link:hover {
+        color: #111827;
+    }
+
+    /* Template Profile Header */
+    .template-profile-card {
+        background: white;
+        border-radius: 24px;
+        padding: 40px;
+        border: 1px solid #e5e7eb;
+        display: flex;
+        gap: 32px;
+        margin-bottom: 40px;
+        align-items: center;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    }
+
+    .template-profile-icon {
+        width: 100px;
+        height: 100px;
+        border-radius: 20px;
+        background: #111827;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2.5rem;
+        flex-shrink: 0;
+    }
+
+    .template-profile-info {
+        flex: 1;
+    }
+
+    .template-profile-name {
+        font-size: 2rem;
+        font-weight: 800;
+        color: #111827;
+        margin-bottom: 8px;
+        letter-spacing: -0.03em;
+    }
+
+    .template-profile-desc {
+        color: #64748b;
+        font-size: 1.1rem;
+        line-height: 1.6;
+    }
+
+    /* Questions Section */
+    .section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+    }
+
+    .section-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #111827;
+        margin: 0;
+    }
+
+    .questions-list {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .question-card {
+        background: white;
+        border-radius: 16px;
+        padding: 24px;
+        border: 1px solid #e5e7eb;
+        display: flex;
+        gap: 20px;
+        transition: all 0.2s;
+    }
+
+    .question-card:hover {
+        border-color: #cbd5e1;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
+    }
+
+    .question-number {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: #f1f5f9;
+        color: #64748b;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 0.9rem;
+        flex-shrink: 0;
+    }
+
+    .question-content {
+        flex: 1;
+    }
+
+    .question-text {
+        font-weight: 600;
+        color: #111827;
+        font-size: 1.1rem;
+        margin-bottom: 4px;
+    }
+
+    .question-meta {
+        display: flex;
+        gap: 16px;
+        align-items: center;
+        font-size: 0.85rem;
+        color: #94a3b8;
+    }
+
+    .question-badge {
+        background: #f8fafc;
+        color: #64748b;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+
+    /* AI Generation Empty State */
+    .empty-state-ai {
+        background: #f8fafc;
+        border: 2px dashed #e2e8f0;
+        border-radius: 24px;
+        padding: 64px 32px;
+        text-align: center;
+    }
+
+    .ai-icon-large {
+        font-size: 3rem;
+        color: #6366f1;
+        margin-bottom: 24px;
+        animation: float 3s ease-in-out infinite;
+    }
+
+    @keyframes float {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-10px); }
+    }
+
+    .empty-state-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #111827;
+        margin-bottom: 12px;
+    }
+
+    .empty-state-text {
+        color: #64748b;
+        max-width: 500px;
+        margin: 0 auto 32px;
+        line-height: 1.6;
+    }
+
+    .btn-ai-generate {
+        background: #111827;
+        color: white;
+        padding: 14px 32px;
+        border-radius: 14px;
+        font-weight: 700;
+        border: none;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 12px;
+        transition: all 0.3s;
+        font-size: 1.1rem;
+    }
+
+    .btn-ai-generate:hover:not(:disabled) {
+        background: #000;
+        transform: scale(1.05);
+        box-shadow: 0 15px 25px -5px rgba(0, 0, 0, 0.15);
+    }
+
+    .btn-ai-generate:disabled {
+        opacity: 0.7;
+        cursor: not-allowed;
+    }
+
+    .loading-pulse {
+        display: inline-block;
+        animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+        0% { opacity: 1; }
+        50% { opacity: 0.5; }
+        100% { opacity: 1; }
+    }
+</style>
+{% endblock %}
+
+{% block dashboard_content %}
+<div class="dashboard-content-container template-detail-container">
+    <a href="{% url 'general:dashboard_mentor:templates_list' %}" class="back-link">
+        <i class="fas fa-arrow-left"></i> Back to Templates
+    </a>
+
+    <div class="template-profile-card">
+        <div class="template-profile-icon">
+            <i class="{{ template.icon|default:'fas fa-layer-group' }}"></i>
+        </div>
+        <div class="template-profile-info">
+            <div class="template-profile-name">{{ template.name }}</div>
+            <p class="template-profile-desc">{{ template.description|default:"No description provided." }}</p>
+        </div>
+    </div>
+
+    <div id="questionsSection">
+        <div class="section-header">
+            <h2 class="section-title">Onboarding Questionnaire</h2>
+            {% if questions %}
+            <button id="generateAiSmall" class="btn-ai-generate" style="padding: 8px 16px; font-size: 0.9rem;" onclick="generateAiQuestions()">
+                <i class="fas fa-wand-sparkles"></i> Generate More
+            </button>
+            {% endif %}
+        </div>
+
+        <div id="questionsContainer" class="questions-list">
+            {% if questions %}
+                {% for question in questions %}
+                <div class="question-card">
+                    <div class="question-number">{{ forloop.counter }}</div>
+                    <div class="question-content">
+                        <div class="question-text">{{ question.question_text }}</div>
+                        <div class="question-meta">
+                            <span class="question-badge">{{ question.get_question_type_display }}</span>
+                            {% if question.is_required %}<span>Required</span>{% endif %}
+                            {% if question.help_text %}<span><i class="fas fa-info-circle"></i> {{ question.help_text|truncatewords:10 }}</span>{% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="empty-state-ai">
+                    <div class="ai-icon-large">
+                        <i class="fas fa-wand-sparkles"></i>
+                    </div>
+                    <h3 class="empty-state-title">No questions yet</h3>
+                    <p class="empty-state-text">
+                        Every great project starts with the right questions. Let our AI help you craft a 
+                        powerful onboarding experience for your clients tailored to this specific template.
+                    </p>
+                    <button id="generateAiLarge" class="btn-ai-generate" onclick="generateAiQuestions()">
+                        <i class="fas fa-wand-sparkles"></i> Generate Questions with AI
+                    </button>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ block.super }}
+<script>
+    function generateAiQuestions() {
+        const btnLarge = document.getElementById('generateAiLarge');
+        const btnSmall = document.getElementById('generateAiSmall');
+        const container = document.getElementById('questionsContainer');
+        const templateId = {{ template.id }};
+
+        // UI Feedback
+        if (btnLarge) {
+            btnLarge.disabled = true;
+            btnLarge.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <span class="loading-pulse">Generating your strategic questions...</span>';
+        }
+        if (btnSmall) {
+            btnSmall.disabled = true;
+            btnSmall.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
+        }
+
+        fetch(`/dashboard/mentor/templates/${templateId}/questions/generate-ai/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Remove empty state if it exists
+                const emptyState = document.querySelector('.empty-state-ai');
+                if (emptyState) {
+                    emptyState.remove();
+                    // Show small button in header
+                    const header = document.querySelector('.section-header');
+                    const smallBtn = document.createElement('button');
+                    smallBtn.id = 'generateAiSmall';
+                    smallBtn.className = 'btn-ai-generate';
+                    smallBtn.style.cssText = 'padding: 8px 16px; font-size: 0.9rem;';
+                    smallBtn.onclick = generateAiQuestions;
+                    smallBtn.innerHTML = '<i class="fas fa-wand-sparkles"></i> Generate More';
+                    header.appendChild(smallBtn);
+                }
+
+                // Add new questions
+                data.questions.forEach(q => {
+                    const card = document.createElement('div');
+                    card.className = 'question-card';
+                    card.style.opacity = '0';
+                    card.style.transform = 'translateY(20px)';
+                    card.innerHTML = `
+                        <div class="question-number">${q.order}</div>
+                        <div class="question-content">
+                            <div class="question-text">${q.text}</div>
+                            <div class="question-meta">
+                                <span class="question-badge">${q.type}</span>
+                                <span>Required</span>
+                                ${q.help_text ? `<span><i class="fas fa-info-circle"></i> ${q.help_text}</span>` : ''}
+                            </div>
+                        </div>
+                    `;
+                    container.appendChild(card);
+                    
+                    // Simple animation
+                    setTimeout(() => {
+                        card.style.transition = 'all 0.4s ease';
+                        card.style.opacity = '1';
+                        card.style.transform = 'translateY(0)';
+                    }, 50);
+                });
+
+                if (typeof showNotification !== 'undefined') {
+                    showNotification('Strategy questions generated successfully!', 'success');
+                }
+            } else {
+                alert(data.error || 'Failed to generate questions');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while generating questions.');
+        })
+        .finally(() => {
+            if (btnLarge) {
+                btnLarge.disabled = false;
+                btnLarge.innerHTML = '<i class="fas fa-wand-sparkles"></i> Generate Questions with AI';
+            }
+            if (btnSmall) {
+                btnSmall.disabled = false;
+                btnSmall.innerHTML = '<i class="fas fa-wand-sparkles"></i> Generate More';
+            }
+        });
+    }
+</script>
+{% endblock %}

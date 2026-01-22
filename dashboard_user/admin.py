@@ -1,7 +1,7 @@
 from django.contrib import admin
 from .models import (
     Project, ProjectTemplate, ProjectModule, ProjectModuleInstance,
-    ProjectQuestionnaire, ProjectQuestionnaireAnswer,
+    Questionnaire, Question, QuestionnaireResponse,
     ProjectStage, ProjectStageTemplate, ProjectStageNote, 
     ProjectStageNoteAttachment, ProjectStageNoteComment,
     Task
@@ -10,17 +10,20 @@ from .models import (
 
 @admin.register(ProjectTemplate)
 class ProjectTemplateAdmin(admin.ModelAdmin):
-    list_display = ('name', 'category', 'is_active', 'order', 'created_at')
-    list_filter = ('category', 'is_active')
+    list_display = ('name', 'is_custom', 'author', 'is_active', 'order', 'created_at')
+    list_filter = ('is_custom', 'is_active')
     search_fields = ('name', 'description')
     list_editable = ('is_active', 'order')
     
     fieldsets = (
         ('Basic Information', {
-            'fields': ('name', 'description', 'category')
+            'fields': ('name', 'description')
         }),
         ('Display Settings', {
             'fields': ('icon', 'color', 'order', 'is_active')
+        }),
+        ('Custom Template', {
+            'fields': ('is_custom', 'author'),
         }),
         ('Advanced', {
             'fields': ('template_fields',),
@@ -31,7 +34,7 @@ class ProjectTemplateAdmin(admin.ModelAdmin):
 
 class ProjectAdmin(admin.ModelAdmin):
     list_display = ('title', 'template', 'project_owner', 'supervised_by', 'created_at')
-    list_filter = ('template', 'template__category')
+    list_filter = ('template', 'template__is_custom')
     search_fields = ('title',)
     
     fieldsets = (
@@ -122,17 +125,25 @@ class ProjectModuleInstanceAdmin(admin.ModelAdmin):
     search_fields = ('project__title', 'module__name')
 
 
-@admin.register(ProjectQuestionnaire)
-class ProjectQuestionnaireAdmin(admin.ModelAdmin):
-    list_display = ('question_text', 'template', 'question_type', 'is_required', 'order')
-    list_filter = ('template', 'question_type', 'is_required')
-    search_fields = ('question_text',)
-    ordering = ('template', 'order')
-
-
-@admin.register(ProjectQuestionnaireAnswer)
-class ProjectQuestionnaireAnswerAdmin(admin.ModelAdmin):
-    list_display = ('project', 'question', 'created_at')
-    list_filter = ('project', 'question__template')
-    search_fields = ('project__title', 'question__question_text', 'answer')
+@admin.register(Questionnaire)
+class QuestionnaireAdmin(admin.ModelAdmin):
+    list_display = ('template', 'title', 'created_at')
+    list_filter = ('template__is_custom',)
+    search_fields = ('template__name', 'title')
     readonly_fields = ('created_at', 'updated_at')
+
+
+@admin.register(Question)
+class QuestionAdmin(admin.ModelAdmin):
+    list_display = ('question_text', 'questionnaire', 'question_type', 'is_required', 'order')
+    list_filter = ('question_type', 'is_required', 'questionnaire__template')
+    search_fields = ('question_text',)
+    ordering = ('questionnaire', 'order')
+
+
+@admin.register(QuestionnaireResponse)
+class QuestionnaireResponseAdmin(admin.ModelAdmin):
+    list_display = ('project', 'questionnaire', 'completed_at')
+    list_filter = ('questionnaire__template', 'completed_at')
+    search_fields = ('project__title', 'questionnaire__title')
+    readonly_fields = ('completed_at', 'updated_at')

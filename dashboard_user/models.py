@@ -5,18 +5,9 @@ from django.core.exceptions import ValidationError
 
 class ProjectTemplate(models.Model):
     """Template model for project types (e.g., Mindset, Trading, Weight Loss, Business Plan)"""
-    CATEGORY_CHOICES = [
-        ('health', 'Health & Wellness'),
-        ('business', 'Business & Career'),
-        ('personal', 'Personal Development'),
-        ('finance', 'Finance & Trading'),
-        ('academic', 'Academic'),
-        ('other', 'Other'),
-    ]
     
     name = models.CharField(max_length=100, unique=True, help_text="Template name (e.g., 'Mindset', 'Trading', 'Weight Loss')")
     description = models.TextField(blank=True, help_text="Description of what this template is for")
-    category = models.CharField(max_length=20, choices=CATEGORY_CHOICES, default='other', help_text="Category for grouping templates")
     icon = models.CharField(max_length=50, blank=True, help_text="Font Awesome icon class (e.g., 'fa-brain', 'fa-chart-line')")
     color = models.CharField(max_length=7, default='#10b981', help_text="Hex color for template (e.g., #10b981)")
     image = models.ImageField(upload_to='project_templates/', blank=True, null=True, help_text="Template image/icon")
@@ -28,12 +19,6 @@ class ProjectTemplate(models.Model):
         default=list,
         blank=True,
         help_text="Optional: Custom fields structure for this template type"
-    )
-    
-    # Questionnaire
-    has_default_questions = models.BooleanField(
-        default=True,
-        help_text="Whether to use default questions for blank projects using this template"
     )
     
     # Timestamps
@@ -221,8 +206,28 @@ class ProjectModuleInstance(models.Model):
         return f"{self.project.title} - {self.module.name}"
 
 
-class ProjectQuestionnaire(models.Model):
-    """Questions for project templates or default questions"""
+class Questionnaire(models.Model):
+    """Questionnaire model - one per template"""
+    template = models.OneToOneField(
+        ProjectTemplate,
+        on_delete=models.CASCADE,
+        related_name="questionnaire",
+        help_text="The questionnaire for this template"
+    )
+    title = models.CharField(max_length=200, default="Onboarding Questionnaire")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = "Questionnaire"
+        verbose_name_plural = "Questionnaires"
+    
+    def __str__(self):
+        return f"{self.template.name} - {self.title}"
+
+
+class Question(models.Model):
+    """Individual question within a questionnaire"""
     QUESTION_TYPES = [
         ('text', 'Text'),
         ('textarea', 'Long Text'),
@@ -232,13 +237,11 @@ class ProjectQuestionnaire(models.Model):
         ('multiselect', 'Multiple Select'),
     ]
     
-    template = models.ForeignKey(
-        ProjectTemplate,
+    questionnaire = models.ForeignKey(
+        Questionnaire,
         on_delete=models.CASCADE,
         related_name="questions",
-        null=True,
-        blank=True,
-        help_text="Template this question belongs to (null for default questions)"
+        help_text="The questionnaire this question belongs to"
     )
     question_text = models.CharField(max_length=500)
     question_type = models.CharField(max_length=20, choices=QUESTION_TYPES, default='text')
@@ -246,33 +249,47 @@ class ProjectQuestionnaire(models.Model):
     order = models.IntegerField(default=0)
     options = models.JSONField(default=list, blank=True, help_text="Options for select/multiselect questions")
     help_text = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
-        verbose_name = "Project Questionnaire"
-        verbose_name_plural = "Project Questionnaires"
+        verbose_name = "Question"
+        verbose_name_plural = "Questions"
         ordering = ['order']
-        unique_together = ['template', 'order']
+        unique_together = ['questionnaire', 'order']
     
     def __str__(self):
         return self.question_text
 
 
-class ProjectQuestionnaireAnswer(models.Model):
-    """Answers to questionnaire questions for a specific project"""
-    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="questionnaire_answers")
-    question = models.ForeignKey(ProjectQuestionnaire, on_delete=models.CASCADE)
-    answer = models.TextField()
-    created_at = models.DateTimeField(auto_now_add=True)
+class QuestionnaireResponse(models.Model):
+    """Client's answers to a questionnaire - stored as JSON"""
+    project = models.ForeignKey(
+        Project,
+        on_delete=models.CASCADE,
+        related_name="questionnaire_responses",
+        help_text="The project this response belongs to"
+    )
+    questionnaire = models.ForeignKey(
+        Questionnaire,
+        on_delete=models.CASCADE,
+        related_name="responses",
+        help_text="The questionnaire that was answered"
+    )
+    answers = models.JSONField(
+        default=dict,
+        help_text="JSON object mapping question IDs to answers: {question_id: answer_text}"
+    )
+    completed_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
-        verbose_name = "Project Questionnaire Answer"
-        verbose_name_plural = "Project Questionnaire Answers"
-        unique_together = ['project', 'question']
-        ordering = ['question__order']
+        verbose_name = "Questionnaire Response"
+        verbose_name_plural = "Questionnaire Responses"
+        unique_together = ['project', 'questionnaire']
     
     def __str__(self):
-        return f"{self.project.title} - {self.question.question_text[:50]}"
+        return f"{self.project.title} - {self.questionnaire.title}"
 
 
 class ProjectStage(models.Model):

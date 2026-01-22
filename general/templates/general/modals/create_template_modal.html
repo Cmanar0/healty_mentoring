@@ -7,7 +7,7 @@
             </button>
         </div>
         
-        <form method="POST" action="{% url 'general:dashboard_mentor:create_custom_template' %}">
+        <form method="POST" action="{% url 'general:dashboard_mentor:create_custom_template' %}" id="createTemplateForm">
             {% csrf_token %}
             <div class="modal-body">
                 <!-- Name -->
@@ -21,21 +21,8 @@
                     <label class="form-label">Description</label>
                     <textarea name="description" class="form-input" rows="3" placeholder="What is this template for?"></textarea>
                 </div>
-                
-                <!-- Category -->
-                <div class="form-group">
-                    <label class="form-label">Category</label>
-                    <select name="category" class="form-select">
-                        <option value="business">Business & Career</option>
-                        <option value="health">Health & Wellness</option>
-                        <option value="personal">Personal Development</option>
-                        <option value="academic">Academic</option>
-                        <option value="finance">Finance</option>
-                        <option value="other">Other</option>
-                    </select>
-                </div>
 
-                <!-- Icon Selection (Simplified) -->
+                <!-- Icon Selection -->
                 <div class="form-group">
                     <label class="form-label">Icon</label>
                     <div style="display: flex; gap: 12px; flex-wrap: wrap;">
@@ -70,21 +57,220 @@
 </div>
 
 <style>
-    /* Reuse modal styles from filtered CSS or ensure basic styles here */
-    .icon-option:hover { background: #e2e8f0; }
-    input[type="radio"]:checked + .icon-option {
-        background: #eff6ff;
-        color: #3b82f6;
+    /* Modal Overlay */
+    #createTemplateModal.modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(15, 23, 42, 0.6);
+        backdrop-filter: blur(4px);
+        z-index: 10000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.3s ease, visibility 0.3s ease;
+    }
+
+    #createTemplateModal.modal-overlay.active {
+        opacity: 1;
+        visibility: visible;
+    }
+
+    /* Modal Container */
+    .modal-container {
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        max-width: 600px;
+        width: 90%;
+        max-height: 90vh;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        transform: scale(0.95);
+        transition: transform 0.3s ease;
+    }
+
+    #createTemplateModal.modal-overlay.active .modal-container {
+        transform: scale(1);
+    }
+
+    /* Modal Header */
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 20px 24px;
+        border-bottom: 1px solid #e2e8f0;
+        background: white;
+    }
+
+    .modal-header h3 {
+        margin: 0;
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #1e293b;
+    }
+
+    .modal-close {
+        background: none;
+        border: none;
+        font-size: 1.2rem;
+        color: #64748b;
+        cursor: pointer;
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 6px;
+        transition: all 0.2s;
+    }
+
+    .modal-close:hover {
+        background: #f1f5f9;
+        color: #1e293b;
+    }
+
+    /* Modal Body */
+    .modal-body {
+        padding: 24px;
+        overflow-y: auto;
+        flex: 1;
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+    .form-label {
+        display: block;
+        font-weight: 600;
+        color: #475569;
+        margin-bottom: 8px;
+        font-size: 0.875rem;
+    }
+
+    .form-input,
+    .form-select {
+        width: 100%;
+        padding: 10px 14px;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        font-size: 0.95rem;
+        color: #1e293b;
+        transition: all 0.2s;
+        box-sizing: border-box;
+    }
+
+    .form-input:focus,
+    .form-select:focus {
+        outline: none;
         border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    textarea.form-input {
+        resize: vertical;
+        min-height: 80px;
+    }
+
+    /* Icon Options */
+    .icon-option:hover { 
+        background: #e2e8f0 !important; 
+    }
+    
+    input[type="radio"]:checked + .icon-option {
+        background: #eff6ff !important;
+        color: #3b82f6 !important;
+        border-color: #3b82f6 !important;
+    }
+
+    /* Modal Footer */
+    .modal-footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+        padding: 20px 24px;
+        border-top: 1px solid #e2e8f0;
+        background: #f8fafc;
+    }
+
+    .btn-cancel,
+    .btn-confirm {
+        padding: 10px 20px;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        font-size: 0.875rem;
+    }
+
+    .btn-cancel {
+        background: white;
+        color: #64748b;
+        border: 1px solid #e2e8f0;
+    }
+
+    .btn-cancel:hover {
+        background: #f1f5f9;
+        border-color: #cbd5e1;
+    }
+
+    .btn-confirm {
+        background: #111827;
+        color: white;
+        border: 1px solid #111827;
+    }
+
+    .btn-confirm:hover {
+        background: #000;
+        border-color: #000;
     }
 </style>
 
 <script>
-    function closeCreateTemplateModal() {
+    function openCreateTemplateModal() {
         const modal = document.getElementById('createTemplateModal');
-        if(modal) {
-            modal.classList.remove('active');
-            setTimeout(() => modal.style.display = 'none', 300);
+        if (modal) {
+            modal.style.display = 'flex';
+            setTimeout(() => {
+                modal.classList.add('active');
+            }, 10);
+            // Reset form
+            document.getElementById('createTemplateForm').reset();
         }
     }
+
+    function closeCreateTemplateModal() {
+        const modal = document.getElementById('createTemplateModal');
+        if (modal) {
+            modal.classList.remove('active');
+            setTimeout(() => {
+                modal.style.display = 'none';
+            }, 300);
+        }
+    }
+
+    // Close modal when clicking outside
+    document.addEventListener('click', function(e) {
+        const modal = document.getElementById('createTemplateModal');
+        if (modal && e.target === modal) {
+            closeCreateTemplateModal();
+        }
+    });
+
+    // Close modal on ESC key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            const modal = document.getElementById('createTemplateModal');
+            if (modal && modal.classList.contains('active')) {
+                closeCreateTemplateModal();
+            }
+        }
+    });
 </script>
