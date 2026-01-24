@@ -1557,13 +1557,13 @@
                             <!-- Target Completion Date -->
                             <div class="project-info-item">
                                 <div class="project-info-label">Target Date</div>
-                                <button type="button" onclick="openTargetDateModal()" class="project-info-btn">
+                                <button type="button" onclick="openTargetDateModal()" class="project-info-btn {% if not project.target_completion_date %}target-date-warning{% endif %}">
                                     {% if project.target_completion_date %}
                                         <i class="far fa-calendar-check" style="color: #6366f1;"></i>
                                         <span>{{ project.target_completion_date|date:"M j, Y" }}</span>
                                     {% else %}
-                                        <i class="far fa-calendar-plus"></i>
-                                        <span style="color: #94a3b8;">Not set</span>
+                                        <i class="fas fa-exclamation-triangle" style="color: #92400e;"></i>
+                                        <span style="color: #92400e;">Not set</span>
                                     {% endif %}
                                     <i class="fas fa-edit"></i>
                                 </button>
