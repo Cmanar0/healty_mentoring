@@ -5029,6 +5029,68 @@ def delete_question(request, question_id):
 
 
 @login_required
+def get_questions_api(request, template_id):
+    """API endpoint to fetch questions for a template"""
+    try:
+        if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+            return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+        
+        template = get_object_or_404(ProjectTemplate, id=template_id)
+        mentor_profile = request.user.mentor_profile
+        
+        # Check access
+        can_view = False
+        if template.is_custom:
+            can_view = template.author == mentor_profile
+        else:
+            can_view = template.author is None or template.author == mentor_profile
+        
+        if not can_view:
+            return JsonResponse({'success': False, 'error': 'Access denied.'}, status=403)
+        
+        from dashboard_user.models import Questionnaire, Question
+        
+        # Get or create questionnaire
+        questionnaire, created = Questionnaire.objects.get_or_create(template=template)
+        
+        questions = questionnaire.questions.all().order_by('order')
+        
+        questions_data = []
+        for question in questions:
+            questions_data.append({
+                'id': question.id,
+                'question_text': question.question_text,
+                'question_type': question.question_type,
+                'question_type_display': question.get_question_type_display(),
+                'is_required': question.is_required,
+                'is_target_date': question.is_target_date,
+                'help_text': question.help_text or '',
+                'options': question.options or [],
+                'order': question.order
+            })
+        
+        # Check if there's a target date question
+        has_target_date_question = questionnaire.questions.filter(
+            is_target_date=True,
+            question_type='date'
+        ).exists()
+        
+        return JsonResponse({
+            'success': True,
+            'questions': questions_data,
+            'has_target_date_question': has_target_date_question
+        })
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f'Error in get_questions_api: {str(e)}', exc_info=True)
+        return JsonResponse({
+            'success': False,
+            'error': f'Server error: {str(e)}'
+        }, status=500)
+
+
+@login_required
 @require_POST
 def reorder_questions(request, template_id):
     """Reorder questions via drag-and-drop"""
@@ -5058,10 +5120,11 @@ def reorder_questions(request, template_id):
         question_orders = data.get('orders', [])  # List of {id: question_id, order: new_order}
         
         # Validate that all questions belong to this template's questionnaire
+        from dashboard_user.models import Questionnaire
         if not hasattr(template, 'questionnaire'):
-            return JsonResponse({'success': False, 'error': 'Template has no questionnaire.'}, status=400)
-        
-        questionnaire = template.questionnaire
+            questionnaire, created = Questionnaire.objects.get_or_create(template=template)
+        else:
+            questionnaire = template.questionnaire
         question_ids = [item.get('id') for item in question_orders if item.get('id')]
         
         # Verify all questions belong to this questionnaire
@@ -5073,15 +5136,40 @@ def reorder_questions(request, template_id):
         if len(valid_questions) != len(question_ids):
             return JsonResponse({'success': False, 'error': 'Invalid questions.'}, status=400)
         
-        # Update orders
-        for item in question_orders:
-            question_id = item.get('id')
-            new_order = item.get('order')
-            if question_id and new_order is not None:
-                Question.objects.filter(
-                    id=question_id,
-                    questionnaire=questionnaire
-                ).update(order=new_order)
+        # Update orders using transaction to avoid unique constraint conflicts
+        from django.db import transaction
+        
+        with transaction.atomic():
+            # Get all questions in this questionnaire to find a safe offset
+            all_question_ids = list(questionnaire.questions.values_list('id', flat=True))
+            if not all_question_ids:
+                return JsonResponse({'success': False, 'error': 'No questions found.'}, status=400)
+            
+            # Use a large offset that's guaranteed to be higher than any existing order
+            from django.db.models import Max
+            max_existing_order = questionnaire.questions.aggregate(max_order=Max('order'))['max_order'] or 0
+            max_id = max(all_question_ids) if all_question_ids else 0
+            offset = max(max_existing_order, max_id) + 10000
+            
+            # First, set all questions being reordered to temporary high values
+            # This frees up the order numbers we want to use
+            for item in question_orders:
+                question_id = item.get('id')
+                if question_id:
+                    Question.objects.filter(
+                        id=question_id,
+                        questionnaire=questionnaire
+                    ).update(order=offset + question_id)
+            
+            # Now set them to the correct values
+            for item in question_orders:
+                question_id = item.get('id')
+                new_order = item.get('order')
+                if question_id and new_order is not None:
+                    Question.objects.filter(
+                        id=question_id,
+                        questionnaire=questionnaire
+                    ).update(order=new_order)
         
         return JsonResponse({'success': True, 'message': 'Questions reordered successfully'})
     except json.JSONDecodeError:

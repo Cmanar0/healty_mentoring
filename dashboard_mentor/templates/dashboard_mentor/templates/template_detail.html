@@ -793,15 +793,13 @@
     </div>
 
     <div id="questionsSection">
-        {% if not has_target_date_question and questions %}
-        <div class="target-date-warning" style="background: #fef3c7; border: 1px solid #fbbf24; border-radius: 12px; padding: 16px; margin-bottom: 24px; display: flex; align-items: center; gap: 12px;">
+        <div id="targetDateWarning" class="target-date-warning" style="display: none; background: #fef3c7; border: 1px solid #fbbf24; border-radius: 12px; padding: 16px; margin-bottom: 24px; align-items: center; gap: 12px;">
             <i class="fas fa-exclamation-triangle" style="color: #f59e0b; font-size: 1.25rem;"></i>
             <div style="flex: 1;">
                 <strong style="color: #92400e; display: block; margin-bottom: 4px;">No target date question set</strong>
                 <span style="color: #b45309; font-size: 0.9rem;">This template doesn't have a date question marked as the project target completion date. Consider adding one to help track project timelines.</span>
             </div>
         </div>
-        {% endif %}
         <div class="section-header">
             <h2 class="section-title">Onboarding Questionnaire</h2>
             <div class="section-actions">
@@ -815,49 +813,29 @@
         </div>
 
         <div id="questionsContainer" class="questions-list">
-            {% if questions %}
-                {% for question in questions %}
-                <div class="question-card" data-question-id="{{ question.id }}" data-order="{{ question.order }}">
-                    <div class="question-drag-handle">
-                        <i class="fas fa-grip-vertical"></i>
-                    </div>
-                    <div class="question-number">{{ forloop.counter }}</div>
-                    <div class="question-content">
-                        <div class="question-text">{{ question.question_text }}</div>
-                        <div class="question-meta">
-                            <span class="question-badge">{{ question.get_question_type_display }}</span>
-                            {% if question.is_target_date %}
-                            <span class="question-badge target-date-badge-card">
-                                <i class="fas fa-calendar-check"></i> Target Date
-                            </span>
-                            {% endif %}
-                            {% if question.is_required %}<span>Required</span>{% endif %}
-                            {% if question.help_text %}<span><i class="fas fa-info-circle"></i> {{ question.help_text|truncatewords:10 }}</span>{% endif %}
-                            {% if question.options %}<span><i class="fas fa-list"></i> {{ question.options|length }} options</span>{% endif %}
-                        </div>
-                    </div>
-                    <div class="question-actions">
-                        <button class="btn-question-action" onclick="editQuestion({{ question.id }})" title="Edit">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                        <button class="btn-question-action delete" onclick="deleteQuestion({{ question.id }})" title="Delete">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </div>
-                </div>
-                {% endfor %}
-            {% else %}
-                <div class="empty-state-ai">
-                    <div class="ai-icon-large">
-                        <i class="fas fa-wand-sparkles"></i>
-                    </div>
-                    <h3 class="empty-state-title">No questions yet</h3>
-                    <p class="empty-state-text">
-                        Every great project starts with the right questions. Create questions manually or let our AI help you craft a 
-                        powerful onboarding experience for your clients tailored to this specific template.
-                    </p>
-                </div>
-            {% endif %}
+            <div style="padding: 48px; text-align: center; color: #9ca3af;">
+                <i class="fas fa-circle-notch fa-spin" style="font-size: 24px; margin-bottom: 12px; opacity: 0.5;"></i>
+                <p>Loading questions...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div id="deleteConfirmModal" class="modal-overlay" style="display: none; z-index: 10001;" onclick="if(event.target === this) closeDeleteConfirmModal()">
+    <div class="modal-container" style="max-width: 400px;">
+        <div class="modal-header">
+            <h3>Delete Question</h3>
+        </div>
+        <button class="modal-close" onclick="closeDeleteConfirmModal()">
+            <i class="fas fa-times"></i>
+        </button>
+        <div class="modal-body">
+            <p>Are you sure you want to delete this question? This action cannot be undone.</p>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn-cancel" onclick="closeDeleteConfirmModal()">Cancel</button>
+            <button type="button" class="btn-confirm" id="confirmDeleteBtn" style="background: #ef4444;">Delete</button>
         </div>
     </div>
 </div>
@@ -965,7 +943,9 @@
     const templateId = {{ template.id }};
     let editingQuestionId = null;
     let questionOptions = [];
-    const hasTargetDateQuestion = {{ has_target_date_question|yesno:"true,false" }};
+    let hasTargetDateQuestion = false;
+    let sortableInstance = null;
+    let deleteQuestionId = null;
 
     // Initialize custom dropdown for question type
     document.addEventListener('DOMContentLoaded', function() {
@@ -1036,18 +1016,139 @@
         }
     }
 
-    // Initialize Sortable for drag-and-drop
-    {% if questions %}
-    const sortable = Sortable.create(document.getElementById('questionsContainer'), {
-        handle: '.question-drag-handle',
-        animation: 150,
-        ghostClass: 'sortable-ghost',
-        dragClass: 'sortable-drag',
-        onEnd: function(evt) {
-            reorderQuestions();
+    // Load questions on page load
+    function loadQuestions() {
+        const container = document.getElementById('questionsContainer');
+        container.innerHTML = `
+            <div style="padding: 48px; text-align: center; color: #9ca3af;">
+                <i class="fas fa-circle-notch fa-spin" style="font-size: 24px; margin-bottom: 12px; opacity: 0.5;"></i>
+                <p>Loading questions...</p>
+            </div>
+        `;
+
+        fetch(`/dashboard/mentor/templates/${templateId}/questions/api/`, {
+            method: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                hasTargetDateQuestion = data.has_target_date_question;
+                renderQuestions(data.questions);
+                updateTargetDateWarning();
+            } else {
+                container.innerHTML = `
+                    <div style="padding: 48px; text-align: center; color: #ef4444;">
+                        <i class="fas fa-exclamation-circle" style="font-size: 24px; margin-bottom: 12px;"></i>
+                        <p>Error loading questions: ${data.error || 'Unknown error'}</p>
+                    </div>
+                `;
+            }
+        })
+        .catch(error => {
+            console.error('Error loading questions:', error);
+            container.innerHTML = `
+                <div style="padding: 48px; text-align: center; color: #ef4444;">
+                    <i class="fas fa-exclamation-circle" style="font-size: 24px; margin-bottom: 12px;"></i>
+                    <p>Error loading questions. Please refresh the page.</p>
+                </div>
+            `;
+        });
+    }
+
+    function renderQuestions(questions) {
+        const container = document.getElementById('questionsContainer');
+        
+        if (!questions || questions.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state-ai">
+                    <div class="ai-icon-large">
+                        <i class="fas fa-wand-sparkles"></i>
+                    </div>
+                    <h3 class="empty-state-title">No questions yet</h3>
+                    <p class="empty-state-text">
+                        Every great project starts with the right questions. Create questions manually or let our AI help you craft a 
+                        powerful onboarding experience for your clients tailored to this specific template.
+                    </p>
+                </div>
+            `;
+            if (sortableInstance) {
+                sortableInstance.destroy();
+                sortableInstance = null;
+            }
+            return;
         }
+
+        container.innerHTML = questions.map((question, index) => `
+            <div class="question-card" data-question-id="${question.id}" data-order="${question.order}">
+                <div class="question-drag-handle">
+                    <i class="fas fa-grip-vertical"></i>
+                </div>
+                <div class="question-number">${index + 1}</div>
+                <div class="question-content">
+                    <div class="question-text">${escapeHtml(question.question_text)}</div>
+                    <div class="question-meta">
+                        <span class="question-badge">${escapeHtml(question.question_type_display)}</span>
+                        ${question.is_target_date ? `
+                        <span class="question-badge target-date-badge-card">
+                            <i class="fas fa-calendar-check"></i> Target Date
+                        </span>
+                        ` : ''}
+                        ${question.is_required ? '<span>Required</span>' : ''}
+                        ${question.help_text ? `<span><i class="fas fa-info-circle"></i> ${escapeHtml(question.help_text.substring(0, 50))}${question.help_text.length > 50 ? '...' : ''}</span>` : ''}
+                        ${question.options && question.options.length > 0 ? `<span><i class="fas fa-list"></i> ${question.options.length} options</span>` : ''}
+                    </div>
+                </div>
+                <div class="question-actions">
+                    <button class="btn-question-action" onclick="editQuestion(${question.id})" title="Edit">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn-question-action delete" onclick="openDeleteConfirmModal(${question.id})" title="Delete">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+        `).join('');
+
+        // Initialize Sortable
+        if (sortableInstance) {
+            sortableInstance.destroy();
+        }
+        sortableInstance = Sortable.create(container, {
+            handle: '.question-drag-handle',
+            animation: 150,
+            ghostClass: 'sortable-ghost',
+            dragClass: 'sortable-drag',
+            onEnd: function(evt) {
+                reorderQuestions();
+            }
+        });
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    function updateTargetDateWarning() {
+        const warning = document.getElementById('targetDateWarning');
+        const container = document.getElementById('questionsContainer');
+        const hasQuestions = container.querySelectorAll('.question-card').length > 0;
+        
+        if (!hasTargetDateQuestion && hasQuestions) {
+            warning.style.display = 'flex';
+        } else {
+            warning.style.display = 'none';
+        }
+    }
+
+    // Load questions on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        loadQuestions();
     });
-    {% endif %}
 
     function reorderQuestions() {
         const questions = Array.from(document.querySelectorAll('.question-card'));
@@ -1070,26 +1171,31 @@
         .then(data => {
             console.log('Reorder response:', data);
             if (data.success) {
-                // Update question numbers in UI
-                questions.forEach((card, index) => {
-                    card.querySelector('.question-number').textContent = index + 1;
-                    card.dataset.order = index + 1;
-                });
-                
-                // Show success feedback (optional)
-                console.log('Questions reordered successfully');
+                // Reload questions to get updated order from server
+                loadQuestions();
+                if (typeof showNotification !== 'undefined') {
+                    showNotification('Questions reordered successfully', 'success');
+                }
             } else {
                 console.error('Failed to reorder questions:', data.error);
-                alert(data.error || 'Failed to save question order. Please try again.');
+                if (typeof showNotification !== 'undefined') {
+                    showNotification(data.error || 'Failed to save question order. Please try again.', 'error');
+                } else {
+                    alert(data.error || 'Failed to save question order. Please try again.');
+                }
                 // Reload to restore original order
-                location.reload();
+                loadQuestions();
             }
         })
         .catch(error => {
             console.error('Error reordering questions:', error);
-            alert('An error occurred while saving the order. Please try again.');
-            // Reload to restore original order
-            location.reload();
+            if (typeof showNotification !== 'undefined') {
+                showNotification('An error occurred while saving the order. Please try again.', 'error');
+            } else {
+                alert('An error occurred while saving the order. Please try again.');
+            }
+            // Reload questions to restore original order
+            loadQuestions();
         });
     }
 
@@ -1274,9 +1380,13 @@
         .then(data => {
             if (data.success) {
                 closeQuestionModal();
-                location.reload(); // Reload to show updated questions
+                loadQuestions(); // Reload questions via AJAX
             } else {
-                alert(data.error || 'Failed to save question');
+                if (typeof showNotification !== 'undefined') {
+                    showNotification(data.error || 'Failed to save question', 'error');
+                } else {
+                    alert(data.error || 'Failed to save question');
+                }
                 submitBtn.disabled = false;
                 submitBtn.textContent = originalText;
             }
@@ -1319,12 +1429,31 @@
         });
     }
 
-    function deleteQuestion(questionId) {
-        if (!confirm('Are you sure you want to delete this question?')) {
-            return;
-        }
+    function openDeleteConfirmModal(questionId) {
+        deleteQuestionId = questionId;
+        const modal = document.getElementById('deleteConfirmModal');
+        modal.style.display = 'flex';
+        setTimeout(() => modal.classList.add('active'), 10);
+    }
 
-        fetch(`/dashboard/mentor/questions/${questionId}/delete/`, {
+    function closeDeleteConfirmModal() {
+        const modal = document.getElementById('deleteConfirmModal');
+        modal.classList.remove('active');
+        setTimeout(() => {
+            modal.style.display = 'none';
+            deleteQuestionId = null;
+        }, 300);
+    }
+
+    function confirmDeleteQuestion() {
+        if (!deleteQuestionId) return;
+
+        const confirmBtn = document.getElementById('confirmDeleteBtn');
+        const originalText = confirmBtn.textContent;
+        confirmBtn.disabled = true;
+        confirmBtn.textContent = 'Deleting...';
+
+        fetch(`/dashboard/mentor/questions/${deleteQuestionId}/delete/`, {
             method: 'POST',
             headers: {
                 'X-CSRFToken': '{{ csrf_token }}',
@@ -1334,17 +1463,37 @@
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                // Always refresh to update warning banner if target date question was deleted
-                location.reload();
+                closeDeleteConfirmModal();
+                loadQuestions(); // Reload questions to update UI
             } else {
-                alert(data.error || 'Failed to delete question');
+                if (typeof showNotification !== 'undefined') {
+                    showNotification(data.error || 'Failed to delete question', 'error');
+                } else {
+                    alert(data.error || 'Failed to delete question');
+                }
+                confirmBtn.disabled = false;
+                confirmBtn.textContent = originalText;
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('An error occurred while deleting the question.');
+            if (typeof showNotification !== 'undefined') {
+                showNotification('An error occurred while deleting the question.', 'error');
+            } else {
+                alert('An error occurred while deleting the question.');
+            }
+            confirmBtn.disabled = false;
+            confirmBtn.textContent = originalText;
         });
     }
+
+    // Attach confirm delete handler
+    document.addEventListener('DOMContentLoaded', function() {
+        const confirmBtn = document.getElementById('confirmDeleteBtn');
+        if (confirmBtn) {
+            confirmBtn.addEventListener('click', confirmDeleteQuestion);
+        }
+    });
 
     function updateQuestionNumbers() {
         const questions = document.querySelectorAll('.question-card');
@@ -1384,8 +1533,8 @@
                     emptyState.remove();
                 }
 
-                // Reload page to show new questions
-                location.reload();
+                // Reload questions via AJAX
+                loadQuestions();
             } else {
                 alert(data.error || 'Failed to generate questions');
             }
@@ -1417,9 +1566,12 @@
     // Close modal on ESC key
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
-            const modal = document.getElementById('questionModal');
-            if (modal && modal.classList.contains('active')) {
+            const questionModal = document.getElementById('questionModal');
+            const deleteModal = document.getElementById('deleteConfirmModal');
+            if (questionModal && questionModal.classList.contains('active')) {
                 closeQuestionModal();
+            } else if (deleteModal && deleteModal.classList.contains('active')) {
+                closeDeleteConfirmModal();
             }
         }
     });
