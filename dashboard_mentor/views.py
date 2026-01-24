@@ -5324,7 +5324,7 @@ def project_detail(request, project_id):
             return JsonResponse({'success': False, 'error': str(e)}, status=500)
     
     # Get questions for this project
-    from dashboard_user.models import QuestionnaireResponse, ProjectModuleInstance
+    from dashboard_user.models import QuestionnaireResponse, ProjectModuleInstance, Question
     
     questions = []
     answers = {}
@@ -5339,9 +5339,24 @@ def project_detail(request, project_id):
                 project=project,
                 questionnaire=questionnaire
             )
-            answers = questionnaire_response.answers
+            # Refresh from DB to ensure we have the latest answers
+            questionnaire_response.refresh_from_db()
+            answers = questionnaire_response.answers or {}
+            # Log to verify we're getting fresh data
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.info(f'Loading project detail page - Project {project.id}, Answers: {answers}')
+            # If there's a target date question, log its answer specifically
+            target_date_q = Question.objects.filter(
+                questionnaire=questionnaire,
+                is_target_date=True,
+                question_type='date'
+            ).first()
+            if target_date_q:
+                target_answer = answers.get(str(target_date_q.id)) if answers else None
+                logger.info(f'Target date question ID: {target_date_q.id}, Answer in answers dict: {target_answer}, Project target_date: {project.target_completion_date}')
         except QuestionnaireResponse.DoesNotExist:
-            pass
+            answers = {}
     
     # Get active modules
     active_modules = project.module_instances.filter(is_active=True).select_related('module').order_by('order')
@@ -5731,6 +5746,141 @@ def update_stage_dates(request, project_id, stage_id):
         import logging
         logger = logging.getLogger(__name__)
         logger.error(f'Error updating stage dates: {str(e)}')
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+@require_POST
+def update_project_target_date(request, project_id):
+    """Update project target completion date"""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+    
+    mentor_profile = request.user.mentor_profile
+    project = get_object_or_404(Project, id=project_id, supervised_by=mentor_profile)
+    
+    try:
+        data = json.loads(request.body)
+        target_date_str = data.get('target_date')
+        
+        if target_date_str:
+            from datetime import datetime
+            target_date = datetime.strptime(target_date_str, '%Y-%m-%d').date()
+            project.target_completion_date = target_date
+        else:
+            project.target_completion_date = None
+        
+        project.save()
+        
+        # ALWAYS update the questionnaire answer if there's a target date question
+        # This ensures the answer stays in sync with the project's target_completion_date
+        from dashboard_user.models import QuestionnaireResponse, Question
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        try:
+            if project.template and hasattr(project.template, 'questionnaire'):
+                questionnaire = project.template.questionnaire
+                logger.info(f'Updating target date - Project {project.id}, Template {project.template.id}, Questionnaire {questionnaire.id}')
+                
+                # Find the target date question
+                target_date_question = Question.objects.filter(
+                    questionnaire=questionnaire,
+                    is_target_date=True,
+                    question_type='date'
+                ).first()
+                
+                if target_date_question:
+                    logger.info(f'Found target date question: id={target_date_question.id}, updating answer with date={target_date_str}')
+                    
+                    # Get the EXACT same QuestionnaireResponse record that's used to populate the slider
+                    # This is the same query used in project_detail view
+                    try:
+                        questionnaire_response = QuestionnaireResponse.objects.get(
+                            project=project,
+                            questionnaire=questionnaire
+                        )
+                        logger.info(f'Found existing QuestionnaireResponse id={questionnaire_response.id} for project {project.id}')
+                    except QuestionnaireResponse.DoesNotExist:
+                        # If it doesn't exist, create it (shouldn't happen if slider has answers, but handle it)
+                        questionnaire_response = QuestionnaireResponse.objects.create(
+                            project=project,
+                            questionnaire=questionnaire,
+                            answers={}
+                        )
+                        logger.info(f'Created new QuestionnaireResponse id={questionnaire_response.id} for project {project.id}')
+                    
+                    logger.info(f'Found QuestionnaireResponse id={questionnaire_response.id} for project {project.id}')
+                    logger.info(f'Current answers in DB: {questionnaire_response.answers}')
+                    
+                    # Get the current answers - JSONField returns a dict, but we need to create a new one
+                    # to ensure Django detects the change
+                    current_answers = questionnaire_response.answers or {}
+                    
+                    # Create a completely new dict to ensure JSONField change detection works
+                    new_answers = {}
+                    for key, value in current_answers.items():
+                        new_answers[str(key)] = value
+                    
+                    question_id_str = str(target_date_question.id)
+                    logger.info(f'Question ID (string): {question_id_str}')
+                    logger.info(f'Current answer for question {question_id_str}: {current_answers.get(question_id_str) if current_answers else "None"}')
+                    
+                    if target_date_str:
+                        # Update the answer for the target date question
+                        new_answers[question_id_str] = target_date_str
+                        logger.info(f'Setting new_answers[{question_id_str}] = {target_date_str}')
+                    else:
+                        # Remove the answer if target date is cleared
+                        new_answers.pop(question_id_str, None)
+                        logger.info(f'Removing answer for question {question_id_str}')
+                    
+                    logger.info(f'New answers dict to save: {new_answers}')
+                    
+                    # Update the answers field - assign the new dict
+                    questionnaire_response.answers = new_answers
+                    
+                    # Force save - don't use update_fields for JSONField
+                    questionnaire_response.save()
+                    
+                    # Immediately refresh and verify
+                    questionnaire_response.refresh_from_db()
+                    
+                    # Also query directly from DB to double-check
+                    db_response = QuestionnaireResponse.objects.get(id=questionnaire_response.id)
+                    
+                    logger.info(f'After save - questionnaire_response.answers: {questionnaire_response.answers}')
+                    logger.info(f'After save - db_response.answers: {db_response.answers}')
+                    
+                    saved_answer = db_response.answers.get(question_id_str) if db_response.answers else None
+                    logger.info(f'Verification - saved answer for question {question_id_str}: {saved_answer}')
+                    
+                    if target_date_str and saved_answer == target_date_str:
+                        logger.info('SUCCESS: Target date answer was correctly saved to database')
+                    elif not target_date_str and saved_answer is None:
+                        logger.info('SUCCESS: Target date answer was correctly removed from database')
+                    else:
+                        logger.error(f'ERROR: Target date answer was NOT saved correctly. Expected {target_date_str}, got {saved_answer}')
+                else:
+                    logger.warning(f'No target date question found for questionnaire {questionnaire.id}')
+            else:
+                logger.warning(f'Project {project.id} has no template or questionnaire')
+        except Exception as e:
+            logger.error(f'Error updating questionnaire answer for target date: {str(e)}', exc_info=True)
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Target date updated successfully',
+            'target_date': project.target_completion_date.strftime('%Y-%m-%d') if project.target_completion_date else None
+        })
+    except ValueError as e:
+        return JsonResponse({'success': False, 'error': 'Invalid date format'}, status=400)
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f'Error updating target date: {str(e)}')
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 

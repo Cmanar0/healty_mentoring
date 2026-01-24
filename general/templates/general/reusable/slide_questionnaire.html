@@ -51,6 +51,7 @@
                                 value="{{ answers|get_item:question.id|default:'' }}"
                                 {% if question.is_required %}required{% endif %}
                                 data-question-id="{{ question.id }}"
+                                data-initial-value="{{ answers|get_item:question.id|default:'' }}"
                             >
                         {% elif question.question_type == 'number' %}
                             <input 
@@ -501,8 +502,9 @@ select.question-input {
     }
     
     // Load answers from localStorage and template
-    function loadAnswers() {
-        // First, load from template (server-side answers)
+    function loadAnswers(prioritizeServerAnswers = false) {
+        // First, load from template (server-side answers) - these are the source of truth
+        // For multiselect, load from data attributes
         const multiselectWrappers = form.querySelectorAll('.multiselect-wrapper[data-answer-value]');
         multiselectWrappers.forEach(wrapper => {
             const answerValue = wrapper.dataset.answerValue;
@@ -510,30 +512,41 @@ select.question-input {
                 const values = answerValue.split(',').map(v => v.trim());
                 const checkboxes = wrapper.querySelectorAll('input[type="checkbox"]');
                 checkboxes.forEach(checkbox => {
-                    if (values.includes(checkbox.value)) {
-                        checkbox.checked = true;
-                    }
+                    checkbox.checked = values.includes(checkbox.value);
                 });
+            } else {
+                // Clear checkboxes if no answer
+                wrapper.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
             }
         });
         
-        // Then, load from localStorage (user's progress)
+        // For other input types (text, date, number, textarea, select), the template already sets the value
+        // in the HTML, so we should preserve those values. Only load from localStorage if:
+        // 1. The input doesn't have a value (empty)
+        // 2. AND we're not prioritizing server answers
         const saved = localStorage.getItem('slideQuestionnaireAnswers');
-        if (saved) {
+        if (saved && !prioritizeServerAnswers) {
             try {
                 const answers = JSON.parse(saved);
                 Object.keys(answers).forEach(questionId => {
                     const inputs = form.querySelectorAll(`[name="question_${questionId}"]`);
                     inputs.forEach(input => {
                         if (input.type === 'checkbox') {
-                            // Handle multiselect
-                            const value = answers[questionId];
-                            if (typeof value === 'string') {
-                                const values = value.split(',').map(v => v.trim());
-                                input.checked = values.includes(input.value);
+                            // Handle multiselect - only if not already set from template
+                            const wrapper = input.closest('.multiselect-wrapper');
+                            if (wrapper && !wrapper.dataset.answerValue) {
+                                const value = answers[questionId];
+                                if (typeof value === 'string') {
+                                    const values = value.split(',').map(v => v.trim());
+                                    input.checked = values.includes(input.value);
+                                }
                             }
                         } else {
-                            input.value = answers[questionId];
+                            // For other inputs, only load from localStorage if the input is empty
+                            // This preserves template values (server-side answers)
+                            if (!input.value || input.value.trim() === '') {
+                                input.value = answers[questionId] || '';
+                            }
                         }
                     });
                 });

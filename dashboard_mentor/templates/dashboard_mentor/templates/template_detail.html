@@ -667,10 +667,16 @@
         background: linear-gradient(135deg, #fde68a 0%, #fcd34d 100%);
     }
 
-    .dropdown-item-date i {
-        color: #f59e0b;
+    .dropdown-item i {
         width: 20px;
         text-align: center;
+        font-size: 1rem;
+        color: #6b7280;
+        flex-shrink: 0;
+    }
+
+    .dropdown-item-date i {
+        color: #f59e0b;
         font-size: 1.1rem;
     }
 
@@ -893,12 +899,15 @@
                                 <input type="hidden" name="question_type" id="questionTypeInput" value="" required>
                                 <div class="custom-dropdown-menu" id="questionTypeMenu">
                                     <button type="button" class="dropdown-item first-item" data-value="text">
+                                        <i class="fas fa-font"></i>
                                         <span>Text</span>
                                     </button>
                                     <button type="button" class="dropdown-item" data-value="textarea">
+                                        <i class="fas fa-align-left"></i>
                                         <span>Long Text</span>
                                     </button>
                                     <button type="button" class="dropdown-item" data-value="number">
+                                        <i class="fas fa-hashtag"></i>
                                         <span>Number</span>
                                     </button>
                                     <button type="button" class="dropdown-item dropdown-item-date" data-value="date" id="dateOptionBtn" {% if has_target_date_question %}disabled{% endif %}>
@@ -906,9 +915,11 @@
                                         <span>Date{% if has_target_date_question %} <span class="target-date-exists">(Target date already exists)</span>{% endif %}</span>
                                     </button>
                                     <button type="button" class="dropdown-item" data-value="select">
+                                        <i class="fas fa-list"></i>
                                         <span>Select</span>
                                     </button>
                                     <button type="button" class="dropdown-item last-item" data-value="multiselect">
+                                        <i class="fas fa-list-check"></i>
                                         <span>Multiple Select</span>
                                     </button>
                                 </div>

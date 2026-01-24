@@ -34,6 +34,184 @@
     }
     .nav-btn-back:hover { color: #1e293b; }
 
+    /* Target Date Modal Styles */
+    .target-date-modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.3s ease, visibility 0.3s ease;
+    }
+
+    .target-date-modal-overlay.active {
+        opacity: 1;
+        visibility: visible;
+    }
+
+    .target-date-modal-container {
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        max-width: 500px;
+        width: 90%;
+        max-height: 90vh;
+        overflow: visible;
+        display: flex;
+        flex-direction: column;
+        transform: scale(0.95);
+        transition: transform 0.3s ease;
+        position: relative;
+    }
+
+    .target-date-modal-overlay.active .target-date-modal-container {
+        transform: scale(1);
+    }
+
+    .target-date-modal-header {
+        padding: 20px 24px;
+        border-bottom: 1px solid #e2e8f0;
+        margin-bottom: 0;
+        position: relative;
+    }
+
+    .target-date-modal-header h3 {
+        margin: 0;
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #1e293b;
+    }
+
+    .target-date-modal-close {
+        position: absolute;
+        top: 16px;
+        right: 16px;
+        background: rgba(15, 23, 42, 0.1);
+        border: 1px solid rgba(15, 23, 42, 0.1);
+        color: #64748b;
+        font-size: 1rem;
+        cursor: pointer;
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .target-date-modal-close:hover {
+        background: #ef4444;
+        border-color: #ef4444;
+        color: white;
+        transform: rotate(90deg) scale(1.1);
+        box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
+    }
+
+    .target-date-modal-body {
+        padding: 24px;
+        overflow-y: auto;
+        overflow-x: visible;
+        flex: 1;
+        min-height: 0;
+        position: relative;
+    }
+
+    .target-date-modal-footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+        padding: 20px 24px;
+        border-top: 1px solid #e2e8f0;
+        background: #f8fafc;
+        position: relative;
+        z-index: 1;
+        border-radius: 0 0 16px 16px;
+    }
+
+    .target-date-modal-footer .btn-cancel {
+        min-width: 100px;
+        width: auto;
+    }
+
+    .target-date-modal-footer .btn-confirm {
+        width: auto;
+    }
+
+    .target-date-modal-body .form-group {
+        margin-bottom: 20px;
+    }
+
+    .target-date-modal-body .form-label {
+        display: block;
+        font-weight: 600;
+        color: #475569;
+        margin-bottom: 8px;
+        font-size: 0.875rem;
+    }
+
+    .target-date-modal-body .form-input {
+        width: 100%;
+        padding: 10px 16px;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        font-size: 0.95rem;
+        color: #1e293b;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .target-date-modal-body .form-input:focus {
+        outline: none;
+        border-color: #10b981;
+        box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+    }
+
+    .target-date-modal-footer .btn-cancel {
+        background: white;
+        color: #64748b;
+        border: 1px solid #e2e8f0;
+        padding: 10px 20px;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        font-size: 0.9rem;
+    }
+
+    .target-date-modal-footer .btn-cancel:hover {
+        background: #f8fafc;
+        border-color: #cbd5e1;
+        color: #475569;
+    }
+
+    .target-date-modal-footer .btn-confirm {
+        background: #10b981;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        font-size: 0.9rem;
+    }
+
+    .target-date-modal-footer .btn-confirm:hover {
+        background: #059669;
+    }
+
+    .target-date-modal-footer .btn-confirm:disabled {
+        opacity: 0.7;
+        cursor: not-allowed;
+    }
+
     /* Document Card Styles (matching stage detail page) */
     .document-card {
         min-height: 248px;
@@ -834,6 +1012,151 @@
 {% include 'dashboard_user/projects/modals/manage_modules_modal.html' %}
 {% include 'dashboard_mentor/popups/project_settings.html' %}
 
+<script>
+    // Define questionnaire modal functions early so they're available for onclick handlers
+    window.openQuestionnaireModal = function() {
+        console.log('openQuestionnaireModal called');
+        const modal = document.getElementById('questionnaireModal');
+        console.log('Modal element:', modal);
+        if (modal) {
+            console.log('Adding active class to modal');
+            modal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+            console.log('Modal classes:', modal.className);
+            
+            // Reload server-side answers when reopening (prioritize server answers over localStorage)
+            const form = document.getElementById('slideQuestionnaireForm');
+            if (form) {
+                // Clear localStorage to prevent it from overriding server-side answers
+                localStorage.removeItem('slideQuestionnaireAnswers');
+                
+                // Force reload all input values from their current HTML values (template values)
+                // This ensures we get the fresh values that were rendered from the server
+                // For date inputs specifically, we need to ensure the value is set correctly
+                const dateInputs = form.querySelectorAll('input[type="date"]');
+                dateInputs.forEach(input => {
+                    // The template should have set the value, but we can verify it's there
+                    // If the value is empty but the data attribute has a value, use that
+                    if (!input.value && input.hasAttribute('data-initial-value')) {
+                        input.value = input.getAttribute('data-initial-value');
+                    }
+                });
+                
+                // Load multiselect answers from data attributes (server-side)
+                const multiselectWrappers = form.querySelectorAll('.multiselect-wrapper[data-answer-value]');
+                multiselectWrappers.forEach(wrapper => {
+                    const answerValue = wrapper.dataset.answerValue;
+                    if (answerValue) {
+                        const values = answerValue.split(',').map(v => v.trim());
+                        const checkboxes = wrapper.querySelectorAll('input[type="checkbox"]');
+                        checkboxes.forEach(checkbox => {
+                            checkbox.checked = values.includes(checkbox.value);
+                        });
+                    } else {
+                        // Clear checkboxes if no answer
+                        wrapper.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+                    }
+                });
+                
+                // IMPORTANT: The template already sets the values in the HTML via the get_item filter
+                // But loadAnswers() might override them with localStorage. We need to ensure template values win.
+                
+                // First, explicitly set all input values from their current HTML values (which come from template)
+                // This ensures we're using the server-side values that were just rendered
+                const allInputs = form.querySelectorAll('input[type="text"], input[type="date"], input[type="number"], textarea, select');
+                allInputs.forEach(input => {
+                    // The value attribute is already set by the template, so input.value should be correct
+                    // But we can also check data-initial-value as backup
+                    if (input.hasAttribute('data-initial-value')) {
+                        const initialValue = input.getAttribute('data-initial-value');
+                        if (initialValue && (!input.value || input.value.trim() === '')) {
+                            input.value = initialValue;
+                        }
+                    }
+                    // Log to debug
+                    console.log(`Input ${input.name}: value="${input.value}", data-initial-value="${input.getAttribute('data-initial-value') || ''}"`);
+                });
+                
+                // Call loadAnswers with prioritizeServerAnswers=true to skip localStorage
+                // This will only load multiselect from template and skip localStorage entirely
+                if (typeof loadAnswers === 'function') {
+                    loadAnswers(true);
+                } else {
+                    // Fallback: manually load multiselect if loadAnswers doesn't exist
+                    const multiselectWrappers = form.querySelectorAll('.multiselect-wrapper[data-answer-value]');
+                    multiselectWrappers.forEach(wrapper => {
+                        const answerValue = wrapper.dataset.answerValue;
+                        if (answerValue) {
+                            const values = answerValue.split(',').map(v => v.trim());
+                            const checkboxes = wrapper.querySelectorAll('input[type="checkbox"]');
+                            checkboxes.forEach(checkbox => {
+                                checkbox.checked = values.includes(checkbox.value);
+                            });
+                        }
+                    });
+                }
+                
+                // Reset to first slide when reopening
+                const slides = form.querySelectorAll('.question-slide');
+                if (slides.length > 0) {
+                    slides.forEach((slide, index) => {
+                        slide.classList.remove('active');
+                        if (index === 0) {
+                            slide.classList.add('active');
+                        }
+                    });
+                    
+                    // Update progress indicator
+                    const progressFill = document.getElementById('progressFill');
+                    const currentSlideSpan = document.getElementById('currentSlide');
+                    if (progressFill && currentSlideSpan) {
+                        progressFill.style.width = ((1 / slides.length) * 100) + '%';
+                        currentSlideSpan.textContent = '1';
+                    }
+                    
+                    // Update navigation buttons
+                    const prevBtn = document.querySelector('.btn-nav.prev');
+                    const nextBtn = document.querySelector('.btn-nav.next');
+                    if (prevBtn) prevBtn.style.display = 'none';
+                    if (nextBtn) nextBtn.style.display = 'flex';
+                }
+            }
+        }
+    };
+
+    window.closeQuestionnaireModal = function() {
+        const modal = document.getElementById('questionnaireModal');
+        if (modal) {
+            modal.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+    };
+</script>
+
+<!-- Target Date Modal -->
+<div id="targetDateModal" class="target-date-modal-overlay" onclick="if(event.target === this) closeTargetDateModal()" style="display: none;">
+    <div class="target-date-modal-container">
+        <div class="target-date-modal-header">
+            <h3 id="targetDateModalTitle">Set Target Date</h3>
+        </div>
+        <button class="target-date-modal-close" onclick="closeTargetDateModal()">
+            <i class="fas fa-times"></i>
+        </button>
+        <form id="targetDateForm" onsubmit="saveTargetDate(event)">
+            <div class="target-date-modal-body">
+                <div class="form-group">
+                    <label class="form-label">Target Completion Date</label>
+                    <input type="date" name="target_date" id="targetDateInput" class="form-input" value="{% if project.target_completion_date %}{{ project.target_completion_date|date:'Y-m-d' }}{% endif %}">
+                </div>
+            </div>
+            <div class="target-date-modal-footer">
+                <button type="button" class="btn-cancel" onclick="closeTargetDateModal()">Cancel</button>
+                <button type="submit" class="btn-confirm" id="targetDateSubmitBtn">Save</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <div class="dashboard-content-container" style="max-width: 1200px; margin: 0 auto;">
     
         <!-- Top Nav -->
@@ -902,15 +1225,18 @@
                             <div class="project-info-item">
                                 <div class="project-info-label">Project Definition</div>
                                 <div class="project-info-value">
-                                    {% if project.questionnaire_completed %}
-                                        <span class="project-info-status completed">
-                                            <i class="fas fa-check-circle"></i> Completed
-                                        </span>
-                                    {% else %}
-                                        <span class="project-info-status pending">
-                                            <i class="fas fa-clock"></i> Pending
-                                        </span>
-                                    {% endif %}
+                                    <button type="button" onclick="window.openQuestionnaireModal(); return false;" class="project-definition-btn" style="background: none; border: none; padding: 4px 8px; cursor: pointer; display: flex; align-items: center; gap: 8px; color: inherit; border-radius: 6px; transition: background 0.2s;">
+                                        {% if project.questionnaire_completed %}
+                                            <span class="project-info-status completed" onclick="event.stopPropagation(); window.openQuestionnaireModal(); return false;" style="pointer-events: auto;">
+                                                <i class="fas fa-check-circle"></i> Completed
+                                            </span>
+                                        {% else %}
+                                            <span class="project-info-status pending" onclick="event.stopPropagation(); window.openQuestionnaireModal(); return false;" style="pointer-events: auto;">
+                                                <i class="fas fa-clock"></i> Pending
+                                            </span>
+                                        {% endif %}
+                                        <i class="fas fa-edit" style="font-size: 0.85rem; opacity: 0.6; margin-left: 4px;"></i>
+                                    </button>
                                 </div>
                             </div>
                             
@@ -918,12 +1244,26 @@
                             <div class="project-info-item">
                                 <div class="project-info-label">Target Date</div>
                                 <div class="project-info-value">
-                                    {% if project.target_completion_date %}
-                                        <i class="far fa-calendar-check" style="color: #6b7280; font-size: 0.9rem;"></i>
-                                        <span>{{ project.target_completion_date|date:"M j, Y" }}</span>
-                                    {% else %}
-                                        <span style="color: #9ca3af; font-size: 0.9rem; font-style: italic;">Not set</span>
-                                    {% endif %}
+                                    <button type="button" onclick="openTargetDateModal()" style="background: none; border: none; padding: 4px 8px; cursor: pointer; display: flex; align-items: center; gap: 8px; color: inherit; border-radius: 6px; transition: background 0.2s;">
+                                        {% if project.target_completion_date %}
+                                            <i class="far fa-calendar-check" style="color: #6b7280; font-size: 0.9rem;"></i>
+                                            <span>{{ project.target_completion_date|date:"M j, Y" }}</span>
+                                        {% else %}
+                                            <i class="far fa-calendar-plus" style="color: #9ca3af; font-size: 0.9rem;"></i>
+                                            <span style="color: #9ca3af; font-style: italic;">Not set</span>
+                                        {% endif %}
+                                    </button>
+                                    <style>
+                                        .project-info-value button:hover {
+                                            background: #f1f5f9;
+                                        }
+                                        .project-definition-btn:hover .project-info-status {
+                                            opacity: 0.8;
+                                        }
+                                        .project-definition-btn:hover i.fa-edit {
+                                            opacity: 1;
+                                        }
+                                    </style>
                                 </div>
                             </div>
                         </div>
@@ -966,26 +1306,29 @@
                     <div class="setup-required-content">
                         <h3 class="setup-required-title">Setup Required</h3>
                         <p class="setup-required-description">Complete the project questionnaire to unlock stage management and full project features.</p>
-                        <button type="button" class="btn-setup-questionnaire" onclick="openQuestionnaireModal()">
+                        <button type="button" class="btn-setup-questionnaire" onclick="window.openQuestionnaireModal()">
                             <i class="fas fa-arrow-right"></i>
                             <span>Start Questionnaire</span>
                         </button>
                     </div>
                 </div>
+            {% endif %}
 
-                <!-- Questionnaire Modal -->
-                <div id="questionnaireModal" class="questionnaire-modal-overlay">
-                    <div class="questionnaire-modal-content">
-                        <button class="questionnaire-modal-close" onclick="closeQuestionnaireModal()" aria-label="Close">
-                            <i class="fas fa-times"></i>
-                        </button>
-                        <div class="questionnaire-modal-body">
-                            {% include "general/reusable/slide_questionnaire.html" with questions=questions answers=answers %}
-                        </div>
+            <!-- Questionnaire Modal (always available for viewing/editing) -->
+            <div id="questionnaireModal" class="questionnaire-modal-overlay">
+                <div class="questionnaire-modal-content">
+                    <button class="questionnaire-modal-close" onclick="window.closeQuestionnaireModal()" aria-label="Close">
+                        <i class="fas fa-times"></i>
+                    </button>
+                    <div class="questionnaire-modal-body">
+                        {% include "general/reusable/slide_questionnaire.html" with questions=questions answers=answers %}
                     </div>
                 </div>
+            </div>
 
                 <script>
+                    // Functions are already defined in the earlier script block
+
                     // Set submit URL for the slide questionnaire
                     document.addEventListener('DOMContentLoaded', function() {
                         const form = document.getElementById('slideQuestionnaireForm');
@@ -994,33 +1337,22 @@
                         }
                     });
 
-                    function openQuestionnaireModal() {
+                    // Close modal on overlay click (wait for DOM)
+                    document.addEventListener('DOMContentLoaded', function() {
                         const modal = document.getElementById('questionnaireModal');
                         if (modal) {
-                            modal.classList.add('active');
-                            document.body.style.overflow = 'hidden';
-                        }
-                    }
-
-                    function closeQuestionnaireModal() {
-                        const modal = document.getElementById('questionnaireModal');
-                        if (modal) {
-                            modal.classList.remove('active');
-                            document.body.style.overflow = '';
-                        }
-                    }
-
-                    // Close modal on overlay click
-                    document.getElementById('questionnaireModal')?.addEventListener('click', function(e) {
-                        if (e.target === this) {
-                            closeQuestionnaireModal();
+                            modal.addEventListener('click', function(e) {
+                                if (e.target === this) {
+                                    window.closeQuestionnaireModal();
+                                }
+                            });
                         }
                     });
 
                     // Close modal on Escape key
                     document.addEventListener('keydown', function(e) {
                         if (e.key === 'Escape') {
-                            closeQuestionnaireModal();
+                            window.closeQuestionnaireModal();
                         }
                     });
                 </script>
@@ -1219,7 +1551,6 @@
                         }
                     }
                 </style>
-            {% endif %}
 
             <!-- Waterfall Chart -->
             <div id="waterfallChartContainer" style="display: none; background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
@@ -2584,7 +2915,6 @@
                 return response.json();
             })
             .then(data => {
-                console.log('Stages API response:', data);
                 if (data && data.success) {
                     renderStages(data.stages || []);
                 } else {
@@ -2947,5 +3277,83 @@
             alert('Failed to load stage data. Please try again.');
         });
     };
+
+    // Target Date Modal Functions
+    function openTargetDateModal() {
+        const modal = document.getElementById('targetDateModal');
+        if (modal) {
+            modal.style.display = 'flex';
+            setTimeout(() => modal.classList.add('active'), 10);
+        }
+    }
+
+    function closeTargetDateModal() {
+        const modal = document.getElementById('targetDateModal');
+        if (modal) {
+            modal.classList.remove('active');
+            setTimeout(() => {
+                modal.style.display = 'none';
+            }, 300);
+        }
+    }
+
+    function saveTargetDate(event) {
+        event.preventDefault();
+        
+        const targetDate = document.getElementById('targetDateInput').value;
+        const submitBtn = document.getElementById('targetDateSubmitBtn');
+        const originalText = submitBtn.textContent;
+        
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Saving...';
+
+        fetch(`/dashboard/mentor/projects/${PROJECT_ID}/update-target-date/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ target_date: targetDate || null })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                closeTargetDateModal();
+                if (typeof showNotification !== 'undefined') {
+                    showNotification('Target date updated successfully', 'success');
+                }
+                // Reload page to show updated date
+                location.reload();
+            } else {
+                if (typeof showNotification !== 'undefined') {
+                    showNotification(data.error || 'Failed to update target date', 'error');
+                } else {
+                    alert(data.error || 'Failed to update target date');
+                }
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalText;
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            if (typeof showNotification !== 'undefined') {
+                showNotification('An error occurred while updating target date', 'error');
+            } else {
+                alert('An error occurred while updating target date');
+            }
+            submitBtn.disabled = false;
+            submitBtn.textContent = originalText;
+        });
+    }
+
+    // Close modal on ESC key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            const targetDateModal = document.getElementById('targetDateModal');
+            if (targetDateModal && targetDateModal.classList.contains('active')) {
+                closeTargetDateModal();
+            }
+        }
+    });
 </script>
 {% endblock %}

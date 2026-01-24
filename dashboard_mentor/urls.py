@@ -60,6 +60,7 @@ urlpatterns = [
     path('questions/<int:question_id>/delete/', views.delete_question, name='delete_question'),
     path('projects/', views.projects_list, name='projects_list'),
     path('projects/<int:project_id>/', views.project_detail, name='project_detail'),
+    path('projects/<int:project_id>/update-target-date/', views.update_project_target_date, name='update_project_target_date'),
     path('projects/<int:project_id>/stages/create/', views.create_stage, name='create_stage'),
     path('projects/<int:project_id>/stages/generate-ai/', views.generate_stages_ai, name='generate_stages_ai'),
     path('projects/<int:project_id>/stages/<int:stage_id>/', views.stage_detail, name='stage_detail'),
