@@ -214,7 +214,7 @@
             <h1>Projects</h1>
             <p class="page-subtitle">Manage your mentoring programs and track progress.</p>
         </div>
-        <button class="btn-create" onclick="openCreateProjectModal()">
+        <button class="btn-create" onclick="window.openCreateProjectModal()">
             <i class="fas fa-plus"></i> Create Project
         </button>
     </div>
@@ -291,22 +291,18 @@
                 </div>
                 <h3 style="color: #374151; font-weight: 600; margin-bottom: 8px;">No projects found</h3>
                 <p style="margin-bottom: 24px;">Get started by creating your first mentoring project.</p>
-                <button class="btn-create" onclick="openCreateProjectModal()">Create Project</button>
+                <button class="btn-create" onclick="window.openCreateProjectModal()">Create Project</button>
             </div>
         {% endfor %}
     </div>
 
 </div>
+
 {% endblock %}
 
 {% block extra_js %}
 <script>
-    function openCreateProjectModal() {
-        const modal = document.getElementById('createProjectModal');
-        if (modal) {
-            modal.style.display = 'flex';
-            setTimeout(() => modal.classList.add('active'), 10);
-        }
-    }
+    // Use window.openCreateProjectModal directly - it's defined in the modal template
+    // No need for a wrapper function that could cause recursion
 </script>
 {% endblock %}

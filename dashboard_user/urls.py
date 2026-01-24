@@ -29,6 +29,7 @@ urlpatterns = [
     path('notifications/<int:notification_id>/modal/', views.notification_modal_detail, name='notification_modal_detail'),
     path('tickets/<int:ticket_id>/', views.ticket_detail, name='ticket_detail'),
     path('projects/', views.projects_list, name='projects_list'),
+    path('projects/manage-invitations/', views.manage_project_invitations, name='manage_project_invitations'),
     path('projects/<int:project_id>/', views.project_detail, name='project_detail'),
     path('projects/accept/<str:uidb64>/<str:token>/', views.accept_project_assignment_secure, name='accept_project_assignment_secure'),
     path('projects/<int:project_id>/accept/', views.accept_project_assignment, name='accept_project_assignment'),

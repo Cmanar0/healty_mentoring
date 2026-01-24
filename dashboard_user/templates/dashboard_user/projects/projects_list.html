@@ -7,56 +7,32 @@
 <div class="dash-user-projects-page">
   <div class="dash-user-projects-header">
     <h1>Projects</h1>
+    <div class="dash-user-projects-header-actions">
+      {% if pending_count > 0 %}
+      <a href="{% url 'general:dashboard_user:manage_project_invitations' %}" class="btn btn-secondary" style="width: auto;">
+        <i class="fas fa-envelope"></i>
+        <span>Manage Invitations</span>
+        {% if pending_count > 0 %}
+        <span class="badge">{{ pending_count }}</span>
+        {% endif %}
+      </a>
+      {% endif %}
+      <button type="button" onclick="openCreateProjectModal()" class="btn btn-primary" style="width: auto;">
+        <i class="fas fa-plus"></i>
+        <span>Create New Project</span>
+      </button>
+    </div>
   </div>
 
   <div class="dash-user-projects-container">
-    <!-- Pending Assignments Section -->
-    {% if pending_projects %}
+    <!-- All Projects Section -->
+    {% if projects %}
       <div class="dash-user-projects-section">
         <h2 class="dash-user-projects-section-title">
-          <i class="fas fa-clock"></i> Pending Assignments
-          <span class="dash-user-projects-count">({{ pending_projects.count }})</span>
+          <i class="fas fa-project-diagram"></i> My Projects
         </h2>
         <div class="dash-user-projects-list">
-          {% for project in pending_projects %}
-            <div class="dash-user-project-card dash-user-project-pending">
-              <div class="dash-user-project-card-header">
-                <h3>{{ project.title }}</h3>
-                {% if project.template %}
-                  <span class="dash-user-project-badge">{{ project.template.name }}</span>
-                {% endif %}
-              </div>
-              {% if project.description %}
-                <p class="dash-user-project-description">{{ project.description|truncatewords:30 }}</p>
-              {% endif %}
-              {% if project.supervised_by %}
-                <p class="dash-user-project-mentor">
-                  <i class="fas fa-user-tie"></i> 
-                  Assigned by: {{ project.supervised_by.first_name }} {{ project.supervised_by.last_name }}
-                </p>
-              {% endif %}
-              <div class="dash-user-project-actions">
-                <button class="dash-user-btn-accept" onclick="acceptProject({{ project.id }})">
-                  <i class="fas fa-check"></i> Accept
-                </button>
-                <button class="dash-user-btn-reject" onclick="rejectProject({{ project.id }})">
-                  <i class="fas fa-times"></i> Reject
-                </button>
-              </div>
-            </div>
-          {% endfor %}
-        </div>
-      </div>
-    {% endif %}
-
-    <!-- Accepted Projects Section -->
-    {% if accepted_projects %}
-      <div class="dash-user-projects-section">
-        <h2 class="dash-user-projects-section-title">
-          <i class="fas fa-check-circle"></i> Accepted Projects
-        </h2>
-        <div class="dash-user-projects-list">
-          {% for project in accepted_projects %}
+          {% for project in projects %}
             <a href="{% url 'general:dashboard_user:project_detail' project.id %}" class="dash-user-project-link">
               <div class="dash-user-project-card">
                 <div class="dash-user-project-card-header">
@@ -84,93 +60,29 @@
       </div>
     {% endif %}
 
-    <!-- Own Projects Section -->
-    {% if own_projects %}
-      <div class="dash-user-projects-section">
-        <h2 class="dash-user-projects-section-title">
-          <i class="fas fa-folder"></i> My Projects
-        </h2>
-        <div class="dash-user-projects-list">
-          {% for project in own_projects %}
-            <a href="{% url 'general:dashboard_user:project_detail' project.id %}" class="dash-user-project-link">
-              <div class="dash-user-project-card">
-                <div class="dash-user-project-card-header">
-                  <h3>{{ project.title }}</h3>
-                  {% if project.template %}
-                    <span class="dash-user-project-badge">{{ project.template.name }}</span>
-                  {% endif %}
-                </div>
-                {% if project.description %}
-                  <p class="dash-user-project-description">{{ project.description|truncatewords:30 }}</p>
-                {% endif %}
-                <div class="dash-user-project-meta">
-                  <span><i class="fas fa-calendar"></i> Created: {{ project.created_at|date:"M d, Y" }}</span>
-                </div>
-              </div>
-            </a>
-          {% endfor %}
-        </div>
-      </div>
-    {% endif %}
-
     <!-- Empty State -->
-    {% if not pending_projects and not accepted_projects and not own_projects %}
+    {% if not projects %}
       <div class="dash-user-no-projects">
         <i class="fas fa-project-diagram"></i>
         <p>No projects yet</p>
-        <p class="dash-user-no-projects-subtitle">Projects assigned by your mentors will appear here</p>
+        <p class="dash-user-no-projects-subtitle">Create a new project or wait for assignments from your mentors</p>
+        <button type="button" onclick="openCreateProjectModal()" class="btn btn-primary" style="margin-top: 16px;">
+          <i class="fas fa-plus"></i>
+          <span>Create New Project</span>
+        </button>
       </div>
     {% endif %}
   </div>
 </div>
 
-<script>
-function acceptProject(projectId) {
-  fetch(`/dashboard/user/projects/${projectId}/accept/`, {
-    method: 'POST',
-    headers: {
-      'X-CSRFToken': '{{ csrf_token }}',
-      'Content-Type': 'application/json',
-    },
-  })
-  .then(response => response.json())
-  .then(data => {
-    if (data.success) {
-      window.location.reload();
-    } else {
-      alert(data.error || 'Failed to accept project');
-    }
-  })
-  .catch(error => {
-    console.error('Error:', error);
-    alert('An error occurred');
-  });
-}
+{% include 'dashboard_user/projects/modals/create_project_modal.html' %}
 
-function rejectProject(projectId) {
-  if (!confirm('Are you sure you want to reject this project assignment?')) {
-    return;
+<script>
+function openCreateProjectModal() {
+  const modal = document.getElementById('createProjectModal');
+  if (modal) {
+    modal.style.display = 'flex';
   }
-  
-  fetch(`/dashboard/user/projects/${projectId}/reject/`, {
-    method: 'POST',
-    headers: {
-      'X-CSRFToken': '{{ csrf_token }}',
-      'Content-Type': 'application/json',
-    },
-  })
-  .then(response => response.json())
-  .then(data => {
-    if (data.success) {
-      window.location.reload();
-    } else {
-      alert(data.error || 'Failed to reject project');
-    }
-  })
-  .catch(error => {
-    console.error('Error:', error);
-    alert('An error occurred');
-  });
 }
 </script>
 
@@ -184,6 +96,9 @@ function rejectProject(projectId) {
 
 .dash-user-projects-header {
   margin-bottom: 32px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .dash-user-projects-header h1 {
@@ -191,6 +106,22 @@ function rejectProject(projectId) {
   font-weight: 600;
   color: #111827;
   margin: 0;
+}
+
+.dash-user-projects-header-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.dash-user-projects-header-actions .badge {
+  background: #ef4444;
+  color: #ffffff;
+  border-radius: 12px;
+  padding: 2px 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-left: 8px;
 }
 
 .dash-user-projects-section {

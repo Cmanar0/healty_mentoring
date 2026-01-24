@@ -640,7 +640,7 @@
 
 <div id="createProjectModal" class="modal-overlay" style="display: none;">
     <div class="create-project-modal-content">
-        <button class="create-project-modal-close" onclick="closeCreateProjectModal()">
+        <button class="create-project-modal-close" onclick="window.closeCreateProjectModal()">
             <i class="fas fa-times"></i>
         </button>
         
@@ -734,25 +734,6 @@
                     <input type="text" id="projectTitleInput" class="create-project-input" placeholder="e.g., Strategic Expansion 2026" required>
                 </div>
                 
-                <div class="create-project-section">
-                    <label class="create-project-section-label">Client Assignment</label>
-                    <div class="client-dropdown-container" id="clientDropdownContainer">
-                        <button type="button" class="client-dropdown-trigger" id="clientDropdownTrigger">
-                            <span class="dropdown-selected-text" id="clientSelectedText">Keep unassigned for now</span>
-                            <i class="fas fa-chevron-down"></i>
-                        </button>
-                        <input type="hidden" name="client_id" id="clientIdInput" value="">
-                        <div class="client-dropdown-menu" id="clientDropdownMenu">
-                            <div class="client-dropdown-search">
-                                <input type="text" id="clientSearchInput" placeholder="Filter clients..." autocomplete="off">
-                            </div>
-                            <div id="clientDropdownItems">
-                                <!-- Client items will be populated here -->
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
                 <div class="create-project-section" style="margin-bottom: 0;">
                     <label class="create-project-section-label">Core Objective / Brief</label>
                     <textarea id="projectDescriptionInput" class="create-project-textarea" placeholder="Outline the primary goals and scope of this project..." rows="4"></textarea>
@@ -784,51 +765,74 @@
     let selectedModuleIds = [];
     let clients = [];
     
-    // Initialize templates and modules from Django-rendered HTML
+    // Initialize templates and modules from Django-rendered HTML (only once)
     let templates = [];
     let modules = [];
     
-    // Extract templates from rendered HTML
-    document.addEventListener('DOMContentLoaded', function() {
+    // Use global flag to prevent multiple initializations across multiple includes
+    if (typeof window.createProjectModalInitialized === 'undefined') {
+        window.createProjectModalInitialized = false;
+    }
+    
+    function initializeTemplatesAndModules() {
+        if (window.createProjectModalInitialized) {
+            return; // Already initialized, skip
+        }
+        
+        // Only initialize if modal exists in DOM
+        if (!document.getElementById('createProjectModal')) {
+            return;
+        }
+        
+        window.createProjectModalInitialized = true;
+        
+        // Extract templates from rendered HTML
         const templateItems = document.querySelectorAll('#templateDropdownItems .template-dropdown-item');
-        templates = Array.from(templateItems).map(item => ({
-            id: parseInt(item.getAttribute('data-template-id')),
-            name: item.getAttribute('data-template-name')
-        }));
+        templates = Array.from(templateItems).map(function(item) {
+            return {
+                id: parseInt(item.getAttribute('data-template-id')),
+                name: item.getAttribute('data-template-name')
+            };
+        });
         console.log('=== TEMPLATES INITIALIZED FROM DJANGO ===');
         console.log('Number of templates:', templates.length);
-        console.log('Templates:', templates);
         
         // Extract modules from rendered HTML
         const moduleItems = document.querySelectorAll('#moduleSelectionGrid .module-selection-item');
-        modules = Array.from(moduleItems).map(item => ({
-            id: parseInt(item.getAttribute('data-module-id')),
-            name: item.querySelector('.module-selection-name')?.textContent || ''
-        }));
+        modules = Array.from(moduleItems).map(function(item) {
+            var nameEl = item.querySelector('.module-selection-name');
+            return {
+                id: parseInt(item.getAttribute('data-module-id')),
+                name: nameEl ? nameEl.textContent : ''
+            };
+        });
         console.log('=== MODULES INITIALIZED FROM DJANGO ===');
         console.log('Number of modules:', modules.length);
-        console.log('Modules:', modules);
         
-        // Set up template dropdown click handlers
-        templateItems.forEach(item => {
+        // Set up template dropdown click handlers (only once)
+        templateItems.forEach(function(item) {
             item.addEventListener('click', function() {
                 const templateId = parseInt(this.getAttribute('data-template-id'));
                 const templateName = this.getAttribute('data-template-name');
                 const preselectedModulesStr = this.getAttribute('data-preselected-modules') || '';
-                console.log('Template clicked:', templateName);
-                console.log('Preselected modules string:', preselectedModulesStr);
-                const preselectedModuleIds = preselectedModulesStr ? preselectedModulesStr.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id)) : [];
-                console.log('Parsed preselected module IDs:', preselectedModuleIds);
+                const preselectedModuleIds = preselectedModulesStr ? preselectedModulesStr.split(',').map(function(id) {
+                    return parseInt(id.trim());
+                }).filter(function(id) {
+                    return !isNaN(id);
+                }) : [];
                 selectTemplate(templateId, templateName, preselectedModuleIds);
             });
         });
         
-        // Set up module selection click handlers
-        moduleItems.forEach(item => {
+        // Set up module selection click handlers (only once)
+        moduleItems.forEach(function(item) {
             item.addEventListener('click', function() {
                 const moduleId = parseInt(this.getAttribute('data-module-id'));
-                if (selectedModuleIds.includes(moduleId)) {
-                    selectedModuleIds = selectedModuleIds.filter(id => id !== moduleId);
+                var index = selectedModuleIds.indexOf(moduleId);
+                if (index !== -1) {
+                    selectedModuleIds = selectedModuleIds.filter(function(id) {
+                        return id !== moduleId;
+                    });
                     this.classList.remove('selected');
                 } else {
                     selectedModuleIds.push(moduleId);
@@ -836,34 +840,32 @@
                 }
             });
         });
-    });
+    }
+    
+    // Don't auto-initialize on page load - only initialize when modal is opened
+    // This prevents double initialization and ensures we only fetch once
     
     // Open modal
     window.openCreateProjectModal = function() {
-        console.log('=== OPENING CREATE PROJECT MODAL ===');
         const modal = document.getElementById('createProjectModal');
         if (!modal) {
-            console.error('❌ createProjectModal element not found!');
+            console.error('createProjectModal element not found!');
             return;
         }
         
-        console.log('Modal element found:', modal);
-        console.log('Templates available:', templates.length);
-        console.log('Modules available:', modules.length);
+        // Initialize templates and modules if not already done
+        initializeTemplatesAndModules();
         
         // Reset form and go to step 1
         resetCreateProjectForm();
         goToStep1();
         
-        // Fetch clients only (templates and modules are already in the DOM)
-        console.log('Fetching clients...');
-        fetchClients();
+        // No need to fetch clients - we use email input with suggestions instead
         
         // Show modal
         modal.style.display = 'flex';
-        setTimeout(() => {
+        setTimeout(function() {
             modal.classList.add('active');
-            console.log('Modal displayed and active');
         }, 10);
     };
     
@@ -903,10 +905,14 @@
         
         // Reset step 2
         document.getElementById('projectTitleInput').value = '';
-        document.getElementById('clientSelectedText').textContent = 'Keep unassigned for now';
-        document.getElementById('clientIdInput').value = '';
+        const clientEmailInput = document.getElementById('projectClientEmailInput');
+        if (clientEmailInput) clientEmailInput.value = '';
+        const clientEmailSuggestions = document.getElementById('projectClientEmailSuggestions');
+        if (clientEmailSuggestions) {
+            clientEmailSuggestions.hidden = true;
+            clientEmailSuggestions.innerHTML = '';
+        }
         document.getElementById('projectDescriptionInput').value = '';
-        document.getElementById('clientDropdownContainer').classList.remove('active');
         
         // Reset buttons
         document.getElementById('continueProjectBtn').disabled = true;
@@ -1117,101 +1123,30 @@
         }
     });
     
-    // Fetch clients
-    function fetchClients() {
-        fetch('{% url "general:dashboard_mentor:clients_api" %}')
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    clients = data.clients || [];
-                    populateClientDropdown();
-                }
-            })
-            .catch(error => {
-                console.error('Error fetching clients:', error);
-            });
-    }
+    // Client suggestions (similar to schedule_session popup)
+    let clientSuggestionsCache = null;
+    var CLIENT_SUGGESTIONS_URL = '{% url "general:dashboard_mentor:client_suggestions" %}';
     
-    // Populate client dropdown
-    function populateClientDropdown() {
-        const container = document.getElementById('clientDropdownItems');
-        if (!container) return;
-        
-        container.innerHTML = '';
-        
-        // Add "Do not assign" option
-        const noAssignItem = document.createElement('div');
-        noAssignItem.className = 'client-dropdown-item';
-        noAssignItem.textContent = 'Keep unassigned for now';
-        noAssignItem.addEventListener('click', function() {
-            selectClient(null, 'Keep unassigned for now');
-        });
-        container.appendChild(noAssignItem);
-        
-        clients.forEach(client => {
-            const item = document.createElement('div');
-            item.className = 'client-dropdown-item';
-            item.textContent = `${client.first_name} ${client.last_name}${client.email ? ' (' + client.email + ')' : ''}`;
-            item.setAttribute('data-client-id', client.id);
-            item.setAttribute('data-client-name', `${client.first_name} ${client.last_name}`);
-            item.setAttribute('data-client-email', client.email || '');
-            item.addEventListener('click', function() {
-                selectClient(client.id, `${client.first_name} ${client.last_name}`);
-            });
-            container.appendChild(item);
-        });
-    }
-    
-    // Select client
-    function selectClient(clientId, displayText) {
-        selectedClientId = clientId;
-        document.getElementById('clientSelectedText').textContent = displayText;
-        document.getElementById('clientIdInput').value = clientId || '';
-        document.getElementById('clientDropdownContainer').classList.remove('active');
-    }
-    
-    // Client dropdown toggle
-    document.addEventListener('click', function(e) {
-        const container = document.getElementById('clientDropdownContainer');
-        const trigger = document.getElementById('clientDropdownTrigger');
-        const menu = document.getElementById('clientDropdownMenu');
-        
-        if (container && trigger && menu) {
-            if (trigger.contains(e.target) || menu.contains(e.target)) {
-                if (e.target.closest('.client-dropdown-item')) {
-                    return;
-                }
-                if (trigger.contains(e.target)) {
-                    container.classList.toggle('active');
-                }
-            } else {
-                container.classList.remove('active');
-            }
+    async function ensureClientSuggestionsLoaded() {
+        if (clientSuggestionsCache) return clientSuggestionsCache;
+        try {
+            const response = await fetch(CLIENT_SUGGESTIONS_URL);
+            const data = await response.json();
+            clientSuggestionsCache = data.clients || [];
+            return clientSuggestionsCache;
+        } catch (error) {
+            console.error('Error loading client suggestions:', error);
+            return [];
         }
-    });
-    
-    // Client search filter
-    const clientSearchInput = document.getElementById('clientSearchInput');
-    if (clientSearchInput) {
-        clientSearchInput.addEventListener('input', function(e) {
-            const searchTerm = e.target.value.toLowerCase();
-            const items = document.querySelectorAll('#clientDropdownItems .client-dropdown-item');
-            
-            items.forEach((item, index) => {
-                const name = item.getAttribute('data-client-name') || '';
-                const email = item.getAttribute('data-client-email') || '';
-                const text = (name + ' ' + email).toLowerCase();
-                
-                if (index === 0) {
-                    item.style.display = '';
-                } else if (text.includes(searchTerm)) {
-                    item.style.display = '';
-                } else {
-                    item.style.display = 'none';
-                }
-            });
-        });
     }
+    
+    function isValidEmail(email) {
+        if (!email || !email.trim()) return false;
+        const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return re.test(email.trim());
+    }
+    
+    // Client assignment removed from create modal - use project detail page instead
     
     // Submit project creation
     window.submitCreateProject = function() {
@@ -1228,7 +1163,7 @@
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating...';
         
         const description = document.getElementById('projectDescriptionInput').value.trim();
-        const clientId = selectedClientId;
+        const clientEmail = null; // Client assignment removed from create modal - use project detail page instead
         const templateId = selectedProjectType === 'template' ? selectedTemplateId : null;
         const moduleIds = selectedModuleIds;
         const projectType = selectedProjectType || 'new';
@@ -1253,7 +1188,7 @@
             title: title,
             description: description,
             project_type: projectType,
-            client_id: clientId,
+            client_email: clientEmail || null,  // Send email instead of client_id
             module_ids: moduleIds
         };
         
@@ -1275,7 +1210,7 @@
                 if (typeof showNotification !== 'undefined') {
                     showNotification('Project created successfully!', 'success');
                 }
-                closeCreateProjectModal();
+                window.closeCreateProjectModal();
                 if (data.redirect_url) {
                     window.location.href = data.redirect_url;
                 } else {
@@ -1308,7 +1243,7 @@
     if (modal) {
         modal.addEventListener('click', function(e) {
             if (e.target === modal) {
-                closeCreateProjectModal();
+                window.closeCreateProjectModal();
             }
         });
     }
@@ -1318,9 +1253,80 @@
         if (e.key === 'Escape') {
             const modal = document.getElementById('createProjectModal');
             if (modal && modal.classList.contains('active')) {
-                closeCreateProjectModal();
+                window.closeCreateProjectModal();
             }
         }
     });
 })();
 </script>
+
+<style>
+/* Email Input with Suggestions Styles (from schedule_session_popup) */
+.schedule-session-input-wrap {
+    position: relative;
+}
+
+.schedule-session-input {
+    height: 40px;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+    padding: 0 12px;
+    font-size: 0.95rem;
+    color: #0f172a;
+    background: #ffffff;
+    width: 100%;
+}
+
+.schedule-session-input:focus {
+    outline: none;
+    border-color: #94a3b8;
+    box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.25);
+}
+
+.schedule-session-suggestions {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: calc(100% + 6px);
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    box-shadow: 0 12px 30px rgba(0,0,0,0.12);
+    overflow: hidden;
+    z-index: 10001;
+    max-height: 240px;
+    overflow-y: auto;
+}
+
+.schedule-session-suggestion-item {
+    padding: 10px 12px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.schedule-session-suggestion-item:hover {
+    background: #f8fafc;
+}
+
+.schedule-session-suggestion-name {
+    font-weight: 800;
+    color: #0f172a;
+    font-size: 0.9rem;
+}
+
+.schedule-session-suggestion-email {
+    color: #64748b;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-size: 0.82rem;
+}
+
+.schedule-session-label {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #334155;
+    margin-bottom: 8px;
+    display: block;
+}
+</style>

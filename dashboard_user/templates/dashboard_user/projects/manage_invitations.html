@@ -1,0 +1,196 @@
+{% extends "dashboard_user/base.html" %}
+{% load static %}
+
+{% block dashboard_content %}
+<div class="session-management-container">
+  <!-- Header Row with Badge -->
+  <div class="session-management-header-row">
+    {% if pending_projects|length > 0 %}
+    <div class="session-count-badge">
+      <span class="count-number">{{ pending_count }}</span>
+      <span class="count-label">Pending</span>
+    </div>
+    {% endif %}
+    <div class="header-content">
+      <h1 class="dashboard-page-title">Project Invitations</h1>
+      <p class="session-management-subtitle">Review and accept project assignments from your mentors</p>
+    </div>
+  </div>
+  
+  {% if pending_projects %}
+    <section class="session-section">
+      <div class="section-header">
+        <div class="section-header-left">
+          <div class="section-icon-wrapper invitation-icon">
+            <i class="fas fa-project-diagram"></i>
+          </div>
+          <div>
+            <h2 class="section-title">Pending Project Assignments</h2>
+          </div>
+        </div>
+      </div>
+      
+      <div class="session-table">
+        <div class="table-header">
+          <div class="col-session">Project</div>
+          <div class="col-mentor">Mentor</div>
+          <div class="col-datetime">Template</div>
+          <div class="col-minutes">Created</div>
+          <div class="col-actions">Actions</div>
+        </div>
+        
+        <div class="table-body">
+          {% for project in pending_projects %}
+          <div class="table-row invitation-row">
+            <div class="col-session">
+              <a href="{% url 'general:dashboard_user:project_detail' project.id %}" class="session-id-link">{{ project.title }}</a>
+            </div>
+            <div class="col-mentor">
+              {% if project.supervised_by %}
+              <div class="mentor-info">
+                <i class="fas fa-user-tie"></i>
+                <span>{{ project.supervised_by.first_name }} {{ project.supervised_by.last_name }}</span>
+              </div>
+              {% else %}
+              <span class="text-muted">No mentor</span>
+              {% endif %}
+            </div>
+            <div class="col-datetime">
+              <div class="datetime-stacked">
+                <span class="date-part">{% if project.template %}{{ project.template.name }}{% else %}<span class="text-muted">No template</span>{% endif %}</span>
+              </div>
+            </div>
+            <div class="col-minutes">
+              <div class="info-value">{{ project.created_at|date:"M d, Y" }}</div>
+            </div>
+            <div class="col-actions">
+              <div class="action-buttons action-buttons-vertical action-buttons-invitation">
+                <form method="post" action="{% url 'general:dashboard_user:accept_project_assignment' project.id %}" class="action-form accept-project-form">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-primary btn-small">
+                    <i class="fas fa-check"></i>
+                    <span>Accept</span>
+                  </button>
+                </form>
+                <form method="post" action="{% url 'general:dashboard_user:reject_project_assignment' project.id %}" class="action-form reject-project-form">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-secondary btn-small">
+                    <i class="fas fa-times"></i>
+                    <span>Decline</span>
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </section>
+  {% else %}
+    <div class="empty-state">
+      <div class="empty-state-icon">
+        <i class="fas fa-inbox"></i>
+      </div>
+      <h2 class="empty-state-title">No Pending Invitations</h2>
+      <p class="empty-state-text">You don't have any pending project assignments at the moment.</p>
+      <a href="{% url 'general:dashboard_user:projects_list' %}" class="btn btn-primary">
+        <i class="fas fa-project-diagram"></i>
+        <span>View My Projects</span>
+      </a>
+    </div>
+  {% endif %}
+</div>
+
+<style>
+  .accept-project-form,
+  .reject-project-form {
+    display: inline-block;
+  }
+</style>
+
+<script>
+  // Handle form submissions with AJAX
+  document.addEventListener('DOMContentLoaded', function() {
+    const acceptForms = document.querySelectorAll('.accept-project-form');
+    const rejectForms = document.querySelectorAll('.reject-project-form');
+    
+    acceptForms.forEach(form => {
+      form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const formData = new FormData(form);
+        const projectTitle = form.closest('.table-row').querySelector('.session-id-link').textContent;
+        
+        fetch(form.action, {
+          method: 'POST',
+          body: formData,
+          headers: {
+            'X-CSRFToken': formData.get('csrfmiddlewaretoken')
+          }
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            if (typeof showNotification === 'function') {
+              showNotification('success', data.message || `Project "${projectTitle}" has been accepted!`);
+            }
+            if (data.redirect_url) {
+              window.location.href = data.redirect_url;
+            } else {
+              window.location.reload();
+            }
+          } else {
+            if (typeof showNotification === 'function') {
+              showNotification('error', data.error || 'Failed to accept project assignment.');
+            }
+          }
+        })
+        .catch(error => {
+          console.error('Error:', error);
+          if (typeof showNotification === 'function') {
+            showNotification('error', 'An error occurred while accepting the project assignment.');
+          }
+        });
+      });
+    });
+    
+    rejectForms.forEach(form => {
+      form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const formData = new FormData(form);
+        const projectTitle = form.closest('.table-row').querySelector('.session-id-link').textContent;
+        
+        if (!confirm(`Are you sure you want to decline the project "${projectTitle}"? This action cannot be undone.`)) {
+          return;
+        }
+        
+        fetch(form.action, {
+          method: 'POST',
+          body: formData,
+          headers: {
+            'X-CSRFToken': formData.get('csrfmiddlewaretoken')
+          }
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            if (typeof showNotification === 'function') {
+              showNotification('success', data.message || `Project "${projectTitle}" has been declined.`);
+            }
+            window.location.reload();
+          } else {
+            if (typeof showNotification === 'function') {
+              showNotification('error', data.error || 'Failed to decline project assignment.');
+            }
+          }
+        })
+        .catch(error => {
+          console.error('Error:', error);
+          if (typeof showNotification === 'function') {
+            showNotification('error', 'An error occurred while declining the project assignment.');
+          }
+        });
+      });
+    });
+  });
+</script>
+{% endblock %}

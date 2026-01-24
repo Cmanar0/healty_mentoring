@@ -745,6 +745,75 @@
         align-items: center;
         gap: 6px;
     }
+    
+    /* Email Input with Suggestions Styles (for assign owner modal) */
+    .schedule-session-input-wrap {
+        position: relative;
+    }
+
+    .schedule-session-input {
+        height: 40px;
+        border-radius: 10px;
+        border: 1px solid #e2e8f0;
+        padding: 0 12px;
+        font-size: 0.95rem;
+        color: #0f172a;
+        background: #ffffff;
+        width: 100%;
+    }
+
+    .schedule-session-input:focus {
+        outline: none;
+        border-color: #94a3b8;
+        box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.25);
+    }
+
+    .schedule-session-suggestions {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: calc(100% + 6px);
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        box-shadow: 0 12px 30px rgba(0,0,0,0.12);
+        overflow: hidden;
+        z-index: 10001;
+        max-height: 240px;
+        overflow-y: auto;
+    }
+
+    .schedule-session-suggestion-item {
+        padding: 10px 12px;
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .schedule-session-suggestion-item:hover {
+        background: #f8fafc;
+    }
+
+    .schedule-session-suggestion-name {
+        font-weight: 800;
+        color: #0f172a;
+        font-size: 0.9rem;
+    }
+
+    .schedule-session-suggestion-email {
+        color: #64748b;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        font-size: 0.82rem;
+    }
+
+    .schedule-session-label {
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: #334155;
+        margin-bottom: 8px;
+        display: block;
+    }
 
     .doc-body {
         padding: 40px;
@@ -1263,6 +1332,44 @@
 {% include 'dashboard_mentor/popups/project_settings.html' %}
 
 <script>
+    // Define modal functions early so they're available for onclick handlers
+    // Assign Project Owner Modal Functions - Make them globally accessible early
+    window.openAssignProjectOwnerModal = function() {
+        var modal = document.getElementById('assignProjectOwnerModal');
+        var emailInput = document.getElementById('assignOwnerEmailInput');
+        var assignBtn = document.getElementById('assignOwnerBtn');
+        
+        if (modal) {
+            modal.style.display = 'flex';
+            setTimeout(function() {
+                modal.classList.add('active');
+            }, 10);
+            if (emailInput) {
+                emailInput.value = '';
+                emailInput.focus();
+            }
+            if (assignBtn) assignBtn.disabled = true;
+        }
+    };
+    
+    window.closeAssignProjectOwnerModal = function() {
+        var modal = document.getElementById('assignProjectOwnerModal');
+        var emailInput = document.getElementById('assignOwnerEmailInput');
+        var suggestions = document.getElementById('assignOwnerEmailSuggestions');
+        
+        if (modal) {
+            modal.classList.remove('active');
+            setTimeout(function() {
+                modal.style.display = 'none';
+            }, 300);
+        }
+        if (emailInput) emailInput.value = '';
+        if (suggestions) {
+            suggestions.hidden = true;
+            suggestions.innerHTML = '';
+        }
+    };
+    
     // Define questionnaire modal functions early so they're available for onclick handlers
     window.openQuestionnaireModal = function() {
         console.log('openQuestionnaireModal called');
@@ -1382,6 +1489,40 @@
         }
     };
 </script>
+
+<!-- Assign Project Owner Modal -->
+<div id="assignProjectOwnerModal" class="target-date-modal-overlay" onclick="if(event.target === this) closeAssignProjectOwnerModal()" style="display: none;">
+    <div class="target-date-modal-container">
+        <div class="target-date-modal-header">
+            <h3>Assign Project Owner</h3>
+            <button type="button" class="target-date-modal-close" onclick="closeAssignProjectOwnerModal()" aria-label="Close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="target-date-modal-body">
+            <label class="schedule-session-label" for="assignOwnerEmailInput">Client email</label>
+            <div class="schedule-session-input-wrap">
+                <input
+                    id="assignOwnerEmailInput"
+                    class="schedule-session-input"
+                    type="text"
+                    placeholder="Search client by name or email"
+                    name="assign_owner_email"
+                    autocomplete="new-password"
+                    autocapitalize="off"
+                    autocorrect="off"
+                    spellcheck="false"
+                    inputmode="email"
+                />
+                <div id="assignOwnerEmailSuggestions" class="schedule-session-suggestions" hidden></div>
+            </div>
+        </div>
+        <div class="target-date-modal-footer">
+            <button type="button" class="btn-cancel" onclick="closeAssignProjectOwnerModal()" style="min-width: 100px;">Cancel</button>
+            <button type="button" class="btn-confirm" id="assignOwnerBtn" onclick="assignProjectOwner()" disabled style="width: auto;">Assign Project</button>
+        </div>
+    </div>
+</div>
 
 <!-- Target Date Modal -->
 <!-- Supervisor Modal -->
@@ -1508,10 +1649,10 @@
                                         <span>{{ project.project_owner.first_name }} {{ project.project_owner.last_name }}</span>
                                     </a>
                                 {% else %}
-                                    <div class="project-info-btn" style="cursor: default; background: #fff1f2; border-color: #fecaca; color: #e11d48;">
-                                        <i class="fas fa-exclamation-triangle"></i>
+                                    <button type="button" onclick="window.openAssignProjectOwnerModal()" class="project-info-btn" style="background: #fff1f2; border-color: #fecaca; color: #e11d48;">
+                                        <i class="fas fa-user-plus"></i>
                                         <span>Unassigned</span>
-                                    </div>
+                                    </button>
                                 {% endif %}
                             </div>
                             
@@ -3579,6 +3720,210 @@
             alert('Failed to load stage data. Please try again.');
         });
     };
+
+    // Assign Project Owner Modal Functions - Make them globally accessible
+    window.openAssignProjectOwnerModal = function() {
+        const modal = document.getElementById('assignProjectOwnerModal');
+        const emailInput = document.getElementById('assignOwnerEmailInput');
+        const assignBtn = document.getElementById('assignOwnerBtn');
+        
+        if (modal) {
+            modal.style.display = 'flex';
+            setTimeout(function() {
+                modal.classList.add('active');
+            }, 10);
+            if (emailInput) {
+                emailInput.value = '';
+                emailInput.focus();
+            }
+            if (assignBtn) assignBtn.disabled = true;
+        }
+    };
+    
+    window.closeAssignProjectOwnerModal = function() {
+        const modal = document.getElementById('assignProjectOwnerModal');
+        const emailInput = document.getElementById('assignOwnerEmailInput');
+        const suggestions = document.getElementById('assignOwnerEmailSuggestions');
+        
+        if (modal) {
+            modal.classList.remove('active');
+            setTimeout(function() {
+                modal.style.display = 'none';
+            }, 300);
+        }
+        if (emailInput) emailInput.value = '';
+        if (suggestions) {
+            suggestions.hidden = true;
+            suggestions.innerHTML = '';
+        }
+    };
+    
+    window.assignProjectOwner = function() {
+        const emailInput = document.getElementById('assignOwnerEmailInput');
+        const assignBtn = document.getElementById('assignOwnerBtn');
+        const email = emailInput ? emailInput.value.trim() : '';
+        
+        if (!email) {
+            if (typeof showNotification === 'function') {
+                showNotification('error', 'Please enter a client email address.');
+            }
+            return;
+        }
+        
+        if (assignBtn) {
+            assignBtn.disabled = true;
+            assignBtn.textContent = 'Assigning...';
+        }
+        
+        const projectId = {{ project.id }};
+        const url = '/dashboard/mentor/projects/' + projectId + '/assign-owner/';
+        
+        function getCookie(name) {
+            var cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                var cookies = document.cookie.split(';');
+                for (var i = 0; i < cookies.length; i++) {
+                    var cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+        
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({ email: email })
+        })
+        .then(function(response) {
+            return response.json();
+        })
+        .then(function(data) {
+            if (data.success) {
+                if (typeof showNotification === 'function') {
+                    showNotification('success', data.message || 'Project assigned successfully!');
+                }
+                window.closeAssignProjectOwnerModal();
+                setTimeout(function() {
+                    window.location.reload();
+                }, 1000);
+            } else {
+                if (typeof showNotification === 'function') {
+                    showNotification('error', data.error || 'Failed to assign project.');
+                }
+                if (assignBtn) {
+                    assignBtn.disabled = false;
+                    assignBtn.textContent = 'Assign Project';
+                }
+            }
+        })
+        .catch(function(error) {
+            console.error('Error assigning project owner:', error);
+            if (typeof showNotification === 'function') {
+                showNotification('error', 'An error occurred. Please try again.');
+            }
+            if (assignBtn) {
+                assignBtn.disabled = false;
+                assignBtn.textContent = 'Assign Project';
+            }
+        });
+    };
+    
+    // Setup email input with suggestions for assign owner modal
+    document.addEventListener('DOMContentLoaded', function() {
+        const assignOwnerEmailInput = document.getElementById('assignOwnerEmailInput');
+        const assignOwnerEmailSuggestions = document.getElementById('assignOwnerEmailSuggestions');
+        const assignOwnerBtn = document.getElementById('assignOwnerBtn');
+        var CLIENT_SUGGESTIONS_URL = '{% url "general:dashboard_mentor:client_suggestions" %}';
+        
+        var clientSuggestionsCache = null;
+        
+        function ensureClientSuggestionsLoaded() {
+            if (clientSuggestionsCache) {
+                return Promise.resolve(clientSuggestionsCache);
+            }
+            return fetch(CLIENT_SUGGESTIONS_URL)
+                .then(function(response) {
+                    return response.json();
+                })
+                .then(function(data) {
+                    clientSuggestionsCache = data.clients || [];
+                    return clientSuggestionsCache;
+                })
+                .catch(function(error) {
+                    console.error('Error loading client suggestions:', error);
+                    return [];
+                });
+        }
+        
+        function isValidEmail(email) {
+            if (!email || !email.trim()) return false;
+            var re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            return re.test(email.trim());
+        }
+        
+        if (assignOwnerEmailInput && assignOwnerEmailSuggestions && !assignOwnerEmailInput.__bound) {
+            assignOwnerEmailInput.__bound = true;
+            
+            assignOwnerEmailInput.addEventListener('input', function() {
+                var raw = String(assignOwnerEmailInput.value || '');
+                var q = raw.toLowerCase().trim();
+                
+                if (assignOwnerBtn) {
+                    assignOwnerBtn.disabled = !isValidEmail(raw);
+                }
+                
+                if (!q) {
+                    assignOwnerEmailSuggestions.hidden = true;
+                    assignOwnerEmailSuggestions.innerHTML = '';
+                    return;
+                }
+                
+                ensureClientSuggestionsLoaded().then(function(all) {
+                    var filtered = all.filter(function(c) {
+                        var fullText = (c.first_name || '') + ' ' + (c.last_name || '') + ' ' + (c.email || '');
+                        return fullText.toLowerCase().includes(q);
+                    });
+                    
+                    assignOwnerEmailSuggestions.hidden = filtered.length === 0;
+                    assignOwnerEmailSuggestions.innerHTML = filtered.slice(0, 8).map(function(c) {
+                        var name = ((c.first_name || '') + ' ' + (c.last_name || '')).trim();
+                        if (!name) name = c.email || '';
+                        var email = c.email || '';
+                        return '<div class="schedule-session-suggestion-item" data-email="' + email + '">' +
+                            '<div class="schedule-session-suggestion-name">' + name + '</div>' +
+                            '<div class="schedule-session-suggestion-email">' + email + '</div>' +
+                            '</div>';
+                    }).join('');
+                    
+                    assignOwnerEmailSuggestions.querySelectorAll('[data-email]').forEach(function(el) {
+                        el.addEventListener('click', function(e) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            var email = el.getAttribute('data-email') || '';
+                            assignOwnerEmailInput.value = email;
+                            assignOwnerEmailSuggestions.hidden = true;
+                            assignOwnerEmailSuggestions.innerHTML = '';
+                            if (assignOwnerBtn) assignOwnerBtn.disabled = !isValidEmail(email);
+                        });
+                    });
+                });
+            });
+            
+            // Hide suggestions when clicking outside
+            document.addEventListener('click', function(e) {
+                if (e.target.closest('#assignOwnerEmailSuggestions')) return;
+                if (e.target.closest('#assignOwnerEmailInput')) return;
+                if (assignOwnerEmailSuggestions) assignOwnerEmailSuggestions.hidden = true;
+            });
+        }
+    });
 
     // Supervisor Modal Functions - Make them globally accessible
     window.openSupervisorModal = function() {

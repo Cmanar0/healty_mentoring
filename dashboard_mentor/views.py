@@ -4468,25 +4468,71 @@ def create_project(request):
         
         mentor_profile = request.user.mentor_profile
         project_type = data.get('project_type')  # 'new' or 'template'
-        client_id = data.get('client_id')
+        client_email = (data.get('client_email') or '').strip().lower()
         
         # Validate project type
         if project_type not in ['new', 'template']:
             return JsonResponse({'success': False, 'error': 'Invalid project type'}, status=400)
         
-        # Get client if assigned
+        # Get or create client if email provided (reuse assign_project_owner logic)
         client_profile = None
-        if client_id:
+        if client_email:
             try:
-                # Verify the client is in mentor's relationships
-                relationship = MentorClientRelationship.objects.get(
-                    mentor=mentor_profile,
-                    client_id=client_id,
-                    confirmed=True
+                existing_user = CustomUser.objects.filter(email=client_email).first()
+            except Exception:
+                existing_user = None
+            
+            if existing_user:
+                # Disallow assigning to mentor accounts
+                try:
+                    if hasattr(existing_user, 'mentor_profile'):
+                        return JsonResponse({'success': False, 'error': 'This email belongs to a mentor account. Please use a different email.'}, status=400)
+                except Exception:
+                    pass
+                
+                try:
+                    user_profile = existing_user.user_profile
+                    if user_profile:
+                        # Get or create relationship
+                        relationship, created = MentorClientRelationship.objects.get_or_create(
+                            mentor=mentor_profile,
+                            client=user_profile,
+                            defaults={
+                                'status': 'inactive',
+                                'confirmed': False,
+                            }
+                        )
+                        # If user hasn't completed registration yet, ensure an invitation_token exists
+                        if not existing_user.is_email_verified and not relationship.invitation_token:
+                            relationship.invitation_token = get_random_string(64)
+                            relationship.save(update_fields=['invitation_token'])
+                        client_profile = user_profile
+                except Exception:
+                    return JsonResponse({'success': False, 'error': 'Error accessing user profile'}, status=500)
+            else:
+                # Create new unverified user
+                temp_password = get_random_string(32)
+                invited_user = CustomUser.objects.create_user(
+                    email=client_email,
+                    password=temp_password,
+                    is_email_verified=False,
+                    is_active=True
                 )
-                client_profile = relationship.client
-            except MentorClientRelationship.DoesNotExist:
-                return JsonResponse({'success': False, 'error': 'Client not found or not confirmed'}, status=404)
+                user_profile = UserProfile.objects.create(
+                    user=invited_user,
+                    first_name='',
+                    last_name='',
+                    role='user'
+                )
+                invitation_token = get_random_string(64)
+                MentorClientRelationship.objects.create(
+                    mentor=mentor_profile,
+                    client=user_profile,
+                    status='inactive',
+                    confirmed=False,
+                    invitation_token=invitation_token
+                )
+                client_profile = user_profile
         
         # Title is always required
         title = data.get('title', '').strip()
@@ -4510,6 +4556,7 @@ def create_project(request):
                 # If template doesn't exist, create without template
                 pass
             
+            assignment_token = get_random_string(64) if client_profile else None
             project = Project.objects.create(
                 title=title,
                 description=description,
@@ -4517,7 +4564,8 @@ def create_project(request):
                 project_owner=client_profile,
                 supervised_by=mentor_profile,
                 created_by=request.user,
-                assignment_status='assigned' if client_profile else 'pending'
+                assignment_status='assigned' if client_profile else 'pending',
+                assignment_token=assignment_token
             )
         elif project_type == 'template':
             template_id = data.get('template_id')
@@ -4529,6 +4577,7 @@ def create_project(request):
             except ProjectTemplate.DoesNotExist:
                 return JsonResponse({'success': False, 'error': 'Template not found'}, status=404)
             
+            assignment_token = get_random_string(64) if client_profile else None
             project = Project.objects.create(
                 title=title,
                 description=description,
@@ -4536,7 +4585,8 @@ def create_project(request):
                 project_owner=client_profile,
                 supervised_by=mentor_profile,
                 created_by=request.user,
-                assignment_status='assigned' if client_profile else 'pending'
+                assignment_status='assigned' if client_profile else 'pending',
+                assignment_token=assignment_token
             )
         
         # Add selected modules to project
@@ -5746,6 +5796,124 @@ def update_stage_dates(request, project_id, stage_id):
         import logging
         logger = logging.getLogger(__name__)
         logger.error(f'Error updating stage dates: {str(e)}')
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+@require_POST
+def assign_project_owner(request, project_id):
+    """Assign project to a client by email (similar to schedule_session logic)"""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+    
+    mentor_profile = request.user.mentor_profile
+    project = get_object_or_404(Project, id=project_id, supervised_by=mentor_profile)
+    
+    try:
+        import json
+        data = json.loads(request.body)
+        email = (data.get('email') or '').strip().lower()
+        
+        if not email:
+            return JsonResponse({'success': False, 'error': 'Email is required'}, status=400)
+        
+        # Reuse schedule_session logic for creating/locating user + relationship
+        from accounts.models import CustomUser, UserProfile, MentorClientRelationship
+        from django.utils.crypto import get_random_string
+        
+        try:
+            existing_user = CustomUser.objects.filter(email=email).first()
+        except Exception:
+            existing_user = None
+        
+        relationship = None
+        invited_user = None
+        client_first_name = None
+        client_last_name = None
+        
+        if existing_user:
+            # Disallow assigning to mentor accounts
+            try:
+                if hasattr(existing_user, 'mentor_profile'):
+                    return JsonResponse({'success': False, 'error': 'This email belongs to a mentor account. Please use a different email.'}, status=400)
+            except Exception:
+                pass
+            invited_user = existing_user
+            try:
+                user_profile = existing_user.user_profile
+                if user_profile:
+                    client_first_name = user_profile.first_name or ''
+                    client_last_name = user_profile.last_name or ''
+            except Exception:
+                user_profile = None
+            if user_profile:
+                relationship = MentorClientRelationship.objects.filter(mentor=mentor_profile, client=user_profile).first()
+                if not relationship:
+                    relationship = MentorClientRelationship.objects.create(
+                        mentor=mentor_profile,
+                        client=user_profile,
+                        status='inactive',
+                        confirmed=False,
+                    )
+                # If user hasn't completed registration yet, ensure an invitation_token exists
+                try:
+                    if not invited_user.is_email_verified and not relationship.invitation_token:
+                        relationship.invitation_token = get_random_string(64)
+                        relationship.save(update_fields=['invitation_token'])
+                except Exception:
+                    pass
+        else:
+            # Create new unverified user
+            temp_password = get_random_string(32)
+            invited_user = CustomUser.objects.create_user(
+                email=email,
+                password=temp_password,
+                is_email_verified=False,
+                is_active=True
+            )
+            user_profile = UserProfile.objects.create(
+                user=invited_user,
+                first_name='',
+                last_name='',
+                role='user'
+            )
+            invitation_token = get_random_string(64)
+            relationship = MentorClientRelationship.objects.create(
+                mentor=mentor_profile,
+                client=user_profile,
+                status='inactive',
+                confirmed=False,
+                invitation_token=invitation_token
+            )
+        
+        # Assign project to the client
+        project.project_owner = user_profile
+        project.assignment_status = 'assigned'  # Awaiting client acceptance
+        project.assignment_token = get_random_string(64)
+        project.save()
+        
+        # Send project assignment email
+        from general.email_service import EmailService
+        try:
+            EmailService.send_project_assignment_email(project, user_profile)
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f'Error sending project assignment email: {str(e)}', exc_info=True)
+            # Continue even if email fails - assignment is still saved
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Project assigned successfully. Invitation email sent.',
+            'client_name': f"{client_first_name} {client_last_name}".strip() or email,
+            'client_email': email
+        })
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f'Error assigning project owner: {str(e)}', exc_info=True)
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 

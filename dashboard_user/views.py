@@ -2065,9 +2065,8 @@ def accept_project_assignment_secure(request, uidb64, token):
             next_url += '?logout=true'
         return redirect(f'/accounts/login/?next={quote(next_url)}')
     
-    # User is authenticated and correct - redirect to projects list (will show pending assignments)
-    messages.info(request, 'You have a new project assignment waiting for your acceptance.')
-    return redirect('general:dashboard_user:projects_list')
+    # User is authenticated and correct - redirect to manage invitations page
+    return redirect('general:dashboard_user:manage_project_invitations')
 
 
 @login_required
@@ -2130,32 +2129,49 @@ def projects_list(request):
     
     user_profile = request.user.user_profile
     
-    # Get pending assignments (projects assigned but not accepted)
-    pending_projects = Project.objects.filter(
-        project_owner=user_profile,
-        assignment_status='assigned'  # 'assigned' means mentor assigned, awaiting client acceptance
-    ).select_related('template', 'supervised_by', 'supervised_by__user').order_by('-created_at')
+    # Get all projects owned by this user (accepted + own projects)
+    # Exclude pending assignments (those are shown on manage invitations page)
+    all_projects = Project.objects.filter(
+        project_owner=user_profile
+    ).exclude(assignment_status='assigned').select_related('template', 'supervised_by', 'supervised_by__user').order_by('-created_at')
     
-    # Get accepted projects
-    accepted_projects = Project.objects.filter(
+    # Get pending assignments count for badge
+    pending_count = Project.objects.filter(
         project_owner=user_profile,
-        assignment_status='accepted'
-    ).select_related('template', 'supervised_by', 'supervised_by__user').order_by('-created_at')
+        assignment_status='assigned'
+    ).count()
     
-    # Get user's own projects (created by user, no supervisor)
-    own_projects = Project.objects.filter(
-        project_owner=user_profile,
-        supervised_by__isnull=True
-    ).select_related('template').order_by('-created_at')
+    # Get default templates for create project modal (no custom templates)
+    from dashboard_user.models import ProjectTemplate
+    default_templates = ProjectTemplate.objects.filter(author__isnull=True).order_by('name')
     
     context = {
-        'pending_projects': pending_projects,
-        'accepted_projects': accepted_projects,
-        'own_projects': own_projects,
-        'pending_count': pending_projects.count(),
+        'projects': all_projects,
+        'pending_count': pending_count,
+        'default_templates': default_templates,
     }
     
     return render(request, 'dashboard_user/projects/projects_list.html', context)
+
+
+@login_required
+def manage_project_invitations(request):
+    """Page for users to manage all pending project assignment invitations"""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'user':
+        return redirect('general:index')
+    
+    user_profile = request.user.user_profile
+    
+    # Get all pending project assignments (assigned but not accepted)
+    pending_projects = Project.objects.filter(
+        project_owner=user_profile,
+        assignment_status='assigned'
+    ).select_related('template', 'supervised_by', 'supervised_by__user').order_by('-created_at')
+    
+    return render(request, 'dashboard_user/projects/manage_invitations.html', {
+        'pending_projects': pending_projects,
+        'pending_count': pending_projects.count(),
+    })
 
 
 @login_required
