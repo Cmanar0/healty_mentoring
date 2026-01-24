@@ -1540,14 +1540,14 @@
                             <!-- Project Definition -->
                             <div class="project-info-item">
                                 <div class="project-info-label">Project Definition</div>
-                                <button type="button" onclick="window.openQuestionnaireModal()" class="project-info-btn">
+                                <button type="button" onclick="window.openQuestionnaireModal()" class="project-info-btn {% if not project.questionnaire_completed %}target-date-warning{% endif %}">
                                     {% if project.questionnaire_completed %}
                                         <span class="project-info-status completed">
                                             <i class="fas fa-check-circle"></i> Completed
                                         </span>
                                     {% else %}
                                         <span class="project-info-status pending">
-                                            <i class="fas fa-clock"></i> Pending
+                                            <i class="fas fa-exclamation-triangle"></i> Pending
                                         </span>
                                     {% endif %}
                                     <i class="fas fa-edit"></i>
