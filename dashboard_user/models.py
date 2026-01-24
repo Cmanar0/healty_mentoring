@@ -35,6 +35,14 @@ class ProjectTemplate(models.Model):
         related_name="custom_templates",
         help_text="The mentor who created this template"
     )
+    
+    # Preselected modules for this template
+    preselected_modules = models.ManyToManyField(
+        'ProjectModule',
+        blank=True,
+        related_name='templates',
+        help_text="Modules that should be automatically selected when using this template"
+    )
 
     class Meta:
         verbose_name = "Project Template"
@@ -121,34 +129,10 @@ class Project(models.Model):
         """
         Create stages from template's stage templates.
         Called when project is created from a template.
+        Note: ProjectStageTemplate has been removed - this method is kept for compatibility but does nothing.
         """
-        if not self.template:
-            return
-        
-        from datetime import timedelta
-        
-        stage_templates = ProjectStageTemplate.objects.filter(template=self.template).order_by('order')
-        
-        if not stage_templates.exists():
-            return
-        
-        # Calculate base date (project creation date)
-        base_date = self.created_at.date() if hasattr(self.created_at, 'date') else timezone.now().date()
-        
-        for order, stage_template in enumerate(stage_templates, start=1):
-            # Calculate target date if offset is provided
-            target_date = None
-            if stage_template.default_target_date_offset is not None:
-                target_date = base_date + timedelta(days=stage_template.default_target_date_offset)
-            
-            ProjectStage.objects.create(
-                project=self,
-                title=stage_template.title,
-                description=stage_template.description,
-                order=order,
-                target_date=target_date,
-                created_from_template=True,
-            )
+        # ProjectStageTemplate has been removed - stages are now created manually or via AI
+        pass
 
 
 class ProjectModule(models.Model):
@@ -246,6 +230,10 @@ class Question(models.Model):
     question_text = models.CharField(max_length=500)
     question_type = models.CharField(max_length=20, choices=QUESTION_TYPES, default='text')
     is_required = models.BooleanField(default=True)
+    is_target_date = models.BooleanField(
+        default=False,
+        help_text="If True, this date answer will be used as the project's target completion date. Only one date question per questionnaire can be marked as target date."
+    )
     order = models.IntegerField(default=0)
     options = models.JSONField(default=list, blank=True, help_text="Options for select/multiselect questions")
     help_text = models.TextField(blank=True)
@@ -393,28 +381,6 @@ class ProjectStage(models.Model):
         super().save(*args, **kwargs)
 
 
-class ProjectStageTemplate(models.Model):
-    """Predefined stages for project templates"""
-    template = models.ForeignKey(ProjectTemplate, on_delete=models.CASCADE, related_name="stage_templates")
-    title = models.CharField(max_length=200)
-    description = models.TextField(blank=True)
-    order = models.IntegerField(default=0)
-    default_target_date_offset = models.IntegerField(
-        blank=True,
-        null=True,
-        help_text="Days from project start date for default target date"
-    )
-    
-    class Meta:
-        verbose_name = "Project Stage Template"
-        verbose_name_plural = "Project Stage Templates"
-        ordering = ['order']
-        unique_together = ['template', 'order']
-    
-    def __str__(self):
-        return f"{self.template.name} - {self.title}"
-
-
 class ProjectStageNote(models.Model):
     """Notes on project stages"""
     ROLE_CHOICES = [
@@ -549,6 +515,16 @@ class Task(models.Model):
     stage = models.ForeignKey(ProjectStage, on_delete=models.CASCADE, related_name="backlog_tasks", null=True, blank=True)
     user_active_backlog = models.ForeignKey("accounts.UserProfile", on_delete=models.CASCADE, related_name="active_backlog_tasks", null=True, blank=True)
     mentor_backlog = models.ForeignKey("accounts.MentorProfile", on_delete=models.CASCADE, related_name="mentor_backlog_tasks", null=True, blank=True)
+    
+    # Project connection (for tasks linked to projects/stages even when in mentor backlog)
+    project = models.ForeignKey(
+        Project,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="linked_tasks",
+        help_text="Project this task is linked to (optional, for tasks in mentor backlog)"
+    )
     
     # Assignment fields (for tasks assigned from stage to client)
     assigned = models.BooleanField(default=False)  # True if assigned to client's active backlog

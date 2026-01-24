@@ -117,7 +117,7 @@ def dashboard(request):
         # Get templates with no author OR templates authored by this mentor
         templates = ProjectTemplate.objects.filter(
             Q(author__isnull=True) | Q(author=mentor_profile)
-        ).order_by('order', 'name')
+        ).prefetch_related('preselected_modules').order_by('order', 'name')
         
         # Get all active modules (or all if none are active)
         modules = ProjectModule.objects.filter(is_active=True).order_by('order', 'name')
@@ -4387,7 +4387,7 @@ def project_templates_api(request):
         # This ensures existing templates show up even if is_active is not set
         templates = ProjectTemplate.objects.filter(
             Q(author__isnull=True) | Q(author=mentor_profile)
-        ).order_by('order', 'name')
+        ).prefetch_related('preselected_modules').order_by('order', 'name')
         
         # Debug logging
         import logging
@@ -4404,9 +4404,9 @@ def project_templates_api(request):
                 'id': template.id,
                 'name': template.name,
                 'description': template.description,
-                'category': template.category,
                 'icon': template.icon,
                 'color': template.color,
+                'preselected_module_ids': [m.id for m in template.preselected_modules.all()],
             })
         
         return JsonResponse({'success': True, 'templates': templates_data})
@@ -4498,10 +4498,22 @@ def create_project(request):
         
         # Create project based on type
         if project_type == 'new':
+            # Link to "Custom (Blank)" template if it exists
+            custom_blank_template = None
+            try:
+                custom_blank_template = ProjectTemplate.objects.get(
+                    name='Custom (Blank)',
+                    is_custom=False,
+                    is_active=True
+                )
+            except ProjectTemplate.DoesNotExist:
+                # If template doesn't exist, create without template
+                pass
+            
             project = Project.objects.create(
                 title=title,
                 description=description,
-                template=None,
+                template=custom_blank_template,
                 project_owner=client_profile,
                 supervised_by=mentor_profile,
                 created_by=request.user,
@@ -4598,9 +4610,16 @@ def templates_list(request):
         Q(is_custom=False) & Q(is_active=True) & (Q(author__isnull=True) | Q(author=mentor_profile))
     ).order_by('order', 'name')
     
+    # Get all active modules for the create template modal
+    from dashboard_user.models import ProjectModule
+    modules = ProjectModule.objects.filter(is_active=True).order_by('order', 'name')
+    if not modules.exists():
+        modules = ProjectModule.objects.all().order_by('order', 'name')
+    
     context = {
         'custom_templates': custom_templates,
         'system_templates': system_templates,
+        'project_modules': modules,
     }
     
     return render(request, 'dashboard_mentor/templates_list.html', context)
@@ -4617,6 +4636,7 @@ def create_custom_template(request):
         name = request.POST.get('name')
         description = request.POST.get('description', '')
         icon = request.POST.get('icon', 'fas fa-star')
+        preselected_module_ids = request.POST.getlist('preselected_modules')
         
         if name:
             try:
@@ -4628,6 +4648,12 @@ def create_custom_template(request):
                     is_custom=True,
                     author=mentor_profile
                 )
+                
+                # Set preselected modules if any were selected
+                if preselected_module_ids:
+                    from dashboard_user.models import ProjectModule
+                    modules = ProjectModule.objects.filter(id__in=preselected_module_ids)
+                    template.preselected_modules.set(modules)
                 
                 messages.success(request, "Template created successfully.")
                 return redirect('general:dashboard_mentor:template_detail', template_id=template.id)
@@ -4659,14 +4685,18 @@ def template_detail(request, template_id):
     # Get questionnaire and questions
     questionnaire = None
     questions = []
+    has_target_date_question = False
     if hasattr(template, 'questionnaire'):
         questionnaire = template.questionnaire
         questions = questionnaire.questions.all().order_by('order')
+        # Check if there's already a target date question
+        has_target_date_question = questions.filter(is_target_date=True, question_type='date').exists()
     
     return render(request, 'dashboard_mentor/templates/template_detail.html', {
         'template': template,
         'questionnaire': questionnaire,
-        'questions': questions
+        'questions': questions,
+        'has_target_date_question': has_target_date_question
     })
 
 
@@ -4741,44 +4771,79 @@ def generate_questions_ai(request, template_id):
         # Get or create questionnaire for template
         questionnaire, created = Questionnaire.objects.get_or_create(template=template)
         
-        # Start numbering from existing questions count
-        existing_count = questionnaire.questions.count()
+        # Check if there's already a target date question
+        has_target_date_question = questionnaire.questions.filter(
+            is_target_date=True,
+            question_type='date'
+        ).exists()
         
+        # Get the maximum order number to avoid conflicts
+        from django.db.models import Max
+        max_order = questionnaire.questions.aggregate(max_order=Max('order'))['max_order']
+        if max_order is None:
+            max_order = 0
+        
+        # Start numbering from max order + 1
         new_questions = []
-        for i, q_data in enumerate(ai_response, start=existing_count + 1):
-            q_text = q_data.get('text', '').strip()
-            if not q_text:
+        order_counter = max_order + 1
+        
+        for q_data in ai_response:
+            try:
+                q_text = q_data.get('text', '').strip()
+                if not q_text:
+                    continue
+                    
+                q_type = q_data.get('type', 'text').lower()
+                if q_type not in ['text', 'textarea', 'number', 'date', 'select', 'multiselect']:
+                    q_type = 'text'
+                
+                # Skip date question if we already have a target date question
+                if q_type == 'date' and has_target_date_question:
+                    continue
+                
+                # If this is a date question and we don't have a target date question yet, mark it as target date
+                is_target_date = False
+                if q_type == 'date' and not has_target_date_question:
+                    is_target_date = True
+                    has_target_date_question = True  # Mark that we've added one
+                    
+                q_options = []
+                options_val = q_data.get('options', '')
+                if q_type in ['select', 'multiselect'] and options_val:
+                    if isinstance(options_val, str):
+                        q_options = [opt.strip() for opt in options_val.split(',') if opt.strip()]
+                    elif isinstance(options_val, list):
+                        q_options = options_val
+                
+                question = Question.objects.create(
+                    questionnaire=questionnaire,
+                    question_text=q_text,
+                    question_type=q_type,
+                    order=order_counter,
+                    help_text=q_data.get('help_text', ''),
+                    options=q_options,
+                    is_target_date=is_target_date
+                )
+                
+                order_counter += 1
+                
+                new_questions.append({
+                    'id': question.id,
+                    'text': question.question_text,
+                    'type': question.get_question_type_display(),
+                    'help_text': question.help_text,
+                    'order': question.order
+                })
+            except Exception as question_error:
+                # Log the error for this specific question but continue with others
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f'Error creating question "{q_text}": {str(question_error)}', exc_info=True)
                 continue
-                
-            q_type = q_data.get('type', 'text').lower()
-            if q_type not in ['text', 'textarea', 'number', 'date', 'select', 'multiselect']:
-                q_type = 'text'
-                
-            q_options = []
-            options_val = q_data.get('options', '')
-            if q_type in ['select', 'multiselect'] and options_val:
-                if isinstance(options_val, str):
-                    q_options = [opt.strip() for opt in options_val.split(',') if opt.strip()]
-                elif isinstance(options_val, list):
-                    q_options = options_val
-            
-            question = Question.objects.create(
-                questionnaire=questionnaire,
-                question_text=q_text,
-                question_type=q_type,
-                order=i,
-                help_text=q_data.get('help_text', ''),
-                options=q_options
-            )
-            
-            new_questions.append({
-                'id': question.id,
-                'text': question.question_text,
-                'type': question.get_question_type_display(),
-                'help_text': question.help_text,
-                'order': question.order
-            })
-            
+        
+        if not new_questions:
+            return JsonResponse({'success': False, 'error': 'No questions were created. This might happen if all questions were skipped or there was an error.'})
+        
         return JsonResponse({'success': True, 'questions': new_questions})
         
     except Exception as e:
@@ -4810,11 +4875,22 @@ def create_question(request, template_id):
         question_text = data.get('question_text', '').strip()
         question_type = data.get('question_type', 'text')
         is_required = data.get('is_required', True)
+        is_target_date = data.get('is_target_date', False)
         help_text = data.get('help_text', '').strip()
         options = data.get('options', [])
         
         if not question_text:
             return JsonResponse({'success': False, 'error': 'Question text is required.'}, status=400)
+        
+        # Validate target date: only date questions can be target date
+        if is_target_date and question_type != 'date':
+            return JsonResponse({'success': False, 'error': 'Only date questions can be marked as target date.'}, status=400)
+        
+        # Validate target date: only one target date per questionnaire
+        if is_target_date:
+            existing_target_date = questionnaire.questions.filter(is_target_date=True, question_type='date').exists()
+            if existing_target_date:
+                return JsonResponse({'success': False, 'error': 'A target date question already exists in this questionnaire.'}, status=400)
         
         # Get next order
         last_question = questionnaire.questions.order_by('-order').first()
@@ -4825,6 +4901,7 @@ def create_question(request, template_id):
             question_text=question_text,
             question_type=question_type,
             is_required=is_required,
+            is_target_date=is_target_date,
             help_text=help_text,
             options=options if isinstance(options, list) else [],
             order=next_order
@@ -4837,6 +4914,7 @@ def create_question(request, template_id):
                 'question_text': question.question_text,
                 'question_type': question.question_type,
                 'is_required': question.is_required,
+                'is_target_date': question.is_target_date,
                 'help_text': question.help_text,
                 'options': question.options,
                 'order': question.order
@@ -4872,6 +4950,7 @@ def update_question(request, question_id):
                 'question_text': question.question_text,
                 'question_type': question.question_type,
                 'is_required': question.is_required,
+                'is_target_date': question.is_target_date,
                 'help_text': question.help_text,
                 'options': question.options,
                 'order': question.order
@@ -4884,8 +4963,24 @@ def update_question(request, question_id):
         question.question_text = data.get('question_text', question.question_text).strip()
         question.question_type = data.get('question_type', question.question_type)
         question.is_required = data.get('is_required', question.is_required)
+        is_target_date = data.get('is_target_date', False)
         question.help_text = data.get('help_text', question.help_text).strip()
         question.options = data.get('options', question.options) if isinstance(data.get('options'), list) else question.options
+        
+        # Validate target date: only date questions can be target date
+        if is_target_date and question.question_type != 'date':
+            return JsonResponse({'success': False, 'error': 'Only date questions can be marked as target date.'}, status=400)
+        
+        # Validate target date: only one target date per questionnaire (excluding current question)
+        if is_target_date:
+            existing_target_date = question.questionnaire.questions.filter(
+                is_target_date=True, 
+                question_type='date'
+            ).exclude(id=question.id).exists()
+            if existing_target_date:
+                return JsonResponse({'success': False, 'error': 'A target date question already exists in this questionnaire.'}, status=400)
+        
+        question.is_target_date = is_target_date
         question.save()
         
         return JsonResponse({
@@ -4895,6 +4990,7 @@ def update_question(request, question_id):
                 'question_text': question.question_text,
                 'question_type': question.question_type,
                 'is_required': question.is_required,
+                'is_target_date': question.is_target_date,
                 'help_text': question.help_text,
                 'options': question.options,
                 'order': question.order
@@ -4940,9 +5036,20 @@ def reorder_questions(request, template_id):
         return JsonResponse({'success': False, 'error': 'Access denied.'}, status=403)
     
     template = get_object_or_404(ProjectTemplate, id=template_id)
+    mentor_profile = request.user.mentor_profile
     
-    # Ensure mentor can only modify their own custom templates
-    if not template.is_custom or template.author != request.user.mentor_profile:
+    # Allow reordering if:
+    # - Template is custom and mentor is the author, OR
+    # - Template is not custom (system template) and mentor can view it
+    from django.db.models import Q
+    can_edit = False
+    if template.is_custom:
+        can_edit = template.author == mentor_profile
+    else:
+        # System templates - allow if mentor can view them (no author or mentor is author)
+        can_edit = template.author is None or template.author == mentor_profile
+    
+    if not can_edit:
         return JsonResponse({'success': False, 'error': 'Access denied.'}, status=403)
     
     from dashboard_user.models import Question
@@ -4950,16 +5057,35 @@ def reorder_questions(request, template_id):
         data = json.loads(request.body)
         question_orders = data.get('orders', [])  # List of {id: question_id, order: new_order}
         
+        # Validate that all questions belong to this template's questionnaire
+        if not hasattr(template, 'questionnaire'):
+            return JsonResponse({'success': False, 'error': 'Template has no questionnaire.'}, status=400)
+        
+        questionnaire = template.questionnaire
+        question_ids = [item.get('id') for item in question_orders if item.get('id')]
+        
+        # Verify all questions belong to this questionnaire
+        valid_questions = Question.objects.filter(
+            id__in=question_ids,
+            questionnaire=questionnaire
+        ).values_list('id', flat=True)
+        
+        if len(valid_questions) != len(question_ids):
+            return JsonResponse({'success': False, 'error': 'Invalid questions.'}, status=400)
+        
+        # Update orders
         for item in question_orders:
             question_id = item.get('id')
             new_order = item.get('order')
             if question_id and new_order is not None:
                 Question.objects.filter(
                     id=question_id,
-                    questionnaire__template=template
+                    questionnaire=questionnaire
                 ).update(order=new_order)
         
-        return JsonResponse({'success': True})
+        return JsonResponse({'success': True, 'message': 'Questions reordered successfully'})
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
     except Exception as e:
         import logging
         logger = logging.getLogger(__name__)
@@ -5027,7 +5153,7 @@ def projects_list(request):
     # Get templates and modules for the create project modal
     templates = ProjectTemplate.objects.filter(
         Q(author__isnull=True) | Q(author=mentor_profile)
-    ).order_by('order', 'name')
+    ).prefetch_related('preselected_modules').order_by('order', 'name')
     
     # Get all active modules (or all if none are active)
     modules = ProjectModule.objects.filter(is_active=True).order_by('order', 'name')
@@ -6123,6 +6249,21 @@ def create_mentor_backlog_task(request):
         description = data.get('description', '').strip()
         deadline = data.get('deadline') or None
         priority = data.get('priority', 'medium')
+        project_id = data.get('project_id')
+        stage_id = data.get('stage_id')
+        
+        # Validate project and stage if provided
+        project = None
+        stage = None
+        if project_id:
+            from dashboard_user.models import Project
+            try:
+                project = Project.objects.get(id=project_id, supervised_by=mentor_profile)
+                if stage_id:
+                    from dashboard_user.models import ProjectStage
+                    stage = ProjectStage.objects.get(id=stage_id, project=project)
+            except (Project.DoesNotExist, ProjectStage.DoesNotExist):
+                return JsonResponse({'success': False, 'error': 'Invalid project or stage'}, status=400)
         
         # Calculate order for the new task
         last_task = Task.objects.filter(mentor_backlog=mentor_profile).order_by('-order').first()
@@ -6138,6 +6279,8 @@ def create_mentor_backlog_task(request):
             deadline=deadline,
             priority=priority,
             order=next_order,
+            project=project,
+            stage=stage,
             created_by=request.user,
             author_name=f"{request.user.profile.first_name} {request.user.profile.last_name}",
             author_email=request.user.email,
@@ -6179,11 +6322,28 @@ def edit_mentor_backlog_task(request, task_id):
         description = data.get('description', '').strip()
         deadline = data.get('deadline') or None
         priority = data.get('priority', 'medium')
+        project_id = data.get('project_id')
+        stage_id = data.get('stage_id')
+        
+        # Validate project and stage if provided
+        project = None
+        stage = None
+        if project_id:
+            from dashboard_user.models import Project
+            try:
+                project = Project.objects.get(id=project_id, supervised_by=mentor_profile)
+                if stage_id:
+                    from dashboard_user.models import ProjectStage
+                    stage = ProjectStage.objects.get(id=stage_id, project=project)
+            except (Project.DoesNotExist, ProjectStage.DoesNotExist):
+                return JsonResponse({'success': False, 'error': 'Invalid project or stage'}, status=400)
         
         task.title = title
         task.description = description
         task.deadline = deadline
         task.priority = priority
+        task.project = project
+        task.stage = stage
         task.save()
         
         return JsonResponse({
@@ -6196,6 +6356,8 @@ def edit_mentor_backlog_task(request, task_id):
                 'deadline': task.deadline.strftime('%Y-%m-%d') if task.deadline else '',
                 'priority': task.priority,
                 'completed': task.completed,
+                'project_id': task.project.id if task.project else None,
+                'stage_id': task.stage.id if task.stage else None,
             }
         })
     except json.JSONDecodeError:
@@ -6204,6 +6366,54 @@ def edit_mentor_backlog_task(request, task_id):
         import logging
         logger = logging.getLogger(__name__)
         logger.error(f'Error editing mentor backlog task: {str(e)}')
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+def get_mentor_projects_stages_api(request):
+    """Get all projects and their stages for the mentor"""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+    
+    mentor_profile = request.user.mentor_profile
+    from dashboard_user.models import Project, ProjectStage
+    
+    try:
+        # Get all projects supervised by this mentor
+        projects = Project.objects.filter(
+            supervised_by=mentor_profile
+        ).select_related('project_owner', 'template').order_by('-created_at')
+        
+        projects_data = []
+        for project in projects:
+            # Get stages for this project
+            stages = ProjectStage.objects.filter(
+                project=project,
+                is_disabled=False
+            ).order_by('order')
+            
+            stages_data = [{
+                'id': stage.id,
+                'title': stage.title,
+                'order': float(stage.order),
+            } for stage in stages]
+            
+            projects_data.append({
+                'id': project.id,
+                'title': project.title,
+                'client_name': f"{project.project_owner.first_name} {project.project_owner.last_name}" if project.project_owner else 'Unknown',
+                'template_name': project.template.name if project.template else 'No Template',
+                'stages': stages_data,
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'projects': projects_data
+        })
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f'Error fetching projects/stages: {str(e)}', exc_info=True)
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 
@@ -6217,7 +6427,7 @@ def get_mentor_backlog_tasks_api(request):
     from dashboard_user.models import Task
     
     try:
-        tasks = Task.objects.filter(mentor_backlog=mentor_profile).order_by('order', 'created_at')
+        tasks = Task.objects.filter(mentor_backlog=mentor_profile).select_related('project', 'stage').order_by('order', 'created_at')
         
         tasks_data = []
         for task in tasks:
@@ -6231,6 +6441,8 @@ def get_mentor_backlog_tasks_api(request):
                 'status': task.status,
                 'created_at': task.created_at.strftime('%Y-%m-%d %H:%M:%S'),
                 'order': float(task.order),
+                'project_id': task.project.id if task.project else None,
+                'stage_id': task.stage.id if task.stage else None,
             })
         
         return JsonResponse({

@@ -140,6 +140,12 @@
     font-weight: 900;
 }
 
+/* Ensure step label is styled when step is active (more specific selector) */
+.create-project-step-item .create-project-step.active + .create-project-step-label {
+    color: #000000;
+    font-weight: 900;
+}
+
 .create-project-step.completed {
     background: #10b981;
     color: white;
@@ -640,14 +646,14 @@
         </button>
         
         <div class="create-project-modal-header">
-            <h3 class="create-project-modal-title">Create New Project</h3>
+            <h3 class="create-project-modal-title">Create a New Project</h3>
         </div>
         
         <div class="create-project-modal-body">
             <!-- Technical Stepper -->
             <div class="create-project-steps">
                 <div class="create-project-step-item">
-                    <div class="create-project-step" id="step1Indicator">1</div>
+                    <div class="create-project-step active" id="step1Indicator">1</div>
                     <div class="create-project-step-label">Configuration</div>
                 </div>
                 <div class="create-project-step-connector" id="stepConnector"></div>
@@ -689,7 +695,10 @@
                             <div id="templateDropdownItems">
                                 {% if project_templates %}
                                     {% for template in project_templates %}
-                                    <button type="button" class="template-dropdown-item" data-template-id="{{ template.id }}" data-template-name="{{ template.name }}">
+                                    <button type="button" class="template-dropdown-item" 
+                                            data-template-id="{{ template.id }}" 
+                                            data-template-name="{{ template.name }}"
+                                            data-preselected-modules="{% for module in template.preselected_modules.all %}{{ module.id }}{% if not forloop.last %},{% endif %}{% endfor %}">
                                         {% if template.icon %}<i class="{{ template.icon }}"></i>{% else %}<i class="fas fa-file-alt"></i>{% endif %}
                                         <span>{{ template.name }}</span>
                                     </button>
@@ -806,7 +815,12 @@
             item.addEventListener('click', function() {
                 const templateId = parseInt(this.getAttribute('data-template-id'));
                 const templateName = this.getAttribute('data-template-name');
-                selectTemplate(templateId, templateName);
+                const preselectedModulesStr = this.getAttribute('data-preselected-modules') || '';
+                console.log('Template clicked:', templateName);
+                console.log('Preselected modules string:', preselectedModulesStr);
+                const preselectedModuleIds = preselectedModulesStr ? preselectedModulesStr.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id)) : [];
+                console.log('Parsed preselected module IDs:', preselectedModuleIds);
+                selectTemplate(templateId, templateName, preselectedModuleIds);
             });
         });
         
@@ -1018,11 +1032,69 @@
     });
     
     // Select template
-    function selectTemplate(templateId, displayText) {
+    function selectTemplate(templateId, displayText, preselectedModuleIds = []) {
         selectedTemplateId = templateId;
         document.getElementById('templateSelectedText').textContent = displayText;
         document.getElementById('templateIdInput').value = templateId;
         document.getElementById('templateDropdownWrapper').classList.remove('active');
+        
+        console.log('=== SELECTING TEMPLATE ===');
+        console.log('Template ID:', templateId);
+        console.log('Preselected Module IDs:', preselectedModuleIds);
+        
+        // Auto-select preselected modules
+        if (preselectedModuleIds && preselectedModuleIds.length > 0) {
+            // Clear current selection first
+            selectedModuleIds = [];
+            document.querySelectorAll('.module-selection-item').forEach(item => {
+                item.classList.remove('selected');
+            });
+            
+            // Get all module items to debug
+            const allModuleItems = document.querySelectorAll('.module-selection-item');
+            console.log('Total module items found:', allModuleItems.length);
+            allModuleItems.forEach(item => {
+                console.log('Module item ID:', item.getAttribute('data-module-id'));
+            });
+            
+            // Select preselected modules
+            preselectedModuleIds.forEach(moduleId => {
+                // Try both string and number matching
+                const moduleIdStr = String(moduleId);
+                const moduleIdNum = parseInt(moduleId);
+                
+                // Try multiple selector strategies
+                let moduleItem = document.querySelector(`.module-selection-item[data-module-id="${moduleIdStr}"]`);
+                if (!moduleItem) {
+                    moduleItem = document.querySelector(`.module-selection-item[data-module-id="${moduleIdNum}"]`);
+                }
+                if (!moduleItem) {
+                    // Try finding by iterating
+                    allModuleItems.forEach(item => {
+                        const itemId = parseInt(item.getAttribute('data-module-id'));
+                        if (itemId === moduleIdNum) {
+                            moduleItem = item;
+                        }
+                    });
+                }
+                
+                console.log(`Looking for module ${moduleId} (str: ${moduleIdStr}, num: ${moduleIdNum}):`, moduleItem ? 'Found' : 'Not found');
+                if (moduleItem) {
+                    if (!selectedModuleIds.includes(moduleIdNum)) {
+                        selectedModuleIds.push(moduleIdNum);
+                        moduleItem.classList.add('selected');
+                        console.log(`✓ Selected module ${moduleIdNum}`);
+                    }
+                } else {
+                    console.warn(`✗ Module ${moduleId} not found in DOM`);
+                }
+            });
+            
+            console.log('Final selectedModuleIds:', selectedModuleIds);
+        } else {
+            console.log('No preselected modules for this template');
+        }
+        
         updateContinueButtonState();
     }
     

@@ -1,7 +1,7 @@
 <div id="createTemplateModal" class="modal-overlay" style="display: none;">
     <div class="modal-container">
         <div class="modal-header">
-            <h3>Create New Template</h3>
+            <h3>Create a New Template</h3>
             <button class="modal-close" onclick="closeCreateTemplateModal()">
                 <i class="fas fa-times"></i>
             </button>
@@ -10,40 +10,156 @@
         <form method="POST" action="{% url 'general:dashboard_mentor:create_custom_template' %}" id="createTemplateForm">
             {% csrf_token %}
             <div class="modal-body">
-                <!-- Name -->
-                <div class="form-group">
-                    <label class="form-label">Template Name</label>
-                    <input type="text" name="name" class="form-input" placeholder="e.g. Advanced Leadership Program" required>
-                </div>
+                <div class="modal-body-columns">
+                    <!-- Left Column -->
+                    <div class="modal-body-left">
+                        <!-- Name -->
+                        <div class="form-group">
+                            <label class="form-label">Template Name</label>
+                            <input type="text" name="name" class="form-input" placeholder="e.g. Advanced Leadership Program" required>
+                        </div>
 
-                <!-- Description -->
-                <div class="form-group">
-                    <label class="form-label">Description</label>
-                    <textarea name="description" class="form-input" rows="3" placeholder="What is this template for?"></textarea>
-                </div>
+                        <!-- Description -->
+                        <div class="form-group">
+                            <label class="form-label">Description</label>
+                            <textarea name="description" class="form-input form-textarea" placeholder="What is this template for?"></textarea>
+                        </div>
 
-                <!-- Icon Selection -->
-                <div class="form-group">
-                    <label class="form-label">Icon</label>
-                    <div style="display: flex; gap: 12px; flex-wrap: wrap;">
-                        {% with icons="fas fa-briefcase,fas fa-heartbeat,fas fa-brain,fas fa-graduation-cap,fas fa-chart-line,fas fa-star" %}
-                            {% for icon in icons.split|default:icons %}
-                            <label style="cursor: pointer;">
-                                <input type="radio" name="icon" value="{{ icon }}" {% if forloop.first %}checked{% endif %} style="display: none;">
-                                <div class="icon-option" style="
-                                    width: 40px; height: 40px; 
-                                    background: #f1f5f9; 
-                                    border-radius: 8px; 
-                                    display: flex; align-items: center; justify-content: center;
-                                    color: #64748b;
-                                    border: 2px solid transparent;
-                                    transition: all 0.2s;
-                                ">
-                                    <i class="{{ icon }}"></i>
-                                </div>
-                            </label>
-                            {% endfor %}
-                        {% endwith %}
+                        <!-- Icon Selection -->
+                        <div class="form-group">
+                            <label class="form-label">Icon</label>
+                            <div class="icon-selection-grid">
+                                <label class="icon-option-wrapper">
+                                    <input type="radio" name="icon" value="fas fa-briefcase" checked>
+                                    <div class="icon-option">
+                                        <i class="fas fa-briefcase"></i>
+                                    </div>
+                                </label>
+                                <label class="icon-option-wrapper">
+                                    <input type="radio" name="icon" value="fas fa-heartbeat">
+                                    <div class="icon-option">
+                                        <i class="fas fa-heartbeat"></i>
+                                    </div>
+                                </label>
+                                <label class="icon-option-wrapper">
+                                    <input type="radio" name="icon" value="fas fa-brain">
+                                    <div class="icon-option">
+                                        <i class="fas fa-brain"></i>
+                                    </div>
+                                </label>
+                                <label class="icon-option-wrapper">
+                                    <input type="radio" name="icon" value="fas fa-graduation-cap">
+                                    <div class="icon-option">
+                                        <i class="fas fa-graduation-cap"></i>
+                                    </div>
+                                </label>
+                                <label class="icon-option-wrapper">
+                                    <input type="radio" name="icon" value="fas fa-chart-line">
+                                    <div class="icon-option">
+                                        <i class="fas fa-chart-line"></i>
+                                    </div>
+                                </label>
+                                <label class="icon-option-wrapper">
+                                    <input type="radio" name="icon" value="fas fa-star">
+                                    <div class="icon-option">
+                                        <i class="fas fa-star"></i>
+                                    </div>
+                                </label>
+                                <label class="icon-option-wrapper">
+                                    <input type="radio" name="icon" value="fas fa-lightbulb">
+                                    <div class="icon-option">
+                                        <i class="fas fa-lightbulb"></i>
+                                    </div>
+                                </label>
+                                <label class="icon-option-wrapper">
+                                    <input type="radio" name="icon" value="fas fa-rocket">
+                                    <div class="icon-option">
+                                        <i class="fas fa-rocket"></i>
+                                    </div>
+                                </label>
+                                <label class="icon-option-wrapper">
+                                    <input type="radio" name="icon" value="fas fa-trophy">
+                                    <div class="icon-option">
+                                        <i class="fas fa-trophy"></i>
+                                    </div>
+                                </label>
+                                <label class="icon-option-wrapper">
+                                    <input type="radio" name="icon" value="fas fa-fire">
+                                    <div class="icon-option">
+                                        <i class="fas fa-fire"></i>
+                                    </div>
+                                </label>
+                                <label class="icon-option-wrapper">
+                                    <input type="radio" name="icon" value="fas fa-gem">
+                                    <div class="icon-option">
+                                        <i class="fas fa-gem"></i>
+                                    </div>
+                                </label>
+                                <label class="icon-option-wrapper">
+                                    <input type="radio" name="icon" value="fas fa-leaf">
+                                    <div class="icon-option">
+                                        <i class="fas fa-leaf"></i>
+                                    </div>
+                                </label>
+                                <label class="icon-option-wrapper">
+                                    <input type="radio" name="icon" value="fas fa-dumbbell">
+                                    <div class="icon-option">
+                                        <i class="fas fa-dumbbell"></i>
+                                    </div>
+                                </label>
+                                <label class="icon-option-wrapper">
+                                    <input type="radio" name="icon" value="fas fa-book">
+                                    <div class="icon-option">
+                                        <i class="fas fa-book"></i>
+                                    </div>
+                                </label>
+                                <label class="icon-option-wrapper">
+                                    <input type="radio" name="icon" value="fas fa-coins">
+                                    <div class="icon-option">
+                                        <i class="fas fa-coins"></i>
+                                    </div>
+                                </label>
+                                <label class="icon-option-wrapper">
+                                    <input type="radio" name="icon" value="fas fa-palette">
+                                    <div class="icon-option">
+                                        <i class="fas fa-palette"></i>
+                                    </div>
+                                </label>
+                                <label class="icon-option-wrapper">
+                                    <input type="radio" name="icon" value="fas fa-music">
+                                    <div class="icon-option">
+                                        <i class="fas fa-music"></i>
+                                    </div>
+                                </label>
+                                <label class="icon-option-wrapper">
+                                    <input type="radio" name="icon" value="fas fa-camera">
+                                    <div class="icon-option">
+                                        <i class="fas fa-camera"></i>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Column -->
+                    <div class="modal-body-right">
+                        <!-- Preselected Modules -->
+                        <div class="form-group">
+                            <label class="form-label">Preselected Modules</label>
+                            <p class="form-help-text">Select modules that will be automatically checked when this template is chosen in the Create Project popup.</p>
+                            <div class="module-selection-container">
+                                {% if project_modules %}
+                                    {% for module in project_modules %}
+                                    <label class="module-checkbox-wrapper">
+                                        <input type="checkbox" name="preselected_modules" value="{{ module.id }}" id="module_{{ module.id }}">
+                                        <span class="module-checkbox-label">{{ module.name }}</span>
+                                    </label>
+                                    {% endfor %}
+                                {% else %}
+                                    <p class="no-modules-text">No modules available. Modules will be available after they are created.</p>
+                                {% endif %}
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -85,7 +201,7 @@
         background: white;
         border-radius: 16px;
         box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-        max-width: 600px;
+        max-width: 900px;
         width: 90%;
         max-height: 90vh;
         overflow: hidden;
@@ -107,10 +223,13 @@
         padding: 20px 24px;
         border-bottom: 1px solid #e2e8f0;
         background: white;
+        flex-shrink: 0;
+        margin-bottom: 0;
     }
 
     .modal-header h3 {
         margin: 0;
+        margin-bottom: 0;
         font-size: 1.5rem;
         font-weight: 700;
         color: #1e293b;
@@ -141,10 +260,42 @@
         padding: 24px;
         overflow-y: auto;
         flex: 1;
+        min-height: 0;
+    }
+
+    .modal-body-columns {
+        display: grid;
+        grid-template-columns: 1fr 320px;
+        gap: 24px;
+    }
+
+    .modal-body-left {
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+    }
+
+    .modal-body-left .form-group:last-of-type {
+        margin-bottom: 0;
+    }
+
+    .modal-body-left .form-group:has(.form-textarea) {
+        margin-bottom: 0;
+    }
+
+    .modal-body-right {
+        display: flex;
+        flex-direction: column;
+        border-left: 1px solid #e2e8f0;
+        padding-left: 24px;
     }
 
     .form-group {
-        margin-bottom: 20px;
+        margin-bottom: 0;
+    }
+
+    .modal-body-left .form-group:has(textarea) {
+        margin-bottom: 0;
     }
 
     .form-label {
@@ -153,6 +304,13 @@
         color: #475569;
         margin-bottom: 8px;
         font-size: 0.875rem;
+    }
+
+    .form-help-text {
+        font-size: 0.8rem;
+        color: #64748b;
+        margin-bottom: 12px;
+        line-height: 1.4;
     }
 
     .form-input,
@@ -165,6 +323,7 @@
         color: #1e293b;
         transition: all 0.2s;
         box-sizing: border-box;
+        font-family: inherit;
     }
 
     .form-input:focus,
@@ -174,20 +333,109 @@
         box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
     }
 
-    textarea.form-input {
+    .form-textarea {
         resize: vertical;
-        min-height: 80px;
+        height: 120px;
+        max-height: 200px;
+        min-height: 120px;
+        margin-bottom: 0;
     }
 
-    /* Icon Options */
-    .icon-option:hover { 
-        background: #e2e8f0 !important; 
+    /* Icon Selection */
+    .icon-selection-grid {
+        display: grid;
+        grid-template-columns: repeat(6, 1fr);
+        gap: 12px;
     }
-    
-    input[type="radio"]:checked + .icon-option {
-        background: #eff6ff !important;
-        color: #3b82f6 !important;
-        border-color: #3b82f6 !important;
+
+    .icon-option-wrapper {
+        cursor: pointer;
+        position: relative;
+    }
+
+    .icon-option-wrapper input[type="radio"] {
+        position: absolute;
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+
+    .icon-option {
+        width: 48px;
+        height: 48px;
+        background: #f1f5f9;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #64748b;
+        border: 2px solid transparent;
+        transition: all 0.2s;
+        font-size: 1.2rem;
+    }
+
+    .icon-option-wrapper:hover .icon-option {
+        background: #e2e8f0;
+        transform: translateY(-2px);
+    }
+
+    .icon-option-wrapper input[type="radio"]:checked + .icon-option {
+        background: #eff6ff;
+        color: #3b82f6;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    /* Module Selection */
+    .module-selection-container {
+        max-height: calc(90vh - 300px);
+        min-height: 200px;
+        overflow-y: auto;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 12px;
+        background: #f8fafc;
+    }
+
+    .module-checkbox-wrapper {
+        display: flex;
+        align-items: center;
+        padding: 8px 12px;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: background 0.2s;
+        margin-bottom: 4px;
+    }
+
+    .module-checkbox-wrapper:last-child {
+        margin-bottom: 0;
+    }
+
+    .module-checkbox-wrapper:hover {
+        background: #f1f5f9;
+    }
+
+    .module-checkbox-wrapper input[type="checkbox"] {
+        margin-right: 10px;
+        cursor: pointer;
+        width: 18px;
+        height: 18px;
+        accent-color: #3b82f6;
+    }
+
+    .module-checkbox-label {
+        font-size: 0.9rem;
+        color: #475569;
+        cursor: pointer;
+        user-select: none;
+    }
+
+    .no-modules-text {
+        font-size: 0.875rem;
+        color: #94a3b8;
+        text-align: center;
+        padding: 20px;
+        font-style: italic;
     }
 
     /* Modal Footer */
@@ -198,22 +446,26 @@
         padding: 20px 24px;
         border-top: 1px solid #e2e8f0;
         background: #f8fafc;
+        flex-shrink: 0;
     }
 
     .btn-cancel,
     .btn-confirm {
-        padding: 10px 20px;
+        padding: 10px 24px;
         border-radius: 8px;
         font-weight: 600;
         cursor: pointer;
         transition: all 0.2s;
         font-size: 0.875rem;
+        border: none;
+        min-width: 100px;
     }
 
     .btn-cancel {
         background: white;
         color: #64748b;
         border: 1px solid #e2e8f0;
+        padding: 10px 24px;
     }
 
     .btn-cancel:hover {
@@ -224,12 +476,29 @@
     .btn-confirm {
         background: #111827;
         color: white;
-        border: 1px solid #111827;
+        width: auto;
+        display: inline-block;
     }
 
     .btn-confirm:hover {
         background: #000;
-        border-color: #000;
+    }
+
+    @media (max-width: 768px) {
+        .modal-body-columns {
+            grid-template-columns: 1fr;
+        }
+
+        .modal-body-right {
+            border-left: none;
+            border-top: 1px solid #e2e8f0;
+            padding-left: 0;
+            padding-top: 24px;
+        }
+
+        .icon-selection-grid {
+            grid-template-columns: repeat(4, 1fr);
+        }
     }
 </style>
 

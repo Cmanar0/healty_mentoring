@@ -112,7 +112,7 @@
         </div>
 
         <!-- Navigation Buttons -->
-        <div class="slide-questionnaire-navigation">
+        <div class="slide-questionnaire-navigation" id="navigationContainer">
             <button type="button" class="btn-nav btn-prev" id="prevBtn" onclick="previousSlide()" style="display: none;">
                 <i class="fas fa-arrow-left"></i> Previous
             </button>
@@ -135,6 +135,18 @@
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
     max-width: 700px;
     margin: 0 auto;
+}
+
+/* Remove card styling when inside a modal */
+.questionnaire-modal-body .slide-questionnaire-container,
+.modal-body .slide-questionnaire-container,
+[class*="modal"] .slide-questionnaire-container {
+    background: transparent;
+    border-radius: 0;
+    padding: 0;
+    box-shadow: none;
+    max-width: 100%;
+    margin: 0;
 }
 
 /* Progress Indicator */
@@ -349,7 +361,10 @@ select.question-input {
     border: none;
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 8px;
+    flex: 1;
+    max-width: 50%;
 }
 
 .btn-prev {
@@ -372,6 +387,13 @@ select.question-input {
     background: #000;
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* When previous button is hidden, next button should still only take right half */
+.slide-questionnaire-navigation.no-prev .btn-next,
+.slide-questionnaire-navigation.no-prev .btn-submit {
+    margin-left: auto;
+    max-width: 50%;
 }
 
 .btn-submit {
@@ -436,6 +458,12 @@ select.question-input {
     if (totalSlides === 0) {
         console.warn('No questions found in slide questionnaire');
         return;
+    }
+    
+    // Set initial state for navigation (previous button is hidden on first slide)
+    const navContainer = document.getElementById('navigationContainer');
+    if (currentSlide === 0) {
+        navContainer.classList.add('no-prev');
     }
     
     updateProgress();
@@ -549,11 +577,15 @@ select.question-input {
     }
     
     function updateNavigation() {
+        const navContainer = document.getElementById('navigationContainer');
+        
         // Previous button
         if (currentSlide === 0) {
             prevBtn.style.display = 'none';
+            navContainer.classList.add('no-prev');
         } else {
             prevBtn.style.display = 'inline-flex';
+            navContainer.classList.remove('no-prev');
         }
         
         // Next/Submit button

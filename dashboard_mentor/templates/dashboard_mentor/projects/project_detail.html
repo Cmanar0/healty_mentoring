@@ -958,22 +958,267 @@
                 </div>
             </div>
             {% if not project.questionnaire_completed %}
-                <div style="background: #fffbeb; border: 1px solid #fcd34d; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
-                    <h3 style="margin: 0 0 8px 0; font-size: 1rem; color: #92400e;">Setup Required</h3>
-                    <p style="margin: 0 0 16px 0; color: #b45309; font-size: 0.875rem;">Project details missing. Complete the questionnaire to unlock stage management.</p>
-                    <div style="margin-top: 24px;">
-                        {% include "general/reusable/slide_questionnaire.html" with questions=questions answers=answers %}
-                        <script>
-                            // Set submit URL for the slide questionnaire
-                            document.addEventListener('DOMContentLoaded', function() {
-                                const form = document.getElementById('slideQuestionnaireForm');
-                                if (form) {
-                                    form.dataset.submitUrl = '{% url "general:dashboard_user:submit_questionnaire" project.id %}';
-                                }
-                            });
-                        </script>
+                <!-- Modern Setup Required Card -->
+                <div class="setup-required-card">
+                    <div class="setup-required-icon">
+                        <i class="fas fa-clipboard-list"></i>
+                    </div>
+                    <div class="setup-required-content">
+                        <h3 class="setup-required-title">Setup Required</h3>
+                        <p class="setup-required-description">Complete the project questionnaire to unlock stage management and full project features.</p>
+                        <button type="button" class="btn-setup-questionnaire" onclick="openQuestionnaireModal()">
+                            <i class="fas fa-arrow-right"></i>
+                            <span>Start Questionnaire</span>
+                        </button>
                     </div>
                 </div>
+
+                <!-- Questionnaire Modal -->
+                <div id="questionnaireModal" class="questionnaire-modal-overlay">
+                    <div class="questionnaire-modal-content">
+                        <button class="questionnaire-modal-close" onclick="closeQuestionnaireModal()" aria-label="Close">
+                            <i class="fas fa-times"></i>
+                        </button>
+                        <div class="questionnaire-modal-body">
+                            {% include "general/reusable/slide_questionnaire.html" with questions=questions answers=answers %}
+                        </div>
+                    </div>
+                </div>
+
+                <script>
+                    // Set submit URL for the slide questionnaire
+                    document.addEventListener('DOMContentLoaded', function() {
+                        const form = document.getElementById('slideQuestionnaireForm');
+                        if (form) {
+                            form.dataset.submitUrl = '{% url "general:dashboard_user:submit_questionnaire" project.id %}';
+                        }
+                    });
+
+                    function openQuestionnaireModal() {
+                        const modal = document.getElementById('questionnaireModal');
+                        if (modal) {
+                            modal.classList.add('active');
+                            document.body.style.overflow = 'hidden';
+                        }
+                    }
+
+                    function closeQuestionnaireModal() {
+                        const modal = document.getElementById('questionnaireModal');
+                        if (modal) {
+                            modal.classList.remove('active');
+                            document.body.style.overflow = '';
+                        }
+                    }
+
+                    // Close modal on overlay click
+                    document.getElementById('questionnaireModal')?.addEventListener('click', function(e) {
+                        if (e.target === this) {
+                            closeQuestionnaireModal();
+                        }
+                    });
+
+                    // Close modal on Escape key
+                    document.addEventListener('keydown', function(e) {
+                        if (e.key === 'Escape') {
+                            closeQuestionnaireModal();
+                        }
+                    });
+                </script>
+
+                <style>
+                    /* Modern Setup Required Card */
+                    .setup-required-card {
+                        background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+                        border: 1px solid #fbbf24;
+                        border-radius: 16px;
+                        padding: 32px;
+                        margin-bottom: 24px;
+                        display: flex;
+                        align-items: center;
+                        gap: 24px;
+                        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+                        transition: box-shadow 0.3s ease;
+                    }
+
+                    .setup-required-card:hover {
+                        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+                    }
+
+                    .setup-required-icon {
+                        width: 64px;
+                        height: 64px;
+                        background: white;
+                        border-radius: 12px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        flex-shrink: 0;
+                        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+                    }
+
+                    .setup-required-icon i {
+                        font-size: 28px;
+                        color: #f59e0b;
+                    }
+
+                    .setup-required-content {
+                        flex: 1;
+                        display: flex;
+                        flex-direction: column;
+                        align-items: flex-end;
+                    }
+
+                    .setup-required-title {
+                        margin: 0 0 8px 0;
+                        font-size: 1.25rem;
+                        font-weight: 700;
+                        color: #92400e;
+                        letter-spacing: -0.02em;
+                        width: 100%;
+                    }
+
+                    .setup-required-description {
+                        margin: 0 0 20px 0;
+                        color: #b45309;
+                        font-size: 0.95rem;
+                        line-height: 1.6;
+                        width: 100%;
+                    }
+
+                    .btn-setup-questionnaire {
+                        display: inline-flex;
+                        align-items: center;
+                        gap: 8px;
+                        background: #f59e0b;
+                        color: white;
+                        border: none;
+                        padding: 12px 24px;
+                        border-radius: 8px;
+                        font-size: 0.95rem;
+                        font-weight: 600;
+                        cursor: pointer;
+                        transition: background 0.2s ease, box-shadow 0.2s ease;
+                        box-shadow: 0 2px 4px rgba(245, 158, 11, 0.3);
+                        width: auto;
+                    }
+
+                    .btn-setup-questionnaire:hover {
+                        background: #d97706;
+                        box-shadow: 0 4px 8px rgba(245, 158, 11, 0.4);
+                    }
+
+                    .btn-setup-questionnaire i {
+                        font-size: 0.875rem;
+                        transition: transform 0.2s ease;
+                    }
+
+                    .btn-setup-questionnaire:hover i {
+                        transform: translateX(2px);
+                    }
+
+                    /* Questionnaire Modal */
+                    .questionnaire-modal-overlay {
+                        position: fixed;
+                        top: 0;
+                        left: 0;
+                        right: 0;
+                        bottom: 0;
+                        background: rgba(15, 23, 42, 0.6);
+                        backdrop-filter: blur(8px);
+                        z-index: 10000;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        opacity: 0;
+                        visibility: hidden;
+                        transition: opacity 0.3s ease, visibility 0.3s ease;
+                        padding: 20px;
+                    }
+
+                    .questionnaire-modal-overlay.active {
+                        opacity: 1;
+                        visibility: visible;
+                    }
+
+                    .questionnaire-modal-content {
+                        background: white;
+                        border-radius: 20px;
+                        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+                        max-width: 800px;
+                        width: 100%;
+                        max-height: 90vh;
+                        overflow: hidden;
+                        position: relative;
+                        display: flex;
+                        flex-direction: column;
+                        transform: scale(0.95) translateY(20px);
+                        transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+                    }
+
+                    .questionnaire-modal-overlay.active .questionnaire-modal-content {
+                        transform: scale(1) translateY(0);
+                    }
+
+                    .questionnaire-modal-close {
+                        position: absolute;
+                        top: 20px;
+                        right: 20px;
+                        background: #f1f5f9;
+                        border: none;
+                        color: #64748b;
+                        font-size: 1.1rem;
+                        cursor: pointer;
+                        width: 40px;
+                        height: 40px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        border-radius: 50%;
+                        transition: all 0.2s ease;
+                        z-index: 20;
+                    }
+
+                    .questionnaire-modal-close:hover {
+                        background: #e2e8f0;
+                        color: #1e293b;
+                        transform: rotate(90deg);
+                    }
+
+                    .questionnaire-modal-body {
+                        padding: 40px;
+                        overflow-y: auto;
+                        flex: 1;
+                        min-height: 0;
+                    }
+
+                    /* Remove card styling from slide questionnaire in modal */
+                    .questionnaire-modal-body .slide-questionnaire-container {
+                        background: transparent;
+                        border-radius: 0;
+                        padding: 0;
+                        box-shadow: none;
+                        max-width: 100%;
+                        margin: 0;
+                    }
+
+                    @media (max-width: 768px) {
+                        .setup-required-card {
+                            flex-direction: column;
+                            text-align: center;
+                            padding: 24px;
+                        }
+
+                        .questionnaire-modal-content {
+                            max-width: 100%;
+                            max-height: 100vh;
+                            border-radius: 0;
+                        }
+
+                        .questionnaire-modal-body {
+                            padding: 24px;
+                        }
+                    }
+                </style>
             {% endif %}
 
             <!-- Waterfall Chart -->
@@ -1159,8 +1404,20 @@
         
         // Calculate date range
         const dates = stagesWithDates.flatMap(s => [new Date(s.start_date), new Date(s.end_date)]);
-        const originalMinDate = new Date(Math.min(...dates));
-        const originalMaxDate = new Date(Math.max(...dates));
+        let originalMinDate = new Date(Math.min(...dates));
+        let originalMaxDate = new Date(Math.max(...dates));
+        
+        // If project target date exists and is later than the latest stage end date, extend to include it
+        {% if project.target_completion_date %}
+        if (TARGET_COMPLETION_DATE) {
+            const targetDate = new Date(TARGET_COMPLETION_DATE);
+            targetDate.setHours(0, 0, 0, 0);
+            if (targetDate > originalMaxDate) {
+                originalMaxDate = new Date(targetDate);
+            }
+        }
+        {% endif %}
+        
         const originalRange = originalMaxDate - originalMinDate;
         
         // Extend the range by 10% on each side to allow dragging beyond boundaries
@@ -2478,11 +2735,31 @@
 
     // Modal Helpers
     window.openCreateStageModal = function() {
+        // Check if questionnaire is completed
+        {% if not project.questionnaire_completed %}
+        if (typeof showNotification !== 'undefined') {
+            showNotification('Please complete the project questionnaire before creating stages. Click "Start Questionnaire" to begin.', 'warning');
+        } else {
+            alert('Please complete the project questionnaire before creating stages.');
+        }
+        return;
+        {% endif %}
+        
         const modal = document.getElementById('createStageModal');
         if(modal) { modal.style.display = 'flex'; setTimeout(()=>modal.classList.add('active'),10); }
     };
     
     window.generateStagesAI = function() {
+        // Check if questionnaire is completed
+        {% if not project.questionnaire_completed %}
+        if (typeof showNotification !== 'undefined') {
+            showNotification('Please complete the project questionnaire before generating stages. Click "Start Questionnaire" to begin.', 'warning');
+        } else {
+            alert('Please complete the project questionnaire before generating stages.');
+        }
+        return;
+        {% endif %}
+        
         const btn = document.getElementById('generateStagesBtn');
         const originalContent = btn.innerHTML;
         btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Generating...';
@@ -2496,9 +2773,16 @@
         .then(response => response.json())
         .then(data => {
             if (data.success) {
+                if (typeof showNotification !== 'undefined') {
+                    showNotification('Stages generated successfully!', 'success');
+                }
                 loadStages();
             } else {
-                alert('Error: ' + (data.error || 'Unknown error occurred'));
+                if (typeof showNotification !== 'undefined') {
+                    showNotification(data.error || 'Failed to generate stages', 'error');
+                } else {
+                    alert('Error: ' + (data.error || 'Unknown error occurred'));
+                }
             }
             btn.innerHTML = originalContent;
             btn.disabled = false;
@@ -2506,7 +2790,11 @@
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('A network error occurred. Please try again.');
+            if (typeof showNotification !== 'undefined') {
+                showNotification('A network error occurred. Please try again.', 'error');
+            } else {
+                alert('A network error occurred. Please try again.');
+            }
             btn.innerHTML = originalContent;
             btn.disabled = false;
             btn.style.opacity = '1';

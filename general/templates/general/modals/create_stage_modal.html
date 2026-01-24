@@ -413,10 +413,19 @@
                     }, 500);
                 }
             } else {
+                // Check if error is about questionnaire completion
+                const errorMessage = data.error || (isEditing ? 'Failed to update stage' : 'Failed to create stage');
+                const isQuestionnaireError = errorMessage.toLowerCase().includes('questionnaire') || 
+                                            errorMessage.toLowerCase().includes('must be completed');
+                
                 if (typeof showNotification !== 'undefined') {
-                    showNotification(data.error || (isEditing ? 'Failed to update stage' : 'Failed to create stage'), 'error');
+                    if (isQuestionnaireError) {
+                        showNotification('Please complete the project questionnaire before creating stages. Click "Start Questionnaire" to begin.', 'warning');
+                    } else {
+                        showNotification(errorMessage, 'error');
+                    }
                 } else {
-                    alert(data.error || (isEditing ? 'Failed to update stage' : 'Failed to create stage'));
+                    alert(errorMessage);
                 }
                 btn.disabled = false;
                 btn.innerHTML = isEditing ? 'Update Stage' : 'Create Stage';

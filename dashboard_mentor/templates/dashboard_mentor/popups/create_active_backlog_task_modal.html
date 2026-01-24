@@ -24,7 +24,7 @@
     background: white;
     border-radius: 16px;
     box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-    max-width: 580px;
+    max-width: 900px;
     width: 90%;
     max-height: 90vh;
     overflow: hidden;
@@ -70,6 +70,7 @@
     padding: 24px 32px;
     background: white;
     flex-shrink: 0;
+    border-bottom: 1px solid #f1f5f9;
 }
 
 .create-task-modal-title {
@@ -81,15 +82,244 @@
 }
 
 .create-task-modal-body {
-    padding: 0 32px 32px;
-    overflow-y: auto;
+    padding: 0;
+    overflow: hidden;
     flex: 1;
+    display: flex;
 }
 
 .create-task-form {
     display: flex;
+    flex: 1;
+    min-height: 0;
+}
+
+.create-task-form-left {
+    flex: 1;
+    padding: 32px;
+    overflow-y: auto;
+    display: flex;
     flex-direction: column;
     gap: 24px;
+}
+
+.create-task-form-right {
+    width: 320px;
+    border-left: 1px solid #f1f5f9;
+    background: #f8fafc;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.project-selector-section {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    height: 100%;
+}
+
+.project-selector-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.project-selector-title {
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: #475569;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.btn-clear-selection {
+    background: none;
+    border: none;
+    color: #64748b;
+    font-size: 0.75rem;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: all 0.2s;
+    display: none;
+}
+
+.btn-clear-selection:hover {
+    background: #e2e8f0;
+    color: #111827;
+}
+
+.btn-clear-selection.show {
+    display: block;
+}
+
+.projects-list {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.project-item {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.project-item:hover {
+    border-color: #111827;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.project-item.selected {
+    border-color: #111827;
+    background: #f8fafc;
+    box-shadow: 0 0 0 2px rgba(17, 24, 39, 0.1);
+}
+
+.project-item-title {
+    font-weight: 600;
+    color: #111827;
+    font-size: 0.9rem;
+    margin-bottom: 4px;
+}
+
+.project-item-meta {
+    font-size: 0.75rem;
+    color: #64748b;
+}
+
+.selected-project-display {
+    display: none;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.selected-project-display.show {
+    display: flex;
+}
+
+.selected-project-info {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 12px;
+}
+
+.selected-project-title {
+    font-weight: 600;
+    color: #111827;
+    font-size: 0.95rem;
+    margin-bottom: 4px;
+}
+
+.selected-project-meta {
+    font-size: 0.75rem;
+    color: #64748b;
+}
+
+.stages-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.stage-item {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 10px 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.stage-item:hover {
+    border-color: #111827;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.stage-item.selected {
+    border-color: #111827;
+    background: #f8fafc;
+    box-shadow: 0 0 0 2px rgba(17, 24, 39, 0.1);
+}
+
+.stage-item input[type="radio"] {
+    margin: 0;
+    cursor: pointer;
+    accent-color: #111827;
+}
+
+.stage-item-label {
+    flex: 1;
+    font-size: 0.875rem;
+    color: #374151;
+    cursor: pointer;
+}
+
+.stage-item.selected .stage-item-label {
+    font-weight: 600;
+    color: #111827;
+}
+
+.stages-section-title {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #475569;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 8px;
+}
+
+.stages-empty-state {
+    padding: 20px;
+    text-align: center;
+    background: #f8fafc;
+    border-radius: 8px;
+    border: 1px dashed #e5e7eb;
+}
+
+.stages-empty-message {
+    color: #64748b;
+    font-size: 0.875rem;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.btn-add-stages {
+    background: #111827;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.btn-add-stages:hover {
+    background: #000;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .create-task-section {
@@ -247,22 +477,21 @@
     color: #1e293b;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 768px) {
+    .create-task-modal-content {
+        max-width: 95%;
+    }
+    .create-task-form {
+        flex-direction: column;
+    }
+    .create-task-form-right {
+        width: 100%;
+        border-left: none;
+        border-top: 1px solid #f1f5f9;
+        max-height: 300px;
+    }
     .create-task-meta-grid {
         grid-template-columns: 1fr;
-    }
-    .create-task-modal-content {
-        width: 95%;
-        margin: 10px;
-    }
-    .create-task-modal-body {
-        padding: 0 24px 24px;
-    }
-    .create-task-modal-header {
-        padding: 24px;
-    }
-    .create-task-modal-footer {
-        padding: 20px 24px;
     }
 }
 </style>
@@ -282,58 +511,97 @@
             <form id="createTaskForm" class="create-task-form">
                 {% csrf_token %}
                 
-                <div class="create-task-section">
-                    <label class="create-task-section-label" for="taskTitleInput">
-                        Task Name <span style="color: #ef4444;">*</span>
-                    </label>
-                    <div class="create-task-input-wrapper">
-                        <input 
-                            type="text" 
-                            id="taskTitleInput" 
-                            name="title" 
-                            class="create-task-input"
-                            placeholder="e.g. Design system review" 
-                            maxlength="200" 
-                            required
-                        >
-                    </div>
-                </div>
-                
-                <div class="create-task-section">
-                    <label class="create-task-section-label" for="taskDescriptionInput">Description</label>
-                    <textarea 
-                        id="taskDescriptionInput" 
-                        name="description" 
-                        class="create-task-textarea"
-                        placeholder="Provide details about this task..." 
-                    ></textarea>
-                </div>
-                
-                <div class="create-task-meta-grid">
+                <div class="create-task-form-left">
                     <div class="create-task-section">
-                        <label class="create-task-section-label" for="taskDeadlineInput">Deadline (Optional)</label>
-                        <input 
-                            type="date" 
-                            id="taskDeadlineInput" 
-                            name="deadline" 
-                            class="create-task-input"
-                        >
+                        <label class="create-task-section-label" for="taskTitleInput">
+                            Task Name <span style="color: #ef4444;">*</span>
+                        </label>
+                        <div class="create-task-input-wrapper">
+                            <input 
+                                type="text" 
+                                id="taskTitleInput" 
+                                name="title" 
+                                class="create-task-input"
+                                placeholder="e.g. Design system review" 
+                                maxlength="200" 
+                                required
+                            >
+                        </div>
                     </div>
                     
                     <div class="create-task-section">
-                        <label class="create-task-section-label" for="taskPriorityInput">Priority</label>
-                        <select 
-                            id="taskPriorityInput" 
-                            name="priority" 
-                            class="create-task-select"
-                        >
-                            <option value="low">Low</option>
-                            <option value="medium" selected>Medium</option>
-                            <option value="high">High</option>
-                            <option value="urgent">Urgent</option>
-                        </select>
+                        <label class="create-task-section-label" for="taskDescriptionInput">Description</label>
+                        <textarea 
+                            id="taskDescriptionInput" 
+                            name="description" 
+                            class="create-task-textarea"
+                            placeholder="Provide details about this task..." 
+                        ></textarea>
+                    </div>
+                    
+                    <div class="create-task-meta-grid">
+                        <div class="create-task-section">
+                            <label class="create-task-section-label" for="taskDeadlineInput">Deadline (Optional)</label>
+                            <input 
+                                type="date" 
+                                id="taskDeadlineInput" 
+                                name="deadline" 
+                                class="create-task-input"
+                            >
+                        </div>
+                        
+                        <div class="create-task-section">
+                            <label class="create-task-section-label" for="taskPriorityInput">Priority</label>
+                            <select 
+                                id="taskPriorityInput" 
+                                name="priority" 
+                                class="create-task-select"
+                            >
+                                <option value="low">Low</option>
+                                <option value="medium" selected>Medium</option>
+                                <option value="high">High</option>
+                                <option value="urgent">Urgent</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
+                
+                <div class="create-task-form-right">
+                    <div class="project-selector-section">
+                        <div class="project-selector-header">
+                            <span class="project-selector-title">Link to Project</span>
+                            <button type="button" class="btn-clear-selection" id="clearSelectionBtn" onclick="clearProjectSelection()">
+                                Clear
+                            </button>
+                        </div>
+                        
+                        <!-- Projects List -->
+                        <div class="projects-list" id="projectsList">
+                            <div style="padding: 20px; text-align: center; color: #94a3b8;">
+                                <i class="fas fa-spinner fa-spin"></i> Loading projects...
+                            </div>
+                        </div>
+                        
+                        <!-- Selected Project Display -->
+                        <div class="selected-project-display" id="selectedProjectDisplay">
+                            <div class="selected-project-info">
+                                <div class="selected-project-title" id="selectedProjectTitle"></div>
+                                <div class="selected-project-meta" id="selectedProjectMeta"></div>
+                            </div>
+                            
+                            <div class="stages-section">
+                                <div class="stages-section-title">Select Stage (Optional)</div>
+                                <div class="stages-list" id="stagesList">
+                                    <!-- Stages will be populated here -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <input type="hidden" id="selectedProjectId" value="">
+                <input type="hidden" id="selectedStageId" value="">
+                <input type="hidden" id="editTaskId" value="">
             </form>
         </div>
         
@@ -342,7 +610,6 @@
             <button type="button" class="create-task-btn" id="createTaskBtn" onclick="submitCreateTask()">
                 <span>Create Task</span>
             </button>
-            <input type="hidden" id="editTaskId" value="">
         </div>
     </div>
 </div>
@@ -351,8 +618,166 @@
 (function() {
     'use strict';
     
+    let projectsData = [];
+    let selectedProjectId = null;
+    let selectedStageId = null;
+    
+    // Load projects when modal opens
+    function loadProjects() {
+        return fetch('/dashboard/mentor/backlog/projects-stages/api/', {
+            method: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            credentials: 'same-origin'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                projectsData = data.projects;
+                renderProjectsList();
+                return Promise.resolve();
+            } else {
+                document.getElementById('projectsList').innerHTML = 
+                    '<div style="padding: 20px; text-align: center; color: #dc2626;">Failed to load projects</div>';
+                return Promise.reject('Failed to load projects');
+            }
+        })
+        .catch(error => {
+            console.error('Error loading projects:', error);
+            document.getElementById('projectsList').innerHTML = 
+                '<div style="padding: 20px; text-align: center; color: #dc2626;">Error loading projects</div>';
+            return Promise.reject(error);
+        });
+    }
+    
+    function renderProjectsList() {
+        const container = document.getElementById('projectsList');
+        if (projectsData.length === 0) {
+            container.innerHTML = '<div style="padding: 20px; text-align: center; color: #94a3b8;">No projects found</div>';
+            return;
+        }
+        
+        container.innerHTML = projectsData.map(project => `
+            <div class="project-item" onclick="selectProject(${project.id})">
+                <div class="project-item-title">${escapeHtml(project.title)}</div>
+                <div class="project-item-meta">${escapeHtml(project.client_name)} • ${escapeHtml(project.template_name)}</div>
+            </div>
+        `).join('');
+    }
+    
+    function renderStages(projectId) {
+        const project = projectsData.find(p => p.id === projectId);
+        if (!project) {
+            console.error('Project not found:', projectId);
+            return;
+        }
+        
+        const stagesList = document.getElementById('stagesList');
+        console.log('Rendering stages for project:', project.title, 'Stages:', project.stages);
+        
+        // Check if stages array exists and has items
+        if (!project.stages || !Array.isArray(project.stages) || project.stages.length === 0) {
+            stagesList.innerHTML = `
+                <div class="stages-empty-state">
+                    <div class="stages-empty-message">
+                        <i class="fas fa-info-circle"></i>
+                        This project has no stages yet.
+                    </div>
+                    <button 
+                        type="button" 
+                        class="btn-add-stages"
+                        onclick="window.open('/dashboard/mentor/projects/${projectId}/', '_blank')"
+                    >
+                        <i class="fas fa-plus"></i>
+                        Add Stages to Project
+                    </button>
+                </div>
+            `;
+            return;
+        }
+        
+        stagesList.innerHTML = project.stages.map(stage => `
+            <label class="stage-item ${selectedStageId == stage.id ? 'selected' : ''}">
+                <input 
+                    type="radio" 
+                    name="stage" 
+                    value="${stage.id}" 
+                    ${selectedStageId == stage.id ? 'checked' : ''}
+                    onchange="selectStage(${stage.id})"
+                >
+                <span class="stage-item-label">${escapeHtml(stage.title)}</span>
+            </label>
+        `).join('');
+    }
+    
+    window.selectProject = function(projectId) {
+        selectedProjectId = projectId;
+        selectedStageId = null; // Reset stage selection
+        
+        // Update UI
+        document.querySelectorAll('.project-item').forEach(item => {
+            item.classList.remove('selected');
+        });
+        const selectedItem = Array.from(document.querySelectorAll('.project-item')).find(item => {
+            return item.onclick.toString().includes(`selectProject(${projectId})`);
+        });
+        if (selectedItem) {
+            selectedItem.classList.add('selected');
+        }
+        
+        // Hide projects list, show selected project
+        document.getElementById('projectsList').style.display = 'none';
+        document.getElementById('selectedProjectDisplay').classList.add('show');
+        document.getElementById('clearSelectionBtn').classList.add('show');
+        
+        // Update selected project info
+        const project = projectsData.find(p => p.id === projectId);
+        if (project) {
+            document.getElementById('selectedProjectTitle').textContent = project.title;
+            document.getElementById('selectedProjectMeta').textContent = `${project.client_name} • ${project.template_name}`;
+            document.getElementById('selectedProjectId').value = projectId;
+            renderStages(projectId);
+        }
+    };
+    
+    window.selectStage = function(stageId) {
+        selectedStageId = stageId;
+        document.getElementById('selectedStageId').value = stageId;
+        
+        // Update UI
+        document.querySelectorAll('.stage-item').forEach(item => {
+            item.classList.remove('selected');
+            const radio = item.querySelector('input[type="radio"]');
+            if (radio && radio.value == stageId) {
+                item.classList.add('selected');
+            }
+        });
+    };
+    
+    window.clearProjectSelection = function() {
+        selectedProjectId = null;
+        selectedStageId = null;
+        document.getElementById('selectedProjectId').value = '';
+        document.getElementById('selectedStageId').value = '';
+        
+        // Update UI
+        document.getElementById('projectsList').style.display = 'flex';
+        document.getElementById('selectedProjectDisplay').classList.remove('show');
+        document.getElementById('clearSelectionBtn').classList.remove('show');
+        document.querySelectorAll('.project-item').forEach(item => {
+            item.classList.remove('selected');
+        });
+    };
+    
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+    
     // Open modal (for create or edit)
-    window.openCreateActiveBacklogTaskModal = function(taskId = null, title = '', description = '', deadline = '', priority = 'medium') {
+    window.openCreateActiveBacklogTaskModal = function(taskId = null, title = '', description = '', deadline = '', priority = 'medium', projectId = null, stageId = null) {
         const modal = document.getElementById('createActiveBacklogTaskModal');
         const modalTitle = document.getElementById('createTaskModalTitle');
         const titleInput = document.getElementById('taskTitleInput');
@@ -364,26 +789,42 @@
         
         if (!modal) return;
         
-        // Set edit mode or create mode
-        if (taskId) {
-            // Edit mode
-            editTaskId.value = taskId;
-            modalTitle.textContent = 'Edit Task';
-            submitBtn.innerHTML = 'Save Changes';
-            if (titleInput) titleInput.value = title;
-            if (descInput) descInput.value = description;
-            if (deadlineInput) deadlineInput.value = deadline;
-            if (priorityInput) priorityInput.value = priority;
-        } else {
-            // Create mode
-            editTaskId.value = '';
-            modalTitle.textContent = 'Create New Active Task';
-            submitBtn.innerHTML = 'Create Task';
-            if (titleInput) titleInput.value = '';
-            if (descInput) descInput.value = '';
-            if (deadlineInput) deadlineInput.value = '';
-            if (priorityInput) priorityInput.value = 'medium';
-        }
+        // Load projects first
+        loadProjects().then(() => {
+            // Set edit mode or create mode
+            if (taskId) {
+                // Edit mode
+                editTaskId.value = taskId;
+                modalTitle.textContent = 'Edit Task';
+                submitBtn.innerHTML = 'Save Changes';
+                if (titleInput) titleInput.value = title;
+                if (descInput) descInput.value = description;
+                if (deadlineInput) deadlineInput.value = deadline;
+                if (priorityInput) priorityInput.value = priority;
+                
+                // Set project and stage if provided
+                if (projectId) {
+                    setTimeout(() => {
+                        selectProject(projectId);
+                        if (stageId) {
+                            setTimeout(() => selectStage(stageId), 100);
+                        }
+                    }, 100);
+                } else {
+                    clearProjectSelection();
+                }
+            } else {
+                // Create mode
+                editTaskId.value = '';
+                modalTitle.textContent = 'Create New Active Task';
+                submitBtn.innerHTML = 'Create Task';
+                if (titleInput) titleInput.value = '';
+                if (descInput) descInput.value = '';
+                if (deadlineInput) deadlineInput.value = '';
+                if (priorityInput) priorityInput.value = 'medium';
+                clearProjectSelection();
+            }
+        });
         
         modal.style.display = 'flex';
         setTimeout(() => {
@@ -391,7 +832,7 @@
         }, 10);
     };
     
-    // Wrapper function for onclick handlers (must be defined after openCreateActiveBacklogTaskModal)
+    // Wrapper function for onclick handlers
     window.openCreateTaskModal = function() {
         window.openCreateActiveBacklogTaskModal();
     };
@@ -401,7 +842,7 @@
         const modal = document.getElementById('createActiveBacklogTaskModal');
         if (!modal) return;
         
-        // Reset form immediately (including button state)
+        // Reset form immediately
         resetCreateTaskForm();
         
         modal.classList.remove('active');
@@ -425,6 +866,9 @@
         if (deadlineInput) deadlineInput.value = '';
         if (priorityInput) priorityInput.value = 'medium';
         if (editTaskId) editTaskId.value = '';
+        
+        // Reset project selection
+        clearProjectSelection();
         
         // Reset button state
         if (btn) {
@@ -458,6 +902,8 @@
         const description = document.getElementById('taskDescriptionInput').value.trim();
         const deadline = document.getElementById('taskDeadlineInput').value || null;
         const priority = document.getElementById('taskPriorityInput').value || 'medium';
+        const projectId = document.getElementById('selectedProjectId').value || null;
+        const stageId = document.getElementById('selectedStageId').value || null;
         
         // Get CSRF token
         function getCookie(name) {
@@ -490,6 +936,8 @@
                 description: description,
                 deadline: deadline,
                 priority: priority,
+                project_id: projectId,
+                stage_id: stageId,
             })
         })
         .then(response => response.json())

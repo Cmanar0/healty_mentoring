@@ -77,6 +77,7 @@ urlpatterns = [
     path('backlog/', views.mentor_backlog, name='mentor_backlog'),
     path('backlog/api/', views.get_mentor_backlog_tasks_api, name='get_mentor_backlog_tasks_api'),
     path('backlog/tasks/create/', views.create_mentor_backlog_task, name='create_mentor_backlog_task'),
+    path('backlog/projects-stages/api/', views.get_mentor_projects_stages_api, name='get_mentor_projects_stages_api'),
     path('backlog/tasks/<int:task_id>/edit/', views.edit_mentor_backlog_task, name='edit_mentor_backlog_task'),
     path('backlog/tasks/<int:task_id>/toggle-complete/', views.toggle_mentor_backlog_task_complete, name='toggle_mentor_backlog_task_complete'),
     path('backlog/tasks/<int:task_id>/delete/', views.delete_mentor_backlog_task, name='delete_mentor_backlog_task'),

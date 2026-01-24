@@ -16,6 +16,12 @@ A Django-based mentoring platform with:
 5.  `python manage.py migrate`
 6.  `python manage.py runserver`
 
+7.  `python manage.py reset_templates --confirm`
+    ----- This will:
+        Delete all existing templates (custom and default)
+        Delete all questionnaires and questions
+        Create 4 new default templates with questionnaires and questions
+
 .venv\Scripts\python.exe create_superuser.py
 .venv\Scripts\python.exe manage.py runserver
 

@@ -106,7 +106,7 @@ For navigation menus or action menus triggered by any element:
   visibility: hidden;
   transform: translateY(-10px);
   transition: all 0.2s ease;
-  z-index: 1000;
+  z-index: 10005;  /* ⚠️ IMPORTANT: High z-index to appear above modals, footers, and other UI elements */
 }
 
 .dropdown-container.active .dropdown-menu,
@@ -642,7 +642,7 @@ document.addEventListener('DOMContentLoaded', function() {
   visibility: hidden;
   transform: translateY(-10px);
   transition: all 0.2s ease;
-  z-index: 1000;
+  z-index: 10005;  /* ⚠️ IMPORTANT: High z-index to appear above modals, footers, and other UI elements */
   min-width: 100%;
 }
 
@@ -744,7 +744,7 @@ document.addEventListener('DOMContentLoaded', function() {
   visibility: hidden;
   transform: translateY(-10px);
   transition: all 0.2s ease;
-  z-index: 1000;
+  z-index: 10005;  /* ⚠️ IMPORTANT: High z-index to appear above modals, footers, and other UI elements */
 }
 
 .user-profile-dropdown.active .user-dropdown-menu {
@@ -827,7 +827,7 @@ When creating a new dropdown menu, ensure:
 - [ ] Gap between icon and text is `12px`
 - [ ] Border radius matches menu container (`12px`)
 - [ ] Smooth transitions (`0.2s ease`)
-- [ ] Proper z-index for layering (`1000`)
+- [ ] Proper z-index for layering (`10005` - high enough to appear above modals, footers, and other UI elements)
 
 ### Form Input Dropdowns
 - [ ] Trigger has white background (no background color change on hover)

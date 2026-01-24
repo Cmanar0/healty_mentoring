@@ -2315,7 +2315,7 @@ def submit_questionnaire(request, project_id):
             answers_dict[str(question.id)] = answer_text
             
             # Extract target completion date if this is the target completion date question
-            if question.question_type == 'date' and 'target completion date' in question.question_text.lower():
+            if question.is_target_date and question.question_type == 'date':
                 try:
                     from datetime import datetime
                     target_completion_date = datetime.strptime(answer_text, '%Y-%m-%d').date()
@@ -2337,10 +2337,16 @@ def submit_questionnaire(request, project_id):
         project.target_completion_date = target_completion_date
     project.save()
     
+    # Determine redirect URL based on user role
+    if hasattr(request.user, 'profile') and request.user.profile.role == 'mentor':
+        redirect_url = reverse('general:dashboard_mentor:project_detail', args=[project.id])
+    else:
+        redirect_url = reverse('general:dashboard_user:project_detail', args=[project.id])
+    
     return JsonResponse({
         'success': True,
         'message': 'Questionnaire submitted successfully!',
-        'redirect_url': reverse('general:dashboard_user:project_detail', args=[project.id])
+        'redirect_url': redirect_url
     })
 
 

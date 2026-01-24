@@ -2,18 +2,37 @@ from django.contrib import admin
 from .models import (
     Project, ProjectTemplate, ProjectModule, ProjectModuleInstance,
     Questionnaire, Question, QuestionnaireResponse,
-    ProjectStage, ProjectStageTemplate, ProjectStageNote, 
+    ProjectStage, ProjectStageNote, 
     ProjectStageNoteAttachment, ProjectStageNoteComment,
     Task
 )
 
 
+class QuestionInline(admin.TabularInline):
+    model = Question
+    extra = 0
+    fields = ('question_text', 'question_type', 'is_required', 'order')
+    ordering = ('order',)
+    show_change_link = True
+
+
+class QuestionnaireInline(admin.StackedInline):
+    model = Questionnaire
+    extra = 0
+    can_delete = False
+    fields = ('title', 'created_at', 'updated_at')
+    readonly_fields = ('created_at', 'updated_at')
+    show_change_link = True
+
+
 @admin.register(ProjectTemplate)
 class ProjectTemplateAdmin(admin.ModelAdmin):
-    list_display = ('name', 'is_custom', 'author', 'is_active', 'order', 'created_at')
+    list_display = ('name', 'is_custom', 'author', 'get_questionnaire', 'get_question_count', 'is_active', 'order', 'created_at')
     list_filter = ('is_custom', 'is_active')
     search_fields = ('name', 'description')
     list_editable = ('is_active', 'order')
+    filter_horizontal = ('preselected_modules',)
+    inlines = [QuestionnaireInline]
     
     fieldsets = (
         ('Basic Information', {
@@ -25,11 +44,30 @@ class ProjectTemplateAdmin(admin.ModelAdmin):
         ('Custom Template', {
             'fields': ('is_custom', 'author'),
         }),
+        ('Preselected Modules', {
+            'fields': ('preselected_modules',),
+            'description': 'Modules that will be automatically selected when this template is chosen in the Create Project popup.'
+        }),
         ('Advanced', {
             'fields': ('template_fields',),
             'classes': ('collapse',)
         }),
     )
+    
+    def get_questionnaire(self, obj):
+        """Display the questionnaire linked to this template"""
+        if hasattr(obj, 'questionnaire'):
+            return f"{obj.questionnaire.title} (ID: {obj.questionnaire.id})"
+        return "No questionnaire"
+    get_questionnaire.short_description = 'Questionnaire'
+    
+    def get_question_count(self, obj):
+        """Display the number of questions in the questionnaire"""
+        if hasattr(obj, 'questionnaire'):
+            count = obj.questionnaire.questions.count()
+            return f"{count} question{'s' if count != 1 else ''}"
+        return "0 questions"
+    get_question_count.short_description = 'Questions'
 
 
 class ProjectAdmin(admin.ModelAdmin):
@@ -93,14 +131,6 @@ class ProjectStageAdmin(admin.ModelAdmin):
     ordering = ('project', 'order')
 
 
-@admin.register(ProjectStageTemplate)
-class ProjectStageTemplateAdmin(admin.ModelAdmin):
-    list_display = ('title', 'template', 'order', 'default_target_date_offset')
-    list_filter = ('template',)
-    search_fields = ('title', 'description')
-    ordering = ('template', 'order')
-
-
 @admin.register(Task)
 class TaskAdmin(admin.ModelAdmin):
     list_display = ('title', 'stage', 'user_active_backlog', 'mentor_backlog', 'completed', 'deadline', 'created_at')
@@ -127,18 +157,32 @@ class ProjectModuleInstanceAdmin(admin.ModelAdmin):
 
 @admin.register(Questionnaire)
 class QuestionnaireAdmin(admin.ModelAdmin):
-    list_display = ('template', 'title', 'created_at')
+    list_display = ('template', 'title', 'get_question_count', 'created_at')
     list_filter = ('template__is_custom',)
     search_fields = ('template__name', 'title')
     readonly_fields = ('created_at', 'updated_at')
+    inlines = [QuestionInline]
+    
+    def get_question_count(self, obj):
+        """Display the number of questions in this questionnaire"""
+        count = obj.questions.count()
+        return f"{count} question{'s' if count != 1 else ''}"
+    get_question_count.short_description = 'Questions'
 
 
 @admin.register(Question)
 class QuestionAdmin(admin.ModelAdmin):
-    list_display = ('question_text', 'questionnaire', 'question_type', 'is_required', 'order')
+    list_display = ('question_text', 'questionnaire', 'get_template', 'question_type', 'is_required', 'order')
     list_filter = ('question_type', 'is_required', 'questionnaire__template')
     search_fields = ('question_text',)
     ordering = ('questionnaire', 'order')
+    
+    def get_template(self, obj):
+        """Display the template this question belongs to"""
+        if obj.questionnaire and obj.questionnaire.template:
+            return obj.questionnaire.template.name
+        return "-"
+    get_template.short_description = 'Template'
 
 
 @admin.register(QuestionnaireResponse)

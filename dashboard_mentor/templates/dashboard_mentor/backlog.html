@@ -847,7 +847,9 @@
                             task.title,
                             task.description || '',
                             task.deadline || '',
-                            task.priority || 'medium'
+                            task.priority || 'medium',
+                            task.project_id || null,
+                            task.stage_id || null
                         );
                     } else if (typeof openCreateTaskModal === 'function') {
                         openCreateTaskModal(taskId, task.title, task.description || '', task.deadline || '', task.priority || 'medium');
