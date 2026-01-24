@@ -5119,13 +5119,20 @@ def reorder_questions(request, template_id):
         data = json.loads(request.body)
         question_orders = data.get('orders', [])  # List of {id: question_id, order: new_order}
         
+        if not question_orders:
+            return JsonResponse({'success': False, 'error': 'No orders provided.'}, status=400)
+        
         # Validate that all questions belong to this template's questionnaire
         from dashboard_user.models import Questionnaire
         if not hasattr(template, 'questionnaire'):
             questionnaire, created = Questionnaire.objects.get_or_create(template=template)
         else:
             questionnaire = template.questionnaire
+        
         question_ids = [item.get('id') for item in question_orders if item.get('id')]
+        
+        if not question_ids:
+            return JsonResponse({'success': False, 'error': 'No valid question IDs provided.'}, status=400)
         
         # Verify all questions belong to this questionnaire
         valid_questions = Question.objects.filter(
