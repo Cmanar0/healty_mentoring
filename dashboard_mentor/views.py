@@ -5751,6 +5751,44 @@ def update_stage_dates(request, project_id, stage_id):
 
 @login_required
 @require_POST
+def remove_project_supervisor(request, project_id):
+    """Remove supervisor from project"""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+    
+    mentor_profile = request.user.mentor_profile
+    project = get_object_or_404(Project, id=project_id, supervised_by=mentor_profile)
+    
+    try:
+        # Only allow removal if the current user is the supervisor
+        if project.supervised_by != mentor_profile:
+            return JsonResponse({'success': False, 'error': 'You can only remove yourself as supervisor'}, status=403)
+        
+        # Store project info before removing supervisor
+        project_title = project.title
+        client_name = None
+        if project.project_owner:
+            client_name = f"{project.project_owner.first_name} {project.project_owner.last_name}"
+        
+        # Remove the supervisor
+        project.supervised_by = None
+        project.save()
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Supervisor removed successfully',
+            'project_title': project_title,
+            'client_name': client_name
+        })
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f'Error removing project supervisor: {str(e)}', exc_info=True)
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+@require_POST
 def update_project_target_date(request, project_id):
     """Update project target completion date"""
     if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
