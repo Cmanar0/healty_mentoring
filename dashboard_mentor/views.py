@@ -112,17 +112,47 @@ def dashboard(request):
     mentor_profile = request.user.mentor_profile if hasattr(request.user, 'mentor_profile') else None
     templates = []
     modules = []
+    backlog_tasks = []
     
     if mentor_profile:
         # Get templates with no author OR templates authored by this mentor
+        # Exclude the "Custom (Blank)" template from the list
         templates = ProjectTemplate.objects.filter(
             Q(author__isnull=True) | Q(author=mentor_profile)
+        ).exclude(
+            name='Custom (Blank)',
+            is_custom=False
         ).prefetch_related('preselected_modules').order_by('order', 'name')
         
         # Get all active modules (or all if none are active)
         modules = ProjectModule.objects.filter(is_active=True).order_by('order', 'name')
         if not modules.exists():
             modules = ProjectModule.objects.all().order_by('order', 'name')
+        
+        # Get mentor backlog tasks (limit to 5 for dashboard)
+        from dashboard_user.models import Task
+        backlog_tasks_queryset = Task.objects.filter(
+            mentor_backlog=mentor_profile,
+            completed=False
+        ).select_related('project', 'stage').order_by('order', 'created_at')[:5]
+        
+        # Prepare tasks with status information
+        today = timezone.now().date()
+        week_from_now = today + timedelta(days=7)
+        backlog_tasks = []
+        for task in backlog_tasks_queryset:
+            task_dict = {
+                'id': task.id,
+                'title': task.title,
+                'description': task.description,
+                'deadline': task.deadline,
+                'priority': task.priority,
+                'completed': task.completed,
+                'project': task.project,
+                'is_overdue': task.deadline and task.deadline < today if task.deadline else False,
+                'is_due_this_week': task.deadline and task.deadline <= week_from_now if task.deadline else False,
+            }
+            backlog_tasks.append(task_dict)
     
     return render(request, 'dashboard_mentor/dashboard_mentor.html', {
         'debug': settings.DEBUG,
@@ -130,6 +160,7 @@ def dashboard(request):
         'has_more_sessions': has_more_sessions,
         'project_templates': templates,
         'project_modules': modules,
+        'backlog_tasks': backlog_tasks,
     })
 
 @login_required
@@ -4385,8 +4416,12 @@ def project_templates_api(request):
         # Get templates with no author OR templates authored by this mentor
         # Show all templates matching author criteria (both active and inactive)
         # This ensures existing templates show up even if is_active is not set
+        # Exclude the "Custom (Blank)" template from the list
         templates = ProjectTemplate.objects.filter(
             Q(author__isnull=True) | Q(author=mentor_profile)
+        ).exclude(
+            name='Custom (Blank)',
+            is_custom=False
         ).prefetch_related('preselected_modules').order_by('order', 'name')
         
         # Debug logging
@@ -4656,8 +4691,12 @@ def templates_list(request):
     ).order_by('-created_at')
     
     # System templates (standard ones) - show templates with no author or templates authored by this mentor
+    # Exclude the "Custom (Blank)" template from the list
     system_templates = ProjectTemplate.objects.filter(
         Q(is_custom=False) & Q(is_active=True) & (Q(author__isnull=True) | Q(author=mentor_profile))
+    ).exclude(
+        name='Custom (Blank)',
+        is_custom=False
     ).order_by('order', 'name')
     
     # Get all active modules for the create template modal
@@ -5296,8 +5335,12 @@ def projects_list(request):
             continue
     
     # Get templates and modules for the create project modal
+    # Exclude the "Custom (Blank)" template from the list
     templates = ProjectTemplate.objects.filter(
         Q(author__isnull=True) | Q(author=mentor_profile)
+    ).exclude(
+        name='Custom (Blank)',
+        is_custom=False
     ).prefetch_related('preselected_modules').order_by('order', 'name')
     
     # Get all active modules (or all if none are active)
@@ -6990,10 +7033,10 @@ def get_client_active_backlog_api(request, client_id):
     client_profile = get_object_or_404(UserProfile, id=client_id)
     
     try:
-        # Get tasks in client's active backlog (limit to 5 for sidebar display)
+        # Get all tasks in client's active backlog (no limit - display all in scrollable sidebar)
         tasks = Task.objects.filter(
             user_active_backlog=client_profile
-        ).order_by('order', 'created_at')[:5]
+        ).order_by('order', 'created_at')
         
         tasks_data = []
         for task in tasks:
@@ -7026,3 +7069,56 @@ def get_client_active_backlog_api(request, client_id):
             'success': False,
             'error': f'Server error: {str(e)}'
         }, status=500)
+
+
+@login_required
+def statistics(request):
+    """Mentor statistics page"""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        return redirect('general:index')
+    
+    mentor_profile = request.user.mentor_profile if hasattr(request.user, 'mentor_profile') else None
+    
+    # Calculate statistics
+    stats = {
+        'earned': 0,
+        'sessions': 0,
+        'active_clients': 0,
+        'new_clients': 0,
+        'blog_posts': 0,
+        'profile_views': 0,
+    }
+    
+    if mentor_profile:
+        # Get all sessions
+        from general.models import Session
+        all_sessions = mentor_profile.sessions.all()
+        stats['sessions'] = all_sessions.count()
+        
+        # Calculate earned (sum of session prices)
+        confirmed_sessions = all_sessions.filter(status='confirmed')
+        stats['earned'] = sum(session.price or 0 for session in confirmed_sessions)
+        
+        # Get active clients
+        active_relationships = MentorClientRelationship.objects.filter(
+            mentor=mentor_profile,
+            confirmed=True,
+            status='active'
+        )
+        stats['active_clients'] = active_relationships.count()
+        
+        # Get new clients (last 30 days)
+        thirty_days_ago = timezone.now() - timedelta(days=30)
+        new_relationships = active_relationships.filter(created_at__gte=thirty_days_ago)
+        stats['new_clients'] = new_relationships.count()
+        
+        # Get blog posts (author is CustomUser, not MentorProfile)
+        stats['blog_posts'] = BlogPost.objects.filter(author=request.user).count()
+        
+        # Profile views (placeholder - would need to track this)
+        stats['profile_views'] = 0
+    
+    return render(request, 'dashboard_mentor/statistics.html', {
+        'stats': stats,
+        'mentor_profile': mentor_profile,
+    })

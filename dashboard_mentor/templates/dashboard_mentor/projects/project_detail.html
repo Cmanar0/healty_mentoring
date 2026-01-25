@@ -538,20 +538,36 @@
         display: inline-flex;
         align-items: center;
         gap: 6px;
-        padding: 2px 8px;
         border-radius: 8px;
-        font-size: 0.8rem;
+        font-size: 0.9rem;
         font-weight: 600;
     }
     
     .project-info-status.completed {
-        background: #dcfce7;
         color: #15803d;
     }
     
     .project-info-status.pending {
-        background: #fef3c7;
         color: #92400e;
+    }
+
+    .project-info-btn.questionnaire-completed {
+        background: #dcfce7;
+        border-color: #86efac;
+        color: #15803d;
+    }
+
+    .project-info-btn.questionnaire-completed:hover {
+        background: #bbf7d0;
+        border-color: #4ade80;
+    }
+
+    .project-info-btn.questionnaire-completed .project-info-status {
+        color: #15803d;
+    }
+
+    .project-info-btn.questionnaire-completed i.fa-edit {
+        color: #15803d;
     }
 
     .project-info-btn i.fa-edit,
@@ -1681,7 +1697,7 @@
                             <!-- Project Definition -->
                             <div class="project-info-item">
                                 <div class="project-info-label">Project Definition</div>
-                                <button type="button" onclick="window.openQuestionnaireModal()" class="project-info-btn {% if not project.questionnaire_completed %}target-date-warning{% endif %}">
+                                <button type="button" onclick="window.openQuestionnaireModal()" class="project-info-btn {% if project.questionnaire_completed %}questionnaire-completed{% else %}target-date-warning{% endif %}">
                                     {% if project.questionnaire_completed %}
                                         <span class="project-info-status completed">
                                             <i class="fas fa-check-circle"></i> Completed
@@ -1718,14 +1734,21 @@
                                 <i class="fas fa-ellipsis-v"></i>
                             </button>
                             <div class="project-settings-dropdown-menu" onclick="event.stopPropagation();">
-                                <button class="project-settings-dropdown-item first-item" onclick="openProjectSettingsModal(); event.stopPropagation();">
-                                    <i class="fas fa-edit"></i>
-                                    <span>Edit</span>
-                                </button>
-                                <button class="project-settings-dropdown-item delete-item last-item" onclick="deleteProject(); event.stopPropagation();">
-                                    <i class="fas fa-trash"></i>
-                                    <span>Delete Project</span>
-                                </button>
+                                {% if project.project_owner %}
+                                    <button class="project-settings-dropdown-item first-item last-item" onclick="openSupervisorModalWithConfirmation(); event.stopPropagation();">
+                                        <i class="fas fa-user-minus"></i>
+                                        <span>Remove myself as Supervisor from this project</span>
+                                    </button>
+                                {% else %}
+                                    <button class="project-settings-dropdown-item first-item" onclick="openProjectSettingsModal(); event.stopPropagation();">
+                                        <i class="fas fa-edit"></i>
+                                        <span>Edit</span>
+                                    </button>
+                                    <button class="project-settings-dropdown-item delete-item last-item" onclick="deleteProject(); event.stopPropagation();">
+                                        <i class="fas fa-trash"></i>
+                                        <span>Delete Project</span>
+                                    </button>
+                                {% endif %}
                             </div>
                         </div>
                     </div>
@@ -3938,6 +3961,26 @@
             }
             modal.style.display = 'flex';
             setTimeout(() => modal.classList.add('active'), 10);
+        }
+    }
+
+    window.openSupervisorModalWithConfirmation = function() {
+        const modal = document.getElementById('supervisorModal');
+        if (modal) {
+            // Show confirmation view immediately
+            const infoView = document.getElementById('supervisorInfoView');
+            const confirmView = document.getElementById('supervisorConfirmView');
+            if (infoView && confirmView) {
+                infoView.style.display = 'none';
+                confirmView.style.display = 'block';
+            }
+            modal.style.display = 'flex';
+            setTimeout(() => modal.classList.add('active'), 10);
+        }
+        // Close the dropdown menu
+        const dropdown = document.getElementById('projectSettingsDropdown');
+        if (dropdown) {
+            dropdown.classList.remove('active');
         }
     }
 

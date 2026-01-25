@@ -37,21 +37,121 @@ def dashboard(request):
     if request.user.profile.role != 'user':
         return redirect('general:index')
     
-    # Get pending invitations for verified users (not confirmed yet, status is inactive)
-    pending_invitations = []
-    if request.user.is_email_verified and hasattr(request.user, 'user_profile'):
-        user_profile = request.user.user_profile
-        expiration_time = timezone.now() - timedelta(days=7)
+    user_profile = request.user.user_profile if hasattr(request.user, 'user_profile') else None
+    
+    # Fetch upcoming sessions (invited and confirmed only, future dates, max 4)
+    upcoming_sessions = []
+    has_more_sessions = False
+    
+    try:
+        from general.models import Session
+        from zoneinfo import ZoneInfo
+        from datetime import timezone as dt_timezone
         
-        pending_invitations = MentorClientRelationship.objects.filter(
-            client=user_profile,
-            confirmed=False,
-            status='inactive',
-            invited_at__gte=expiration_time
-        ).select_related('mentor', 'mentor__user').order_by('-invited_at')
+        if user_profile:
+            # Get user's timezone
+            user_timezone = user_profile.selected_timezone or user_profile.detected_timezone or user_profile.time_zone or 'UTC'
+            user_tzinfo = None
+            try:
+                user_tzinfo = ZoneInfo(str(user_timezone))
+            except Exception:
+                user_tzinfo = dt_timezone.utc
+            
+            now = timezone.now()
+            # Get all upcoming sessions (invited and confirmed)
+            all_upcoming = Session.objects.filter(
+                attendees=request.user,
+                status__in=['invited', 'confirmed'],
+                start_datetime__gte=now
+            ).order_by('start_datetime').select_related('created_by', 'created_by__mentor_profile').prefetch_related('attendees')
+            
+            # Get total count to check if there are more than 4
+            total_count = all_upcoming.count()
+            has_more_sessions = total_count > 4
+            
+            # Get first 4 sessions
+            sessions_queryset = all_upcoming[:4]
+            
+            # Format sessions for template
+            for session in sessions_queryset:
+                # Get mentor name (created_by is the mentor)
+                mentor_name = None
+                if session.created_by and hasattr(session.created_by, 'mentor_profile'):
+                    mentor_profile = session.created_by.mentor_profile
+                    mentor_name = f"{mentor_profile.first_name} {mentor_profile.last_name}".strip()
+                    if not mentor_name:
+                        mentor_name = session.created_by.email.split('@')[0]
+                else:
+                    mentor_name = session.created_by.email.split('@')[0] if session.created_by else 'Mentor'
+                
+                # Convert to user's timezone
+                start_datetime_local = session.start_datetime
+                end_datetime_local = session.end_datetime
+                try:
+                    start_datetime_local = session.start_datetime.astimezone(user_tzinfo)
+                    end_datetime_local = session.end_datetime.astimezone(user_tzinfo)
+                except Exception:
+                    pass
+                
+                upcoming_sessions.append({
+                    'id': session.id,
+                    'start_datetime': start_datetime_local,
+                    'end_datetime': end_datetime_local,
+                    'status': session.status,
+                    'mentor_name': mentor_name,
+                    'note': session.note,
+                })
+    except Exception as e:
+        # Log error but don't fail the request
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error fetching upcoming sessions: {str(e)}")
+    
+    # Get user's active backlog tasks (limit to 5 for dashboard)
+    backlog_tasks = []
+    if user_profile:
+        from dashboard_user.models import Task
+        backlog_tasks_queryset = Task.objects.filter(
+            user_active_backlog=user_profile,
+            completed=False
+        ).select_related('project', 'stage').order_by('order', 'created_at')[:5]
+        
+        # Prepare tasks with status information
+        today = timezone.now().date()
+        week_from_now = today + timedelta(days=7)
+        for task in backlog_tasks_queryset:
+            task_dict = {
+                'id': task.id,
+                'title': task.title,
+                'description': task.description,
+                'deadline': task.deadline,
+                'priority': task.priority,
+                'completed': task.completed,
+                'project': task.project,
+                'is_overdue': task.deadline and task.deadline < today if task.deadline else False,
+                'is_due_this_week': task.deadline and task.deadline <= week_from_now if task.deadline else False,
+            }
+            backlog_tasks.append(task_dict)
+    
+    # Get user credit and coins (placeholder values - these would come from a payment/wallet system)
+    user_credit = getattr(user_profile, 'account_balance', 0.00) if user_profile else 0.00  # USD balance
+    user_coins = getattr(user_profile, 'coins_balance', 0) if user_profile else 0  # Virtual coins
+    
+    # Get user's projects (owned projects only, exclude pending assignments)
+    user_projects = []
+    if user_profile:
+        from dashboard_user.models import Project
+        user_projects = Project.objects.filter(
+            project_owner=user_profile
+        ).exclude(assignment_status='assigned').select_related('template', 'supervised_by', 'supervised_by__user').order_by('-created_at')[:6]  # Limit to 6 for dashboard
     
     return render(request, 'dashboard_user/dashboard_user.html', {
-        'pending_invitations': pending_invitations,
+        'upcoming_sessions': upcoming_sessions,
+        'has_more_sessions': has_more_sessions,
+        'backlog_tasks': backlog_tasks,
+        'user_credit': user_credit,
+        'user_coins': user_coins,
+        'user_projects': user_projects,
     })
 
 @login_required
@@ -2032,40 +2132,53 @@ def session_detail(request, session_id):
 def accept_project_assignment_secure(request, uidb64, token):
     """
     Secure link handler for project assignment emails.
-    Ensures correct user is logged in before accepting assignment.
+    Ensures correct user is logged in before managing projects.
+    Link always works, even after project acceptance/rejection.
     """
-    # Validate token
+    user_id = None
+    user = None
+    token_valid = False
+    
+    # Try to validate token
     try:
         user_id = force_str(urlsafe_base64_decode(uidb64))
-        user = get_object_or_404(CustomUser, id=user_id)
-        
-        if not default_token_generator.check_token(user, token):
-            messages.error(request, 'Invalid or expired project assignment link.')
-            return redirect('general:index')
+        try:
+            user = CustomUser.objects.get(id=user_id)
+            if default_token_generator.check_token(user, token):
+                token_valid = True
+        except CustomUser.DoesNotExist:
+            # User doesn't exist, token invalid
+            pass
     except Exception:
-        messages.error(request, 'Invalid project assignment link.')
-        return redirect('general:index')
+        # Token validation failed, but we'll still allow access if user is logged in
+        pass
     
-    # Check if logout is requested (from email link)
-    if request.GET.get('logout') == 'true' and request.user.is_authenticated:
+    # If token is valid, handle logout if requested
+    if token_valid and request.GET.get('logout') == 'true' and request.user.is_authenticated:
         # Verify token matches current user
         try:
             if str(request.user.id) != user_id:
                 logout(request)
-                messages.info(request, 'Please log in with the correct account to accept the project assignment.')
+                messages.info(request, 'Please log in with the correct account to manage your projects.')
         except Exception:
             logout(request)
-            messages.info(request, 'Please log in to accept the project assignment.')
+            messages.info(request, 'Please log in to manage your projects.')
     
-    # Ensure correct user is logged in
-    if not request.user.is_authenticated or request.user.id != user.id:
-        messages.info(request, 'Please log in to view and accept your project assignment.')
-        next_url = reverse("general:dashboard_user:accept_project_assignment_secure", args=[uidb64, token])
-        if request.GET.get('logout') == 'true':
-            next_url += '?logout=true'
-        return redirect(f'/accounts/login/?next={quote(next_url)}')
+    # If token is valid, ensure correct user is logged in
+    if token_valid:
+        if not request.user.is_authenticated or request.user.id != user.id:
+            messages.info(request, 'Please log in to manage your projects.')
+            # Redirect directly to manage invitations page after login
+            next_url = reverse("general:dashboard_user:manage_project_invitations")
+            return redirect(f'/accounts/login/?next={quote(next_url)}')
+    else:
+        # Token invalid or expired - still allow access if user is logged in
+        if not request.user.is_authenticated:
+            messages.info(request, 'Please log in to manage your projects.')
+            next_url = reverse("general:dashboard_user:manage_project_invitations")
+            return redirect(f'/accounts/login/?next={quote(next_url)}')
     
-    # User is authenticated and correct - redirect to manage invitations page
+    # Always redirect to manage invitations page (works even after acceptance/rejection)
     return redirect('general:dashboard_user:manage_project_invitations')
 
 
@@ -2198,6 +2311,91 @@ def project_detail(request, project_id):
     if not (is_owner or is_supervisor):
         return redirect('general:index')
     
+    # Handle POST requests (update/delete)
+    if request.method == 'POST':
+        import json
+        try:
+            data = json.loads(request.body)
+            action = data.get('action')
+            
+            # Only project owner can edit/delete
+            if not is_owner:
+                return JsonResponse({'success': False, 'error': 'Only project owner can perform this action'}, status=403)
+            
+            if action == 'update':
+                title = data.get('title', '').strip()
+                description = data.get('description', '').strip()
+                
+                if not title:
+                    return JsonResponse({'success': False, 'error': 'Project title is required'}, status=400)
+                
+                project.title = title
+                project.description = description
+                project.save()
+                
+                return JsonResponse({'success': True, 'message': 'Project updated successfully'})
+            
+            elif action == 'update_target_date':
+                target_date_str = data.get('target_date')
+                
+                if target_date_str:
+                    try:
+                        from datetime import datetime
+                        target_date = datetime.strptime(target_date_str, '%Y-%m-%d').date()
+                        project.target_completion_date = target_date
+                    except ValueError:
+                        return JsonResponse({'success': False, 'error': 'Invalid date format'}, status=400)
+                else:
+                    project.target_completion_date = None
+                
+                project.save()
+                return JsonResponse({'success': True, 'message': 'Target date updated successfully'})
+            
+            elif action == 'remove_supervisor':
+                project.supervised_by = None
+                project.save()
+                return JsonResponse({'success': True, 'message': 'Supervisor removed successfully'})
+            
+            elif action == 'assign_supervisor':
+                mentor_id = data.get('mentor_id')
+                if not mentor_id:
+                    return JsonResponse({'success': False, 'error': 'Mentor ID is required'}, status=400)
+                
+                try:
+                    from accounts.models import MentorProfile
+                    mentor_profile = MentorProfile.objects.get(id=mentor_id)
+                    # Verify the user has a relationship with this mentor
+                    from accounts.models import MentorClientRelationship
+                    relationship = MentorClientRelationship.objects.filter(
+                        mentor=mentor_profile,
+                        client=user_profile,
+                        confirmed=True
+                    ).first()
+                    
+                    if not relationship:
+                        return JsonResponse({'success': False, 'error': 'You do not have a relationship with this mentor'}, status=403)
+                    
+                    project.supervised_by = mentor_profile
+                    project.save()
+                    return JsonResponse({'success': True, 'message': 'Supervisor assigned successfully'})
+                except MentorProfile.DoesNotExist:
+                    return JsonResponse({'success': False, 'error': 'Mentor not found'}, status=404)
+            
+            elif action == 'delete':
+                project.delete()
+                return JsonResponse({'success': True, 'message': 'Project deleted successfully'})
+            
+            else:
+                return JsonResponse({'success': False, 'error': 'Invalid action'}, status=400)
+                
+        except json.JSONDecodeError:
+            return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f'Error in project_detail POST: {str(e)}', exc_info=True)
+            return JsonResponse({'success': False, 'error': str(e)}, status=500)
+    
     user_profile = getattr(request.user, 'user_profile', None)
     
     # Get questions for this project
@@ -2226,6 +2424,31 @@ def project_detail(request, project_id):
     # Get stages
     stages = project.stages.all().order_by('order')
     
+    # Get available mentors for project owner (if user is owner)
+    available_mentors = []
+    if is_owner and user_profile:
+        from accounts.models import MentorClientRelationship
+        relationships = MentorClientRelationship.objects.filter(
+            client=user_profile,
+            confirmed=True
+        ).select_related('mentor', 'mentor__user').order_by('mentor__first_name', 'mentor__last_name')
+        available_mentors = [rel.mentor for rel in relationships]
+    
+    # Calculate project progress for sidebar
+    total_tasks = 0
+    completed_tasks = 0
+    for stage in stages:
+        if not getattr(stage, 'is_disabled', False):
+            # Get tasks in this stage
+            from dashboard_user.models import Task
+            stage_tasks = Task.objects.filter(stage=stage)
+            total_tasks += stage_tasks.count()
+            completed_tasks += stage_tasks.filter(completed=True).count()
+    
+    project_progress = 0
+    if total_tasks > 0:
+        project_progress = round((completed_tasks / total_tasks) * 100)
+    
     context = {
         'project': project,
         'user_profile': user_profile,
@@ -2236,6 +2459,8 @@ def project_detail(request, project_id):
         'stages': stages,
         'is_owner': is_owner,
         'is_supervisor': is_supervisor,
+        'project_progress': project_progress,
+        'available_mentors': available_mentors,
     }
     
     return render(request, 'dashboard_user/projects/project_detail.html', context)
@@ -2520,3 +2745,251 @@ def edit_active_backlog_task(request, task_id):
         logger = logging.getLogger(__name__)
         logger.error(f'Error editing active backlog task: {str(e)}')
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+@require_POST
+def toggle_active_backlog_task_complete(request, task_id):
+    """Toggle completion status of a task in user's active backlog"""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'user':
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+    
+    user_profile = request.user.user_profile
+    from dashboard_user.models import Task
+    
+    try:
+        task = get_object_or_404(Task, id=task_id, user_active_backlog=user_profile)
+        data = json.loads(request.body)
+        completed = data.get('completed', False)
+        
+        task.completed = completed
+        task.status = 'completed' if completed else 'todo'
+        task.save()
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Task updated successfully',
+            'completed': task.completed
+        })
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f'Error toggling active backlog task: {str(e)}')
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+@require_POST
+def delete_active_backlog_task(request, task_id):
+    """Delete a task from user's active backlog"""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'user':
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+    
+    user_profile = request.user.user_profile
+    from dashboard_user.models import Task
+    
+    try:
+        task = get_object_or_404(Task, id=task_id, user_active_backlog=user_profile)
+        task.delete()
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Task deleted successfully'
+        })
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f'Error deleting active backlog task: {str(e)}')
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+def get_user_active_backlog_api(request):
+    """API endpoint to get user's active backlog tasks"""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'user':
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+    
+    try:
+        user_profile = request.user.user_profile
+        from dashboard_user.models import Task
+        
+        # Get all tasks in user's active backlog (no limit - display all in scrollable sidebar)
+        tasks = Task.objects.filter(
+            user_active_backlog=user_profile,
+            completed=False
+        ).order_by('order', 'created_at')
+        
+        tasks_data = []
+        for task in tasks:
+            tasks_data.append({
+                'id': task.id,
+                'title': task.title,
+                'description': task.description or '',
+                'completed': task.completed,
+                'deadline': task.deadline.strftime('%Y-%m-%d') if task.deadline else None,
+                'priority': task.priority,
+            })
+        
+        total_count = Task.objects.filter(user_active_backlog=user_profile, completed=False).count()
+        
+        return JsonResponse({
+            'success': True,
+            'tasks': tasks_data,
+            'total_count': total_count,
+        })
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f'Error in get_user_active_backlog_api: {str(e)}', exc_info=True)
+        return JsonResponse({
+            'success': False,
+            'error': f'Server error: {str(e)}'
+        }, status=500)
+
+
+@login_required
+def get_stages_api(request, project_id):
+    """API endpoint to fetch stages for a project (for users)"""
+    try:
+        project = get_object_or_404(
+            Project.objects.select_related('project_owner', 'supervised_by'),
+            id=project_id
+        )
+        
+        # Check if user is the owner or the supervisor (mentor)
+        is_owner = False
+        is_supervisor = False
+        
+        if hasattr(request.user, 'profile'):
+            if request.user.profile.role == 'user':
+                user_profile = request.user.user_profile
+                is_owner = (project.project_owner == user_profile)
+            elif request.user.profile.role == 'mentor':
+                mentor_profile = request.user.mentor_profile
+                is_supervisor = (project.supervised_by == mentor_profile)
+        
+        # Only allow access if user is owner or supervisor
+        if not (is_owner or is_supervisor):
+            return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+        
+        from dashboard_user.models import ProjectStage
+        from datetime import datetime
+        
+        stages = project.stages.all().order_by('order')
+        
+        stages_data = []
+        for stage in stages:
+            # Format date for display (remove leading zero from day)
+            target_date_display = None
+            if stage.target_date:
+                try:
+                    target_date_display = stage.target_date.strftime('%b %d').replace(' 0', ' ')
+                except Exception:
+                    target_date_display = stage.target_date.strftime('%b %d')
+            
+            # Get task counts
+            from dashboard_user.models import Task
+            total_tasks = Task.objects.filter(stage=stage).count()
+            completed_tasks = Task.objects.filter(stage=stage, completed=True).count()
+            
+            stages_data.append({
+                'id': stage.id,
+                'title': stage.title,
+                'description': stage.description or '',
+                'start_date': stage.start_date.strftime('%Y-%m-%d') if stage.start_date else None,
+                'end_date': stage.end_date.strftime('%Y-%m-%d') if stage.end_date else None,
+                'target_date': stage.target_date.strftime('%Y-%m-%d') if stage.target_date else None,
+                'target_date_display': target_date_display,
+                'is_completed': stage.is_completed,
+                'is_pending_confirmation': stage.is_pending_confirmation,
+                'progress_status': stage.progress_status,
+                'is_disabled': stage.is_disabled,
+                'tasks_total': total_tasks,
+                'tasks_completed': completed_tasks,
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'stages': stages_data
+        })
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f'Error in get_stages_api: {str(e)}', exc_info=True)
+        return JsonResponse({
+            'success': False,
+            'error': f'Server error: {str(e)}'
+        }, status=500)
+
+
+@login_required
+def stage_detail(request, project_id, stage_id):
+    """Display project stage detail for users"""
+    project = get_object_or_404(
+        Project.objects.select_related('project_owner', 'supervised_by'),
+        id=project_id
+    )
+    
+    # Check if user is the owner or the supervisor (mentor)
+    is_owner = False
+    is_supervisor = False
+    
+    if hasattr(request.user, 'profile'):
+        if request.user.profile.role == 'user':
+            user_profile = request.user.user_profile
+            is_owner = (project.project_owner == user_profile)
+        elif request.user.profile.role == 'mentor':
+            mentor_profile = request.user.mentor_profile
+            is_supervisor = (project.supervised_by == mentor_profile)
+    
+    # Only allow access if user is owner or supervisor
+    if not (is_owner or is_supervisor):
+        return redirect('general:index')
+    
+    from dashboard_user.models import ProjectStage, ProjectStageNote
+    stage = get_object_or_404(ProjectStage, id=stage_id, project=project)
+    
+    # Update stage completion status based on tasks
+    from dashboard_mentor.views import update_stage_completion_status
+    update_stage_completion_status(stage)
+    
+    # Update progress status based on dates and tasks
+    if not stage.is_disabled:
+        stage.progress_status = stage.calculate_progress_status()
+        stage.save()
+    
+    # Refresh stage from database to get updated status
+    stage.refresh_from_db()
+    
+    # Handle POST actions (only for owner or supervisor)
+    if request.method == "POST" and (is_owner or is_supervisor):
+        if "note_text" in request.POST:
+            note_text = request.POST.get("note_text", "").strip()
+            if note_text:
+                author_role = 'mentor' if is_supervisor else 'user'
+                ProjectStageNote.objects.create(
+                    stage=stage,
+                    author=request.user,
+                    text=note_text,
+                    author_role=author_role
+                )
+                messages.success(request, "Note added.")
+                return redirect('general:dashboard_user:stage_detail', project_id=project.id, stage_id=stage.id)
+    
+    # Get notes
+    notes = stage.notes.all().select_related('author', 'author__mentor_profile', 'author__user_profile')
+    
+    # Get tasks for this stage
+    from dashboard_user.models import Task
+    tasks = stage.backlog_tasks.all().order_by('order', 'created_at')
+    
+    context = {
+        'project': project,
+        'stage': stage,
+        'notes': notes,
+        'tasks': tasks,
+        'is_owner': is_owner,
+        'is_supervisor': is_supervisor,
+    }
+    
+    return render(request, 'dashboard_user/projects/stage_detail.html', context)

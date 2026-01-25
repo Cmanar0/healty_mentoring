@@ -11,87 +11,67 @@
             
             <!-- Left Column (2/3) -->
             <div class="dashboard-col-left">
-                <!-- Stats Card -->
-                <div class="dashboard-card stats-card-compact" id="statsCard">
-                    <div class="card-header">
-                        <h3 class="card-title">Stats</h3>
-                        <div class="stats-period-dropdown">
-                            <button class="stats-period-trigger" id="statsPeriodTrigger">
-                                <span class="period-label">This Week</span>
-                                <i class="fas fa-chevron-down"></i>
-                            </button>
-                            <div class="stats-period-menu" id="statsPeriodMenu">
-                                <button class="stats-period-item">Today</button>
-                                <button class="stats-period-item active">This Week</button>
-                                <button class="stats-period-item">This Month</button>
-                                <button class="stats-period-item">Last Month</button>
-                                <button class="stats-period-item">All Time</button>
+                <!-- Split Stats Cards -->
+                <div class="dashboard-stats-split">
+                    <!-- Next Step Card -->
+                    <div class="dashboard-card stats-card-half">
+                        <div class="card-header">
+                            <h3 class="card-title">Next step</h3>
+                        </div>
+                        <div class="next-step-content">
+                            <div class="next-step-item">
+                                <i class="fas fa-check-circle"></i>
+                                <span>Complete your profile setup</span>
                             </div>
                         </div>
                     </div>
 
-                    <div class="stats-grid-compact">
-                        <!-- Priority Stats -->
-                        <div class="stat-card-compact primary">
-                            <div class="stat-card-compact-icon">
-                                <i class="fas fa-euro-sign"></i>
-                            </div>
-                            <div class="stat-card-compact-content">
-                                <span class="stat-card-compact-label">Earned</span>
-                                <span class="stat-card-compact-value">€1,250</span>
-                                <span class="stat-card-compact-change positive">+12%</span>
-                            </div>
-                        </div>
-                        
-                        <div class="stat-card-compact secondary">
-                            <div class="stat-card-compact-icon">
-                                <i class="fas fa-calendar-check"></i>
-                            </div>
-                            <div class="stat-card-compact-content">
-                                <span class="stat-card-compact-label">Sessions</span>
-                                <span class="stat-card-compact-value">14</span>
-                                <span class="stat-card-compact-change neutral">2 upcoming</span>
-                            </div>
-                        </div>
-
-                        <!-- Compact Stats -->
-                        <div class="stat-mini">
-                            <div class="stat-mini-icon blue">
-                                <i class="fas fa-users"></i>
-                            </div>
-                            <div class="stat-mini-content">
-                                <span class="stat-mini-value">8</span>
-                                <span class="stat-mini-label">Active Clients</span>
+                    <!-- Stats Card -->
+                    <div class="dashboard-card stats-card-half" id="statsCard">
+                        <div class="card-header">
+                            <h3 class="card-title">Stats</h3>
+                            <div style="display: flex; gap: 12px; align-items: center;">
+                                <a href="{% url 'general:dashboard_mentor:statistics' %}" class="btn-all-stats">
+                                    All stats
+                                </a>
+                                <div class="stats-period-dropdown">
+                                    <button class="stats-period-trigger" id="statsPeriodTrigger">
+                                        <span class="period-label">This Week</span>
+                                        <i class="fas fa-chevron-down"></i>
+                                    </button>
+                                    <div class="stats-period-menu" id="statsPeriodMenu">
+                                        <button class="stats-period-item">Today</button>
+                                        <button class="stats-period-item active">This Week</button>
+                                        <button class="stats-period-item">This Month</button>
+                                        <button class="stats-period-item">Last Month</button>
+                                        <button class="stats-period-item">All Time</button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
-                        <div class="stat-mini">
-                            <div class="stat-mini-icon green">
-                                <i class="fas fa-user-plus"></i>
+                        <div class="stats-grid-compact">
+                            <!-- Earned -->
+                            <div class="stat-card-compact primary">
+                                <div class="stat-card-compact-icon">
+                                    <i class="fas fa-euro-sign"></i>
+                                </div>
+                                <div class="stat-card-compact-content">
+                                    <span class="stat-card-compact-label">Earned</span>
+                                    <span class="stat-card-compact-value">€1,250</span>
+                                    <span class="stat-card-compact-change positive">+12%</span>
+                                </div>
                             </div>
-                            <div class="stat-mini-content">
-                                <span class="stat-mini-value">3</span>
-                                <span class="stat-mini-label">New Clients</span>
-                            </div>
-                        </div>
 
-                        <div class="stat-mini">
-                            <div class="stat-mini-icon purple">
-                                <i class="fas fa-file-alt"></i>
-                            </div>
-                            <div class="stat-mini-content">
-                                <span class="stat-mini-value">2</span>
-                                <span class="stat-mini-label">Blog Posts</span>
-                            </div>
-                        </div>
-
-                        <div class="stat-mini">
-                            <div class="stat-mini-icon orange">
-                                <i class="fas fa-eye"></i>
-                            </div>
-                            <div class="stat-mini-content">
-                                <span class="stat-mini-value">640</span>
-                                <span class="stat-mini-label">ProfileViews</span>
+                            <!-- New Clients -->
+                            <div class="stat-mini">
+                                <div class="stat-mini-icon green">
+                                    <i class="fas fa-user-plus"></i>
+                                </div>
+                                <div class="stat-mini-content">
+                                    <span class="stat-mini-value">3</span>
+                                    <span class="stat-mini-label">New Clients</span>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -205,90 +185,57 @@
                 <div class="dashboard-card flex-scroll-card" id="backlogCard">
                     <div class="card-header">
                         <h3 class="card-title">Your backlog</h3>
-                        <a href="#" class="btn-link btn-fixed-width">View All</a>
+                        <a href="{% url 'general:dashboard_mentor:mentor_backlog' %}" class="btn-link btn-fixed-width">View All</a>
                     </div>
 
                     <div class="scrollable-content">
-                        <div class="task-row">
-                            <div class="status-circle orange"></div>
-                            <div class="task-info">
-                                <span class="task-name">Review session notes for Anna</span>
-                                <span class="task-status-text">Before next call</span>
-                            </div>
-                            <div class="completion-circle" onclick="toggleTask(this)">
-                                <i class="fas fa-check"></i>
-                            </div>
-                            <div class="dropdown">
-                                <button class="action-btn ghost" onclick="toggleDropdown(this)">
-                                    <i class="fas fa-ellipsis-h"></i>
-                                </button>
-                                <div class="dropdown-menu">
-                                    <button class="dropdown-item">Open Notes</button>
-                                    <button class="dropdown-item">Reschedule</button>
+                        {% if backlog_tasks %}
+                            {% for task in backlog_tasks %}
+                                <div class="task-row" data-task-id="{{ task.id }}">
+                                    {% if task.priority == 'urgent' or task.priority == 'high' or task.is_overdue %}
+                                        <div class="status-circle red"></div>
+                                    {% elif task.priority == 'medium' %}
+                                        <div class="status-circle orange"></div>
+                                    {% else %}
+                                        <div class="status-circle blue"></div>
+                                    {% endif %}
+                                    <div class="task-info">
+                                        <span class="task-name">{{ task.title }}</span>
+                                        <span class="task-status-text">
+                                            {% if task.is_overdue %}
+                                                Overdue
+                                            {% elif task.is_due_this_week %}
+                                                Due this week
+                                            {% elif task.deadline %}
+                                                Due {{ task.deadline|date:"M d" }}
+                                            {% elif task.project %}
+                                                {{ task.project.title }}
+                                            {% else %}
+                                                Personal task
+                                            {% endif %}
+                                        </span>
+                                    </div>
+                                    <div class="completion-circle {% if task.completed %}completed{% endif %}" onclick="toggleDashboardTask({{ task.id }}, this)">
+                                        <i class="fas fa-check"></i>
+                                    </div>
+                                    <div class="dropdown">
+                                        <button class="action-btn ghost" onclick="toggleDropdown(this)">
+                                            <i class="fas fa-ellipsis-h"></i>
+                                        </button>
+                                        <div class="dropdown-menu">
+                                            <button class="dropdown-item" onclick="window.location.href='{% url 'general:dashboard_mentor:mentor_backlog' %}'">View Details</button>
+                                            <button class="dropdown-item delete-item" onclick="deleteDashboardTask({{ task.id }})" style="color: var(--status-red);">
+                                                Delete
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="task-row" style="border-left: none; padding: 16px; text-align: center; color: var(--dash-text-muted);">
+                                <p>No active tasks in your backlog</p>
                             </div>
-                        </div>
-
-                        <div class="task-row">
-                            <div class="status-circle red"></div>
-                            <div class="task-info">
-                                <span class="task-name">Confirm agenda with Michael</span>
-                                <span class="task-status-text">Overdue</span>
-                            </div>
-                            <div class="completion-circle" onclick="toggleTask(this)">
-                                <i class="fas fa-check"></i>
-                            </div>
-                            <div class="dropdown">
-                                <button class="action-btn ghost" onclick="toggleDropdown(this)">
-                                    <i class="fas fa-ellipsis-h"></i>
-                                </button>
-                                <div class="dropdown-menu">
-                                    <button class="dropdown-item">Send Reminder</button>
-                                    <button class="dropdown-item" style="color: var(--status-red);">
-                                        Mark as Not Relevant
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="task-row">
-                            <div class="status-circle green"></div>
-                            <div class="task-info">
-                                <span class="task-name">Prepare feedback for Leadership Program</span>
-                                <span class="task-status-text">Due this week</span>
-                            </div>
-                            <div class="completion-circle" onclick="toggleTask(this)">
-                                <i class="fas fa-check"></i>
-                            </div>
-                            <div class="dropdown">
-                                <button class="action-btn ghost" onclick="toggleDropdown(this)">
-                                    <i class="fas fa-ellipsis-h"></i>
-                                </button>
-                                <div class="dropdown-menu">
-                                    <button class="dropdown-item">View Details</button>
-                                </div>
-                            </div>
-        </div>
-
-                        <!-- Extra tasks to fill height -->
-                        <div class="task-row">
-                            <div class="status-circle blue"></div>
-                            <div class="task-info">
-                                <span class="task-name">Update mentorship profile</span>
-                                <span class="task-status-text">Profile visibility</span>
-                            </div>
-                            <div class="completion-circle" onclick="toggleTask(this)">
-                                <i class="fas fa-check"></i>
-                            </div>
-                            <div class="dropdown">
-                                <button class="action-btn ghost" onclick="toggleDropdown(this)">
-                                    <i class="fas fa-ellipsis-h"></i>
-                                </button>
-                                <div class="dropdown-menu">
-                                    <button class="dropdown-item">Edit Profile</button>
-                                </div>
-                            </div>
-                        </div>
+                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -341,6 +288,78 @@
         </div>
     </div>
 </div>
+
+<style>
+.dashboard-stats-split {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+@media (max-width: 768px) {
+    .dashboard-stats-split {
+        grid-template-columns: 1fr;
+    }
+}
+
+.stats-card-half {
+    min-height: auto;
+}
+
+.stats-card-half .stats-grid-compact {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.stats-card-half .stat-card-compact,
+.stats-card-half .stat-mini {
+    width: 100%;
+    margin: 0;
+}
+
+.btn-all-stats {
+    background: transparent;
+    border: 1px solid #e5e7eb;
+    color: #64748b;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    white-space: nowrap;
+}
+
+.btn-all-stats:hover {
+    background: #f9fafb;
+    border-color: #d1d5db;
+    color: #1e293b;
+}
+
+.next-step-content {
+    padding-top: 8px;
+}
+
+.next-step-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background: #f9fafb;
+    border-radius: 8px;
+    color: #374151;
+    font-size: 0.95rem;
+}
+
+.next-step-item i {
+    color: #10b981;
+    font-size: 1.1rem;
+}
+</style>
 
 <!-- Page-specific JS: stats dropdown -->
 <script>
@@ -663,4 +682,77 @@ document.addEventListener('keydown', function(e) {
 
 <!-- Include Create Project Modal -->
 {% include "general/modals/create_project_modal.html" %}
+
+<script>
+// Dashboard task management functions
+function toggleDashboardTask(taskId, element) {
+    const isCompleted = element.classList.contains('completed');
+    const newCompleted = !isCompleted;
+    
+    fetch(`{% url "general:dashboard_mentor:toggle_mentor_backlog_task_complete" 0 %}`.replace('0', taskId), {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}',
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ completed: newCompleted })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            if (newCompleted) {
+                element.classList.add('completed');
+                // Remove task from view after a short delay
+                setTimeout(() => {
+                    const taskRow = element.closest('.task-row');
+                    if (taskRow) {
+                        taskRow.style.opacity = '0';
+                        setTimeout(() => taskRow.remove(), 300);
+                    }
+                }, 500);
+            } else {
+                element.classList.remove('completed');
+            }
+        } else {
+            console.error('Failed to toggle task:', data.error);
+            alert('Failed to update task: ' + (data.error || 'Unknown error'));
+        }
+    })
+    .catch(error => {
+        console.error('Error toggling task:', error);
+        alert('An error occurred while updating the task.');
+    });
+}
+
+function deleteDashboardTask(taskId) {
+    if (!confirm('Are you sure you want to delete this task?')) {
+        return;
+    }
+    
+    fetch(`{% url "general:dashboard_mentor:delete_mentor_backlog_task" 0 %}`.replace('0', taskId), {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}',
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const taskRow = document.querySelector(`.task-row[data-task-id="${taskId}"]`);
+            if (taskRow) {
+                taskRow.style.opacity = '0';
+                setTimeout(() => taskRow.remove(), 300);
+            }
+        } else {
+            console.error('Failed to delete task:', data.error);
+            alert('Failed to delete task: ' + (data.error || 'Unknown error'));
+        }
+    })
+    .catch(error => {
+        console.error('Error deleting task:', error);
+        alert('An error occurred while deleting the task.');
+    });
+}
+</script>
 {% endblock %}

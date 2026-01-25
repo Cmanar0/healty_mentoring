@@ -1781,7 +1781,6 @@ input:checked + .toggle-slider:before {
   gap: 24px;
     max-height: 1500px;
     height: auto;
-  min-height: 600px;
   /* max-height is implicitly handled by the fixed height calc */
 }
 
@@ -2634,11 +2633,9 @@ textarea.form-input {
   color: var(--dash-primary);
   border: 2px solid var(--dash-primary);
   box-shadow: 0 4px 16px rgba(16, 185, 129, 0.35);
-  transform: translateY(-1px);
 }
 
 .btn-view-subscriptions:active {
-  transform: translateY(0);
   box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);
 }
 
@@ -2917,7 +2914,6 @@ textarea.form-input {
 
 .btn-glass:hover {
     background: rgba(255, 255, 255, 0.35);
-    transform: translateY(-1px);
     color: white;
     text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
@@ -2938,7 +2934,6 @@ textarea.form-input {
     color: white;
     text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-    transform: translateY(-1px);
 }
 
 /* Dark image - use light buttons with high contrast */
@@ -2956,7 +2951,6 @@ textarea.form-input {
     color: white;
     text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    transform: translateY(-1px);
 }
 
 /* Profile Header (Avatar + Info) */
@@ -4375,7 +4369,6 @@ textarea.form-input {
 
 .btn-update-timezone:hover {
     background: #1d4ed8;
-    transform: translateY(-1px);
 }
 
 @media (max-width: 640px) {
@@ -4633,7 +4626,6 @@ textarea.form-input {
 }
 
 .btn-cropper-save:hover {
-    transform: translateY(-1px);
     box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.4);
 }
 

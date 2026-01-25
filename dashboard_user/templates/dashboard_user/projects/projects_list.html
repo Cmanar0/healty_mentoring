@@ -4,71 +4,107 @@
 {% block page_title %}My Projects{% endblock %}
 
 {% block dashboard_content %}
-<div class="dash-user-projects-page">
-  <div class="dash-user-projects-header">
-    <h1>Projects</h1>
-    <div class="dash-user-projects-header-actions">
+<div class="dashboard-content-container projects-container">
+  <div class="page-header">
+    <div class="page-title-group">
+      <h1>Projects</h1>
+      <p class="page-subtitle">Manage your projects and track progress.</p>
+    </div>
+    <div class="page-header-actions">
       {% if pending_count > 0 %}
-      <a href="{% url 'general:dashboard_user:manage_project_invitations' %}" class="btn btn-secondary" style="width: auto;">
+      <a href="{% url 'general:dashboard_user:manage_project_invitations' %}" class="btn-manage-invitations">
         <i class="fas fa-envelope"></i>
         <span>Manage Invitations</span>
-        {% if pending_count > 0 %}
-        <span class="badge">{{ pending_count }}</span>
-        {% endif %}
+        <span class="invitations-badge">{{ pending_count }}</span>
       </a>
       {% endif %}
-      <button type="button" onclick="openCreateProjectModal()" class="btn btn-primary" style="width: auto;">
+      <button type="button" onclick="openCreateProjectModal()" class="btn-create">
         <i class="fas fa-plus"></i>
-        <span>Create New Project</span>
+        <span>Create Project</span>
       </button>
     </div>
   </div>
 
-  <div class="dash-user-projects-container">
-    <!-- All Projects Section -->
+  <div class="projects-card">
     {% if projects %}
-      <div class="dash-user-projects-section">
-        <h2 class="dash-user-projects-section-title">
-          <i class="fas fa-project-diagram"></i> My Projects
-        </h2>
-        <div class="dash-user-projects-list">
-          {% for project in projects %}
-            <a href="{% url 'general:dashboard_user:project_detail' project.id %}" class="dash-user-project-link">
-              <div class="dash-user-project-card">
-                <div class="dash-user-project-card-header">
-                  <h3>{{ project.title }}</h3>
-                  {% if project.template %}
-                    <span class="dash-user-project-badge">{{ project.template.name }}</span>
-                  {% endif %}
-                </div>
-                {% if project.description %}
-                  <p class="dash-user-project-description">{{ project.description|truncatewords:30 }}</p>
-                {% endif %}
-                {% if project.supervised_by %}
-                  <p class="dash-user-project-mentor">
-                    <i class="fas fa-user-tie"></i> 
-                    Mentor: {{ project.supervised_by.first_name }} {{ project.supervised_by.last_name }}
-                  </p>
-                {% endif %}
-                <div class="dash-user-project-meta">
-                  <span><i class="fas fa-calendar"></i> Created: {{ project.created_at|date:"M d, Y" }}</span>
-                </div>
-              </div>
-            </a>
-          {% endfor %}
-        </div>
+      <!-- Header Row -->
+      <div class="project-row-header">
+        <div></div> <!-- Icon -->
+        <div>Project Details</div>
+        <div class="col-template">Template</div>
+        <div class="col-mentor">Mentor</div>
+        <div class="col-date">Created</div>
+        <div></div> <!-- Arrow -->
       </div>
-    {% endif %}
 
-    <!-- Empty State -->
-    {% if not projects %}
-      <div class="dash-user-no-projects">
-        <i class="fas fa-project-diagram"></i>
-        <p>No projects yet</p>
-        <p class="dash-user-no-projects-subtitle">Create a new project or wait for assignments from your mentors</p>
-        <button type="button" onclick="openCreateProjectModal()" class="btn btn-primary" style="margin-top: 16px;">
+      <!-- Project Rows -->
+      {% for project in projects %}
+      <a href="{% url 'general:dashboard_user:project_detail' project.id %}" class="project-row">
+        <!-- Icon -->
+        <div class="p-icon">
+          {% if project.template and project.template.icon %}
+            <i class="{{ project.template.icon }}"></i>
+          {% else %}
+            <i class="fas fa-cube"></i>
+          {% endif %}
+        </div>
+
+        <!-- Title/Desc -->
+        <div>
+          <div class="p-title">{{ project.title }}</div>
+          {% if project.description %}
+            <div class="p-desc">{{ project.description }}</div>
+          {% endif %}
+        </div>
+
+        <!-- Template -->
+        <div class="col-template">
+          {% if project.template %}
+            <div class="wrapper-template">
+              <i class="{{ project.template.icon|default:'fas fa-layer-group' }}" style="color: #94a3b8;"></i>
+              {{ project.template.name }}
+            </div>
+          {% else %}
+            <span style="color: #9ca3af; font-size: 0.9rem; font-style: italic;">No template</span>
+          {% endif %}
+        </div>
+
+        <!-- Mentor -->
+        <div class="col-mentor">
+          {% if project.supervised_by %}
+            <div class="mentor-info">
+              <div class="mentor-avatar">
+                {{ project.supervised_by.first_name|first|default:"M" }}
+              </div>
+              <div class="mentor-name">{{ project.supervised_by.first_name }} {{ project.supervised_by.last_name }}</div>
+            </div>
+          {% else %}
+            <span style="color: #9ca3af; font-size: 0.9rem; font-style: italic;">No mentor</span>
+          {% endif %}
+        </div>
+
+        <!-- Created Date -->
+        <div class="col-date">
+          <span style="color: #6b7280; font-size: 0.85rem;">{{ project.created_at|date:"M d, Y" }}</span>
+        </div>
+
+        <!-- Arrow -->
+        <div style="text-align: right;">
+          <i class="fas fa-chevron-right chevron-icon"></i>
+        </div>
+      </a>
+      {% endfor %}
+    {% else %}
+      <!-- Empty State -->
+      <div class="empty-state">
+        <div class="empty-state-icon">
+          <i class="fas fa-folder-open"></i>
+        </div>
+        <h3 class="empty-state-title">No projects yet</h3>
+        <p class="empty-state-text">Create a new project or wait for assignments from your mentors</p>
+        <button type="button" onclick="openCreateProjectModal()" class="btn-create" style="margin-top: 24px;">
           <i class="fas fa-plus"></i>
-          <span>Create New Project</span>
+          <span>Create Project</span>
         </button>
       </div>
     {% endif %}
@@ -87,190 +123,296 @@ function openCreateProjectModal() {
 </script>
 
 <style>
-.dash-user-projects-page {
-  padding: 32px;
-  width: 100%;
+/* Projects List Container */
+.projects-container {
   max-width: 1200px;
   margin: 0 auto;
 }
 
-.dash-user-projects-header {
-  margin-bottom: 32px;
+/* Header */
+.page-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-bottom: 32px;
 }
 
-.dash-user-projects-header h1 {
+.page-title-group h1 {
   font-size: 2rem;
-  font-weight: 600;
+  font-weight: 800;
   color: #111827;
   margin: 0;
+  letter-spacing: -0.03em;
 }
 
-.dash-user-projects-header-actions {
+.page-subtitle {
+  color: #6b7280;
+  margin-top: 8px;
+  font-size: 1rem;
+}
+
+.page-header-actions {
   display: flex;
   gap: 12px;
   align-items: center;
 }
 
-.dash-user-projects-header-actions .badge {
+/* Enhanced Manage Invitations Button */
+.btn-manage-invitations {
+  background: #6b7280;
+  color: #ffffff;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 16px;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s;
+  position: relative;
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+  min-height: 48px;
+}
+
+.btn-manage-invitations:hover {
+  background: #4b5563;
+  color: #ffffff;
+  box-shadow: 0 6px 8px -1px rgba(0, 0, 0, 0.15);
+}
+
+.btn-manage-invitations:active {
+  box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.1);
+}
+
+.invitations-badge {
   background: #ef4444;
   color: #ffffff;
-  border-radius: 12px;
+  border-radius: 50%;
   padding: 2px 8px;
   font-size: 0.75rem;
   font-weight: 600;
   margin-left: 8px;
+  min-width: 20px;
+  height: 20px;
+  text-align: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
 }
 
-.dash-user-projects-section {
-  margin-bottom: 48px;
-}
-
-.dash-user-projects-section-title {
-  font-size: 1.25rem;
+/* Create Project Button */
+.btn-create {
+  background: #111827;
+  color: white;
+  padding: 12px 24px;
+  border-radius: 8px;
   font-weight: 600;
-  color: #111827;
-  margin-bottom: 20px;
-  display: flex;
+  font-size: 16px;
+  text-decoration: none;
+  display: inline-flex;
   align-items: center;
   gap: 8px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s;
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+  min-height: 48px;
 }
 
-.dash-user-projects-count {
-  color: #6b7280;
-  font-weight: 400;
+.btn-create:hover {
+  background: #000;
+  box-shadow: 0 6px 8px -1px rgba(0, 0, 0, 0.15);
 }
 
-.dash-user-projects-list {
+/* Projects Grid/Table */
+.projects-card {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  border: 1px solid #e5e7eb;
+  overflow: hidden;
+}
+
+.project-row {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 20px;
-}
-
-.dash-user-project-link {
+  grid-template-columns: 60px 2fr 1.5fr 1fr 1fr 40px;
+  gap: 24px;
+  padding: 24px;
+  border-bottom: 1px solid #f3f4f6;
+  align-items: center;
+  transition: all 0.2s ease;
   text-decoration: none;
   color: inherit;
 }
 
-.dash-user-project-card {
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  padding: 24px;
-  transition: all 0.2s;
+.project-row:last-child {
+  border-bottom: none;
 }
 
-.dash-user-project-link .dash-user-project-card:hover {
-  border-color: #10b981;
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.1);
-  transform: translateY(-2px);
+.project-row:hover {
+  background: #f8fafc;
 }
 
-.dash-user-project-pending {
-  border-left: 4px solid #f59e0b;
-}
-
-.dash-user-project-card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 12px;
-}
-
-.dash-user-project-card-header h3 {
-  font-size: 1.125rem;
+.project-row-header {
+  display: grid;
+  grid-template-columns: 60px 2fr 1.5fr 1fr 1fr 40px;
+  gap: 24px;
+  padding: 16px 24px;
+  background: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+  font-size: 0.75rem;
   font-weight: 600;
-  color: #111827;
-  margin: 0;
-  flex: 1;
-}
-
-.dash-user-project-badge {
-  background: #10b981;
-  color: #ffffff;
-  padding: 4px 12px;
-  border-radius: 6px;
-  font-size: 0.75rem;
-  font-weight: 500;
-  margin-left: 12px;
-}
-
-.dash-user-project-description {
+  text-transform: uppercase;
   color: #6b7280;
-  font-size: 0.875rem;
-  margin-bottom: 12px;
-  line-height: 1.5;
+  letter-spacing: 0.05em;
 }
 
-.dash-user-project-mentor {
-  color: #374151;
-  font-size: 0.875rem;
-  margin-bottom: 12px;
+/* Responsive adjustments */
+@media (max-width: 1024px) {
+  .project-row, .project-row-header {
+    grid-template-columns: 60px 1fr 120px 40px;
+    gap: 16px;
+  }
+  .col-mentor, .col-date {
+    display: none;
+  }
 }
 
-.dash-user-project-meta {
-  color: #9ca3af;
-  font-size: 0.75rem;
-  margin-top: 12px;
+@media (max-width: 640px) {
+  .project-row, .project-row-header {
+    grid-template-columns: 50px 1fr 40px;
+  }
+  .col-template { display: none; }
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+  .page-header-actions {
+    width: 100%;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+  }
+  .btn-manage-invitations,
+  .btn-create {
+    flex-shrink: 0;
+  }
 }
 
-.dash-user-project-actions {
+/* Column Styles */
+.p-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: #f1f5f9;
   display: flex;
-  gap: 12px;
-  margin-top: 16px;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  color: #64748b;
+  border: 1px solid #e2e8f0;
 }
 
-.dash-user-btn-accept,
-.dash-user-btn-reject {
-  flex: 1;
-  padding: 10px 16px;
-  border: none;
-  border-radius: 8px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
+.p-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 4px;
 }
 
-.dash-user-btn-accept {
-  background: #10b981;
-  color: #ffffff;
-}
-
-.dash-user-btn-accept:hover {
-  background: #059669;
-}
-
-.dash-user-btn-reject {
-  background: #ef4444;
-  color: #ffffff;
-}
-
-.dash-user-btn-reject:hover {
-  background: #dc2626;
-}
-
-.dash-user-no-projects {
-  text-align: center;
-  padding: 64px 32px;
+.p-desc {
+  font-size: 0.85rem;
   color: #6b7280;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
-.dash-user-no-projects i {
-  font-size: 4rem;
-  color: #d1d5db;
-  margin-bottom: 16px;
+.wrapper-template {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  color: #475569;
+  font-weight: 500;
 }
 
-.dash-user-no-projects p {
-  font-size: 1.125rem;
-  margin-bottom: 8px;
+.mentor-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
-.dash-user-no-projects-subtitle {
-  font-size: 0.875rem;
+.mentor-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.mentor-name {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #374151;
+}
+
+.chevron-icon {
+  color: #cbd5e1;
+  transition: transform 0.2s;
+}
+
+.project-row:hover .chevron-icon {
+  color: #3b82f6;
+  transform: translateX(4px);
+}
+
+/* Empty State */
+.empty-state {
+  padding: 60px;
+  text-align: center;
   color: #9ca3af;
+}
+
+.empty-state-icon {
+  width: 80px;
+  height: 80px;
+  background: #f3f4f6;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 24px;
+  font-size: 2rem;
+  color: #cbd5e1;
+}
+
+.empty-state-title {
+  color: #374151;
+  font-weight: 600;
+  margin-bottom: 8px;
+  font-size: 1.25rem;
+}
+
+.empty-state-text {
+  margin-bottom: 24px;
+  color: #6b7280;
 }
 </style>
 {% endblock %}

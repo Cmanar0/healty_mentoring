@@ -102,10 +102,404 @@
 </div>
 
 <style>
-  .accept-project-form,
-  .reject-project-form {
-    display: inline-block;
+/* Import session management styles for consistent look */
+.session-management-container {
+  width: 100%;
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 32px 24px;
+  container-type: inline-size;
+  container-name: session-management;
+}
+
+/* Header Row - Full Width */
+.session-management-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 32px;
+  gap: 24px;
+  padding-bottom: 24px;
+  border-bottom: 2px solid var(--dash-border, #e2e8f0);
+}
+
+.session-count-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--dash-primary, #10b981), var(--dash-accent, #3b82f6));
+  color: white;
+  padding: 12px 16px;
+  border-radius: 12px;
+  min-width: 70px;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+  flex-shrink: 0;
+}
+
+.count-number {
+  font-size: 1.75rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.count-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 4px;
+  opacity: 0.9;
+}
+
+.header-content {
+  flex: 1;
+}
+
+.session-management-header-row .dashboard-page-title {
+  margin: 0 0 8px 0;
+}
+
+.session-management-subtitle {
+  font-size: 1rem;
+  color: var(--dash-text-muted, #64748b);
+  margin: 0;
+}
+
+/* Section Headers */
+.session-section {
+  margin-bottom: 40px;
+}
+
+.section-header {
+  margin-bottom: 20px;
+}
+
+.section-header-left {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.section-icon-wrapper {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.invitation-icon {
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  color: white;
+}
+
+.section-title {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--dash-text-main, #1e293b);
+  margin: 0 0 4px 0;
+}
+
+/* Table Layout */
+.session-table {
+  background: var(--dash-card-bg, #ffffff);
+  border: 1px solid var(--dash-border, #e2e8f0);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.table-header {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr 1fr 0.8fr 1.2fr;
+  gap: 16px;
+  padding: 16px 20px;
+  background: linear-gradient(to bottom, rgba(248, 250, 252, 0.8), rgba(248, 250, 252, 0.4));
+  border-bottom: 2px solid var(--dash-border, #e2e8f0);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--dash-text-muted, #64748b);
+}
+
+.table-body {
+  display: flex;
+  flex-direction: column;
+}
+
+.table-row {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr 1fr 0.8fr 1.2fr;
+  gap: 16px;
+  padding: 20px;
+  border-bottom: 1px solid var(--dash-border, #e2e8f0);
+  align-items: center;
+  transition: background-color 0.2s ease;
+}
+
+.table-row:last-child {
+  border-bottom: none;
+}
+
+.table-row:hover {
+  background: rgba(248, 250, 252, 0.5);
+}
+
+.invitation-row {
+  border-left: 3px solid #fbbf24;
+}
+
+/* Column Styles */
+.col-session,
+.col-mentor,
+.col-datetime,
+.col-minutes,
+.col-actions {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.col-actions {
+  justify-content: flex-end;
+  min-width: 140px;
+}
+
+/* Session ID Link */
+.session-id-link {
+  font-size: 0.9rem;
+  color: var(--dash-primary, #10b981);
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+.session-id-link:hover {
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--dash-primary-hover, #059669);
+}
+
+.mentor-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  color: var(--dash-text-main, #1e293b);
+  font-weight: 500;
+}
+
+.mentor-info i {
+  color: var(--dash-primary, #10b981);
+  font-size: 0.85rem;
+}
+
+.info-value {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--dash-text-main, #1e293b);
+}
+
+.text-muted {
+  color: var(--dash-text-muted, #64748b);
+}
+
+.datetime-stacked {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.date-part {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--dash-text-main, #1e293b);
+}
+
+/* Action Buttons */
+.action-buttons {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.action-buttons-vertical {
+  flex-direction: column;
+  width: 140px;
+  min-width: 140px;
+  max-width: 140px;
+  justify-content: center;
+}
+
+.action-buttons-invitation {
+  width: 140px;
+  min-width: 140px;
+  max-width: 140px;
+}
+
+.accept-project-form,
+.reject-project-form {
+  display: inline-block;
+  width: 100%;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+  text-decoration: none;
+  white-space: nowrap;
+  width: 100%;
+  justify-content: center;
+}
+
+.btn-small {
+  padding: 6px 12px;
+  font-size: 0.8rem;
+}
+
+.btn-primary {
+  background: var(--dash-primary, #10b981);
+  color: white;
+}
+
+.btn-primary:hover {
+  background: var(--dash-primary-hover, #059669);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.btn-secondary {
+  background: white;
+  color: var(--dash-text-main, #1e293b);
+  border: 1px solid var(--dash-border, #e2e8f0);
+}
+
+.btn-secondary:hover {
+  background: #f8fafc;
+  border-color: var(--dash-text-muted, #64748b);
+}
+
+/* Empty State */
+.empty-state {
+  text-align: center;
+  padding: 80px 24px;
+  background: var(--dash-card-bg, #ffffff);
+  border: 1px solid var(--dash-border, #e2e8f0);
+  border-radius: 16px;
+}
+
+.empty-state-icon {
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 24px;
+  border-radius: 50%;
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--dash-primary, #10b981);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.5rem;
+}
+
+.empty-state-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--dash-text-main, #1e293b);
+  margin: 0 0 12px 0;
+}
+
+.empty-state-text {
+  font-size: 1rem;
+  color: var(--dash-text-muted, #64748b);
+  margin: 0 0 24px 0;
+  max-width: 400px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.empty-state .btn {
+  width: auto;
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+  .table-header,
+  .table-row {
+    grid-template-columns: 1.2fr 0.8fr 0.8fr 0.6fr 1fr;
   }
+}
+
+@media (max-width: 768px) {
+  .session-management-container {
+    padding: 24px 16px;
+  }
+
+  .session-management-header-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+
+  .table-header,
+  .table-row {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .table-header {
+    display: none;
+  }
+
+  .table-row {
+    padding: 16px;
+    border-left: 3px solid #fbbf24;
+  }
+
+  .col-session::before {
+    content: "Project: ";
+    font-weight: 700;
+    color: var(--dash-text-muted, #64748b);
+  }
+
+  .col-mentor::before {
+    content: "Mentor: ";
+    font-weight: 700;
+    color: var(--dash-text-muted, #64748b);
+  }
+
+  .col-datetime::before {
+    content: "Template: ";
+    font-weight: 700;
+    color: var(--dash-text-muted, #64748b);
+  }
+
+  .col-minutes::before {
+    content: "Created: ";
+    font-weight: 700;
+    color: var(--dash-text-muted, #64748b);
+  }
+
+  .col-actions {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--dash-border, #e2e8f0);
+  }
+}
 </style>
 
 <script>
@@ -131,7 +525,7 @@
         .then(data => {
           if (data.success) {
             if (typeof showNotification === 'function') {
-              showNotification('success', data.message || `Project "${projectTitle}" has been accepted!`);
+              showNotification(data.message || `Project "${projectTitle}" has been accepted!`, 'success');
             }
             if (data.redirect_url) {
               window.location.href = data.redirect_url;
@@ -140,15 +534,15 @@
             }
           } else {
             if (typeof showNotification === 'function') {
-              showNotification('error', data.error || 'Failed to accept project assignment.');
+              showNotification(data.error || 'Failed to accept project assignment.', 'error');
             }
           }
         })
         .catch(error => {
           console.error('Error:', error);
-          if (typeof showNotification === 'function') {
-            showNotification('error', 'An error occurred while accepting the project assignment.');
-          }
+            if (typeof showNotification === 'function') {
+              showNotification('An error occurred while accepting the project assignment.', 'error');
+            }
         });
       });
     });
@@ -174,20 +568,20 @@
         .then(data => {
           if (data.success) {
             if (typeof showNotification === 'function') {
-              showNotification('success', data.message || `Project "${projectTitle}" has been declined.`);
+              showNotification(data.message || `Project "${projectTitle}" has been declined.`, 'success');
             }
             window.location.reload();
           } else {
             if (typeof showNotification === 'function') {
-              showNotification('error', data.error || 'Failed to decline project assignment.');
+              showNotification(data.error || 'Failed to decline project assignment.', 'error');
             }
           }
         })
         .catch(error => {
           console.error('Error:', error);
-          if (typeof showNotification === 'function') {
-            showNotification('error', 'An error occurred while declining the project assignment.');
-          }
+            if (typeof showNotification === 'function') {
+              showNotification('An error occurred while declining the project assignment.', 'error');
+            }
         });
       });
     });

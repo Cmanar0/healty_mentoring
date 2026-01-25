@@ -7,374 +7,543 @@
 <div class="dashboard-content-container">
     <!-- PART 1: Actionable Items -->
     <div class="dashboard-part">
-        <div class="dashboard-grid">
+        <div class="dashboard-main-flex">
             
-            <!-- My Mentors (Col 4) -->
-            <div class="dashboard-card col-span-4">
-                <div class="card-header">
-                    <h3 class="card-title">My Mentors</h3>
-                    <div class="card-actions">
-                        <button class="action-btn green" title="Add Mentor"><i class="fas fa-user-plus"></i></button>
-                        <button class="action-btn blue" title="Create Project"><i class="fas fa-plus"></i></button>
-                        <div class="dropdown">
-                            <button class="action-btn ghost" onclick="toggleDropdown(this)"><i class="fas fa-ellipsis-h"></i></button>
-                            <div class="dropdown-menu">
-                                <button class="dropdown-item">Project Details</button>
-                                <button class="dropdown-item">Edit Project</button>
+            <!-- Left Column (2/3) -->
+            <div class="dashboard-col-left">
+                <!-- Credit and Coins Cards -->
+                <div class="dashboard-stats-split">
+                    <!-- Credit Card -->
+                    <div class="dashboard-card stats-card-half">
+                        <div class="card-header">
+                            <h3 class="card-title">Credit</h3>
+                        </div>
+                        <div class="credit-coins-content">
+                            <div class="credit-coins-value">
+                                <span class="currency-symbol">$</span>
+                                <span class="credit-coins-amount">{{ user_credit|floatformat:2 }}</span>
                             </div>
+                            <p class="credit-coins-description">USD balance for sessions</p>
+                        </div>
+                    </div>
+
+                    <!-- Coins Card -->
+                    <div class="dashboard-card stats-card-half">
+                        <div class="card-header">
+                            <h3 class="card-title">Coins</h3>
+                        </div>
+                        <div class="credit-coins-content">
+                            <div class="credit-coins-value">
+                                <span class="credit-coins-amount">{{ user_coins }}</span>
+                            </div>
+                            <p class="credit-coins-description">Virtual currency for communities</p>
                         </div>
                     </div>
                 </div>
 
-                <!-- Mentor 1: Single Project -->
-                <div class="mentor-row">
-                    <a href="#" class="mentor-header">
-                        <div class="mentor-avatar">👨‍💼</div>
-                        <div class="mentor-info">
-                            <span class="mentor-name">Dr. Sarah Smith</span>
-                        </div>
-                    </a>
-                    <div class="project-list-container">
-                        <div class="project-item active">
-                            <span class="project-item-name">HealthTech Startup</span>
-                            <div class="project-actions">
-                                <div class="dropdown">
-                                    <button class="action-btn ghost" onclick="toggleDropdown(this)"><i class="fas fa-ellipsis-h"></i></button>
-                                    <div class="dropdown-menu">
-                                        <button class="dropdown-item">Project Details</button>
-                                        <button class="dropdown-item">Edit Project</button>
-                                    </div>
-                                </div>
-                            </div>
+                <!-- Upcoming Sessions Card (Scrollable) -->
+                <div class="dashboard-card flex-scroll-card">
+                    <div class="card-header" style="align-items: flex-start;">
+                        <h3 class="card-title">Upcoming Sessions</h3>
+                        <div style="display: flex; gap: 16px; align-items: center; white-space: nowrap;">
+                            <a href="/dashboard/user/my-sessions/" class="btn-link" style="color: var(--dash-text-muted);">View All Sessions</a>
                         </div>
                     </div>
-                </div>
-
-                <!-- Mentor 2: Single Project -->
-                <div class="mentor-row">
-                    <a href="#" class="mentor-header">
-                        <div class="mentor-avatar">👩‍💼</div>
-                        <div class="mentor-info">
-                            <span class="mentor-name">Michael Chen</span>
-                        </div>
-                    </a>
-                    <div class="project-list-container">
-                        <div class="project-item">
-                            <span class="project-item-name">E-Commerce Platform</span>
-                            <div class="project-actions">
-                                <span class="project-notification orange">3</span>
-                                <div class="dropdown">
-                                    <button class="action-btn ghost" onclick="toggleDropdown(this)"><i class="fas fa-ellipsis-h"></i></button>
-                                    <div class="dropdown-menu">
-                                        <button class="dropdown-item">Project Details</button>
-                                        <button class="dropdown-item">Edit Project</button>
+                    
+                    <div class="session-timeline-container scrollable-content" id="dashboardUpcomingSessions">
+                        {% if upcoming_sessions %}
+                            {% for session in upcoming_sessions %}
+                                <div class="session-item status-{{ session.status }}">
+                                    <div class="session-left">
+                                        <div class="session-date">
+                                            <span class="date-day">{{ session.start_datetime|date:"d" }}</span>
+                                            <span class="date-month">{{ session.start_datetime|date:"M" }}</span>
+                                        </div>
+                                        <div class="session-info">
+                                            <h4 class="session-title">Session with {{ session.mentor_name }}</h4>
+                                            <div class="session-meta-row">
+                                                <span class="session-time">
+                                                    <i class="far fa-clock"></i> {{ session.start_datetime|date:"g:i A" }} - {{ session.end_datetime|date:"g:i A" }}
+                                                </span>
+                                                <span class="conf-tag {% if session.status == 'confirmed' %}confirmed{% else %}tbc{% endif %}" style="{% if session.status == 'confirmed' %}background: rgba(34, 197, 94, 0.1); color: #16a34a;{% elif session.status == 'invited' %}background: rgba(251, 191, 36, 0.1); color: #f59e0b;{% endif %}">
+                                                    {% if session.status == 'confirmed' %}Confirmed{% else %}Invited{% endif %}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="session-right">
+                                        <div class="dropdown">
+                                            <button class="session-action-btn" onclick="toggleDropdown(this)">
+                                                <i class="fas fa-ellipsis-h"></i>
+                                            </button>
+                                            <div class="dropdown-menu">
+                                                <button class="dropdown-item">View Details</button>
+                                                <button class="dropdown-item">Edit Session</button>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Mentor 3: Multiple Projects -->
-                <div class="mentor-row">
-                    <a href="#" class="mentor-header">
-                        <div class="mentor-avatar">👨‍🏫</div>
-                        <div class="mentor-info">
-                            <span class="mentor-name">Prof. James Wilson</span>
-                        </div>
-                    </a>
-                    <div class="project-list-container">
-                        <div class="project-item">
-                            <span class="project-item-name">AI Research Lab</span>
-                            <div class="project-actions">
-                                <div class="dropdown">
-                                    <button class="action-btn ghost" onclick="toggleDropdown(this)"><i class="fas fa-ellipsis-h"></i></button>
-                                    <div class="dropdown-menu">
-                                        <button class="dropdown-item">Project Details</button>
-                                        <button class="dropdown-item">Edit Project</button>
-                                    </div>
+                            {% endfor %}
+                            
+                            {% if has_more_sessions %}
+                                <div class="session-item session-item-view-all" style="border-left: none; padding: 16px; text-align: center;">
+                                    <a href="/dashboard/user/my-sessions/" class="btn-link" style="color: var(--dash-text-muted); font-weight: 500;">View all upcoming sessions</a>
                                 </div>
+                            {% endif %}
+                        {% else %}
+                            <div class="session-item" style="border-left: none; padding: 16px; text-align: center; color: var(--dash-text-muted);">
+                                <p>No upcoming sessions</p>
                             </div>
-                        </div>
-                        <div class="project-item">
-                            <span class="project-item-name">EdTech Innovation</span>
-                            <div class="project-actions">
-                                <span class="project-notification red">5</span>
-                                <div class="dropdown">
-                                    <button class="action-btn ghost" onclick="toggleDropdown(this)"><i class="fas fa-ellipsis-h"></i></button>
-                                    <div class="dropdown-menu">
-                                        <button class="dropdown-item">Project Details</button>
-                                        <button class="dropdown-item">Edit Project</button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                        {% endif %}
                     </div>
                 </div>
             </div>
 
-            <!-- Tasks To Do (Col 4) -->
-            <div class="dashboard-card col-span-4">
-                <div class="card-header">
-                    <h3 class="card-title">Tasks to Do</h3>
-                    <div class="tabs">
-                        <button class="tab-btn active">Today</button>
-                        <button class="tab-btn">Week</button>
-                        <button class="tab-btn">All</button>
+            <!-- Right Column (1/3) -->
+            <div class="dashboard-col-right">
+                <!-- Manage Section -->
+                <div class="create-new-section" id="createNewSection">
+                    <h3 class="create-new-title">Manage</h3>
+                    <div class="create-new-grid">
+                        <a href="/dashboard/user/my-sessions/" class="create-new-btn btn-session">
+                            <div class="create-icon"><i class="fas fa-calendar-plus"></i></div>
+                            <span class="create-label">Sessions</span>
+                        </a>
+                        <a href="#" class="create-new-btn btn-invite">
+                            <div class="create-icon"><i class="fas fa-user-plus"></i></div>
+                            <span class="create-label">Invite</span>
+                        </a>
+                        <a href="{% url 'general:dashboard_user:projects_list' %}" class="create-new-btn btn-project">
+                            <div class="create-icon"><i class="fas fa-project-diagram"></i></div>
+                            <span class="create-label">Projects</span>
+                        </a>
+                        <a href="#" class="create-new-btn btn-network">
+                            <div class="create-icon"><i class="fas fa-users"></i></div>
+                            <span class="create-label">Network</span>
+                        </a>
+                        <a href="#" class="create-new-btn btn-blog">
+                            <div class="create-icon"><i class="fas fa-pen-nib"></i></div>
+                            <span class="create-label">Blog</span>
+                        </a>
                     </div>
                 </div>
 
-                <!-- Task Row 1 -->
-                <div class="task-row">
-                    <div class="status-circle orange"></div>
-                    <div class="task-info">
-                        <span class="task-name">Review Financials</span>
-                        <span class="task-status-text">Due Today</span>
+                <!-- Your Backlog Card (Scrollable) -->
+                <div class="dashboard-card flex-scroll-card" id="backlogCard">
+                    <div class="card-header">
+                        <h3 class="card-title">Your backlog</h3>
+                        <a href="{% url 'general:dashboard_user:active_backlog' %}" class="btn-link btn-fixed-width">View All</a>
                     </div>
-                    <div class="completion-circle" onclick="toggleTask(this)"><i class="fas fa-check"></i></div>
-                    <div class="dropdown">
-                        <button class="action-btn ghost" onclick="toggleDropdown(this)"><i class="fas fa-ellipsis-h"></i></button>
-                        <div class="dropdown-menu">
-                            <button class="dropdown-item">Edit Task</button>
-                            <button class="dropdown-item" style="color: var(--status-red);">Deactivate</button>
-                        </div>
-                    </div>
-                </div>
 
-                <!-- Task Row 2 -->
-                <div class="task-row">
-                    <div class="status-circle red"></div>
-                    <div class="task-info">
-                        <span class="task-name">Draft Pitch Deck</span>
-                        <span class="task-status-text">Overdue</span>
+                    <div class="scrollable-content">
+                        {% if backlog_tasks %}
+                            {% for task in backlog_tasks %}
+                                <div class="task-row" data-task-id="{{ task.id }}">
+                                    {% if task.priority == 'urgent' or task.priority == 'high' or task.is_overdue %}
+                                        <div class="status-circle red"></div>
+                                    {% elif task.priority == 'medium' %}
+                                        <div class="status-circle orange"></div>
+                                    {% else %}
+                                        <div class="status-circle blue"></div>
+                                    {% endif %}
+                                    <div class="task-info">
+                                        <span class="task-name">{{ task.title }}</span>
+                                        <span class="task-status-text">
+                                            {% if task.is_overdue %}
+                                                Overdue
+                                            {% elif task.is_due_this_week %}
+                                                Due this week
+                                            {% elif task.deadline %}
+                                                Due {{ task.deadline|date:"M d" }}
+                                            {% elif task.project %}
+                                                {{ task.project.title }}
+                                            {% else %}
+                                                Personal task
+                                            {% endif %}
+                                        </span>
+                                    </div>
+                                    <div class="completion-circle {% if task.completed %}completed{% endif %}" onclick="toggleDashboardTask({{ task.id }}, this)">
+                                        <i class="fas fa-check"></i>
+                                    </div>
+                                    <div class="dropdown">
+                                        <button class="action-btn ghost" onclick="toggleDropdown(this)">
+                                            <i class="fas fa-ellipsis-h"></i>
+                                        </button>
+                                        <div class="dropdown-menu">
+                                            <button class="dropdown-item" onclick="window.location.href='{% url 'general:dashboard_user:active_backlog' %}'">View Details</button>
+                                            <button class="dropdown-item delete-item" onclick="deleteDashboardTask({{ task.id }})" style="color: var(--status-red);">
+                                                Delete
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="task-row" style="border-left: none; padding: 16px; text-align: center; color: var(--dash-text-muted);">
+                                <p>No active tasks in your backlog</p>
+                            </div>
+                        {% endif %}
                     </div>
-                    <div class="completion-circle" onclick="toggleTask(this)"><i class="fas fa-check"></i></div>
-                    <div class="dropdown">
-                        <button class="action-btn ghost" onclick="toggleDropdown(this)"><i class="fas fa-ellipsis-h"></i></button>
-                        <div class="dropdown-menu">
-                            <button class="dropdown-item">Edit Task</button>
-                            <button class="dropdown-item" style="color: var(--status-red);">Deactivate</button>
-                        </div>
-                    </div>
-                </div>
-                
-                <div style="text-align: center; margin-top: 16px;">
-                    <a href="#" class="btn-link">View All Tasks</a>
                 </div>
             </div>
-
-            <!-- Completed Tasks (Col 4) -->
-            <div class="dashboard-card col-span-4">
-                <div class="card-header">
-                    <h3 class="card-title">Completed Tasks</h3>
-                    <div class="tabs">
-                        <button class="tab-btn active">Today</button>
-                        <button class="tab-btn">Week</button>
-                    </div>
-                </div>
-
-                <!-- Completed Task Row -->
-                <div class="task-row">
-                    <div class="status-circle green"></div>
-                    <div class="task-info">
-                        <span class="task-name">Initial Consultation</span>
-                        <span class="task-status-text">Completed</span>
-                    </div>
-                    <div class="completion-circle completed"><i class="fas fa-check"></i></div>
-                    <div class="dropdown">
-                        <button class="action-btn ghost" onclick="toggleDropdown(this)"><i class="fas fa-ellipsis-h"></i></button>
-                        <div class="dropdown-menu">
-                            <button class="dropdown-item">View Details</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Sessions (Full Width) -->
-            <div class="dashboard-card col-span-12">
-                <div class="card-header" style="align-items: flex-start;">
-                    <h3 class="card-title">Sessions</h3>
-                    <div style="display: flex; gap: 16px; align-items: center; white-space: nowrap;">
-                        <a href="/dashboard/user/my-sessions/" class="btn-link">View Calendar</a>
-                        <a href="#" class="btn-link" style="color: var(--dash-text-muted);">Session History</a>
-                        <button class="btn btn-primary btn-sm" style="white-space: nowrap;">
-                            <i class="fas fa-plus"></i> Schedule Session
-                        </button>
-                    </div>
-                </div>
-                
-                <div class="session-timeline-container">
-                    <!-- Session Item 1: All Completed -->
-                    <div class="session-item confirmed status-completed">
-                        <div class="session-left">
-                            <div class="session-date">
-                                <span class="date-day">28</span>
-                                <span class="date-month">Nov</span>
-                            </div>
-                            <div class="session-info">
-                                <h4 class="session-title">Strategy Review</h4>
-                                <div class="session-meta-row">
-                                    <span class="session-time"><i class="far fa-clock"></i> 10:00 AM - 11:00 AM</span>
-                                    <span class="conf-tag confirmed">Confirmed</span>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="session-right">
-                            <div class="session-tasks">
-                                <div class="task-badge completed">
-                                    <span class="task-label">Completed</span>
-                                    <span class="task-count">2</span>
-                                </div>
-                            </div>
-                            <div class="dropdown">
-                                <button class="session-action-btn" onclick="toggleDropdown(this)">
-                                    <i class="fas fa-ellipsis-h"></i>
-                                </button>
-                                <div class="dropdown-menu">
-                                    <button class="dropdown-item">View Details</button>
-                                    <button class="dropdown-item">Edit Session</button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Session Item 2: Tasks Pending -->
-                    <div class="session-item confirmed status-pending">
-                        <div class="session-left">
-                            <div class="session-date">
-                                <span class="date-day">05</span>
-                                <span class="date-month">Dec</span>
-                            </div>
-                            <div class="session-info">
-                                <h4 class="session-title">Leadership Workshop</h4>
-                                <div class="session-meta-row">
-                                    <span class="session-time"><i class="far fa-clock"></i> 2:00 PM - 3:30 PM</span>
-                                    <span class="conf-tag confirmed">Confirmed</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="session-right">
-                            <div class="session-tasks">
-                                <div class="task-badge pending">
-                                    <span class="task-label">Pending</span>
-                                    <span class="task-count">1</span>
-                                </div>
-                            </div>
-                            <div class="dropdown">
-                                <button class="session-action-btn" onclick="toggleDropdown(this)">
-                                    <i class="fas fa-ellipsis-h"></i>
-                                </button>
-                                <div class="dropdown-menu">
-                                    <button class="dropdown-item">View Details</button>
-                                    <button class="dropdown-item">Edit Session</button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Session Item 3: Tasks Missed -->
-                    <div class="session-item tbc status-missed">
-                        <div class="session-left">
-                            <div class="session-date">
-                                <span class="date-day">12</span>
-                                <span class="date-month">Dec</span>
-                            </div>
-                            <div class="session-info">
-                                <h4 class="session-title">Q4 Planning</h4>
-                                <div class="session-meta-row">
-                                    <span class="session-time"><i class="far fa-clock"></i> 11:00 AM - 12:30 PM</span>
-                                    <span class="conf-tag tbc">To Be Confirmed</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="session-right">
-                            <div class="session-tasks">
-                                <div class="task-badge completed">
-                                    <span class="task-label">Completed</span>
-                                    <span class="task-count">1</span>
-                                </div>
-                                <div class="task-badge missed">
-                                    <span class="task-label">Missed</span>
-                                    <span class="task-count">2</span>
-                                </div>
-                            </div>
-                            <div class="dropdown">
-                                <button class="session-action-btn" onclick="toggleDropdown(this)">
-                                    <i class="fas fa-ellipsis-h"></i>
-                                </button>
-                                <div class="dropdown-menu">
-                                    <button class="dropdown-item">View Details</button>
-                                    <button class="dropdown-item">Edit Session</button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-            </div>
-
         </div>
     </div>
-
-    <!-- PART 2: Metrics & Identity -->
+    
+    <!-- Projects Section -->
     <div class="dashboard-part">
-        <!-- Section Header with Separator -->
-        <div class="section-header">
-            <h2 class="section-title">Progress & Metrics</h2>
-            <span class="mentor-link">Supervised by <a href="#">Dr. Sarah Smith</a></span>
-        </div>
-
-    <!-- Identity Progress Row -->
-    <div class="identity-progress-row">
-        <div class="identity-card">
-            <span class="identity-label">Leadership</span>
-            <div class="progress-vertical-container">
-                <div class="progress-vertical-bar" style="height: 75%;"></div>
+        {% if user_projects %}
+            <h3 class="projects-section-title">Your Projects</h3>
+            <div class="projects-grid-dashboard">
+                {% for project in user_projects %}
+                    <a href="{% url 'general:dashboard_user:project_detail' project.id %}" class="project-card-dashboard">
+                        <div class="project-card-icon">
+                            {% if project.template and project.template.icon %}
+                                <i class="{{ project.template.icon }}"></i>
+                            {% else %}
+                                <i class="fas fa-cube"></i>
+                            {% endif %}
+                        </div>
+                        <div class="project-card-content">
+                            <h3 class="project-card-title">{{ project.title }}</h3>
+                            {% if project.description %}
+                                <p class="project-card-description">{{ project.description|truncatewords:15 }}</p>
+                            {% endif %}
+                            <div class="project-card-meta">
+                                {% if project.supervised_by %}
+                                    <span class="project-card-mentor">
+                                        <i class="fas fa-user-tie"></i>
+                                        {{ project.supervised_by.first_name }} {{ project.supervised_by.last_name }}
+                                    </span>
+                                {% endif %}
+                                <span class="project-card-date">{{ project.created_at|date:"M d, Y" }}</span>
+                            </div>
+                        </div>
+                        <div class="project-card-arrow">
+                            <i class="fas fa-chevron-right"></i>
+                        </div>
+                    </a>
+                {% endfor %}
             </div>
-            <span class="identity-percentage">75%</span>
-        </div>
-        <div class="identity-card">
-            <span class="identity-label">Strategy</span>
-            <div class="progress-vertical-container">
-                <div class="progress-vertical-bar" style="height: 45%;"></div>
+        {% else %}
+            <div class="create-first-project-section">
+                <button type="button" onclick="openCreateProjectModal()" class="btn-create-first-project">
+                    <i class="fas fa-plus-circle"></i>
+                    <span>Create Your First Project</span>
+                </button>
             </div>
-            <span class="identity-percentage">45%</span>
-        </div>
-        <div class="identity-card">
-            <span class="identity-label">Execution</span>
-            <div class="progress-vertical-container">
-                <div class="progress-vertical-bar" style="height: 90%;"></div>
-            </div>
-            <span class="identity-percentage">90%</span>
-        </div>
-        <div class="identity-card">
-            <span class="identity-label">Communication</span>
-            <div class="progress-vertical-container">
-                <div class="progress-vertical-bar" style="height: 60%;"></div>
-            </div>
-            <span class="identity-percentage">60%</span>
-        </div>
+        {% endif %}
     </div>
-
-    <div class="dashboard-grid">
-        <!-- Startup Metrics Radar (Col 6) -->
-        <div class="dashboard-card col-span-6">
-            <div class="card-header">
-                <h3 class="card-title">Startup Maturity</h3>
-                <i class="fas fa-info-circle" style="color: var(--dash-text-muted);"></i>
-            </div>
-            <div class="chart-container">
-                <canvas id="startupRadarChart"></canvas>
-            </div>
-        </div>
-        </div>
-    </div>
-
 </div>
 
-<!-- Load Dashboard JS -->
-<script src="{% static 'js/dashboard.js' %}"></script>
+{% include 'dashboard_user/projects/modals/create_project_modal.html' %}
+
+<style>
+.dashboard-stats-split {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+@media (max-width: 768px) {
+    .dashboard-stats-split {
+        grid-template-columns: 1fr;
+    }
+}
+
+.stats-card-half {
+    min-height: auto;
+}
+
+.credit-coins-content {
+    padding-top: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.credit-coins-value {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+}
+
+.currency-symbol {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #111827;
+}
+
+.credit-coins-amount {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #111827;
+    line-height: 1;
+}
+
+.credit-coins-description {
+    font-size: 0.875rem;
+    color: #6b7280;
+    margin: 0;
+}
+
+/* Use mentor dashboard button styling from dashboard.css, but override networking and invite button colors */
+.btn-network {
+    background: #f59e0b;
+}
+
+.btn-network:hover {
+    background: #d97706;
+}
+
+.btn-invite {
+    background: #10b981;
+}
+
+.btn-invite:hover {
+    background: #059669;
+}
+
+/* When sidebar is open (not collapsed), make buttons smaller to fit in parent column */
+.dashboard-sidebar:not(.collapsed) ~ .dashboard-main .create-new-grid {
+    gap: 6px;
+}
+
+.dashboard-sidebar:not(.collapsed) ~ .dashboard-main .create-new-btn {
+    padding: 8px 4px;
+}
+
+.dashboard-sidebar:not(.collapsed) ~ .dashboard-main .create-icon {
+    font-size: 16px;
+    margin-bottom: 4px;
+}
+
+.dashboard-sidebar:not(.collapsed) ~ .dashboard-main .create-label {
+    font-size: 10px;
+}
+
+/* Projects Section */
+.projects-section-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--dash-text-main);
+    margin: 0 0 16px 0;
+}
+
+.projects-grid-dashboard {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 24px;
+}
+
+.project-card-dashboard {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 24px;
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    text-decoration: none;
+    color: inherit;
+    transition: all 0.2s;
+    position: relative;
+}
+
+.project-card-dashboard:hover {
+    border-color: #d1d5db;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.project-card-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    background: #f1f5f9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    color: #64748b;
+    border: 1px solid #e2e8f0;
+    flex-shrink: 0;
+}
+
+.project-card-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.project-card-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #1f2937;
+    margin: 0 0 8px 0;
+}
+
+.project-card-description {
+    font-size: 0.875rem;
+    color: #6b7280;
+    margin: 0 0 12px 0;
+    line-height: 1.5;
+}
+
+.project-card-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 0.8rem;
+    color: #9ca3af;
+}
+
+.project-card-mentor {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.project-card-mentor i {
+    font-size: 0.75rem;
+}
+
+.project-card-arrow {
+    color: #d1d5db;
+    font-size: 1rem;
+    flex-shrink: 0;
+    transition: color 0.2s, transform 0.2s;
+}
+
+.project-card-dashboard:hover .project-card-arrow {
+    color: #64748b;
+    transform: translateX(4px);
+}
+
+.create-first-project-section {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 80px 24px;
+}
+
+.btn-create-first-project {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    padding: 20px 40px;
+    font-size: 1.125rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: all 0.2s;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.btn-create-first-project:hover {
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4);
+    transform: translateY(-2px);
+}
+
+.btn-create-first-project i {
+    font-size: 1.5rem;
+}
+
+@media (max-width: 768px) {
+    .projects-grid-dashboard {
+        grid-template-columns: 1fr;
+    }
+    
+    .create-first-project-section {
+        padding: 60px 24px;
+    }
+    
+    .btn-create-first-project {
+        padding: 16px 32px;
+        font-size: 1rem;
+    }
+}
+</style>
+
+<script>
+// Dashboard task management functions
+function toggleDashboardTask(taskId, element) {
+    const isCompleted = element.classList.contains('completed');
+    const newCompleted = !isCompleted;
+    
+    fetch(`{% url "general:dashboard_user:toggle_active_backlog_task_complete" 0 %}`.replace('0', taskId), {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}',
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ completed: newCompleted })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            if (newCompleted) {
+                element.classList.add('completed');
+                // Remove task from view after a short delay
+                setTimeout(() => {
+                    const taskRow = element.closest('.task-row');
+                    if (taskRow) {
+                        taskRow.style.opacity = '0';
+                        setTimeout(() => taskRow.remove(), 300);
+                    }
+                }, 500);
+            } else {
+                element.classList.remove('completed');
+            }
+        } else {
+            console.error('Failed to toggle task:', data.error);
+            alert('Failed to update task: ' + (data.error || 'Unknown error'));
+        }
+    })
+    .catch(error => {
+        console.error('Error toggling task:', error);
+        alert('An error occurred while updating the task.');
+    });
+}
+
+function deleteDashboardTask(taskId) {
+    if (!confirm('Are you sure you want to delete this task?')) {
+        return;
+    }
+    
+    fetch(`{% url "general:dashboard_user:delete_active_backlog_task" 0 %}`.replace('0', taskId), {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}',
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const taskRow = document.querySelector(`.task-row[data-task-id="${taskId}"]`);
+            if (taskRow) {
+                taskRow.style.opacity = '0';
+                setTimeout(() => taskRow.remove(), 300);
+            }
+        } else {
+            console.error('Failed to delete task:', data.error);
+            alert('Failed to delete task: ' + (data.error || 'Unknown error'));
+        }
+    })
+    .catch(error => {
+        console.error('Error deleting task:', error);
+        alert('An error occurred while deleting the task.');
+    });
+}
+
+function openCreateProjectModal() {
+    const modal = document.getElementById('createProjectModal');
+    if (modal) {
+        modal.style.display = 'flex';
+    }
+}
+</script>
 {% endblock %}

@@ -1,0 +1,168 @@
+{% extends "dashboard_mentor/base.html" %}
+{% load static %}
+
+{% block page_title %}Statistics{% endblock %}
+
+{% block dashboard_content %}
+<div class="dashboard-content-container" style="max-width: 1200px; margin: 0 auto;">
+    <div style="margin-bottom: 32px;">
+        <h1 style="font-size: 2rem; font-weight: 800; color: #111827; margin: 0 0 8px 0; letter-spacing: -0.03em;">Statistics</h1>
+        <p style="color: #6b7280; margin: 0;">View your comprehensive statistics and performance metrics.</p>
+    </div>
+
+    <!-- Stats Grid -->
+    <div class="stats-grid-full">
+        <div class="stat-card-full primary">
+            <div class="stat-card-full-icon">
+                <i class="fas fa-euro-sign"></i>
+            </div>
+            <div class="stat-card-full-content">
+                <span class="stat-card-full-label">Total Earned</span>
+                <span class="stat-card-full-value">€{{ stats.earned|floatformat:2 }}</span>
+            </div>
+        </div>
+        
+        <div class="stat-card-full secondary">
+            <div class="stat-card-full-icon">
+                <i class="fas fa-calendar-check"></i>
+            </div>
+            <div class="stat-card-full-content">
+                <span class="stat-card-full-label">Total Sessions</span>
+                <span class="stat-card-full-value">{{ stats.sessions }}</span>
+            </div>
+        </div>
+
+        <div class="stat-card-full">
+            <div class="stat-card-full-icon blue">
+                <i class="fas fa-users"></i>
+            </div>
+            <div class="stat-card-full-content">
+                <span class="stat-card-full-label">Active Clients</span>
+                <span class="stat-card-full-value">{{ stats.active_clients }}</span>
+            </div>
+        </div>
+
+        <div class="stat-card-full">
+            <div class="stat-card-full-icon green">
+                <i class="fas fa-user-plus"></i>
+            </div>
+            <div class="stat-card-full-content">
+                <span class="stat-card-full-label">New Clients (30 days)</span>
+                <span class="stat-card-full-value">{{ stats.new_clients }}</span>
+            </div>
+        </div>
+
+        <div class="stat-card-full">
+            <div class="stat-card-full-icon purple">
+                <i class="fas fa-file-alt"></i>
+            </div>
+            <div class="stat-card-full-content">
+                <span class="stat-card-full-label">Blog Posts</span>
+                <span class="stat-card-full-value">{{ stats.blog_posts }}</span>
+            </div>
+        </div>
+
+        <div class="stat-card-full">
+            <div class="stat-card-full-icon orange">
+                <i class="fas fa-eye"></i>
+            </div>
+            <div class="stat-card-full-content">
+                <span class="stat-card-full-label">Profile Views</span>
+                <span class="stat-card-full-value">{{ stats.profile_views }}</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.stats-grid-full {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 24px;
+}
+
+.stat-card-full {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
+    padding: 24px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    transition: all 0.2s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.stat-card-full:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    border-color: #d1d5db;
+}
+
+.stat-card-full-icon {
+    width: 64px;
+    height: 64px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.75rem;
+    flex-shrink: 0;
+}
+
+.stat-card-full.primary .stat-card-full-icon {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(16, 185, 129, 0.05) 100%);
+    color: #10b981;
+}
+
+.stat-card-full.secondary .stat-card-full-icon {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(59, 130, 246, 0.05) 100%);
+    color: #3b82f6;
+}
+
+.stat-card-full-icon.blue {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(59, 130, 246, 0.05) 100%);
+    color: #3b82f6;
+}
+
+.stat-card-full-icon.green {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(16, 185, 129, 0.05) 100%);
+    color: #10b981;
+}
+
+.stat-card-full-icon.purple {
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(139, 92, 246, 0.05) 100%);
+    color: #8b5cf6;
+}
+
+.stat-card-full-icon.orange {
+    background: linear-gradient(135deg, rgba(251, 146, 60, 0.1) 0%, rgba(251, 146, 60, 0.05) 100%);
+    color: #fb923c;
+}
+
+.stat-card-full-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.stat-card-full-label {
+    font-size: 0.875rem;
+    color: #6b7280;
+    font-weight: 500;
+}
+
+.stat-card-full-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #111827;
+    line-height: 1;
+}
+
+@media (max-width: 768px) {
+    .stats-grid-full {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+{% endblock %}

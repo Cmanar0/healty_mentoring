@@ -86,7 +86,6 @@ h1, h2, h3, h4 {
 }
 .btn-glass:hover {
   background: rgba(255, 255, 255, 0.2);
-  transform: translateY(-2px);
   color: white;
 }
 .mt-4 { margin-top: 24px; }
