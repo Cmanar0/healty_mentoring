@@ -25,7 +25,6 @@
     .dashboard-content-container > main {
         grid-area: main;
         position: relative;
-        top: -160px;
     }
     
     .project-sidebar-meta {
@@ -1589,9 +1588,28 @@
     }
 
     // Initial load
+    // Calculate and set dynamic offset for main content
+    function setMainContentOffset() {
+        const metaCard = document.querySelector('.project-sidebar-meta .project-meta-card');
+        const mainContent = document.querySelector('.dashboard-content-container > main');
+        
+        if (metaCard && mainContent) {
+            const metaCardHeight = metaCard.offsetHeight;
+            const offset = -(metaCardHeight - 20);
+            mainContent.style.top = offset + 'px';
+        }
+    }
+    
     document.addEventListener('DOMContentLoaded', function() {
         loadTasks();
         loadActiveBacklog();
+        // Set offset after a short delay to ensure meta card is rendered
+        setTimeout(setMainContentOffset, 100);
+    });
+    
+    // Recalculate offset on window resize
+    window.addEventListener('resize', function() {
+        setTimeout(setMainContentOffset, 100);
     });
 
     // Expose loadTasks to window for use in modals
