@@ -4,34 +4,43 @@
     <form id="slideQuestionnaireForm" class="slide-questionnaire-form">
         {% csrf_token %}
         
-        <!-- Progress Indicator -->
-        <div class="slide-questionnaire-progress">
-            <div class="progress-bar">
-                <div class="progress-fill" id="progressFill"></div>
+        <!-- Header: Progress and Question -->
+        <div class="slide-questionnaire-header">
+            <!-- Progress Indicator -->
+            <div class="slide-questionnaire-progress">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                <div class="progress-text">
+                    <span id="currentSlide">1</span> / <span id="totalSlides">{{ questions|length }}</span>
+                </div>
             </div>
-            <div class="progress-text">
-                <span id="currentSlide">1</span> / <span id="totalSlides">{{ questions|length }}</span>
+            
+            <!-- Question Header (will be updated dynamically) -->
+            <div class="question-header" id="questionHeader">
+                {% for question in questions %}
+                <div class="question-header-slide {% if forloop.first %}active{% endif %}" data-question-id="{{ question.id }}" data-slide-index="{{ forloop.counter0 }}">
+                    <h3 class="question-title">
+                        {{ question.question_text }}
+                        {% if question.is_required %}
+                            <span class="required-indicator">*</span>
+                        {% endif %}
+                    </h3>
+                    {% if question.help_text %}
+                        <p class="question-help">{{ question.help_text }}</p>
+                    {% endif %}
+                </div>
+                {% endfor %}
             </div>
         </div>
 
-        <!-- Slides Container -->
-        <div class="slide-questionnaire-slides" id="slidesContainer">
-            {% for question in questions %}
-            <div class="question-slide {% if forloop.first %}active{% endif %}" data-question-id="{{ question.id }}" data-slide-index="{{ forloop.counter0 }}">
-                <div class="question-slide-content">
-                    <div class="question-header">
-                        <h3 class="question-title">
-                            {{ question.question_text }}
-                            {% if question.is_required %}
-                                <span class="required-indicator">*</span>
-                            {% endif %}
-                        </h3>
-                        {% if question.help_text %}
-                            <p class="question-help">{{ question.help_text }}</p>
-                        {% endif %}
-                    </div>
-
-                    <div class="question-input-wrapper">
+        <!-- Scrollable Answers Section -->
+        <div class="slide-questionnaire-answers" id="answersContainer">
+            <div class="slide-questionnaire-slides" id="slidesContainer">
+                {% for question in questions %}
+                <div class="question-slide {% if forloop.first %}active{% endif %}" data-question-id="{{ question.id }}" data-slide-index="{{ forloop.counter0 }}">
+                    <div class="question-slide-content">
+                        <div class="question-input-wrapper">
                         {% if question.question_type == 'textarea' %}
                             <textarea 
                                 name="question_{{ question.id }}" 
@@ -105,14 +114,15 @@
                                 data-question-id="{{ question.id }}"
                             >
                         {% endif %}
-                        <div class="question-error" id="error_{{ question.id }}"></div>
+                            <div class="question-error" id="error_{{ question.id }}"></div>
+                        </div>
                     </div>
                 </div>
+                {% endfor %}
             </div>
-            {% endfor %}
         </div>
 
-        <!-- Navigation Buttons -->
+        <!-- Footer: Navigation Buttons -->
         <div class="slide-questionnaire-navigation" id="navigationContainer">
             <button type="button" class="btn-nav btn-prev" id="prevBtn" onclick="previousSlide()" style="display: none;">
                 <i class="fas fa-arrow-left"></i> Previous
@@ -150,13 +160,20 @@
     margin: 0;
 }
 
+/* Header Section */
+.slide-questionnaire-header {
+    padding-bottom: 24px;
+    border-bottom: 1px solid #e5e7eb;
+    margin-bottom: 24px;
+}
+
 /* Progress Indicator */
 .slide-questionnaire-progress {
-    margin-bottom: 32px;
+    margin-bottom: 24px;
 }
 
 .progress-bar {
-    width: 100%;
+    width: 92%;
     height: 6px;
     background: #e5e7eb;
     border-radius: 3px;
@@ -179,11 +196,50 @@
     font-weight: 500;
 }
 
+/* Question Header */
+.question-header {
+    position: relative;
+    min-height: 80px;
+}
+
+.question-header-slide {
+    display: none;
+    animation: fadeIn 0.4s ease;
+}
+
+.question-header-slide.active {
+    display: block;
+}
+
+.question-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #111827;
+    margin: 0 0 12px 0;
+    line-height: 1.4;
+}
+
+.required-indicator {
+    color: #ef4444;
+    margin-left: 4px;
+}
+
+.question-help {
+    font-size: 0.95rem;
+    color: #6b7280;
+    margin: 0;
+    line-height: 1.6;
+}
+
+/* Answers Section */
+.slide-questionnaire-answers {
+    overflow: visible;
+    margin-bottom: 24px;
+}
+
 /* Slides Container */
 .slide-questionnaire-slides {
     position: relative;
-    min-height: 400px;
-    margin-bottom: 32px;
 }
 
 .question-slide {
@@ -207,11 +263,7 @@
 }
 
 .question-slide-content {
-    padding: 24px 0;
-}
-
-.question-header {
-    margin-bottom: 32px;
+    padding: 0 20px 0 0;
 }
 
 .question-title {
@@ -342,7 +394,7 @@ select.question-input {
     font-size: 0.875rem;
 }
 
-/* Navigation Buttons */
+/* Footer: Navigation Buttons */
 .slide-questionnaire-navigation {
     display: flex;
     justify-content: space-between;
@@ -447,6 +499,7 @@ select.question-input {
     
     let currentSlide = 0;
     const slides = document.querySelectorAll('.question-slide');
+    const headerSlides = document.querySelectorAll('.question-header-slide');
     const totalSlides = slides.length;
     const prevBtn = document.getElementById('prevBtn');
     const nextBtn = document.getElementById('nextBtn');
@@ -566,11 +619,15 @@ select.question-input {
     function showSlide(index) {
         if (index < 0 || index >= totalSlides) return;
         
-        // Hide all slides
+        // Hide all slides and header slides
         slides.forEach(slide => slide.classList.remove('active'));
+        headerSlides.forEach(headerSlide => headerSlide.classList.remove('active'));
         
-        // Show current slide
+        // Show current slide and header slide
         slides[index].classList.add('active');
+        if (headerSlides[index]) {
+            headerSlides[index].classList.add('active');
+        }
         currentSlide = index;
         
         // Focus on first input in slide
