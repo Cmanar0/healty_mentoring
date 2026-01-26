@@ -2812,15 +2812,24 @@ def get_user_active_backlog_api(request):
     try:
         user_profile = request.user.user_profile
         from dashboard_user.models import Task
+        from django.utils import timezone
+        from datetime import timedelta
         
         # Get all tasks in user's active backlog (no limit - display all in scrollable sidebar)
         tasks = Task.objects.filter(
             user_active_backlog=user_profile,
             completed=False
-        ).order_by('order', 'created_at')
+        ).select_related('project').order_by('order', 'created_at')
+        
+        # Calculate date thresholds
+        today = timezone.now().date()
+        week_from_now = today + timedelta(days=7)
         
         tasks_data = []
         for task in tasks:
+            is_overdue = task.deadline and task.deadline < today if task.deadline else False
+            is_due_this_week = task.deadline and task.deadline <= week_from_now if task.deadline else False
+            
             tasks_data.append({
                 'id': task.id,
                 'title': task.title,
@@ -2828,6 +2837,9 @@ def get_user_active_backlog_api(request):
                 'completed': task.completed,
                 'deadline': task.deadline.strftime('%Y-%m-%d') if task.deadline else None,
                 'priority': task.priority,
+                'is_overdue': is_overdue,
+                'is_due_this_week': is_due_this_week,
+                'project_title': task.project.title if task.project else None,
             })
         
         total_count = Task.objects.filter(user_active_backlog=user_profile, completed=False).count()

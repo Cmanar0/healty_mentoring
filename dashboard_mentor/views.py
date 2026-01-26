@@ -6921,10 +6921,23 @@ def get_mentor_backlog_tasks_api(request):
     from dashboard_user.models import Task
     
     try:
-        tasks = Task.objects.filter(mentor_backlog=mentor_profile).select_related('project', 'stage').order_by('order', 'created_at')
+        from django.utils import timezone
+        from datetime import timedelta
+        
+        tasks = Task.objects.filter(
+            mentor_backlog=mentor_profile,
+            completed=False
+        ).select_related('project', 'stage').order_by('order', 'created_at')
+        
+        # Calculate date thresholds
+        today = timezone.now().date()
+        week_from_now = today + timedelta(days=7)
         
         tasks_data = []
         for task in tasks:
+            is_overdue = task.deadline and task.deadline < today if task.deadline else False
+            is_due_this_week = task.deadline and task.deadline <= week_from_now if task.deadline else False
+            
             tasks_data.append({
                 'id': task.id,
                 'title': task.title,
@@ -6936,7 +6949,10 @@ def get_mentor_backlog_tasks_api(request):
                 'created_at': task.created_at.strftime('%Y-%m-%d %H:%M:%S'),
                 'order': float(task.order),
                 'project_id': task.project.id if task.project else None,
+                'project_title': task.project.title if task.project else None,
                 'stage_id': task.stage.id if task.stage else None,
+                'is_overdue': is_overdue,
+                'is_due_this_week': is_due_this_week,
             })
         
         return JsonResponse({

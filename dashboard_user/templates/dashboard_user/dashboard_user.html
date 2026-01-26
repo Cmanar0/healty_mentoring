@@ -130,60 +130,17 @@
                 </div>
 
                 <!-- Your Backlog Card (Scrollable) -->
-                <div class="dashboard-card flex-scroll-card" id="backlogCard">
+                <div class="dashboard-card flex-scroll-card" id="backlogCard" style="max-height: 500px; display: flex; flex-direction: column;">
                     <div class="card-header">
                         <h3 class="card-title">Your backlog</h3>
                         <a href="{% url 'general:dashboard_user:active_backlog' %}" class="btn-link btn-fixed-width">View All</a>
                     </div>
 
-                    <div class="scrollable-content">
-                        {% if backlog_tasks %}
-                            {% for task in backlog_tasks %}
-                                <div class="task-row" data-task-id="{{ task.id }}">
-                                    {% if task.priority == 'urgent' or task.priority == 'high' or task.is_overdue %}
-                                        <div class="status-circle red"></div>
-                                    {% elif task.priority == 'medium' %}
-                                        <div class="status-circle orange"></div>
-                                    {% else %}
-                                        <div class="status-circle blue"></div>
-                                    {% endif %}
-                                    <div class="task-info">
-                                        <span class="task-name">{{ task.title }}</span>
-                                        <span class="task-status-text">
-                                            {% if task.is_overdue %}
-                                                Overdue
-                                            {% elif task.is_due_this_week %}
-                                                Due this week
-                                            {% elif task.deadline %}
-                                                Due {{ task.deadline|date:"M d" }}
-                                            {% elif task.project %}
-                                                {{ task.project.title }}
-                                            {% else %}
-                                                Personal task
-                                            {% endif %}
-                                        </span>
-                                    </div>
-                                    <div class="completion-circle {% if task.completed %}completed{% endif %}" onclick="toggleDashboardTask({{ task.id }}, this)">
-                                        <i class="fas fa-check"></i>
-                                    </div>
-                                    <div class="dropdown">
-                                        <button class="action-btn ghost" onclick="toggleDropdown(this)">
-                                            <i class="fas fa-ellipsis-h"></i>
-                                        </button>
-                                        <div class="dropdown-menu">
-                                            <button class="dropdown-item" onclick="window.location.href='{% url 'general:dashboard_user:active_backlog' %}'">View Details</button>
-                                            <button class="dropdown-item delete-item" onclick="deleteDashboardTask({{ task.id }})" style="color: var(--status-red);">
-                                                Delete
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            {% endfor %}
-                        {% else %}
-                            <div class="task-row" style="border-left: none; padding: 16px; text-align: center; color: var(--dash-text-muted);">
-                                <p>No active tasks in your backlog</p>
-                            </div>
-                        {% endif %}
+                    <div class="scrollable-content" id="dashboardBacklogList" style="flex: 1; min-height: 0; overflow-y: auto;">
+                        <!-- Tasks will be loaded dynamically via JavaScript -->
+                        <div style="text-align: center; padding: 16px; color: var(--dash-text-muted);">
+                            <i class="fas fa-spinner fa-spin"></i> Loading tasks...
+                        </div>
                     </div>
                 </div>
             </div>
@@ -468,6 +425,116 @@
 </style>
 
 <script>
+// Load dashboard backlog tasks
+function loadDashboardBacklog() {
+    const container = document.getElementById('dashboardBacklogList');
+    if (!container) return;
+    
+    fetch('{% url "general:dashboard_user:get_user_active_backlog_api" %}', {
+        method: 'GET',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+        },
+        credentials: 'same-origin'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data && data.success) {
+            renderDashboardBacklog(data.tasks || []);
+        } else {
+            container.innerHTML = `
+                <div style="text-align: center; padding: 16px; color: var(--dash-text-muted);">
+                    <i class="fas fa-exclamation-triangle" style="font-size: 1rem; margin-bottom: 8px; opacity: 0.3;"></i>
+                    <p style="margin: 0;">Error loading tasks</p>
+                </div>
+            `;
+        }
+    })
+    .catch(error => {
+        console.error('Error loading backlog:', error);
+        container.innerHTML = `
+            <div style="text-align: center; padding: 16px; color: var(--dash-text-muted);">
+                <i class="fas fa-exclamation-triangle" style="font-size: 1rem; margin-bottom: 8px; opacity: 0.3;"></i>
+                <p style="margin: 0;">Error loading tasks</p>
+            </div>
+        `;
+    });
+}
+
+// Render dashboard backlog tasks
+function renderDashboardBacklog(tasks) {
+    const container = document.getElementById('dashboardBacklogList');
+    if (!container) return;
+    
+    if (tasks.length === 0) {
+        container.innerHTML = `
+            <div class="task-row" style="border-left: none; padding: 16px; text-align: center; color: var(--dash-text-muted);">
+                <p>No active tasks in your backlog</p>
+            </div>
+        `;
+        return;
+    }
+    
+    let html = '';
+    tasks.forEach(task => {
+        // Determine status circle color
+        let statusCircleClass = 'blue';
+        if (task.priority === 'urgent' || task.priority === 'high' || task.is_overdue) {
+            statusCircleClass = 'red';
+        } else if (task.priority === 'medium') {
+            statusCircleClass = 'orange';
+        }
+        
+        // Determine status text
+        let statusText = 'Personal task';
+        if (task.is_overdue) {
+            statusText = 'Overdue';
+        } else if (task.is_due_this_week) {
+            statusText = 'Due this week';
+        } else if (task.deadline) {
+            const deadlineDate = new Date(task.deadline);
+            const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            statusText = `Due ${monthNames[deadlineDate.getMonth()]} ${deadlineDate.getDate()}`;
+        } else if (task.project_title) {
+            statusText = task.project_title;
+        }
+        
+        html += `
+            <div class="task-row" data-task-id="${task.id}">
+                <div class="status-circle ${statusCircleClass}"></div>
+                <div class="task-info">
+                    <span class="task-name">${escapeHtml(task.title)}</span>
+                    <span class="task-status-text">${escapeHtml(statusText)}</span>
+                </div>
+                <div class="completion-circle" onclick="toggleDashboardTask(${task.id}, this)">
+                    <i class="fas fa-check"></i>
+                </div>
+                <div class="dropdown">
+                    <button class="action-btn ghost" onclick="toggleDropdown(this)">
+                        <i class="fas fa-ellipsis-h"></i>
+                    </button>
+                    <div class="dropdown-menu">
+                        <button class="dropdown-item" onclick="window.location.href='{% url 'general:dashboard_user:active_backlog' %}'">View Details</button>
+                        <button class="dropdown-item delete-item" onclick="deleteDashboardTask(${task.id})" style="color: var(--status-red);">
+                            Delete
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+}
+
+// Helper function to escape HTML
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
 // Dashboard task management functions
 function toggleDashboardTask(taskId, element) {
     const isCompleted = element.classList.contains('completed');
@@ -484,19 +551,8 @@ function toggleDashboardTask(taskId, element) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            if (newCompleted) {
-                element.classList.add('completed');
-                // Remove task from view after a short delay
-                setTimeout(() => {
-                    const taskRow = element.closest('.task-row');
-                    if (taskRow) {
-                        taskRow.style.opacity = '0';
-                        setTimeout(() => taskRow.remove(), 300);
-                    }
-                }, 500);
-            } else {
-                element.classList.remove('completed');
-            }
+            // Reload backlog to show updated list
+            loadDashboardBacklog();
         } else {
             console.error('Failed to toggle task:', data.error);
             alert('Failed to update task: ' + (data.error || 'Unknown error'));
@@ -523,11 +579,8 @@ function deleteDashboardTask(taskId) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            const taskRow = document.querySelector(`.task-row[data-task-id="${taskId}"]`);
-            if (taskRow) {
-                taskRow.style.opacity = '0';
-                setTimeout(() => taskRow.remove(), 300);
-            }
+            // Reload backlog to show updated list
+            loadDashboardBacklog();
         } else {
             console.error('Failed to delete task:', data.error);
             alert('Failed to delete task: ' + (data.error || 'Unknown error'));
@@ -545,5 +598,10 @@ function openCreateProjectModal() {
         modal.style.display = 'flex';
     }
 }
+
+// Load backlog on page load
+document.addEventListener('DOMContentLoaded', function() {
+    loadDashboardBacklog();
+});
 </script>
 {% endblock %}
