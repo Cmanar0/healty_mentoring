@@ -6,161 +6,213 @@
 {% block extra_css %}
 {{ block.super }}
 <style>
+    :root {
+        --primary-bg: #f8fafc;
+        --card-bg: #ffffff;
+        --border-color: #e5e7eb;
+        --text-heading: #111827;
+        --text-body: #374151;
+        --text-meta: #6b7280;
+        --accent-color: #10b981;
+        --accent-hover: #059669;
+        
+        --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
+        --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        --radius-lg: 16px;
+        --radius-md: 12px;
+        
+        --priority-low: #94a3b8;
+        --priority-medium: #3b82f6;
+        --priority-high: #f59e0b;
+        --priority-urgent: #ef4444;
+    }
+
     .backlog-container {
         width: 100%;
-        padding: 24px;
+        padding: 32px;
+        max-width: 1400px;
+        margin: 0 auto;
     }
 
     .backlog-header {
-        margin-bottom: 32px;
+        margin-bottom: 40px;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
     }
 
-    .backlog-header h1 {
-        font-size: 2rem;
-        font-weight: 700;
-        color: #111827;
+    .backlog-header-info h1 {
+        font-size: 2.25rem;
+        font-weight: 800;
+        color: var(--text-heading);
         margin-bottom: 8px;
+        letter-spacing: -0.03em;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .backlog-header-info h1 i {
+        color: var(--accent-color);
+        font-size: 1.75rem;
+    }
+
+    .backlog-header-info p {
+        color: var(--text-meta);
+        font-size: 1.1rem;
+        margin: 0;
     }
 
     /* Backlog Layout */
     .backlog-layout {
         display: grid;
-        grid-template-columns: 1fr 320px;
-        gap: 24px;
+        grid-template-columns: 1fr 340px;
+        gap: 32px;
         align-items: start;
     }
 
     /* Sidebar Filter Card */
     .backlog-sidebar {
-        background: white;
-        border: 1px solid #e5e7eb;
-        border-radius: 12px;
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-lg);
         padding: 24px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        box-shadow: var(--shadow-sm);
         position: sticky;
-        top: 24px;
+        top: 32px;
     }
 
     .filter-section {
-        margin-bottom: 24px;
+        margin-bottom: 28px;
+        padding-bottom: 24px;
+        border-bottom: 1px solid #f3f4f6;
     }
 
     .filter-section:last-child {
         margin-bottom: 0;
+        padding-bottom: 0;
+        border-bottom: none;
     }
 
     .filter-section-title {
-        font-size: 0.875rem;
-        font-weight: 600;
-        color: #111827;
-        margin-bottom: 12px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: #94a3b8;
+        margin-bottom: 16px;
         text-transform: uppercase;
         letter-spacing: 0.05em;
-    }
-
-    .filter-radio-group {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-    }
-
-    .filter-radio-item {
         display: flex;
         align-items: center;
         gap: 8px;
-        padding: 8px;
-        border-radius: 6px;
-        cursor: pointer;
-        transition: background 0.2s;
     }
 
-    .filter-radio-item:hover {
-        background: #f8fafc;
+    .filter-section-title i {
+        font-size: 0.7rem;
     }
 
-    .filter-radio-item input[type="radio"] {
-        width: 18px;
-        height: 18px;
-        cursor: pointer;
-        accent-color: #10b981;
+    .filter-radio-group, .filter-checkbox-group {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
     }
 
-    .filter-radio-item label {
-        font-size: 0.875rem;
-        color: #374151;
-        cursor: pointer;
-        flex: 1;
-    }
-
-    .filter-select {
-        width: 100%;
-        padding: 8px 12px;
-        border: 1px solid #d1d5db;
+    .filter-radio-item, .filter-checkbox-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 12px;
         border-radius: 8px;
-        font-size: 0.875rem;
-        background: white;
         cursor: pointer;
-        transition: all 0.2s;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        border: 1px solid transparent;
     }
 
-    .filter-select:focus {
-        outline: none;
-        border-color: #10b981;
-        box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
-    }
-
-    .filter-checkbox-group {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-    }
-
-    .filter-checkbox-item {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        padding: 6px;
-        border-radius: 6px;
-        cursor: pointer;
-        transition: background 0.2s;
-    }
-
-    .filter-checkbox-item:hover {
+    .filter-radio-item:hover, .filter-checkbox-item:hover {
         background: #f8fafc;
+        border-color: #f1f5f9;
+        transform: translateX(4px);
     }
 
+    .filter-radio-item input[type="radio"], 
     .filter-checkbox-item input[type="checkbox"] {
         width: 18px;
         height: 18px;
         cursor: pointer;
-        accent-color: #10b981;
+        accent-color: var(--accent-color);
+        margin: 0;
     }
 
-    .filter-checkbox-item label {
-        font-size: 0.875rem;
-        color: #374151;
+    .filter-radio-item label, .filter-checkbox-item label {
+        font-size: 0.95rem;
+        color: var(--text-body);
         cursor: pointer;
         flex: 1;
+        font-weight: 500;
+    }
+
+    .filter-select {
+        width: 100%;
+        padding: 10px 14px;
+        border: 1px solid var(--border-color);
+        border-radius: 10px;
+        font-size: 0.95rem;
+        background: #fcfcfd;
+        color: var(--text-body);
+        cursor: pointer;
+        transition: all 0.2s;
+        appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 12px center;
+        background-size: 16px;
+    }
+
+    .filter-select:focus {
+        outline: none;
+        border-color: var(--accent-color);
+        box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1);
+        background-color: white;
     }
 
     .stages-list {
-        max-height: 300px;
+        max-height: 350px;
         overflow-y: auto;
-        margin-top: 12px;
+        padding-right: 4px;
+    }
+
+    .stages-list::-webkit-scrollbar {
+        width: 4px;
+    }
+
+    .stages-list::-webkit-scrollbar-thumb {
+        background: #e2e8f0;
+        border-radius: 10px;
     }
 
     .stage-filter-item {
-        padding: 8px 12px;
-        border-radius: 6px;
-        margin-bottom: 4px;
-        font-size: 0.85rem;
-        color: #374151;
+        padding: 10px 14px;
+        border-radius: 8px;
+        margin-bottom: 6px;
+        font-size: 0.9rem;
+        color: var(--text-body);
         cursor: pointer;
-        transition: background 0.2s;
+        transition: all 0.2s;
+        border: 1px solid transparent;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
     }
 
     .stage-filter-item:hover {
-        background: #f8fafc;
+        background: #f1f5f9;
+        border-color: #e2e8f0;
+    }
+
+    .stage-filter-item.active {
+        background: #eff6ff;
+        color: #1e40af;
+        border-color: #bfdbfe;
+        font-weight: 600;
     }
 
     .stage-filter-item.completed {
@@ -168,30 +220,34 @@
     }
 
     .backlog-section {
-        background: white;
-        border: 1px solid #e5e7eb;
-        border-radius: 12px;
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-lg);
         overflow: hidden;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        box-shadow: var(--shadow-sm);
     }
 
     .backlog-header-section {
-        padding: 20px 24px;
-        border-bottom: 1px solid #e5e7eb;
-        background: #f9fafb;
+        padding: 24px 32px;
+        border-bottom: 1px solid var(--border-color);
+        background: #fafafa;
         display: flex;
         justify-content: space-between;
         align-items: center;
     }
 
     .backlog-header-section h2 {
-        font-size: 1.125rem;
-        font-weight: 600;
-        color: #111827;
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--text-heading);
         margin: 0;
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: 12px;
+    }
+
+    .backlog-header-section h2 i {
+        color: #94a3b8;
     }
 
     .backlog-header-actions {
@@ -200,14 +256,14 @@
         align-items: center;
     }
 
-    /* Task Row Styling - Matching Stage Detail */
+    /* Task Row Styling */
     .task-row {
         display: flex;
         align-items: stretch;
         gap: 0;
         padding: 0;
         border-bottom: 1px solid #f3f4f6;
-        transition: background 0.15s ease;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         position: relative;
         background: white;
     }
@@ -217,11 +273,24 @@
     }
 
     .task-row:hover {
-        background: #f8fafc;
+        background: #fcfcfd;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+        z-index: 10;
     }
     
+    .task-priority-indicator {
+        width: 4px;
+        flex-shrink: 0;
+    }
+
+    .task-row[data-priority="low"] .task-priority-indicator { background: var(--priority-low); }
+    .task-row[data-priority="medium"] .task-priority-indicator { background: var(--priority-medium); }
+    .task-row[data-priority="high"] .task-priority-indicator { background: var(--priority-high); }
+    .task-row[data-priority="urgent"] .task-priority-indicator { background: var(--priority-urgent); }
+
     .task-drag-section {
-        padding: 16px 0px 16px 24px;
+        padding: 16px 0px 16px 20px;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -229,39 +298,34 @@
         cursor: grab;
     }
     
-    .task-row:hover .task-drag-section .drag-grip {
-        opacity: 0.5;
+    .drag-grip {
+        color: #e2e8f0;
+        padding: 6px;
+        border-radius: 6px;
+        transition: all 0.2s;
+        opacity: 0;
+        display: flex;
+    }
+
+    .task-row:hover {
+        background: #fcfcfd;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+        z-index: 10;
+    }
+
+    .task-row:hover .drag-grip {
+        opacity: 1;
         color: #94a3b8;
     }
     
-    .task-drag-section:active {
-        cursor: grabbing;
-    }
-
-    .drag-grip {
-        cursor: grab;
-        color: #e5e7eb;
-        padding: 8px;
-        border-radius: 4px;
-        transition: all 0.2s;
-        opacity: 0;
-        user-select: none;
-        -webkit-user-select: none;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
     .drag-grip:hover {
         background: #f1f5f9;
-        color: #64748b;
-        opacity: 1 !important;
-    }
-    .drag-grip:active {
-        cursor: grabbing;
+        color: var(--text-body);
     }
 
     .task-checkbox-section {
-        padding: 16px 0px 16px 24px;
+        padding: 16px 16px;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -269,256 +333,219 @@
     }
 
     .task-checkbox-container input[type="checkbox"] {
-        width: 22px;
-        height: 22px;
-        min-width: 22px;
-        min-height: 22px;
-        max-width: 22px;
-        max-height: 22px;
+        width: 20px;
+        height: 20px;
         cursor: pointer;
         appearance: none;
-        -webkit-appearance: none;
         border: 2px solid #cbd5e1;
-        border-radius: 4px;
+        border-radius: 6px;
         background: white;
         position: relative;
-        transition: all 0.2s ease;
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
     .task-checkbox-container input[type="checkbox"]:hover {
-        border-color: #10b981;
-        background: #f0fdf4;
+        border-color: var(--accent-color);
+        box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.05);
     }
 
     .task-checkbox-container input[type="checkbox"]:checked {
-        background: #10b981;
-        border-color: #10b981;
+        background: var(--accent-color);
+        border-color: var(--accent-color);
     }
 
     .task-checkbox-container input[type="checkbox"]:checked::after {
-        content: '';
+        content: '✓';
         position: absolute;
         left: 50%;
         top: 50%;
-        transform: translate(-50%, -60%) rotate(45deg);
-        width: 5px;
-        height: 10px;
-        border: solid white;
-        border-width: 0 2px 2px 0;
+        transform: translate(-50%, -50%);
+        color: white;
+        font-size: 12px;
+        font-weight: 900;
     }
 
     .task-main-wrapper {
         flex: 1;
-        display: flex;
-        align-items: center;
-        gap: 16px;
-        padding: 16px 24px;
+        padding: 20px 0;
         cursor: pointer;
-        transition: background 0.15s ease;
         min-width: 0;
-    }
-    
-    .task-main-wrapper:hover {
-        background: rgba(248, 250, 252, 0.5);
-    }
-
-    .task-info {
-        flex: 1;
-        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
     }
 
     .task-title {
-        font-size: 0.95rem;
-        font-weight: 500;
-        color: #1f2937;
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--text-heading);
         transition: all 0.2s;
         line-height: 1.4;
+        margin-bottom: 4px;
     }
 
     .task-title.completed {
         text-decoration: line-through;
         color: #94a3b8;
+        opacity: 0.7;
     }
 
-    .task-description {
-        font-size: 0.85rem;
-        color: #64748b;
-        margin-top: 4px;
-        line-height: 1.5;
-    }
-
-    .task-row-actions-section {
-        padding: 16px 24px 16px 12px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex-shrink: 0;
-    }
-    
-    .task-row:hover .task-row-actions-section .task-row-actions,
-    .task-row .task-row-actions-section .task-row-actions.has-active-dropdown {
-        opacity: 1;
-    }
-
-    .task-row-actions {
-        display: flex;
-        gap: 4px;
-        opacity: 0;
-        transition: opacity 0.2s;
-        position: relative;
-        flex-shrink: 0;
-    }
-    
-    .task-row .task-row-actions.has-active-dropdown,
-    .task-row:hover .task-row-actions {
-        opacity: 1;
-    }
-
-    .task-dropdown-container {
-        position: relative;
-        z-index: 10;
-    }
-
-    .task-dropdown-trigger {
-        padding: 0;
-        width: 32px;
-        height: 32px;
-        border-radius: 50%;
-        color: #64748b;
-        border: none;
-        background: transparent;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: all 0.2s;
-    }
-    
-    .task-dropdown-trigger i {
-        font-size: 1rem;
-    }
-
-    .task-dropdown-trigger:hover {
-        background: #f1f5f9;
-        color: #1f2937;
-    }
-
-    .task-dropdown-menu {
-        position: absolute;
-        top: calc(100% + 8px);
-        bottom: auto;
-        right: 0;
-        background: white;
-        border-radius: 12px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-        min-width: 180px;
-        padding: 0;
-        opacity: 0;
-        visibility: hidden;
-        transform: translateY(-10px);
-        transition: all 0.2s ease;
-        z-index: 1000;
-    }
-
-    .task-dropdown-menu.dropdown-up {
-        top: auto;
-        bottom: calc(100% + 8px);
-        transform: translateY(10px);
-    }
-
-    .task-dropdown-container.active .task-dropdown-menu {
-        opacity: 1;
-        visibility: visible;
-        transform: translateY(0);
-    }
-
-    .task-dropdown-container.active .task-dropdown-menu.dropdown-up {
-        transform: translateY(0);
-    }
-
-    .task-dropdown-item {
+    .task-meta {
         display: flex;
         align-items: center;
         gap: 12px;
-        padding: 12px 20px;
-        color: #1e293b;
-        text-decoration: none;
-        transition: background 0.2s ease;
-        border: none;
-        background: transparent;
-        width: 100%;
-        cursor: pointer;
-        font-size: 0.95rem;
-        font-weight: 400;
-        text-align: left;
+        flex-wrap: wrap;
     }
 
-    .task-dropdown-item.first-item {
-        border-radius: 12px 12px 0 0;
+    .task-description {
+        font-size: 0.875rem;
+        color: var(--text-body);
+        line-height: 1.5;
+        margin-bottom: 8px;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        line-clamp: 2;
     }
 
-    .task-dropdown-item.last-item {
-        border-radius: 0 0 12px 12px;
+    .task-badge {
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        padding: 2px 8px;
+        border-radius: 20px;
+        letter-spacing: 0.02em;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        border: 1px solid transparent;
     }
 
-    .task-dropdown-item:hover {
-        background: rgba(16, 185, 129, 0.1);
-        color: #10b981;
+    .badge-project {
+        background: #f1f5f9;
+        color: #475569;
+        border-color: #e2e8f0;
     }
 
-    .task-dropdown-item.delete-item:hover {
-        background: rgba(239, 68, 68, 0.1);
-        color: #ef4444;
+    .badge-stage {
+        background: #fff7ed;
+        color: #c2410c;
+        border-color: #ffedd5;
     }
 
-    .task-dropdown-item i {
-        width: 20px;
-        text-align: center;
-        color: #94a3b8;
-        font-size: 1.1rem;
+    .badge-deadline {
+        background: #fef2f2;
+        color: #b91c1c;
+        border-color: #fee2e2;
+    }
+
+    .task-row-actions-section {
+        padding: 16px 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
         flex-shrink: 0;
     }
-
-    .task-dropdown-item:hover i {
-        color: #10b981;
+    
+    .task-row-actions {
+        display: flex;
+        gap: 8px;
+        opacity: 0;
+        transition: all 0.2s;
+    }
+    
+    .task-row:hover .task-row-actions,
+    .task-row-actions.has-active-dropdown {
+        opacity: 1;
     }
 
-    .task-dropdown-item.delete-item:hover i {
+    .task-action-btn {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: none;
+        background: transparent;
+        color: #64748b;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .task-action-btn:hover {
+        background: #f1f5f9;
+        color: var(--text-heading);
+    }
+
+    .task-action-btn.delete:hover {
+        background: #fef2f2;
         color: #ef4444;
     }
 
     .empty-state {
         text-align: center;
-        padding: 48px;
-        color: #cbd5e1;
+        padding: 80px 48px;
     }
 
-    .empty-state i {
-        font-size: 3rem;
-        margin-bottom: 16px;
-        opacity: 0.3;
+    .empty-state-icon {
+        width: 80px;
+        height: 80px;
+        background: #f8fafc;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 24px;
+        color: #cbd5e1;
+        font-size: 2rem;
+    }
+
+    .empty-state h3 {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--text-heading);
+        margin-bottom: 8px;
+    }
+
+    .empty-state p {
+        color: var(--text-meta);
+        font-size: 1rem;
+        max-width: 320px;
+        margin: 0 auto;
     }
 
     .fab-create {
-        background: #10b981;
+        background: #111827;
         color: white;
         border: none;
-        border-radius: 8px;
-        padding: 10px 20px;
-        font-weight: 500;
+        border-radius: 12px;
+        padding: 12px 24px;
+        font-weight: 700;
         cursor: pointer;
-        transition: all 0.2s;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         display: inline-flex;
         align-items: center;
-        gap: 8px;
-        font-size: 0.875rem;
+        gap: 10px;
+        font-size: 0.95rem;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
     }
 
     .fab-create:hover {
-        background: #059669;
+        background: #000;
+        transform: translateY(-2px);
+        box-shadow: 0 8px 16px rgba(0,0,0,0.15);
+    }
+
+    .fab-create:active {
+        transform: translateY(0);
+    }
+
+    .sortable-ghost {
+        opacity: 0.4;
+        background: #f1f5f9 !important;
+        border: 2px dashed var(--accent-color) !important;
     }
 </style>
 {% endblock %}
@@ -526,8 +553,10 @@
 {% block dashboard_content %}
 <div class="backlog-container">
     <div class="backlog-header">
-        <h1><i class="fas fa-clipboard-list"></i> My Active Backlog</h1>
-        <p style="color: #6b7280; margin: 0;">Personal tasks and reminders</p>
+        <div class="backlog-header-info">
+            <h1><i class="fas fa-clipboard-list"></i> My Active Backlog</h1>
+            <p>Personal tasks and reminders</p>
+        </div>
     </div>
 
     <div class="backlog-layout">
@@ -537,9 +566,17 @@
         <div class="backlog-header-section">
             <h2>
                 <i class="fas fa-tasks"></i> Tasks
-                <span id="tasksCount" style="font-size: 0.8rem; color: #6b7280; font-weight: 500; margin-left: 8px;">
-                    0 Tasks
-                </span>
+                <div class="task-filter-buttons" style="display: inline-flex; gap: 8px; margin-left: 12px; align-items: center;">
+                    <button class="task-filter-btn active" data-filter="all" onclick="filterTasks('all')">
+                        All
+                    </button>
+                    <button class="task-filter-btn" data-filter="active" onclick="filterTasks('active')">
+                        <span id="activeTasksCount">0</span> Active
+                    </button>
+                    <button class="task-filter-btn" data-filter="completed" onclick="filterTasks('completed')">
+                        <span id="completedTasksCount">0</span> Completed
+                    </button>
+                </div>
             </h2>
             <div class="backlog-header-actions">
                 <button type="button" onclick="openCreateTaskModal()" class="fab-create">
@@ -646,7 +683,65 @@
 
 {% block extra_js %}
 {{ block.super }}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 <script>
+    let sortableInstance = null;
+    let allTasks = []; // Store all tasks for filtering
+    let currentFilter = 'all'; // Current filter state
+
+    function initSortable() {
+        const el = document.getElementById('tasksList');
+        if (!el) return;
+
+        if (sortableInstance) {
+            sortableInstance.destroy();
+        }
+
+        sortableInstance = Sortable.create(el, {
+            animation: 150,
+            handle: '.drag-grip',
+            ghostClass: 'sortable-ghost',
+            onEnd: function() {
+                saveTaskOrder();
+            }
+        });
+    }
+
+    function saveTaskOrder() {
+        const tasksList = document.getElementById('tasksList');
+        const rows = tasksList.querySelectorAll('.task-row');
+        const orders = [];
+
+        rows.forEach((row, index) => {
+            const taskId = row.getAttribute('data-task-id');
+            // Use simple incrementing order (backend handles Decimal conversion)
+            orders.push({
+                task_id: taskId,
+                order: (index + 1) * 10
+            });
+        });
+
+        fetch('{% url "general:dashboard_mentor:reorder_mentor_backlog_tasks" %}', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ orders: orders })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (!data.success) {
+                console.error('Failed to save task order:', data.error);
+                alert('Order was not saved. Please try again.');
+                loadTasks(); // Revert UI
+            }
+        })
+        .catch(error => {
+            console.error('Error saving order:', error);
+            loadTasks(); // Revert UI
+        });
+    }
     // Load tasks from API
     function loadTasks() {
         const container = document.getElementById('tasksList');
@@ -710,43 +805,113 @@
     }
     
     // Render tasks from API data
-    function renderTasks(tasks) {
-        const container = document.getElementById('tasksList');
-        const countEl = document.getElementById('tasksCount');
+    // Filter tasks based on completion status
+    function filterTasks(filter) {
+        currentFilter = filter;
         
-        if (!container) {
-            console.error('tasksList container not found!');
+        // Update button states
+        document.querySelectorAll('.task-filter-btn').forEach(btn => {
+            btn.classList.remove('active');
+            if (btn.dataset.filter === filter) {
+                btn.classList.add('active');
+            }
+        });
+        
+        // Apply filter and re-render
+        applyFilter();
+    }
+    
+    // Apply current filter to tasks
+    function applyFilter() {
+        let filteredTasks = allTasks;
+        
+        if (currentFilter === 'active') {
+            filteredTasks = allTasks.filter(t => !t.completed);
+        } else if (currentFilter === 'completed') {
+            filteredTasks = allTasks.filter(t => t.completed);
+        }
+        
+        renderTasksList(filteredTasks);
+    }
+    
+    function renderTasks(tasks) {
+        const activeTasksCount = document.getElementById('activeTasksCount');
+        const completedTasksCount = document.getElementById('completedTasksCount');
+        
+        // Store all tasks for filtering
+        allTasks = tasks || [];
+        
+        if (!allTasks || allTasks.length === 0) {
+            if (activeTasksCount) activeTasksCount.textContent = '0';
+            if (completedTasksCount) completedTasksCount.textContent = '0';
+            applyFilter(); // This will show empty state
             return;
         }
+        
+        // Update active and completed task counts
+        const activeCount = allTasks.filter(t => !t.completed).length;
+        const completedCount = allTasks.filter(t => t.completed).length;
+        if (activeTasksCount) activeTasksCount.textContent = activeCount;
+        if (completedTasksCount) completedTasksCount.textContent = completedCount;
+        
+        // Apply current filter
+        applyFilter();
+    }
+    
+    // Render filtered tasks list
+    function renderTasksList(tasks) {
+        const container = document.getElementById('tasksList');
         
         if (!tasks || tasks.length === 0) {
             container.innerHTML = `
                 <div class="empty-state">
-                    <i class="fas fa-clipboard-list"></i>
-                    <p>No tasks yet. Create one to get started.</p>
+                    <div class="empty-state-icon">
+                        <i class="fas fa-clipboard-list"></i>
+                    </div>
+                    <h3>No ${currentFilter === 'all' ? '' : currentFilter} tasks yet</h3>
+                    <p>${currentFilter === 'all' ? 'Create your first task to start organizing your personal backlog.' : 'No tasks match this filter.'}</p>
                 </div>
             `;
-            if (countEl) {
-                countEl.textContent = '0 Tasks';
+            // Reinitialize sortable if needed
+            if (sortableInstance) {
+                sortableInstance.destroy();
+                sortableInstance = null;
             }
             return;
-        }
-        
-        // Update task count
-        if (countEl) {
-            countEl.textContent = `${tasks.length} Task${tasks.length !== 1 ? 's' : ''}`;
         }
         
         container.innerHTML = tasks.map(task => {
             const completedClass = task.completed ? 'completed' : '';
             const checkedAttr = task.completed ? 'checked' : '';
+            const priority = task.priority || 'medium';
+            
+            // Format badges
+            const projectBadge = task.project_title ? `
+                <span class="task-badge badge-project">
+                    <i class="fas fa-layer-group"></i> ${escapeHtml(task.project_title)}
+                </span>
+            ` : '';
+            
+            const stageBadge = task.stage_title ? `
+                <span class="task-badge badge-stage">
+                    <i class="fas fa-flag"></i> ${escapeHtml(task.stage_title)}
+                </span>
+            ` : '';
+            
+            const deadlineBadge = task.deadline ? `
+                <span class="task-badge badge-deadline">
+                    <i class="far fa-calendar-alt"></i> ${task.deadline}
+                </span>
+            ` : '';
+            
             const descriptionHtml = task.description ? `<div class="task-description">${escapeHtml(task.description)}</div>` : '';
             
             return `
-                <div class="task-row" data-task-id="${task.id}">
+                <div class="task-row" data-task-id="${task.id}" data-priority="${priority}">
+                    <div class="task-priority-indicator"></div>
                     <div class="task-drag-section">
                         <div class="drag-grip">
-                            <i class="fas fa-grip-lines"></i>
+                            <i class="fas fa-grip-vertical"></i>
                         </div>
                     </div>
                     <div class="task-checkbox-section" onclick="event.stopPropagation();">
@@ -758,30 +923,29 @@
                         <div class="task-info">
                             <div class="task-title ${completedClass}">${escapeHtml(task.title)}</div>
                             ${descriptionHtml}
+                            <div class="task-meta">
+                                ${projectBadge}
+                                ${stageBadge}
+                                ${deadlineBadge}
+                            </div>
                         </div>
                     </div>
                     <div class="task-row-actions-section" onclick="event.stopPropagation();">
                         <div class="task-row-actions" id="taskRowActions_${task.id}">
-                            <div class="task-dropdown-container" id="taskDropdown_${task.id}">
-                                <button class="task-dropdown-trigger" onclick="toggleTaskDropdown(${task.id}, event)">
-                                    <i class="fas fa-ellipsis-v"></i>
-                                </button>
-                                <div class="task-dropdown-menu" onclick="event.stopPropagation();">
-                                    <button class="task-dropdown-item first-item" onclick="editTask(${task.id}); event.stopPropagation();">
-                                        <i class="fas fa-edit"></i>
-                                        <span>Edit</span>
-                                    </button>
-                                    <button class="task-dropdown-item delete-item last-item" onclick="deleteTask(${task.id}); event.stopPropagation();">
-                                        <i class="fas fa-trash"></i>
-                                        <span>Delete</span>
-                                    </button>
-                                </div>
-                            </div>
+                            <button class="task-action-btn" onclick="editTask(${task.id}); event.stopPropagation();" title="Edit">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="task-action-btn delete" onclick="deleteTask(${task.id}); event.stopPropagation();" title="Delete">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
                         </div>
                     </div>
                 </div>
             `;
         }).join('');
+
+        // Initialize drag and drop after rendering
+        initSortable();
     }
     
     // Helper function to escape HTML

@@ -86,6 +86,7 @@ urlpatterns = [
     path('backlog/tasks/<int:task_id>/edit/', views.edit_mentor_backlog_task, name='edit_mentor_backlog_task'),
     path('backlog/tasks/<int:task_id>/toggle-complete/', views.toggle_mentor_backlog_task_complete, name='toggle_mentor_backlog_task_complete'),
     path('backlog/tasks/<int:task_id>/delete/', views.delete_mentor_backlog_task, name='delete_mentor_backlog_task'),
+    path('backlog/tasks/reorder/', views.reorder_mentor_backlog_tasks, name='reorder_mentor_backlog_tasks'),
     path('statistics/', views.statistics, name='statistics'),
 ]
 

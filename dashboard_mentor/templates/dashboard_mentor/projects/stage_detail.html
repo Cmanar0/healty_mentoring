@@ -781,6 +781,160 @@
     .sortable-drag {
         opacity: 0.8;
     }
+    
+    /* Task Filter Dropdown */
+    .task-filter-dropdown {
+        position: relative;
+    }
+    
+    .task-filter-select-trigger {
+        padding: 6px 12px;
+        border: 1px solid #e5e7eb;
+        background: white;
+        color: #6b7280;
+        border-radius: 6px;
+        font-size: 0.8rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        white-space: nowrap;
+    }
+    
+    .task-filter-select-trigger:hover {
+        background: #f9fafb;
+        border-color: #d1d5db;
+        color: #374151;
+    }
+    
+    .task-filter-dropdown.active .task-filter-select-trigger {
+        background: #3b82f6;
+        border-color: #3b82f6;
+        color: white;
+    }
+    
+    .task-filter-dropdown-menu {
+        position: absolute;
+        top: calc(100% + 4px);
+        left: 0;
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        min-width: 180px;
+        z-index: 1000;
+        display: none;
+        overflow: hidden;
+    }
+    
+    .task-filter-dropdown.active .task-filter-dropdown-menu {
+        display: block;
+    }
+    
+    .task-filter-option {
+        width: 100%;
+        padding: 10px 14px;
+        border: none;
+        background: white;
+        color: #374151;
+        text-align: left;
+        cursor: pointer;
+        transition: background 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 0.85rem;
+        font-weight: 500;
+    }
+    
+    .task-filter-option:hover {
+        background: #f9fafb;
+    }
+    
+    .task-filter-option.active {
+        background: #eff6ff;
+        color: #3b82f6;
+    }
+    
+    .task-filter-option i {
+        width: 16px;
+        text-align: center;
+    }
+    
+    /* Task Actions Button and Menu */
+    .btn-action {
+        padding: 8px 12px;
+        border: 1px solid #e5e7eb;
+        background: white;
+        color: #6b7280;
+        border-radius: 6px;
+        font-size: 0.875rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .btn-action:hover {
+        background: #f9fafb;
+        border-color: #d1d5db;
+        color: #374151;
+    }
+    
+    .task-actions-dropdown {
+        position: relative;
+    }
+    
+    .task-actions-menu {
+        position: absolute;
+        top: calc(100% + 4px);
+        right: 0;
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        min-width: 160px;
+        z-index: 1000;
+        display: none;
+        overflow: hidden;
+    }
+    
+    .task-actions-dropdown.active .task-actions-menu {
+        display: block;
+    }
+    
+    .task-action-item {
+        width: 100%;
+        padding: 10px 14px;
+        border: none;
+        background: white;
+        color: #374151;
+        text-align: left;
+        cursor: pointer;
+        transition: background 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 0.85rem;
+        font-weight: 500;
+    }
+    
+    .task-action-item:hover {
+        background: #f9fafb;
+    }
+    
+    .task-action-item i {
+        width: 16px;
+        text-align: center;
+        color: #6b7280;
+    }
+    
+    .task-action-item:hover i {
+        color: #374151;
+    }
 
     /* Notes / Discussion */
     .notes-section {
@@ -1062,9 +1216,29 @@
                 <div class="backlog-header">
                     <h2>
                         <i class="fas fa-tasks"></i> Stage Backlog
-                        <span id="tasksCount" style="font-size: 0.8rem; color: #6b7280; font-weight: 500; margin-left: 8px;">
-                            0 Tasks
-                        </span>
+                        <div class="task-filter-select-wrapper" style="display: inline-flex; margin-left: 12px; align-items: center; position: relative;">
+                            <div class="task-filter-dropdown">
+                                <button class="task-filter-select-trigger" id="taskFilterTrigger" onclick="toggleTaskFilterDropdown(event)">
+                                    <i class="fas fa-list" id="taskFilterIcon"></i>
+                                    <span id="taskFilterText">All</span>
+                                    <i class="fas fa-chevron-down" style="font-size: 0.7rem; margin-left: 6px;"></i>
+                                </button>
+                                <div class="task-filter-dropdown-menu" id="taskFilterMenu">
+                                    <button class="task-filter-option active" data-filter="all" onclick="selectTaskFilter('all', event)">
+                                        <i class="fas fa-list"></i> All
+                                    </button>
+                                    <button class="task-filter-option" data-filter="active" onclick="selectTaskFilter('active', event)">
+                                        <i class="fas fa-circle" style="color: #3b82f6;"></i> Active (<span id="activeTasksCount">0</span>)
+                                    </button>
+                                    <button class="task-filter-option" data-filter="completed" onclick="selectTaskFilter('completed', event)">
+                                        <i class="fas fa-check-circle" style="color: #10b981;"></i> Completed (<span id="completedTasksCount">0</span>)
+                                    </button>
+                                    <button class="task-filter-option" data-filter="history" onclick="selectTaskFilter('history', event)">
+                                        <i class="fas fa-history" style="color: #6b7280;"></i> History
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                     </h2>
                     <div class="backlog-header-actions">
                         <button onclick="generateTasksAI()" id="generateTasksBtn" class="btn-ai-magic" title="Auto-Generate Tasks with AI">
@@ -1073,6 +1247,22 @@
                         <button type="button" onclick="openCreateTaskModal()" class="fab-create">
                             <i class="fas fa-plus"></i> Create Task
                         </button>
+                        <div class="task-actions-dropdown" style="position: relative;">
+                            <button type="button" class="btn-action" id="taskActionBtn" title="Task Actions" onclick="toggleTaskActionsMenu(event)">
+                                <i class="fas fa-ellipsis-v"></i>
+                            </button>
+                            <div class="task-actions-menu" id="taskActionsMenu">
+                                <button class="task-action-item" onclick="handleTaskAction('bulk_edit')">
+                                    <i class="fas fa-edit"></i> Bulk Edit
+                                </button>
+                                <button class="task-action-item" onclick="handleTaskAction('bulk_delete')">
+                                    <i class="fas fa-trash"></i> Bulk Delete
+                                </button>
+                                <button class="task-action-item" onclick="handleTaskAction('export')">
+                                    <i class="fas fa-download"></i> Export Tasks
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 
@@ -1180,6 +1370,8 @@
     const PROJECT_ID = parseInt('{{ project.id }}');
     const STAGE_ID = parseInt('{{ stage.id }}');
     let taskSortable = null;
+    let allTasks = []; // Store all tasks for filtering
+    let currentFilter = 'all'; // Current filter state
 
     // Load tasks from API
     function loadTasks() {
@@ -1190,8 +1382,7 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    renderTasks(data.tasks);
-                    if (countEl) countEl.textContent = `${data.tasks.length} Task${data.tasks.length !== 1 ? 's' : ''}`;
+                    renderTasks(data.tasks, data.active_count, data.completed_count);
                 } else {
                     tasksList.innerHTML = `<div style="padding: 24px; text-align: center; color: #ef4444;">Error: ${data.error}</div>`;
                 }
@@ -1249,24 +1440,199 @@
         });
     };
 
-    // Render tasks to DOM
-    function renderTasks(tasks) {
-        const tasksList = document.getElementById('tasksList');
-        const tasksCount = document.getElementById('tasksCount');
+    // Toggle task filter dropdown
+    function toggleTaskFilterDropdown(event) {
+        if (event) {
+            event.stopPropagation();
+        }
+        const dropdown = document.querySelector('.task-filter-dropdown');
+        if (dropdown) {
+            dropdown.classList.toggle('active');
+        }
+    }
+    
+    // Select task filter option
+    function selectTaskFilter(filter, event) {
+        if (event) {
+            event.stopPropagation();
+        }
+        currentFilter = filter;
         
-        // Update task count
-        if (tasksCount) {
-            const count = tasks ? tasks.length : 0;
-            tasksCount.textContent = `${count} Task${count !== 1 ? 's' : ''}`;
+        // Update dropdown trigger text and icon
+        const trigger = document.getElementById('taskFilterTrigger');
+        const icon = document.getElementById('taskFilterIcon');
+        const text = document.getElementById('taskFilterText');
+        const menu = document.getElementById('taskFilterMenu');
+        
+        // Update option states
+        menu.querySelectorAll('.task-filter-option').forEach(option => {
+            option.classList.remove('active');
+            if (option.dataset.filter === filter) {
+                option.classList.add('active');
+            }
+        });
+        
+        // Update trigger based on selected filter
+        const selectedOption = menu.querySelector(`[data-filter="${filter}"]`);
+        if (selectedOption && trigger && icon && text) {
+            const optionIcon = selectedOption.querySelector('i');
+            const optionText = selectedOption.textContent.trim();
+            
+            if (optionIcon) {
+                icon.className = optionIcon.className;
+                icon.style.color = optionIcon.style.color || '';
+            }
+            text.textContent = optionText.split('(')[0].trim(); // Remove count from display
         }
         
+        // Close dropdown
+        const dropdown = document.querySelector('.task-filter-dropdown');
+        if (dropdown) {
+            dropdown.classList.remove('active');
+        }
+        
+        // Apply filter and re-render
+        applyFilter();
+    }
+    
+    // Filter tasks based on completion status
+    function filterTasks(filter) {
+        // This function is called directly from selectTaskFilter
+        // Keep for backward compatibility if needed
+        selectTaskFilter(filter, null);
+    }
+    
+    // Toggle task actions menu
+    function toggleTaskActionsMenu(event) {
+        if (event) {
+            event.stopPropagation();
+        }
+        const dropdown = document.querySelector('.task-actions-dropdown');
+        if (dropdown) {
+            dropdown.classList.toggle('active');
+        }
+    }
+    
+    // Handle task action
+    function handleTaskAction(action) {
+        const dropdown = document.querySelector('.task-actions-dropdown');
+        if (dropdown) {
+            dropdown.classList.remove('active');
+        }
+        
+        switch(action) {
+            case 'bulk_edit':
+                // TODO: Implement bulk edit
+                if (typeof showNotification !== 'undefined') {
+                    showNotification('Bulk edit functionality coming soon', 'info');
+                } else {
+                    alert('Bulk edit functionality coming soon');
+                }
+                break;
+            case 'bulk_delete':
+                // TODO: Implement bulk delete
+                if (typeof showNotification !== 'undefined') {
+                    showNotification('Bulk delete functionality coming soon', 'info');
+                } else {
+                    alert('Bulk delete functionality coming soon');
+                }
+                break;
+            case 'export':
+                // TODO: Implement export
+                if (typeof showNotification !== 'undefined') {
+                    showNotification('Export functionality coming soon', 'info');
+                } else {
+                    alert('Export functionality coming soon');
+                }
+                break;
+        }
+    }
+    
+    // Apply current filter to tasks
+    function applyFilter() {
+        let filteredTasks = allTasks;
+        
+        if (currentFilter === 'active') {
+            filteredTasks = allTasks.filter(t => !t.completed);
+        } else if (currentFilter === 'completed') {
+            filteredTasks = allTasks.filter(t => t.completed);
+        } else if (currentFilter === 'history') {
+            // History filter - placeholder for future implementation
+            // For now, show all tasks (can be filtered by date, status changes, etc. later)
+            filteredTasks = allTasks;
+        }
+        // 'all' filter shows all tasks (no filtering)
+        
+        renderTasksList(filteredTasks);
+    }
+    
+    // Render tasks to DOM
+    function renderTasks(tasks, activeCount, completedCount) {
+        const activeTasksCountEl = document.getElementById('activeTasksCount');
+        const completedTasksCountEl = document.getElementById('completedTasksCount');
+        
+        // Store all tasks for filtering
+        allTasks = tasks || [];
+        
+        // Calculate counts if not provided
+        let finalActiveCount = activeCount;
+        let finalCompletedCount = completedCount;
+        
+        if (activeCount === undefined || completedCount === undefined) {
+            if (allTasks.length > 0) {
+                finalActiveCount = allTasks.filter(t => !t.completed).length;
+                finalCompletedCount = allTasks.filter(t => t.completed).length;
+            } else {
+                finalActiveCount = 0;
+                finalCompletedCount = 0;
+            }
+        }
+        
+        // Update count displays in dropdown options
+        if (activeTasksCountEl) activeTasksCountEl.textContent = finalActiveCount;
+        if (completedTasksCountEl) completedTasksCountEl.textContent = finalCompletedCount;
+        
+        // Update dropdown option text with counts
+        const activeOption = document.querySelector('.task-filter-option[data-filter="active"]');
+        const completedOption = document.querySelector('.task-filter-option[data-filter="completed"]');
+        if (activeOption) {
+            const icon = activeOption.querySelector('i');
+            activeOption.innerHTML = `<i class="${icon.className}" style="color: #3b82f6;"></i> Active (${finalActiveCount})`;
+        }
+        if (completedOption) {
+            const icon = completedOption.querySelector('i');
+            completedOption.innerHTML = `<i class="${icon.className}" style="color: #10b981;"></i> Completed (${finalCompletedCount})`;
+        }
+        
+        // Apply current filter
+        applyFilter();
+    }
+    
+    // Render filtered tasks list
+    function renderTasksList(tasks) {
+        const tasksList = document.getElementById('tasksList');
+        
         if (!tasks || tasks.length === 0) {
+            let emptyMessage = 'No tasks yet.';
+            if (currentFilter === 'active') {
+                emptyMessage = 'No active tasks yet.';
+            } else if (currentFilter === 'completed') {
+                emptyMessage = 'No completed tasks yet.';
+            } else if (currentFilter === 'history') {
+                emptyMessage = 'No history available yet.';
+            }
+            
             tasksList.innerHTML = `
                 <div style="text-align: center; padding: 48px; color: #cbd5e1;">
                     <i class="fas fa-tasks" style="font-size: 2rem; margin-bottom: 12px; opacity: 0.3;"></i>
-                    <p>No tasks yet. Create one to get started.</p>
+                    <p>${emptyMessage}</p>
                 </div>
             `;
+            // Reinitialize sortable if needed
+            if (taskSortable) {
+                taskSortable.destroy();
+                taskSortable = null;
+            }
             return;
         }
 
@@ -1274,7 +1640,7 @@
             <div class="task-row" data-task-id="${task.id}">
                 <div class="task-drag-section">
                     <div class="drag-grip">
-                        <i class="fas fa-grip-lines"></i>
+                        <i class="fas fa-grip-vertical"></i>
                     </div>
                 </div>
                 <div class="task-checkbox-section" onclick="event.stopPropagation();">
@@ -1316,7 +1682,13 @@
     // Initialize SortableJS for tasks
     function initTaskSortable() {
         const el = document.getElementById('tasksList');
-        if (!el || taskSortable) return;
+        if (!el) return;
+        
+        // Destroy existing sortable if it exists
+        if (taskSortable) {
+            taskSortable.destroy();
+            taskSortable = null;
+        }
 
         taskSortable = new Sortable(el, {
             animation: 150,
@@ -1413,7 +1785,25 @@
     };
 
     // Close task dropdowns when clicking outside
+    // Close dropdowns when clicking outside
     document.addEventListener('click', function(event) {
+        // Close task filter dropdown
+        if (!event.target.closest('.task-filter-dropdown')) {
+            const filterDropdown = document.querySelector('.task-filter-dropdown');
+            if (filterDropdown) {
+                filterDropdown.classList.remove('active');
+            }
+        }
+        
+        // Close task actions dropdown
+        if (!event.target.closest('.task-actions-dropdown')) {
+            const actionsDropdown = document.querySelector('.task-actions-dropdown');
+            if (actionsDropdown) {
+                actionsDropdown.classList.remove('active');
+            }
+        }
+        
+        // Close task row dropdowns
         if (!event.target.closest('.task-dropdown-container')) {
             document.querySelectorAll('.task-dropdown-container').forEach(dropdown => {
                 dropdown.classList.remove('active');
@@ -1603,6 +1993,13 @@
     document.addEventListener('DOMContentLoaded', function() {
         loadTasks();
         loadActiveBacklog();
+        
+        // Initialize filter dropdown to show "All" as selected
+        const allOption = document.querySelector('.task-filter-option[data-filter="all"]');
+        if (allOption) {
+            allOption.classList.add('active');
+        }
+        
         // Set offset after a short delay to ensure meta card is rendered
         setTimeout(setMainContentOffset, 100);
     });

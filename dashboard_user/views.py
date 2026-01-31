@@ -2602,6 +2602,11 @@ def active_backlog(request):
     # Get all tasks in user's active backlog
     tasks = Task.objects.filter(user_active_backlog=user_profile).order_by('order', 'created_at')
     
+    # Calculate active and completed counts
+    active_count = tasks.filter(completed=False).count()
+    completed_count = tasks.filter(completed=True).count()
+    total_tasks = tasks.count()
+    
     # Also get tasks assigned from stages (assigned=True, assigned_to=user_profile)
     assigned_tasks = Task.objects.filter(assigned=True, assigned_to=user_profile, stage__isnull=False).order_by('order', 'created_at')
     
@@ -2638,6 +2643,9 @@ def active_backlog(request):
         'stages': stages,
         'selected_mentor_id': selected_mentor_id,
         'selected_project_id': selected_project_id,
+        'active_count': active_count,
+        'completed_count': completed_count,
+        'total_tasks': total_tasks,
     }
     
     return render(request, 'dashboard_user/active_backlog.html', context)
@@ -2671,6 +2679,7 @@ def create_active_backlog_task(request):
         else:
             next_order = Decimal('10')
         
+        from django.utils import timezone
         task = Task.objects.create(
             user_active_backlog=user_profile,
             title=title,
@@ -2681,7 +2690,8 @@ def create_active_backlog_task(request):
             created_by=request.user,
             author_name=f"{request.user.profile.first_name} {request.user.profile.last_name}",
             author_email=request.user.email,
-            author_role='client'
+            author_role='client',
+            moved_to_active_backlog_at=timezone.now()  # Set timestamp when created in active backlog
         )
         
         return JsonResponse({
@@ -2764,6 +2774,11 @@ def toggle_active_backlog_task_complete(request, task_id):
         
         task.completed = completed
         task.status = 'completed' if completed else 'todo'
+        if completed and not task.completed_at:
+            from django.utils import timezone
+            task.completed_at = timezone.now()
+        elif not completed:
+            task.completed_at = None
         task.save()
         
         return JsonResponse({
@@ -2995,10 +3010,16 @@ def stage_detail(request, project_id, stage_id):
     from dashboard_user.models import Task
     tasks = stage.backlog_tasks.all().order_by('order', 'created_at')
     
+    # Calculate active and completed task counts
+    active_count = tasks.filter(completed=False).count()
+    completed_count = tasks.filter(completed=True).count()
+    
     context = {
         'project': project,
         'stage': stage,
         'notes': notes,
+        'active_count': active_count,
+        'completed_count': completed_count,
         'tasks': tasks,
         'is_owner': is_owner,
         'is_supervisor': is_supervisor,

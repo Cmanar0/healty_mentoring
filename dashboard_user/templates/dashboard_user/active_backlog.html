@@ -347,6 +347,43 @@
     .fab-create:hover {
         background: #059669;
     }
+    
+    /* Task Filter Buttons */
+    .task-filter-buttons {
+        display: inline-flex;
+        gap: 6px;
+        align-items: center;
+    }
+    
+    .task-filter-btn {
+        padding: 4px 12px;
+        border: 1px solid #e5e7eb;
+        background: white;
+        color: #6b7280;
+        border-radius: 6px;
+        font-size: 0.8rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+        white-space: nowrap;
+    }
+    
+    .task-filter-btn:hover {
+        background: #f9fafb;
+        border-color: #d1d5db;
+        color: #374151;
+    }
+    
+    .task-filter-btn.active {
+        background: #3b82f6;
+        border-color: #3b82f6;
+        color: white;
+    }
+    
+    .task-filter-btn.active:hover {
+        background: #2563eb;
+        border-color: #2563eb;
+    }
 </style>
 {% endblock %}
 
@@ -402,12 +439,20 @@
     <!-- Active Backlog Tasks -->
     <div class="backlog-section">
         <div class="backlog-header-section">
-            <h2>
-                <i class="fas fa-tasks"></i> My Tasks
-                <span style="font-size: 0.8rem; color: #6b7280; font-weight: 500; margin-left: 8px;">
-                    {{ total_tasks }} Task{{ total_tasks|pluralize }}
-                </span>
-            </h2>
+                <h2>
+                    <i class="fas fa-tasks"></i> My Tasks
+                    <div class="task-filter-buttons" style="display: inline-flex; gap: 8px; margin-left: 12px; align-items: center;">
+                        <button class="task-filter-btn active" data-filter="all" onclick="filterTasks('all')">
+                            All
+                        </button>
+                        <button class="task-filter-btn" data-filter="active" onclick="filterTasks('active')">
+                            {{ active_count }} Active
+                        </button>
+                        <button class="task-filter-btn" data-filter="completed" onclick="filterTasks('completed')">
+                            {{ completed_count }} Completed
+                        </button>
+                    </div>
+                </h2>
             <div class="backlog-header-actions">
                 <button type="button" onclick="openCreateTaskModal()" class="fab-create">
                     <i class="fas fa-plus"></i> Create Task
@@ -534,9 +579,59 @@
 {% block extra_js %}
 {{ block.super }}
 <script>
+    let currentFilter = 'all'; // Current filter state
+    
+    // Filter tasks based on completion status
+    function filterTasks(filter) {
+        currentFilter = filter;
+        
+        // Update button states
+        document.querySelectorAll('.task-filter-btn').forEach(btn => {
+            btn.classList.remove('active');
+            if (btn.dataset.filter === filter) {
+                btn.classList.add('active');
+            }
+        });
+        
+        // Apply filter to task rows
+        const taskRows = document.querySelectorAll('#tasksList .task-row');
+        taskRows.forEach(row => {
+            const checkbox = row.querySelector('input[type="checkbox"]');
+            const isCompleted = checkbox && checkbox.checked;
+            
+            if (filter === 'all') {
+                row.style.display = '';
+            } else if (filter === 'active' && !isCompleted) {
+                row.style.display = '';
+            } else if (filter === 'completed' && isCompleted) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+        
+        // Show empty state if no tasks visible
+        const visibleTasks = Array.from(taskRows).filter(row => row.style.display !== 'none');
+        const emptyState = document.querySelector('#tasksList .empty-state');
+        if (visibleTasks.length === 0 && !emptyState) {
+            const tasksList = document.getElementById('tasksList');
+            tasksList.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-clipboard-list"></i>
+                    <p>No ${filter === 'all' ? '' : filter} tasks found.</p>
+                </div>
+            `;
+        } else if (visibleTasks.length > 0 && emptyState) {
+            emptyState.remove();
+        }
+    }
+    
     function toggleTaskComplete(taskId, completed) {
         // TODO: Implement API call to toggle task completion
         console.log('Toggle task', taskId, completed);
+        
+        // After toggling, reapply filter
+        setTimeout(() => filterTasks(currentFilter), 100);
     }
 
     function toggleAssignedTaskComplete(taskId, completed) {

@@ -511,6 +511,31 @@ class Task(models.Model):
     deadline = models.DateField(blank=True, null=True)  # Task deadline
     created_at = models.DateTimeField(auto_now_add=True)  # Date of creation
     
+    # Lifecycle timestamps - track task progression through different stages
+    moved_to_active_backlog_at = models.DateTimeField(
+        blank=True, 
+        null=True,
+        help_text="Timestamp when task was moved to user's active backlog"
+    )
+    completed_at = models.DateTimeField(
+        blank=True,
+        null=True,
+        help_text="Timestamp when task was marked as completed"
+    )
+    reviewed_by_mentor_at = models.DateTimeField(
+        blank=True,
+        null=True,
+        help_text="Timestamp when task was reviewed by mentor"
+    )
+    reviewed_by_mentor = models.ForeignKey(
+        "accounts.MentorProfile",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="reviewed_tasks",
+        help_text="Mentor who reviewed this task"
+    )
+    
     # Location fields (task can be in one of three places)
     stage = models.ForeignKey(ProjectStage, on_delete=models.CASCADE, related_name="backlog_tasks", null=True, blank=True)
     user_active_backlog = models.ForeignKey("accounts.UserProfile", on_delete=models.CASCADE, related_name="active_backlog_tasks", null=True, blank=True)
@@ -604,6 +629,20 @@ class Task(models.Model):
         self.assigned_to = user_profile
         self.save()
     
+    def move_to_active_backlog(self, user_profile):
+        """
+        Move task to user's active backlog.
+        Sets moved_to_active_backlog_at timestamp.
+        """
+        if self.user_active_backlog == user_profile:
+            return  # Already in active backlog
+        
+        self.user_active_backlog = user_profile
+        self.stage = None  # Remove from stage if it was there
+        self.mentor_backlog = None  # Remove from mentor backlog if it was there
+        self.moved_to_active_backlog_at = timezone.now()
+        self.save()
+    
     def unassign_from_client(self):
         """
         Unassign task from client when completed.
@@ -619,6 +658,7 @@ class Task(models.Model):
         - Unassign it (assigned=False)
         - Mark as completed in stage backlog
         - Keep assignment history (assigned_to remains)
+        - Set completed_at timestamp
         """
         if not self.assigned or self.assigned_to != user_profile:
             raise ValidationError("Task is not assigned to this client")
@@ -626,6 +666,8 @@ class Task(models.Model):
         self.assigned = False
         self.completed = True
         self.status = 'completed'
+        if not self.completed_at:
+            self.completed_at = timezone.now()
         self.save()
     
     def complete_active_backlog_task(self):
@@ -633,12 +675,24 @@ class Task(models.Model):
         When client completes a task originally in active backlog:
         - Keep it in active backlog
         - Mark as completed
+        - Set completed_at timestamp
         """
         if not self.user_active_backlog:
             raise ValidationError("Task is not in active backlog")
         
         self.completed = True
         self.status = 'completed'
+        if not self.completed_at:
+            self.completed_at = timezone.now()
+        self.save()
+    
+    def mark_as_reviewed(self, mentor_profile):
+        """
+        Mark task as reviewed by mentor.
+        Sets reviewed_by_mentor_at timestamp and reviewed_by_mentor.
+        """
+        self.reviewed_by_mentor = mentor_profile
+        self.reviewed_by_mentor_at = timezone.now()
         self.save()
     
     def __str__(self):

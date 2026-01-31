@@ -6497,18 +6497,23 @@ def generate_tasks_ai(request, project_id, stage_id):
         
         created_tasks = []
         for i, task_data in enumerate(mock_tasks):
+            # Calculate order - increment by 1 for each new task (same as create_task)
             task_order = base_order + Decimal(str(i + 1))
             
             task = Task.objects.create(
                 stage=stage,
                 title=task_data['title'],
-                description=task_data['description'],
+                description=task_data.get('description', ''),
+                priority=task_data.get('priority', 'medium'),  # Default to medium priority
+                status=task_data.get('status', 'todo'),  # Default to todo status
                 order=task_order,
                 created_by=request.user,
                 author_name=f"{request.user.profile.first_name} {request.user.profile.last_name}",
                 author_email=request.user.email,
                 author_role='mentor',
-                is_ai_generated=True
+                is_ai_generated=True,
+                # Note: moved_to_active_backlog_at, completed_at, reviewed_by_mentor_at 
+                # are not set here as these are new stage tasks that haven't progressed yet
             )
             created_tasks.append(task.id)
         
@@ -6547,6 +6552,11 @@ def toggle_task_complete(request, project_id, stage_id, task_id):
         completed = data.get('completed', False)
         
         task.completed = completed
+        if completed and not task.completed_at:
+            from django.utils import timezone
+            task.completed_at = timezone.now()
+        elif not completed:
+            task.completed_at = None
         task.save()
         
         # Update stage completion status based on tasks
@@ -6611,6 +6621,10 @@ def get_tasks_api(request, project_id, stage_id):
         
         tasks = stage.backlog_tasks.all().order_by('order', 'created_at')
         
+        # Calculate active and completed task counts
+        active_count = tasks.filter(completed=False).count()
+        completed_count = tasks.filter(completed=True).count()
+        
         tasks_data = []
         for task in tasks:
             tasks_data.append({
@@ -6624,7 +6638,9 @@ def get_tasks_api(request, project_id, stage_id):
         
         return JsonResponse({
             'success': True,
-            'tasks': tasks_data
+            'tasks': tasks_data,
+            'active_count': active_count,
+            'completed_count': completed_count
         })
     except Exception as e:
         import logging
@@ -6759,12 +6775,15 @@ def create_mentor_backlog_task(request):
             except (Project.DoesNotExist, ProjectStage.DoesNotExist):
                 return JsonResponse({'success': False, 'error': 'Invalid project or stage'}, status=400)
         
-        # Calculate order for the new task
-        last_task = Task.objects.filter(mentor_backlog=mentor_profile).order_by('-order').first()
-        if last_task:
-            next_order = last_task.order + Decimal('10')
+        # Calculate order for the new task - add to top of list
+        first_task = Task.objects.filter(mentor_backlog=mentor_profile).order_by('order').first()
+        if first_task:
+            # Subtract 10 from the first task's order to put new task at top
+            # This works even if first task has negative order values
+            next_order = first_task.order - Decimal('10')
         else:
-            next_order = Decimal('10')
+            # Start at 0 if no tasks exist
+            next_order = Decimal('0')
         
         task = Task.objects.create(
             mentor_backlog=mentor_profile,
@@ -6925,9 +6944,8 @@ def get_mentor_backlog_tasks_api(request):
         from datetime import timedelta
         
         tasks = Task.objects.filter(
-            mentor_backlog=mentor_profile,
-            completed=False
-        ).select_related('project', 'stage').order_by('order', 'created_at')
+            mentor_backlog=mentor_profile
+        ).select_related('project', 'stage').order_by('order', '-created_at')
         
         # Calculate date thresholds
         today = timezone.now().date()
@@ -6985,6 +7003,11 @@ def toggle_mentor_backlog_task_complete(request, task_id):
         completed = data.get('completed', False)
         
         task.completed = completed
+        if completed and not task.completed_at:
+            from django.utils import timezone
+            task.completed_at = timezone.now()
+        elif not completed:
+            task.completed_at = None
         task.save()
         
         return JsonResponse({
@@ -7022,6 +7045,42 @@ def delete_mentor_backlog_task(request, task_id):
         import logging
         logger = logging.getLogger(__name__)
         logger.error(f'Error deleting mentor backlog task: {str(e)}')
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+@login_required
+@require_POST
+def reorder_mentor_backlog_tasks(request):
+    """Reorder mentor backlog tasks via drag and drop"""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+    
+    mentor_profile = request.user.mentor_profile
+    from dashboard_user.models import Task
+    
+    try:
+        data = json.loads(request.body)
+        orders = data.get('orders', [])
+        
+        if not orders:
+            return JsonResponse({'success': False, 'error': 'No order data provided'}, status=400)
+        
+        # Batch update orders
+        from django.db import transaction
+        from decimal import Decimal
+        
+        with transaction.atomic():
+            for item in orders:
+                task_id = item.get('task_id')
+                new_order = item.get('order')
+                if task_id and new_order is not None:
+                    Task.objects.filter(id=task_id, mentor_backlog=mentor_profile).update(order=Decimal(str(new_order)))
+        
+        return JsonResponse({'success': True, 'message': 'Task order updated successfully'})
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f'Error reordering mentor backlog tasks: {str(e)}')
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 
