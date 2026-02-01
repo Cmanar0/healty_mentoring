@@ -12,9 +12,12 @@
         </div>
         
         <div class="modal-body" style="max-height: 60vh; overflow-y: auto;">
-            <div id="modulesList" style="display: flex; flex-direction: column; gap: 12px;">
+            <p style="color: #64748b; margin-bottom: 20px; font-size: 0.95rem;">
+                Select modules to add to this project. Modules can be added or removed at any time.
+            </p>
+            <div id="modulesList" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;">
                 <!-- Modules will be loaded here -->
-                <div style="text-align: center; padding: 32px; color: #9ca3af;">
+                <div style="grid-column: 1/-1; text-align: center; padding: 32px; color: #9ca3af;">
                     <i class="fas fa-spinner fa-spin" style="font-size: 24px; margin-bottom: 12px;"></i>
                     <p>Loading modules...</p>
                 </div>
@@ -23,7 +26,10 @@
         
         <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 12px; padding-top: 16px; border-top: 1px solid #e5e7eb;">
             <button onclick="closeManageModulesModal()" class="btn-secondary" style="padding: 10px 20px;">
-                Close
+                Cancel
+            </button>
+            <button id="saveModulesBtn" onclick="saveProjectModules()" class="btn-primary" style="padding: 10px 20px; display: none;">
+                <i class="fas fa-save"></i> Save Changes
             </button>
         </div>
     </div>
@@ -106,18 +112,132 @@
     transition: all 0.2s;
 }
 
-.btn-secondary:hover {
-    background: #e5e7eb;
-}
+    .btn-secondary:hover {
+        background: #e5e7eb;
+    }
+
+    .btn-primary {
+        background: #111827;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+        background: #000;
+    }
+
+    .btn-primary:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+    /* Module Selection Styles */
+    .module-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 14px 16px;
+        border: 1.5px solid #e2e8f0;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        background: #f8fafc;
+    }
+
+    .module-item:hover {
+        background: #f1f5f9;
+        border-color: #cbd5e1;
+    }
+
+    .module-item.selected {
+        border-color: #111827;
+        background: #ffffff;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    }
+
+    .module-checkbox {
+        width: 18px;
+        height: 18px;
+        border: 2px solid #cbd5e1;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        transition: all 0.2s ease;
+        background: white;
+    }
+
+    .module-item.selected .module-checkbox {
+        background: #111827;
+        border-color: #111827;
+    }
+
+    .module-item.selected .module-checkbox::after {
+        content: '\f00c';
+        font-family: 'Font Awesome 5 Free';
+        font-weight: 900;
+        color: white;
+        font-size: 10px;
+    }
+
+    .module-info {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .module-name {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: #374151;
+        margin-bottom: 2px;
+    }
+
+    .module-item.selected .module-name {
+        color: #111827;
+    }
+
+    .module-icon {
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1rem;
+        flex-shrink: 0;
+        background: white;
+        border: 1px solid #e2e8f0;
+    }
 </style>
 
 <script>
 (function() {
     'use strict';
     
+    let selectedModuleIds = [];
+    let originalModuleIds = [];
+    let projectId = null;
+    
     window.openManageModulesModal = function() {
         const modal = document.getElementById('manageModulesModal');
         if (!modal) return;
+        
+        // Get project ID from URL or context
+        const urlMatch = window.location.pathname.match(/\/projects\/(\d+)\//);
+        if (urlMatch) {
+            projectId = parseInt(urlMatch[1]);
+        } else {
+            console.error('Could not determine project ID');
+            return;
+        }
         
         modal.style.display = 'flex';
         setTimeout(() => {
@@ -135,21 +255,185 @@
         modal.classList.remove('active');
         setTimeout(() => {
             modal.style.display = 'none';
+            // Reset state
+            selectedModuleIds = [];
+            originalModuleIds = [];
+            const saveBtn = document.getElementById('saveModulesBtn');
+            if (saveBtn) saveBtn.style.display = 'none';
         }, 300);
     };
     
     function loadModulesForManagement() {
-        // TODO: Fetch available modules and active modules from API
+        const modulesList = document.getElementById('modulesList');
+        if (!modulesList || !projectId) return;
+        
+        modulesList.innerHTML = `
+            <div style="grid-column: 1/-1; text-align: center; padding: 32px; color: #9ca3af;">
+                <i class="fas fa-spinner fa-spin" style="font-size: 24px; margin-bottom: 12px;"></i>
+                <p>Loading modules...</p>
+            </div>
+        `;
+        
+        fetch(`/dashboard/mentor/projects/${projectId}/modules/api/`, {
+            method: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                originalModuleIds = data.project_module_ids || [];
+                selectedModuleIds = [...originalModuleIds];
+                displayModules(data.all_modules, data.project_module_ids);
+            } else {
+                modulesList.innerHTML = `
+                    <div style="grid-column: 1/-1; text-align: center; padding: 32px; color: #ef4444;">
+                        <i class="fas fa-exclamation-circle" style="font-size: 24px; margin-bottom: 12px;"></i>
+                        <p>Error loading modules: ${data.error || 'Unknown error'}</p>
+                    </div>
+                `;
+            }
+        })
+        .catch(error => {
+            console.error('Error loading modules:', error);
+            modulesList.innerHTML = `
+                <div style="grid-column: 1/-1; text-align: center; padding: 32px; color: #ef4444;">
+                    <i class="fas fa-exclamation-circle" style="font-size: 24px; margin-bottom: 12px;"></i>
+                    <p>Error loading modules. Please try again.</p>
+                </div>
+            `;
+        });
+    }
+    
+    function displayModules(allModules, projectModuleIds) {
         const modulesList = document.getElementById('modulesList');
         if (!modulesList) return;
         
-        modulesList.innerHTML = `
-            <div style="text-align: center; padding: 32px; color: #9ca3af;">
-                <i class="fas fa-cube" style="font-size: 2rem; margin-bottom: 8px; opacity: 0.3;"></i>
-                <p style="margin: 0; font-size: 0.875rem;">Module management coming soon</p>
-            </div>
-        `;
+        if (!allModules || allModules.length === 0) {
+            modulesList.innerHTML = `
+                <div style="grid-column: 1/-1; text-align: center; padding: 32px; color: #9ca3af;">
+                    <i class="fas fa-cube" style="font-size: 2rem; margin-bottom: 8px; opacity: 0.3;"></i>
+                    <p style="margin: 0; font-size: 0.875rem;">No modules available</p>
+                </div>
+            `;
+            return;
+        }
+        
+        modulesList.innerHTML = allModules.map(function(module) {
+            const isSelected = projectModuleIds.includes(module.id);
+            return `
+                <div class="module-item ${isSelected ? 'selected' : ''}" 
+                     data-module-id="${module.id}"
+                     onclick="toggleModule(${module.id})">
+                    <div class="module-icon" style="background: ${module.color || '#10b981'}; color: white; border: none;">
+                        <i class="${module.icon || 'fas fa-cube'}"></i>
+                    </div>
+                    <div class="module-info">
+                        <div class="module-name">${module.name}</div>
+                    </div>
+                    <div class="module-checkbox"></div>
+                </div>
+            `;
+        }).join('');
     }
+    
+    window.toggleModule = function(moduleId) {
+        const index = selectedModuleIds.indexOf(moduleId);
+        const moduleItem = document.querySelector(`.module-item[data-module-id="${moduleId}"]`);
+        
+        if (index !== -1) {
+            selectedModuleIds = selectedModuleIds.filter(function(id) {
+                return id !== moduleId;
+            });
+            if (moduleItem) moduleItem.classList.remove('selected');
+        } else {
+            selectedModuleIds.push(moduleId);
+            if (moduleItem) moduleItem.classList.add('selected');
+        }
+        
+        // Show/hide save button based on changes
+        updateSaveButton();
+    };
+    
+    function updateSaveButton() {
+        const saveBtn = document.getElementById('saveModulesBtn');
+        if (!saveBtn) return;
+        
+        // Check if selection has changed
+        const hasChanged = JSON.stringify(selectedModuleIds.sort()) !== JSON.stringify(originalModuleIds.sort());
+        saveBtn.style.display = hasChanged ? 'inline-flex' : 'none';
+    }
+    
+    window.saveProjectModules = function() {
+        const saveBtn = document.getElementById('saveModulesBtn');
+        if (!saveBtn || !projectId) return;
+        
+        const originalText = saveBtn.innerHTML;
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+        
+        // Get CSRF token
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+        
+        fetch(`/dashboard/mentor/projects/${projectId}/modules/update/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                module_ids: selectedModuleIds
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                originalModuleIds = [...selectedModuleIds];
+                updateSaveButton();
+                if (typeof showNotification !== 'undefined') {
+                    showNotification('Modules updated successfully', 'success');
+                } else {
+                    alert('Modules updated successfully');
+                }
+                // Reload the page to show updated modules
+                setTimeout(() => {
+                    window.location.reload();
+                }, 500);
+            } else {
+                if (typeof showNotification !== 'undefined') {
+                    showNotification(data.error || 'Failed to update modules', 'error');
+                } else {
+                    alert(data.error || 'Failed to update modules');
+                }
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = originalText;
+            }
+        })
+        .catch(error => {
+            console.error('Error saving modules:', error);
+            if (typeof showNotification !== 'undefined') {
+                showNotification('An error occurred while saving modules', 'error');
+            } else {
+                alert('An error occurred while saving modules');
+            }
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = originalText;
+        });
+    };
     
     // Close on ESC
     document.addEventListener('keydown', function(e) {

@@ -779,6 +779,77 @@
         cursor: pointer;
         font-size: 0.75rem;
     }
+
+    /* Module Selection Styles */
+    .module-selection-container {
+        position: relative;
+    }
+
+    .module-selection-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+        padding: 4px;
+    }
+
+    .module-selection-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 12px 14px;
+        border: 1.5px solid #e2e8f0;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        background: #f8fafc;
+    }
+
+    .module-selection-item:hover {
+        background: #f1f5f9;
+        border-color: #cbd5e1;
+    }
+
+    .module-selection-item.selected {
+        border-color: #111827;
+        background: #ffffff;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    }
+
+    .module-selection-checkbox {
+        width: 18px;
+        height: 18px;
+        border: 2px solid #cbd5e1;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        transition: all 0.2s ease;
+        background: white;
+    }
+
+    .module-selection-item.selected .module-selection-checkbox {
+        background: #111827;
+        border-color: #111827;
+    }
+
+    .module-selection-item.selected .module-selection-checkbox::after {
+        content: '\f00c';
+        font-family: 'Font Awesome 5 Free';
+        font-weight: 900;
+        color: white;
+        font-size: 10px;
+    }
+
+    .module-selection-name {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: #374151;
+    }
+
+    .module-selection-item.selected .module-selection-name {
+        color: #111827;
+    }
 </style>
 {% endblock %}
 
@@ -822,6 +893,30 @@
             <div style="padding: 48px; text-align: center; color: #9ca3af;">
                 <i class="fas fa-circle-notch fa-spin" style="font-size: 24px; margin-bottom: 12px; opacity: 0.5;"></i>
                 <p>Loading questions...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modules Section -->
+    <div id="modulesSection" style="margin-top: 40px;">
+        <div class="section-header">
+            <h2 class="section-title">Manage Modules</h2>
+            <button id="saveModulesBtn" class="btn-add-question" onclick="saveModules()" style="display: none;">
+                <i class="fas fa-save"></i> Save Changes
+            </button>
+        </div>
+        <p style="color: #64748b; margin-bottom: 20px; font-size: 0.95rem;">
+            Select modules that will be automatically selected when this template is used to create a project.
+        </p>
+        <div class="module-selection-container" style="background: white; border-radius: 16px; padding: 24px; border: 1px solid #e5e7eb;">
+            <div class="module-selection-grid" id="templateModulesGrid">
+                {% for module in all_modules %}
+                <div class="module-selection-item {% if module.id in preselected_module_ids %}selected{% endif %}" 
+                     data-module-id="{{ module.id }}">
+                    <div class="module-selection-checkbox"></div>
+                    <div class="module-selection-name">{{ module.name }}</div>
+                </div>
+                {% endfor %}
             </div>
         </div>
     </div>
@@ -1593,5 +1688,89 @@
             }
         }
     });
+
+    // Module Selection
+    let selectedModuleIds = [{% for module_id in preselected_module_ids %}{{ module_id }}{% if not forloop.last %},{% endif %}{% endfor %}];
+    let modulesChanged = false;
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const moduleItems = document.querySelectorAll('#templateModulesGrid .module-selection-item');
+        moduleItems.forEach(function(item) {
+            item.addEventListener('click', function() {
+                const moduleId = parseInt(this.getAttribute('data-module-id'));
+                const index = selectedModuleIds.indexOf(moduleId);
+                
+                if (index !== -1) {
+                    selectedModuleIds = selectedModuleIds.filter(function(id) {
+                        return id !== moduleId;
+                    });
+                    this.classList.remove('selected');
+                } else {
+                    selectedModuleIds.push(moduleId);
+                    this.classList.add('selected');
+                }
+                
+                modulesChanged = true;
+                updateSaveButton();
+            });
+        });
+    });
+
+    function updateSaveButton() {
+        const saveBtn = document.getElementById('saveModulesBtn');
+        if (saveBtn) {
+            saveBtn.style.display = modulesChanged ? 'inline-flex' : 'none';
+        }
+    }
+
+    function saveModules() {
+        const saveBtn = document.getElementById('saveModulesBtn');
+        if (!saveBtn) return;
+        
+        const originalText = saveBtn.innerHTML;
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+        
+        fetch(`/dashboard/mentor/templates/${templateId}/modules/update/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                module_ids: selectedModuleIds
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                modulesChanged = false;
+                updateSaveButton();
+                if (typeof showNotification !== 'undefined') {
+                    showNotification('Modules updated successfully', 'success');
+                } else {
+                    alert('Modules updated successfully');
+                }
+            } else {
+                if (typeof showNotification !== 'undefined') {
+                    showNotification(data.error || 'Failed to update modules', 'error');
+                } else {
+                    alert(data.error || 'Failed to update modules');
+                }
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = originalText;
+            }
+        })
+        .catch(error => {
+            console.error('Error saving modules:', error);
+            if (typeof showNotification !== 'undefined') {
+                showNotification('An error occurred while saving modules', 'error');
+            } else {
+                alert('An error occurred while saving modules');
+            }
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = originalText;
+        });
+    }
 </script>
 {% endblock %}

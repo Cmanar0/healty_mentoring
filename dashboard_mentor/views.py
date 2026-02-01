@@ -4502,12 +4502,7 @@ def create_project(request):
         data = json.loads(request.body)
         
         mentor_profile = request.user.mentor_profile
-        project_type = data.get('project_type')  # 'new' or 'template'
         client_email = (data.get('client_email') or '').strip().lower()
-        
-        # Validate project type
-        if project_type not in ['new', 'template']:
-            return JsonResponse({'success': False, 'error': 'Invalid project type'}, status=400)
         
         # Get or create client if email provided (reuse assign_project_owner logic)
         client_profile = None
@@ -4577,12 +4572,27 @@ def create_project(request):
         description = data.get('description', '').strip()
         module_ids = data.get('module_ids', [])  # List of module IDs to add
         
-        # Create project based on type
-        if project_type == 'new':
-            # Link to "Custom (Blank)" template if it exists
-            custom_blank_template = None
+        # Handle questionnaire selection
+        questionnaire_type = data.get('questionnaire_type', 'default')  # 'default' or 'custom'
+        questionnaire_template_id = data.get('questionnaire_template_id')
+        
+        # Determine which template to use
+        selected_template = None
+        
+        if questionnaire_type == 'custom' and questionnaire_template_id:
+            # Use the selected custom questionnaire template
             try:
-                custom_blank_template = ProjectTemplate.objects.get(
+                selected_template = ProjectTemplate.objects.get(
+                    id=questionnaire_template_id,
+                    is_custom=True,
+                    author=mentor_profile
+                )
+            except ProjectTemplate.DoesNotExist:
+                return JsonResponse({'success': False, 'error': 'Questionnaire template not found'}, status=404)
+        else:
+            # Use default "Custom (Blank)" template
+            try:
+                selected_template = ProjectTemplate.objects.get(
                     name='Custom (Blank)',
                     is_custom=False,
                     is_active=True
@@ -4590,39 +4600,19 @@ def create_project(request):
             except ProjectTemplate.DoesNotExist:
                 # If template doesn't exist, create without template
                 pass
-            
-            assignment_token = get_random_string(64) if client_profile else None
-            project = Project.objects.create(
-                title=title,
-                description=description,
-                template=custom_blank_template,
-                project_owner=client_profile,
-                supervised_by=mentor_profile,
-                created_by=request.user,
-                assignment_status='assigned' if client_profile else 'pending',
-                assignment_token=assignment_token
-            )
-        elif project_type == 'template':
-            template_id = data.get('template_id')
-            if not template_id:
-                return JsonResponse({'success': False, 'error': 'Template ID is required'}, status=400)
-            
-            try:
-                template = ProjectTemplate.objects.get(id=template_id, is_active=True)
-            except ProjectTemplate.DoesNotExist:
-                return JsonResponse({'success': False, 'error': 'Template not found'}, status=404)
-            
-            assignment_token = get_random_string(64) if client_profile else None
-            project = Project.objects.create(
-                title=title,
-                description=description,
-                template=template,
-                project_owner=client_profile,
-                supervised_by=mentor_profile,
-                created_by=request.user,
-                assignment_status='assigned' if client_profile else 'pending',
-                assignment_token=assignment_token
-            )
+        
+        # Create project (always 'new' type now, but with selected template)
+        assignment_token = get_random_string(64) if client_profile else None
+        project = Project.objects.create(
+            title=title,
+            description=description,
+            template=selected_template,
+            project_owner=client_profile,
+            supervised_by=mentor_profile,
+            created_by=request.user,
+            assignment_status='assigned' if client_profile else 'pending',
+            assignment_token=assignment_token
+        )
         
         # Add selected modules to project
         if module_ids:
@@ -4781,11 +4771,21 @@ def template_detail(request, template_id):
         # Check if there's already a target date question
         has_target_date_question = questions.filter(is_target_date=True, question_type='date').exists()
     
+    # Get all active modules and preselected modules for this template
+    from dashboard_user.models import ProjectModule
+    all_modules = ProjectModule.objects.filter(is_active=True).order_by('order', 'name')
+    if not all_modules.exists():
+        all_modules = ProjectModule.objects.all().order_by('order', 'name')
+    
+    preselected_module_ids = [m.id for m in template.preselected_modules.all()]
+    
     return render(request, 'dashboard_mentor/templates/template_detail.html', {
         'template': template,
         'questionnaire': questionnaire,
         'questions': questions,
-        'has_target_date_question': has_target_date_question
+        'has_target_date_question': has_target_date_question,
+        'all_modules': all_modules,
+        'preselected_module_ids': preselected_module_ids
     })
 
 
@@ -5173,6 +5173,307 @@ def get_questions_api(request, template_id):
         import logging
         logger = logging.getLogger(__name__)
         logger.error(f'Error in get_questions_api: {str(e)}', exc_info=True)
+        return JsonResponse({
+            'success': False,
+            'error': f'Server error: {str(e)}'
+        }, status=500)
+
+
+@login_required
+def mentor_questionnaire_templates_api(request):
+    """API endpoint to fetch mentor's custom questionnaire templates"""
+    try:
+        if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+            return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+        
+        mentor_profile = request.user.mentor_profile
+        
+        # Get custom templates created by this mentor
+        from django.db.models import Q
+        from dashboard_user.models import Questionnaire
+        
+        custom_templates = ProjectTemplate.objects.filter(
+            is_custom=True,
+            author=mentor_profile
+        ).prefetch_related('questionnaire__questions', 'preselected_modules').order_by('-created_at')
+        
+        templates_data = []
+        for template in custom_templates:
+            # Ensure questionnaire exists (in case it wasn't created by signal)
+            questionnaire, created = Questionnaire.objects.get_or_create(
+                template=template,
+                defaults={'title': 'Onboarding Questionnaire'}
+            )
+            
+            question_count = questionnaire.questions.count()
+            
+            # Get preselected modules for this template
+            preselected_module_ids = [m.id for m in template.preselected_modules.all()]
+            
+            # Include all templates, even if they have 0 questions
+            templates_data.append({
+                'id': template.id,
+                'name': template.name,
+                'description': template.description,
+                'icon': template.icon,
+                'color': template.color,
+                'question_count': question_count,
+                'preselected_module_ids': preselected_module_ids,
+                'created_at': template.created_at.isoformat() if template.created_at else None,
+            })
+        
+        return JsonResponse({'success': True, 'templates': templates_data})
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f'Error in mentor_questionnaire_templates_api: {str(e)}', exc_info=True)
+        return JsonResponse({
+            'success': False,
+            'error': f'Server error: {str(e)}'
+        }, status=500)
+
+
+@login_required
+def default_questionnaire_api(request):
+    """API endpoint to fetch default questionnaire questions from the blank template"""
+    try:
+        if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+            return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+        
+        from dashboard_user.models import Questionnaire, Question
+        
+        # Get the "Custom (Blank)" template
+        try:
+            blank_template = ProjectTemplate.objects.get(
+                name='Custom (Blank)',
+                is_custom=False
+            )
+        except ProjectTemplate.DoesNotExist:
+            return JsonResponse({
+                'success': False,
+                'error': 'Default questionnaire template not found'
+            }, status=404)
+        
+        # Get questionnaire
+        if not hasattr(blank_template, 'questionnaire'):
+            return JsonResponse({
+                'success': False,
+                'error': 'Default questionnaire not found'
+            }, status=404)
+        
+        questionnaire = blank_template.questionnaire
+        questions = questionnaire.questions.all().order_by('order')
+        
+        questions_data = []
+        for question in questions:
+            questions_data.append({
+                'id': question.id,
+                'question_text': question.question_text,
+                'question_type': question.question_type,
+                'question_type_display': question.get_question_type_display(),
+                'is_required': question.is_required,
+                'is_target_date': question.is_target_date,
+                'help_text': question.help_text or '',
+                'options': question.options or [],
+                'order': question.order
+            })
+        
+        # Get preselected modules for the blank template
+        preselected_module_ids = [m.id for m in blank_template.preselected_modules.all()]
+        
+        return JsonResponse({
+            'success': True,
+            'questions': questions_data,
+            'template_id': blank_template.id,
+            'preselected_module_ids': preselected_module_ids
+        })
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f'Error in default_questionnaire_api: {str(e)}', exc_info=True)
+        return JsonResponse({
+            'success': False,
+            'error': f'Server error: {str(e)}'
+        }, status=500)
+
+
+@login_required
+@require_POST
+def update_template_modules(request, template_id):
+    """API endpoint to update preselected modules for a template"""
+    try:
+        if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+            return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+        
+        template = get_object_or_404(ProjectTemplate, id=template_id)
+        mentor_profile = request.user.mentor_profile
+        
+        # Check access - only allow if template is custom and owned by mentor, or if it's a system template
+        if template.is_custom and template.author != mentor_profile:
+            return JsonResponse({'success': False, 'error': 'Access denied'}, status=403)
+        
+        import json
+        data = json.loads(request.body)
+        module_ids = data.get('module_ids', [])
+        
+        # Validate module IDs
+        from dashboard_user.models import ProjectModule
+        modules = ProjectModule.objects.filter(id__in=module_ids, is_active=True)
+        if modules.count() != len(module_ids):
+            return JsonResponse({'success': False, 'error': 'Invalid module IDs'}, status=400)
+        
+        # Update preselected modules
+        template.preselected_modules.set(modules)
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Modules updated successfully',
+            'module_ids': list(modules.values_list('id', flat=True))
+        })
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f'Error in update_template_modules: {str(e)}', exc_info=True)
+        return JsonResponse({
+            'success': False,
+            'error': f'Server error: {str(e)}'
+        }, status=500)
+
+
+@login_required
+def project_modules_api(request, project_id):
+    """API endpoint to get all modules and project's current modules"""
+    try:
+        if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+            return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+        
+        mentor_profile = request.user.mentor_profile
+        
+        # Get project and verify it's supervised by this mentor
+        project = get_object_or_404(
+            Project.objects.select_related('supervised_by'),
+            id=project_id,
+            supervised_by=mentor_profile
+        )
+        
+        # Get all active modules
+        from dashboard_user.models import ProjectModule, ProjectModuleInstance
+        all_modules = ProjectModule.objects.filter(is_active=True).order_by('order', 'name')
+        if not all_modules.exists():
+            all_modules = ProjectModule.objects.all().order_by('order', 'name')
+        
+        # Get project's current module IDs
+        project_module_ids = list(
+            ProjectModuleInstance.objects.filter(
+                project=project,
+                is_active=True
+            ).values_list('module_id', flat=True)
+        )
+        
+        modules_data = []
+        for module in all_modules:
+            modules_data.append({
+                'id': module.id,
+                'name': module.name,
+                'description': module.description,
+                'icon': module.icon,
+                'color': module.color,
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'all_modules': modules_data,
+            'project_module_ids': project_module_ids
+        })
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f'Error in project_modules_api: {str(e)}', exc_info=True)
+        return JsonResponse({
+            'success': False,
+            'error': f'Server error: {str(e)}'
+        }, status=500)
+
+
+@login_required
+@require_POST
+def update_project_modules(request, project_id):
+    """API endpoint to update modules for a project"""
+    try:
+        if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+            return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+        
+        mentor_profile = request.user.mentor_profile
+        
+        # Get project and verify it's supervised by this mentor
+        project = get_object_or_404(
+            Project.objects.select_related('supervised_by'),
+            id=project_id,
+            supervised_by=mentor_profile
+        )
+        
+        import json
+        data = json.loads(request.body)
+        module_ids = data.get('module_ids', [])
+        
+        # Validate module IDs
+        from dashboard_user.models import ProjectModule, ProjectModuleInstance
+        modules = ProjectModule.objects.filter(id__in=module_ids, is_active=True)
+        if modules.count() != len(module_ids):
+            return JsonResponse({'success': False, 'error': 'Invalid module IDs'}, status=400)
+        
+        # Get current module instances
+        current_instances = ProjectModuleInstance.objects.filter(project=project, is_active=True)
+        current_module_ids = set(current_instances.values_list('module_id', flat=True))
+        new_module_ids = set(module_ids)
+        
+        # Modules to add
+        modules_to_add = new_module_ids - current_module_ids
+        # Modules to remove (deactivate)
+        modules_to_remove = current_module_ids - new_module_ids
+        
+        # Get max order for new modules
+        from django.db.models import Max
+        max_order = ProjectModuleInstance.objects.filter(project=project).aggregate(
+            max_order=Max('order')
+        )['max_order'] or 0
+        
+        # Add new modules
+        for order, module_id in enumerate(modules_to_add, start=max_order + 1):
+            module = ProjectModule.objects.get(id=module_id)
+            ProjectModuleInstance.objects.get_or_create(
+                project=project,
+                module=module,
+                defaults={
+                    'is_active': True,
+                    'order': order,
+                    'module_data': {},
+                }
+            )
+        
+        # Deactivate removed modules
+        if modules_to_remove:
+            ProjectModuleInstance.objects.filter(
+                project=project,
+                module_id__in=modules_to_remove
+            ).update(is_active=False)
+        
+        # Reactivate modules that were previously deactivated but are now selected
+        if modules_to_add:
+            ProjectModuleInstance.objects.filter(
+                project=project,
+                module_id__in=modules_to_add
+            ).update(is_active=True)
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Modules updated successfully',
+            'module_ids': list(new_module_ids)
+        })
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f'Error in update_project_modules: {str(e)}', exc_info=True)
         return JsonResponse({
             'success': False,
             'error': f'Server error: {str(e)}'

@@ -1822,8 +1822,16 @@
                     {% if project.description %}
                         {{ project.description|linebreaks }}
                     {% else %}
-                        <div style="text-align: center; color: #9ca3af; padding: 20px; font-style: italic;">
-                            No description provided.
+                        <div style="text-align: center; padding: 32px; display: flex; flex-direction: column; align-items: center; gap: 16px;">
+                            <div style="color: #9ca3af; font-style: italic; margin-bottom: 8px;">
+                                No description provided.
+                            </div>
+                            {% if not project.project_owner %}
+                                <button type="button" onclick="openProjectSettingsModal()" style="display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color: white; border: none; border-radius: 10px; font-weight: 600; font-size: 0.875rem; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 2px 4px 0 rgba(99, 102, 241, 0.2); width: auto; margin: 0 auto;" onmouseover="this.style.background='linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)'; this.style.boxShadow='0 4px 12px 0 rgba(99, 102, 241, 0.3)'; this.style.transform='translateY(-1px)';" onmouseout="this.style.background='linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)'; this.style.boxShadow='0 2px 4px 0 rgba(99, 102, 241, 0.2)'; this.style.transform='translateY(0)';">
+                                    <i class="fas fa-edit"></i>
+                                    <span>Add Description</span>
+                                </button>
+                            {% endif %}
                         </div>
                     {% endif %}
                 </div>
