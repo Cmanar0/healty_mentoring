@@ -63,6 +63,7 @@ urlpatterns = [
     path('questions/<int:question_id>/delete/', views.delete_question, name='delete_question'),
     path('projects/', views.projects_list, name='projects_list'),
     path('projects/<int:project_id>/', views.project_detail, name='project_detail'),
+    path('projects/<int:project_id>/notes/create/', views.create_project_note, name='create_project_note'),
     path('projects/<int:project_id>/modules/api/', views.project_modules_api, name='project_modules_api'),
     path('projects/<int:project_id>/modules/update/', views.update_project_modules, name='update_project_modules'),
     path('projects/<int:project_id>/assign-owner/', views.assign_project_owner, name='assign_project_owner'),

@@ -5768,6 +5768,10 @@ def project_detail(request, project_id):
     # Get active modules
     active_modules = project.module_instances.filter(is_active=True).select_related('module').order_by('order')
     
+    # Get project notes (project-level, not stage-level)
+    from dashboard_user.models import ProjectNote
+    project_notes = project.notes.all().select_related('author', 'author__mentor_profile', 'author__user_profile').order_by('-created_at')
+    
     # Stages will be loaded via API (client-side rendering)
     
     context = {
@@ -5776,9 +5780,70 @@ def project_detail(request, project_id):
         'answers': answers,
         'questionnaire_completed': project.questionnaire_completed,
         'active_modules': active_modules,
+        'project_notes': project_notes,
     }
     
     return render(request, 'dashboard_mentor/projects/project_detail.html', context)
+
+
+@login_required
+@require_POST
+def create_project_note(request, project_id):
+    """Create a project-level note"""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+    
+    mentor_profile = request.user.mentor_profile
+    project = get_object_or_404(Project, id=project_id, supervised_by=mentor_profile)
+    
+    from dashboard_user.models import ProjectNote
+    
+    try:
+        import json
+        if request.content_type == 'application/json':
+            data = json.loads(request.body)
+            note_text = data.get('note_text', '').strip()
+        else:
+            note_text = request.POST.get('note_text', '').strip()
+        
+        if not note_text:
+            return JsonResponse({'success': False, 'error': 'Note text is required'}, status=400)
+        
+        note = ProjectNote.objects.create(
+            project=project,
+            author=request.user,
+            text=note_text,
+            author_role='mentor'
+        )
+        
+        # Return note data for AJAX rendering
+        if request.content_type == 'application/json':
+            return JsonResponse({
+                'success': True,
+                'message': 'Note added successfully',
+                'note': {
+                    'id': note.id,
+                    'text': note.text,
+                    'author_name': note.author_name,
+                    'author_role': note.author_role,
+                    'created_at': note.created_at.strftime('%b %d, %H:%M'),
+                }
+            })
+        else:
+            from django.contrib import messages
+            messages.success(request, "Note added.")
+            return redirect('general:dashboard_mentor:project_detail', project_id=project.id)
+    
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f'Error creating project note: {str(e)}', exc_info=True)
+        if request.content_type == 'application/json':
+            return JsonResponse({'success': False, 'error': str(e)}, status=500)
+        else:
+            from django.contrib import messages
+            messages.error(request, f"Error adding note: {str(e)}")
+            return redirect('general:dashboard_mentor:project_detail', project_id=project.id)
 
 
 def update_stage_completion_status(stage):

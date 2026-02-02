@@ -482,6 +482,49 @@ class ProjectStageNoteComment(models.Model):
         return f"Comment by {self.author_name or 'Unknown'} on {self.note.stage.title}"
 
 
+class ProjectNote(models.Model):
+    """Notes on projects (project-level, not stage-level)"""
+    ROLE_CHOICES = [
+        ('mentor', 'Mentor'),
+        ('client', 'Client'),
+    ]
+    
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="notes")
+    author = models.ForeignKey("accounts.CustomUser", on_delete=models.SET_NULL, null=True, blank=True)
+    author_name = models.CharField(max_length=200, blank=True)
+    author_email = models.EmailField(blank=True)
+    author_role = models.CharField(max_length=20, choices=ROLE_CHOICES, blank=True)
+    is_author_deleted = models.BooleanField(default=False)
+    text = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = "Project Note"
+        verbose_name_plural = "Project Notes"
+        ordering = ['-created_at']
+    
+    def save(self, *args, **kwargs):
+        """Cache author info on save for GDPR compliance"""
+        if self.author and not self.is_author_deleted:
+            if not self.author_name:
+                if hasattr(self.author, 'profile'):
+                    self.author_name = f"{self.author.profile.first_name} {self.author.profile.last_name}".strip()
+                elif hasattr(self.author, 'user_profile'):
+                    self.author_name = f"{self.author.user_profile.first_name} {self.author.user_profile.last_name}".strip()
+            if not self.author_email:
+                self.author_email = self.author.email
+            if not self.author_role:
+                if hasattr(self.author, 'profile') and self.author.profile.role == 'mentor':
+                    self.author_role = 'mentor'
+                elif hasattr(self.author, 'user_profile'):
+                    self.author_role = 'client'
+        super().save(*args, **kwargs)
+    
+    def __str__(self):
+        return f"{self.project.title} - Note by {self.author_name or 'Unknown'}"
+
+
 class Task(models.Model):
     """Tasks for projects, stages, and backlogs"""
     PRIORITY_CHOICES = [

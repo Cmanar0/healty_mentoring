@@ -17,6 +17,7 @@
             "main backlog";
         gap: 32px;
         align-items: start;
+        grid-auto-rows: min-content;
     }
     
     .roadmap-container .top-nav {
@@ -26,6 +27,7 @@
     .roadmap-container > main {
         grid-area: main;
         position: relative;
+        align-self: start;
     }
     
     .project-sidebar {
@@ -35,11 +37,32 @@
     
     .project-sidebar-backlog {
         grid-area: backlog;
-        position: sticky;
-        top: 24px;
+        align-self: start;
         max-height: calc(100vh - 130px);
         display: flex;
         flex-direction: column;
+        height: fit-content;
+        position: sticky;
+        top: 24px;
+    }
+    
+    
+    .roadmap-notes-section {
+        width: 100%;
+        position: relative;
+        z-index: 10;
+        background: white;
+        margin-top: 32px;
+    }
+    
+    
+    /* Constrain sticky sidebar to its grid row */
+    .roadmap-container::after {
+        content: '';
+        grid-column: 1 / -1;
+        grid-row: backlog;
+        height: 1px;
+        visibility: hidden;
     }
     
     .project-sidebar-backlog .client-backlog-card {
@@ -79,6 +102,10 @@
         scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
     }
     
+    .roadmap-notes-section {
+        width: 100%;
+    }
+    
     @media (max-width: 1024px) {
         .roadmap-container {
             grid-template-columns: 1fr;
@@ -86,7 +113,8 @@
                 "top-nav"
                 "meta-card"
                 "main"
-                "backlog";
+                "backlog"
+                "notes";
         }
     }
 
@@ -946,13 +974,19 @@
     /* List Items (High Density) */
     .stage-row {
         display: flex;
-        align-items: stretch;
+        flex-direction: column;
         gap: 0;
         padding: 0;
         border-bottom: 1px solid #f3f4f6;
         transition: background 0.15s ease;
         position: relative;
         background: white;
+    }
+    
+    .stage-row-content {
+        display: flex;
+        align-items: stretch;
+        gap: 0;
     }
 
     .stage-row:last-child {
@@ -1143,19 +1177,182 @@
         color: #93c5fd; /* Light blue */
     }
 
-    /* Status Indicators */
-    .status-dot {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        display: inline-block;
+    /* Status Tags */
+    .status-tag {
+        display: inline-flex;
+        align-items: center;
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.025em;
+        margin-right: 8px;
         flex-shrink: 0;
     }
-    .status-dot.completed { background-color: #10b981; box-shadow: 0 0 0 2px #d1fae5; }
-    .status-dot.pending { background-color: #3b82f6; box-shadow: 0 0 0 2px #dbeafe; }
-    .status-dot.created { background-color: #fbbf24; box-shadow: 0 0 0 2px #fef3c7; }
-    .status-dot.overdue { background-color: #ef4444; box-shadow: 0 0 0 2px #fee2e2; }
-    .status-dot.draft { background-color: #9ca3af; border: 1px dashed #6b7280; background: transparent; }
+    .status-tag.completed { background-color: #d1fae5; color: #065f46; }
+    .status-tag.pending { background-color: #dbeafe; color: #1e40af; }
+    .status-tag.created { background-color: #fef3c7; color: #92400e; }
+    .status-tag.overdue { background-color: #fee2e2; color: #991b1b; }
+    .status-tag.disabled { background-color: #f3f4f6; color: #6b7280; }
+    
+    /* Expandable Task Section */
+    .stage-tasks-section {
+        width: 100%;
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.3s ease-out, padding 0.3s ease-out, margin 0.3s ease-out;
+        background: #f8fafc;
+        border-top: 1px solid #e2e8f0;
+        padding: 0;
+        margin: 0;
+    }
+    
+    .stage-tasks-section.expanded {
+        max-height: 2000px;
+        padding: 20px 24px;
+        margin: 0;
+    }
+    
+    .stage-tasks-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+    
+    .stage-tasks-title {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: #1e293b;
+    }
+    
+    .stage-tasks-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-bottom: 16px;
+    }
+    
+    .stage-task-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px;
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+    }
+    
+    .stage-task-checkbox {
+        width: 18px;
+        height: 18px;
+        border: 2px solid #cbd5e1;
+        border-radius: 4px;
+        cursor: pointer;
+        flex-shrink: 0;
+    }
+    
+    .stage-task-item.completed .stage-task-checkbox {
+        background: #10b981;
+        border-color: #10b981;
+        position: relative;
+    }
+    
+    .stage-task-item.completed .stage-task-checkbox::after {
+        content: '\\2713';
+        color: white;
+        font-size: 12px;
+        font-weight: bold;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+    }
+    
+    .stage-task-text {
+        flex: 1;
+        font-size: 0.875rem;
+        color: #374151;
+    }
+    
+    .stage-task-item.completed .stage-task-text {
+        text-decoration: line-through;
+        color: #9ca3af;
+    }
+    
+    .stage-tasks-empty {
+        text-align: center;
+        padding: 32px;
+        color: #64748b;
+    }
+    
+    .stage-tasks-empty-actions {
+        display: flex;
+        gap: 12px;
+        justify-content: center;
+        margin-top: 16px;
+    }
+    
+    .btn-create-task, .btn-ai-generate {
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+        font-size: 0.875rem;
+        height: 40px;
+        white-space: nowrap;
+    }
+    
+    .btn-create-task {
+        background: #3b82f6;
+        color: white;
+        padding: 10px 18px;
+    }
+    
+    .btn-create-task:hover {
+        background: #2563eb;
+    }
+    
+    .btn-ai-generate {
+        background: linear-gradient(135deg, #2563eb 0%, #7c3aed 50%, #ec4899 100%);
+        color: white;
+        padding: 10px 18px;
+        box-shadow: 0 4px 15px rgba(124, 58, 237, 0.4);
+    }
+    
+    .btn-ai-generate::before {
+        content: '';
+        position: absolute;
+        top: 0; left: -100%;
+        width: 100%; height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+        transition: 0.5s;
+    }
+    
+    .btn-ai-generate:hover {
+        background: linear-gradient(135deg, #1d4ed8 0%, #6d28d9 50%, #db2777 100%);
+        box-shadow: 0 6px 20px rgba(124, 58, 237, 0.6);
+    }
+    
+    .btn-ai-generate:hover::before {
+        left: 100%;
+    }
+    
+    .btn-ai-generate i,
+    .btn-create-task i {
+        font-size: 0.9em;
+        display: inline-block;
+    }
 
     /* Actions */
     .row-actions {
@@ -2088,6 +2285,94 @@
                             padding: 24px;
                         }
                     }
+                    
+                    /* Notes Section Styles */
+                    .notes-section {
+                        padding: 40px;
+                        background: #ffffff;
+                    }
+                    
+                    .section-heading-minimal {
+                        font-size: 0.9rem;
+                        text-transform: uppercase;
+                        letter-spacing: 0.05em;
+                        color: #94a3b8;
+                        font-weight: 700;
+                        margin-bottom: 24px;
+                        display: flex;
+                        align-items: center;
+                        gap: 12px;
+                    }
+
+                    .note-composer {
+                        background: #f8fafc;
+                        border: 1px solid #e2e8f0;
+                        border-radius: 12px;
+                        padding: 24px;
+                        margin-bottom: 32px;
+                    }
+                    
+                    .note-composer textarea {
+                        width: 100%;
+                        border: none;
+                        background: transparent;
+                        resize: vertical;
+                        min-height: 80px;
+                        font-size: 1rem;
+                        outline: none;
+                        color: #1f2937;
+                        margin-bottom: 12px;
+                        font-family: inherit;
+                    }
+
+                    .note-item {
+                        margin-bottom: 32px;
+                        display: grid;
+                        grid-template-columns: 48px 1fr;
+                        gap: 16px;
+                    }
+                    
+                    .note-avatar {
+                        width: 48px;
+                        height: 48px;
+                        border-radius: 50%;
+                        background: #e2e8f0;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        font-weight: 600;
+                        color: #64748b;
+                        flex-shrink: 0;
+                    }
+                    
+                    .note-header {
+                        margin-bottom: 8px;
+                        display: flex;
+                        align-items: baseline;
+                        gap: 10px;
+                        flex-wrap: wrap;
+                    }
+                    
+                    .note-author {
+                        font-weight: 700;
+                        color: #111827;
+                        font-size: 0.95rem;
+                    }
+                    
+                    .note-time {
+                        font-size: 0.8rem;
+                        color: #9ca3af;
+                    }
+                    
+                    .note-role-badge {
+                        font-size: 0.7rem;
+                        padding: 2px 8px;
+                        background: #f1f5f9;
+                        color: #64748b;
+                        border-radius: 12px;
+                        text-transform: uppercase;
+                        font-weight: 600;
+                    }
                 </style>
 
             <!-- Waterfall Chart -->
@@ -2112,7 +2397,7 @@
                     </h2>
                     <div class="roadmap-header-actions">
                         <button onclick="generateStagesAI()" id="generateStagesBtn" class="btn-ai-magic" title="Auto-Generate Stages with AI">
-                            <i class="fas fa-wand-magic-sparkles"></i> AI Generate
+                            <i class="fas fa-wand-magic-sparkles"></i> <span id="generateStagesBtnText">Generate Stages with AI</span>
                         </button>
                         <button onclick="openCreateStageModal()" class="fab-create">
                             <i class="fas fa-plus"></i> New Stage
@@ -2127,6 +2412,7 @@
                     </div>
                 </div>
             </div>
+            
         </main>
 
         <!-- Sidebar Info -->
@@ -2224,6 +2510,57 @@
         </aside>
         {% endif %}
     </div>
+    
+    <!-- Project Notes Section - Full Width (Outside Grid) -->
+    <div class="roadmap-notes-section">
+            <div class="document-card" style="min-height: auto;">
+                <div class="notes-section">
+                    <div class="section-heading-minimal">
+                        <i class="far fa-comments"></i> Project Notes & Updates
+                    </div>
+                    
+                    <form method="POST" action="{% url 'general:dashboard_mentor:create_project_note' project.id %}" class="note-composer" id="projectNoteForm">
+                        {% csrf_token %}
+                        <textarea name="note_text" id="projectNoteText" placeholder="Add an update, observation, or note about this project..." required></textarea>
+                        <div style="display: flex; justify-content: flex-end;">
+                            <button type="submit" class="btn btn-primary" id="projectNoteSubmitBtn" style="padding: 8px 16px;">
+                                Post Update
+                            </button>
+                        </div>
+                    </form>
+
+                    <div class="notes-feed" id="projectNotesFeed">
+                        {% for note in project_notes %}
+                            <div class="note-item">
+                                <div class="note-avatar">
+                                    {% if note.author %}
+                                        {{ note.author.first_name|first|default:"U" }}
+                                    {% else %}
+                                        {{ note.author_name|first|default:"U" }}
+                                    {% endif %}
+                                </div>
+                                <div class="note-box">
+                                    <div class="note-header">
+                                        <span class="note-author">{{ note.author_name|default:"Unknown" }}</span>
+                                        {% if note.author_role %}
+                                            <span class="note-role-badge">{{ note.author_role }}</span>
+                                        {% endif %}
+                                        <span class="note-time">{{ note.created_at|date:"M d, H:i" }}</span>
+                                    </div>
+                                    <div style="color: #4b5563; line-height: 1.6;">{{ note.text|linebreaksbr }}</div>
+                                </div>
+                            </div>
+                        {% empty %}
+                            <div style="text-align: center; padding: 32px; color: #cbd5e1; border: 2px dashed #f1f5f9; border-radius: 12px;">
+                                <i class="far fa-comment-dots" style="font-size: 2rem; margin-bottom: 12px;"></i>
+                                <p>No updates yet.</p>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}
 
@@ -2243,6 +2580,66 @@
     console.log('PROJECT_ID:', PROJECT_ID);
     console.log('STAGE_DETAIL_URL:', STAGE_DETAIL_URL);
     console.log('TARGET_COMPLETION_DATE:', TARGET_COMPLETION_DATE);
+    
+    // Set roadmap container max-height based on tallest column
+    function setRoadmapContainerMaxHeight() {
+        const roadmapContainer = document.querySelector('.roadmap-container');
+        if (!roadmapContainer) return;
+        
+        // Get elements for column 1 (top-nav + main)
+        const topNav = roadmapContainer.querySelector('.top-nav');
+        const mainContent = roadmapContainer.querySelector('main');
+        
+        // Get elements for column 2 (project-sidebar + project-sidebar-backlog)
+        const projectSidebar = roadmapContainer.querySelector('.project-sidebar');
+        const projectSidebarBacklog = roadmapContainer.querySelector('.project-sidebar-backlog');
+        
+        // Calculate column heights
+        let column1Height = 0;
+        if (topNav) column1Height += topNav.offsetHeight;
+        if (mainContent) column1Height += mainContent.offsetHeight;
+        
+        let column2Height = 0;
+        if (projectSidebar) column2Height += projectSidebar.offsetHeight;
+        if (projectSidebarBacklog) column2Height += projectSidebarBacklog.offsetHeight;
+        
+        // Add gap between rows (32px gap)
+        const gap = 32;
+        if (topNav && mainContent) column1Height += gap;
+        if (projectSidebar && projectSidebarBacklog) column2Height += gap;
+        
+        // Use the taller column
+        const maxHeight = Math.max(column1Height, column2Height);
+        
+        // Set max-height on container
+        roadmapContainer.style.maxHeight = maxHeight + 'px';
+    }
+    
+    // Update max-height on load and resize
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+            setRoadmapContainerMaxHeight();
+        });
+    } else {
+        setRoadmapContainerMaxHeight();
+    }
+    
+    window.addEventListener('resize', setRoadmapContainerMaxHeight);
+    
+    // Also update when content changes (e.g., stages are loaded)
+    const roadmapContainerEl = document.querySelector('.roadmap-container');
+    if (roadmapContainerEl) {
+        const observer = new MutationObserver(() => {
+            setRoadmapContainerMaxHeight();
+        });
+        
+        observer.observe(roadmapContainerEl, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeFilter: ['style', 'class']
+        });
+    }
     
     // Render waterfall chart
     function renderWaterfallChart(stages) {
@@ -3204,6 +3601,11 @@
             if (countEl) {
                 countEl.textContent = '0 Stages';
             }
+            // Update AI Generate button text when no stages
+            const generateStagesBtnText = document.getElementById('generateStagesBtnText');
+            if (generateStagesBtnText) {
+                generateStagesBtnText.textContent = 'Generate Stages with AI';
+            }
             return;
         }
         
@@ -3212,8 +3614,14 @@
             countEl.textContent = `${stages.length} Stage${stages.length !== 1 ? 's' : ''}`;
         }
         
+        // Update AI Generate button text based on whether stages exist
+        const generateStagesBtnText = document.getElementById('generateStagesBtnText');
+        if (generateStagesBtnText) {
+            generateStagesBtnText.textContent = stages.length > 0 ? 'Optimize Stages with AI' : 'Generate Stages with AI';
+        }
+        
         container.innerHTML = stages.map(stage => {
-            let statusDot = '';
+            let statusTag = '';
             let titleClass = '';
             let titleText = stage.title;
             const isDisabled = stage.is_disabled || false;
@@ -3223,38 +3631,38 @@
                 rowClass = 'stage-row stage-row-disabled';
             }
             
-            // Determine status dot and colors based on progress_status (or disabled)
+            // Determine status tag and colors based on progress_status (or disabled)
             const progressStatus = stage.progress_status || (stage.is_completed ? 'completed' : 'in_progress');
             let progressColor = '#e5e7eb';
             let statusTitle = '';
             
             if (isDisabled) {
                 // Disabled stage styling
-                statusDot = '<span class="status-dot" style="background-color: #9ca3af; border: 1px solid #d1d5db; box-shadow: none;" title="Disabled"></span>';
+                statusTag = '<span class="status-tag disabled">Disabled</span>';
                 progressColor = '#9ca3af';
                 statusTitle = 'Disabled';
                 titleClass = 'style="color: #6b7280; opacity: 0.7;"';
             } else {
                 switch(progressStatus) {
                     case 'completed':
-                        statusDot = '<span class="status-dot completed" title="Completed"></span>';
+                        statusTag = '<span class="status-tag completed">Completed</span>';
                         progressColor = '#10b981';
                         statusTitle = 'Completed';
                         titleClass = 'style="text-decoration: line-through; color: #6b7280;"';
                         break;
                     case 'overdue':
-                        statusDot = '<span class="status-dot overdue" title="Overdue"></span>';
+                        statusTag = '<span class="status-tag overdue">Overdue</span>';
                         progressColor = '#ef4444';
                         statusTitle = 'Overdue';
                         break;
                     case 'in_progress':
-                        statusDot = '<span class="status-dot pending" title="In Progress"></span>';
+                        statusTag = '<span class="status-tag pending">In Progress</span>';
                         progressColor = '#3b82f6';
                         statusTitle = 'In Progress';
                         break;
                     case 'created':
                     default:
-                        statusDot = '<span class="status-dot created" title="Created"></span>';
+                        statusTag = '<span class="status-tag created">Created</span>';
                         progressColor = '#fbbf24';
                         statusTitle = 'Created';
                         break;
@@ -3303,57 +3711,62 @@
             
             return `
                 <div class="${rowClass}" data-stage-id="${stage.id}">
-                    <div class="stage-drag-section">
-                        <div class="drag-grip">
-                            <i class="fas fa-grip-vertical"></i>
+                    <div class="stage-row-content">
+                        <div class="stage-drag-section">
+                            <div class="drag-grip">
+                                <i class="fas fa-grip-vertical"></i>
+                            </div>
+                        </div>
+                        <div class="stage-main-wrapper" onclick="toggleStageTasks(${stage.id}, event);">
+                            <div class="stage-main">
+                                <div class="stage-title-meta">
+                                    <div class="stage-title">
+                                        ${statusTag}
+                                        <span ${titleClass}>${titleText}</span>
+                                    </div>
+                                    ${dateRangeHtml}
+                                </div>
+                            </div>
+                            <div class="stage-progress-section">
+                                <div class="stage-progress-bar-container">
+                                    <div class="stage-progress-label">
+                                        <span>Progress</span>
+                                        <span style="font-weight: 500;">${progress}%</span>
+                                    </div>
+                                    <div class="stage-progress-bar">
+                                        <div class="stage-progress-fill" style="width: ${progress}%; background: ${progressColor};"></div>
+                                    </div>
+                                </div>
+                                <div class="stage-tasks-count ${totalTasks === 0 ? 'no-tasks' : ''}">
+                                    ${totalTasks === 0 
+                                        ? '<span style="color: #93c5fd;">no tasks yet</span>'
+                                        : `<i class="fas fa-tasks"></i><span>${completedTasks}/${totalTasks}</span>`
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row-actions-section" onclick="event.stopPropagation();">
+                            <div class="row-actions" id="rowActions_${stage.id}">
+                                <div class="stage-dropdown-container" id="stageDropdown_${stage.id}">
+                                    <button class="stage-dropdown-trigger" onclick="toggleStageDropdown(${stage.id}, event)">
+                                        <i class="fas fa-ellipsis-v"></i>
+                                    </button>
+                                    <div class="stage-dropdown-menu" onclick="event.stopPropagation();">
+                                        <button class="stage-dropdown-item first-item" onclick="editStage(${stage.id}); event.stopPropagation();">
+                                            <i class="fas fa-edit"></i>
+                                            <span>Edit</span>
+                                        </button>
+                                        <button class="stage-dropdown-item delete-item last-item" onclick="deleteStage(${stage.id}); event.stopPropagation();">
+                                            <i class="fas fa-trash"></i>
+                                            <span>Delete</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    <div class="stage-main-wrapper" onclick="window.location.href='${STAGE_DETAIL_URL}${stage.id}/';">
-                        <div class="stage-main">
-                            <div class="stage-title-meta">
-                                <div class="stage-title">
-                                    ${statusDot}
-                                    <span ${titleClass}>${titleText}</span>
-                                </div>
-                                ${dateRangeHtml}
-                            </div>
-                        </div>
-                        <div class="stage-progress-section">
-                            <div class="stage-progress-bar-container">
-                                <div class="stage-progress-label">
-                                    <span>Progress</span>
-                                    <span style="font-weight: 500;">${progress}%</span>
-                                </div>
-                                <div class="stage-progress-bar">
-                                    <div class="stage-progress-fill" style="width: ${progress}%; background: ${progressColor};"></div>
-                                </div>
-                            </div>
-                            <div class="stage-tasks-count ${totalTasks === 0 ? 'no-tasks' : ''}">
-                                ${totalTasks === 0 
-                                    ? '<span style="color: #93c5fd;">no tasks yet</span>'
-                                    : `<i class="fas fa-tasks"></i><span>${completedTasks}/${totalTasks}</span>`
-                                }
-                            </div>
-                        </div>
-                    </div>
-                    <div class="row-actions-section" onclick="event.stopPropagation();">
-                        <div class="row-actions" id="rowActions_${stage.id}">
-                            <div class="stage-dropdown-container" id="stageDropdown_${stage.id}">
-                                <button class="stage-dropdown-trigger" onclick="toggleStageDropdown(${stage.id}, event)">
-                                    <i class="fas fa-ellipsis-v"></i>
-                                </button>
-                                <div class="stage-dropdown-menu" onclick="event.stopPropagation();">
-                                    <button class="stage-dropdown-item first-item" onclick="editStage(${stage.id}); event.stopPropagation();">
-                                        <i class="fas fa-edit"></i>
-                                        <span>Edit</span>
-                                    </button>
-                                    <button class="stage-dropdown-item delete-item last-item" onclick="deleteStage(${stage.id}); event.stopPropagation();">
-                                        <i class="fas fa-trash"></i>
-                                        <span>Delete</span>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
+                    <div class="stage-tasks-section" id="stageTasks_${stage.id}" data-stage-id="${stage.id}">
+                        <!-- Tasks will be loaded here -->
                     </div>
                 </div>
             `;
@@ -3690,6 +4103,266 @@
             }).then(() => loadStages());
         }
     };
+    
+    // Toggle stage tasks section
+    window.toggleStageTasks = function(stageId, event) {
+        // Don't toggle if clicking on actions or dropdown
+        if (event && (event.target.closest('.row-actions-section') || event.target.closest('.stage-dropdown-container'))) {
+            return;
+        }
+        
+        const tasksSection = document.getElementById(`stageTasks_${stageId}`);
+        if (!tasksSection) return;
+        
+        const isExpanded = tasksSection.classList.contains('expanded');
+        
+        if (isExpanded) {
+            // Collapse
+            tasksSection.classList.remove('expanded');
+        } else {
+            // Expand
+            tasksSection.classList.add('expanded');
+            // Load tasks if not already loaded
+            if (!tasksSection.dataset.loaded) {
+                loadStageTasks(stageId);
+            }
+        }
+    };
+    
+    // Load tasks for a stage
+    function loadStageTasks(stageId) {
+        const tasksSection = document.getElementById(`stageTasks_${stageId}`);
+        if (!tasksSection) return;
+        
+        tasksSection.innerHTML = `
+            <div style="text-align: center; padding: 20px; color: #9ca3af;">
+                <i class="fas fa-spinner fa-spin" style="font-size: 1rem; margin-bottom: 8px;"></i>
+                <p style="margin: 0; font-size: 0.875rem;">Loading tasks...</p>
+            </div>
+        `;
+        
+        fetch(`/dashboard/mentor/projects/${PROJECT_ID}/stages/${stageId}/tasks/api/`, {
+            method: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            credentials: 'same-origin'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data && data.success) {
+                renderStageTasks(stageId, data.tasks || []);
+                tasksSection.dataset.loaded = 'true';
+            } else {
+                tasksSection.innerHTML = `
+                    <div style="text-align: center; padding: 20px; color: #ef4444;">
+                        <i class="fas fa-exclamation-triangle" style="font-size: 1rem; margin-bottom: 8px;"></i>
+                        <p style="margin: 0; font-size: 0.875rem;">Error loading tasks</p>
+                    </div>
+                `;
+            }
+        })
+        .catch(error => {
+            console.error('Error loading tasks:', error);
+            tasksSection.innerHTML = `
+                <div style="text-align: center; padding: 20px; color: #ef4444;">
+                    <i class="fas fa-exclamation-triangle" style="font-size: 1rem; margin-bottom: 8px;"></i>
+                    <p style="margin: 0; font-size: 0.875rem;">Error loading tasks</p>
+                </div>
+            `;
+        });
+    }
+    
+    // Render tasks for a stage
+    function renderStageTasks(stageId, tasks) {
+        const tasksSection = document.getElementById(`stageTasks_${stageId}`);
+        if (!tasksSection) return;
+        
+        if (tasks.length === 0) {
+            tasksSection.innerHTML = `
+                <div class="stage-tasks-empty">
+                    <p style="margin: 0 0 8px 0; font-size: 0.875rem;">No tasks yet</p>
+                    <div class="stage-tasks-empty-actions">
+                        <button class="btn-ai-generate" onclick="generateTasksAI(${stageId})">
+                            <i class="fas fa-wand-magic-sparkles"></i> Generate Tasks with AI
+                        </button>
+                        <button class="btn-create-task" onclick="createTask(${stageId})">
+                            <i class="fas fa-plus"></i> Create Task
+                        </button>
+                    </div>
+                </div>
+            `;
+            return;
+        }
+        
+        let html = `
+            <div class="stage-tasks-header">
+                <div class="stage-tasks-title">Tasks (${tasks.length})</div>
+                <div style="display: flex; gap: 8px;">
+                    <button class="btn-ai-generate" onclick="generateTasksAI(${stageId})" style="padding: 6px 12px; font-size: 0.8rem;">
+                        <i class="fas fa-magic"></i> Optimize Tasks with AI
+                    </button>
+                    <button class="btn-create-task" onclick="createTask(${stageId})" style="padding: 6px 12px; font-size: 0.8rem;">
+                        <i class="fas fa-plus"></i> Add Task
+                    </button>
+                </div>
+            </div>
+            <div class="stage-tasks-list">
+        `;
+        
+        tasks.forEach(task => {
+            const completedClass = task.completed ? 'completed' : '';
+            html += `
+                <div class="stage-task-item ${completedClass}" data-task-id="${task.id}">
+                    <div class="stage-task-checkbox" onclick="toggleTaskComplete(${task.id}, ${stageId}, event)"></div>
+                    <div class="stage-task-text">${escapeHtml(task.title)}</div>
+                </div>
+            `;
+        });
+        
+        html += `
+            </div>
+        `;
+        
+        tasksSection.innerHTML = html;
+    }
+    
+    // Toggle task completion
+    window.toggleTaskComplete = function(taskId, stageId, event) {
+        event.stopPropagation();
+        
+        fetch(`/dashboard/mentor/projects/${PROJECT_ID}/stages/${stageId}/tasks/${taskId}/toggle-complete/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Reload tasks for this stage
+                const tasksSection = document.getElementById(`stageTasks_${stageId}`);
+                if (tasksSection) {
+                    tasksSection.dataset.loaded = 'false';
+                    loadStageTasks(stageId);
+                }
+                // Reload stages to update progress
+                loadStages();
+            } else {
+                if (typeof showNotification !== 'undefined') {
+                    showNotification(data.error || 'Failed to toggle task', 'error');
+                } else {
+                    alert(data.error || 'Failed to toggle task');
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error toggling task:', error);
+            if (typeof showNotification !== 'undefined') {
+                showNotification('An error occurred', 'error');
+            } else {
+                alert('An error occurred');
+            }
+        });
+    }
+    
+    // Create task
+    window.createTask = function(stageId) {
+        const title = prompt('Enter task title:');
+        if (!title || !title.trim()) {
+            return;
+        }
+        
+        fetch(`/dashboard/mentor/projects/${PROJECT_ID}/stages/${stageId}/tasks/create/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                title: title.trim(),
+                description: ''
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Reload tasks for this stage
+                const tasksSection = document.getElementById(`stageTasks_${stageId}`);
+                if (tasksSection) {
+                    tasksSection.dataset.loaded = 'false';
+                    loadStageTasks(stageId);
+                }
+                // Reload stages to update progress
+                loadStages();
+                if (typeof showNotification !== 'undefined') {
+                    showNotification('Task created successfully', 'success');
+                }
+            } else {
+                if (typeof showNotification !== 'undefined') {
+                    showNotification(data.error || 'Failed to create task', 'error');
+                } else {
+                    alert(data.error || 'Failed to create task');
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error creating task:', error);
+            if (typeof showNotification !== 'undefined') {
+                showNotification('An error occurred', 'error');
+            } else {
+                alert('An error occurred');
+            }
+        });
+    }
+    
+    // Generate tasks with AI
+    window.generateTasksAI = function(stageId) {
+        if (!confirm('Generate tasks using AI for this stage?')) {
+            return;
+        }
+        
+        fetch(`/dashboard/mentor/projects/${PROJECT_ID}/stages/${stageId}/tasks/generate-ai/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Reload tasks for this stage
+                const tasksSection = document.getElementById(`stageTasks_${stageId}`);
+                if (tasksSection) {
+                    tasksSection.dataset.loaded = 'false';
+                    loadStageTasks(stageId);
+                }
+                // Reload stages to update progress
+                loadStages();
+                if (typeof showNotification !== 'undefined') {
+                    showNotification(`${data.tasks_count || 0} tasks generated successfully`, 'success');
+                } else {
+                    alert(`${data.tasks_count || 0} tasks generated successfully`);
+                }
+            } else {
+                if (typeof showNotification !== 'undefined') {
+                    showNotification(data.error || 'Failed to generate tasks', 'error');
+                } else {
+                    alert(data.error || 'Failed to generate tasks');
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error generating tasks:', error);
+            if (typeof showNotification !== 'undefined') {
+                showNotification('An error occurred', 'error');
+            } else {
+                alert('An error occurred');
+            }
+        });
+    }
 
     // Toggle stage dropdown menu
     window.toggleStageDropdown = function(stageId, event) {
@@ -4232,5 +4905,108 @@
             }
         }
     });
+    
+    // Handle project note form submission
+    const projectNoteForm = document.getElementById('projectNoteForm');
+    if (projectNoteForm) {
+        projectNoteForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const textarea = document.getElementById('projectNoteText');
+            const submitBtn = document.getElementById('projectNoteSubmitBtn');
+            const notesFeed = document.getElementById('projectNotesFeed');
+            
+            if (!textarea || !textarea.value.trim()) {
+                return;
+            }
+            
+            const originalText = submitBtn.innerHTML;
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Posting...';
+            
+            // Get CSRF token
+            function getCookie(name) {
+                let cookieValue = null;
+                if (document.cookie && document.cookie !== '') {
+                    const cookies = document.cookie.split(';');
+                    for (let i = 0; i < cookies.length; i++) {
+                        const cookie = cookies[i].trim();
+                        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                            break;
+                        }
+                    }
+                }
+                return cookieValue;
+            }
+            
+            fetch('{% url "general:dashboard_mentor:create_project_note" project.id %}', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken'),
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    note_text: textarea.value.trim()
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Clear textarea
+                    textarea.value = '';
+                    
+                    // Add note to feed (prepend to top)
+                    const note = data.note;
+                    const noteHtml = `
+                        <div class="note-item">
+                            <div class="note-avatar">
+                                ${note.author_name ? note.author_name.charAt(0).toUpperCase() : 'U'}
+                            </div>
+                            <div class="note-box">
+                                <div class="note-header">
+                                    <span class="note-author">${escapeHtml(note.author_name || 'Unknown')}</span>
+                                    ${note.author_role ? `<span class="note-role-badge">${note.author_role}</span>` : ''}
+                                    <span class="note-time">${note.created_at}</span>
+                                </div>
+                                <div style="color: #4b5563; line-height: 1.6;">${escapeHtml(note.text).replace(/\n/g, '<br>')}</div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    // Remove empty message if exists
+                    const emptyMsg = notesFeed.querySelector('div[style*="text-align: center"]');
+                    if (emptyMsg) {
+                        emptyMsg.remove();
+                    }
+                    
+                    // Prepend new note
+                    notesFeed.insertAdjacentHTML('afterbegin', noteHtml);
+                    
+                    if (typeof showNotification !== 'undefined') {
+                        showNotification('Note added successfully', 'success');
+                    }
+                } else {
+                    if (typeof showNotification !== 'undefined') {
+                        showNotification(data.error || 'Failed to add note', 'error');
+                    } else {
+                        alert(data.error || 'Failed to add note');
+                    }
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalText;
+                }
+            })
+            .catch(error => {
+                console.error('Error adding note:', error);
+                if (typeof showNotification !== 'undefined') {
+                    showNotification('An error occurred', 'error');
+                } else {
+                    alert('An error occurred');
+                }
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+            });
+        });
+    }
 </script>
 {% endblock %}
