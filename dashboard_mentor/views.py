@@ -7551,7 +7551,7 @@ def statistics(request):
         
         # Calculate earned (sum of session prices)
         confirmed_sessions = all_sessions.filter(status='confirmed')
-        stats['earned'] = sum(session.price or 0 for session in confirmed_sessions)
+        stats['earned'] = sum(session.session_price or 0 for session in confirmed_sessions)
         
         # Get active clients
         active_relationships = MentorClientRelationship.objects.filter(

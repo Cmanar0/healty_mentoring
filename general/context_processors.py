@@ -25,7 +25,8 @@ def notifications(request):
 
 def pending_sessions_count(request):
     """Context processor to provide pending session count for user dashboard"""
-    if request.user.is_authenticated and hasattr(request.user, 'profile') and request.user.profile.role == 'user':
+    profile = getattr(request.user, 'profile', None) if request.user.is_authenticated else None
+    if profile is not None and profile.role == 'user':
         user_email = (request.user.email or '').strip().lower()
         
         # Get all pending invitations for this user
@@ -79,7 +80,8 @@ def pending_sessions_count(request):
 
 def unresolved_tickets_count(request):
     """Context processor to provide unresolved tickets count for admin dashboard"""
-    if request.user.is_authenticated and hasattr(request.user, 'profile') and request.user.profile.role == 'admin':
+    profile = getattr(request.user, 'profile', None) if request.user.is_authenticated else None
+    if profile is not None and profile.role == 'admin':
         from .models import Ticket
         unresolved_count = Ticket.objects.filter(status__in=['submitted', 'in_progress']).count()
         return {
@@ -94,7 +96,8 @@ def pending_project_assignments(request):
     Context processor to provide pending project assignments count for user dashboard.
     Similar to pending_sessions_count context processor.
     """
-    if request.user.is_authenticated and hasattr(request.user, 'profile') and request.user.profile.role == 'user':
+    profile = getattr(request.user, 'profile', None) if request.user.is_authenticated else None
+    if profile is not None and profile.role == 'user':
         from dashboard_user.models import Project
         from accounts.models import UserProfile
         

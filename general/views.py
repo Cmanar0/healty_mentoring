@@ -1,4 +1,5 @@
 from django.shortcuts import redirect, render, get_object_or_404
+from django.contrib.auth import logout
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse, HttpResponse
 from django.views.decorators.http import require_POST, require_http_methods
@@ -10,23 +11,26 @@ import json
 @login_required
 def index(request):
     # Dispatcher view: redirects to the appropriate dashboard based on role
-    if hasattr(request.user, 'profile'):
-        if request.user.profile.role == 'mentor':
+    profile = getattr(request.user, 'profile', None)
+    if profile is not None:
+        if profile.role == 'mentor':
             return redirect('/dashboard/mentor/')
-        elif request.user.profile.role == 'user':
+        elif profile.role == 'user':
             return redirect('/dashboard/user/')
-        elif request.user.profile.role == 'admin':
+        elif profile.role == 'admin':
             # Redirect to custom admin dashboard
-            return redirect('/dashboard/admin/') 
-    
-    # Fallback if no profile or role
+            return redirect('/dashboard/admin/')
+
+    # No profile or invalid session — log out and send to landing
+    logout(request)
     return redirect('web:landing')
 
 @login_required
 @require_POST
 def mark_manual_displayed(request):
     """Mark a manual as displayed and remove it from the array"""
-    if not hasattr(request.user, 'profile'):
+    profile = getattr(request.user, 'profile', None)
+    if profile is None:
         return JsonResponse({'error': 'No profile found'}, status=400)
     
     try:
@@ -35,8 +39,6 @@ def mark_manual_displayed(request):
         
         if not manual_id:
             return JsonResponse({'error': 'manual_id is required'}, status=400)
-        
-        profile = request.user.profile
         manuals = profile.manuals if profile.manuals else []
         
         # Remove the manual with the given ID
@@ -51,14 +53,13 @@ def mark_manual_displayed(request):
 @require_POST
 def update_timezone(request):
     """Update user's timezone via AJAX - works for both mentor and user profiles"""
-    if not hasattr(request.user, 'profile'):
+    profile = getattr(request.user, 'profile', None)
+    if profile is None:
         return JsonResponse({'success': False, 'error': 'No profile found'}, status=400)
     
     try:
         data = json.loads(request.body)
         action = data.get('action')  # 'update_detected', 'update_selected', 'confirm_mismatch'
-        
-        profile = request.user.profile
         
         if action == 'update_detected':
             # Update detected timezone (called on every page load)
