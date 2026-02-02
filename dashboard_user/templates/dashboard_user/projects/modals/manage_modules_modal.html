@@ -1,6 +1,6 @@
 <!-- Manage Modules Modal -->
 <div id="manageModulesModal" class="modal-overlay" style="display: none;">
-    <div class="modal-content" style="max-width: 600px; width: 90%;">
+    <div class="modal-content" style="max-width: 1000px; width: 95%; min-width: 800px;">
         <div class="modal-header">
             <h2 style="margin: 0; font-size: 1.5rem; font-weight: 700; color: #111827;">
                 <i class="fas fa-cube" style="margin-right: 8px; color: #10b981;"></i>
@@ -24,12 +24,74 @@
             </div>
         </div>
         
-        <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 12px; padding-top: 16px; border-top: 1px solid #e5e7eb;">
-            <button onclick="closeManageModulesModal()" class="btn-secondary" style="padding: 10px 20px;">
+        <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 12px; padding: 20px 24px; border-top: 1px solid #e2e8f0; background: #f8fafc; border-radius: 0 0 12px 12px;">
+            <button onclick="closeManageModulesModal()" class="btn-cancel">
                 Cancel
             </button>
-            <button id="saveModulesBtn" onclick="saveProjectModules()" class="btn-primary" style="padding: 10px 20px; display: none;">
-                <i class="fas fa-save"></i> Save Changes
+            <button id="saveModulesBtn" onclick="saveProjectModules()" class="btn-confirm" disabled>
+                Save Changes
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Module Removal Confirmation Dialog -->
+<div id="moduleRemovalDialog" class="modal-overlay" style="display: none; z-index: 10001;">
+    <div class="modal-content" style="max-width: 900px; width: 95%; min-width: 700px;">
+        <div class="modal-header">
+            <h2 style="margin: 0; font-size: 1.5rem; font-weight: 700; color: #111827;">
+                <i class="fas fa-exclamation-triangle" style="margin-right: 8px; color: #f59e0b;"></i>
+                Remove Modules
+            </h2>
+            <button onclick="closeModuleRemovalDialog()" class="modal-close" aria-label="Close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <div class="modal-body" style="padding: 24px; display: flex; gap: 24px; min-height: 400px;">
+            <!-- Left side: List of affected modules -->
+            <div style="flex: 1; border-right: 1px solid #e2e8f0; padding-right: 24px;">
+                <h3 style="font-size: 1rem; font-weight: 600; color: #1e293b; margin-bottom: 16px;">
+                    Modules to be removed (<span id="removalModuleCount">0</span>)
+                </h3>
+                <div id="removalModulesList" style="display: flex; flex-direction: column; gap: 8px; max-height: 350px; overflow-y: auto;">
+                    <!-- Modules will be listed here -->
+                </div>
+            </div>
+            
+            <!-- Right side: Decision options -->
+            <div style="flex: 1; padding-left: 24px;">
+                <h3 style="font-size: 1rem; font-weight: 600; color: #1e293b; margin-bottom: 16px;">
+                    What would you like to do with the module data?
+                </h3>
+                <p style="color: #64748b; margin-bottom: 20px; font-size: 0.875rem;">
+                    Choose an action that will apply to all selected modules above.
+                </p>
+                <div style="display: flex; flex-direction: column; gap: 12px;">
+                    <label style="display: flex; align-items: center; gap: 12px; padding: 16px; border: 2px solid #e2e8f0; border-radius: 8px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.borderColor='#cbd5e1'; this.style.background='#f8fafc';" onmouseout="this.style.borderColor='#e2e8f0'; this.style.background='white';">
+                        <input type="radio" name="removalAction" value="archive" checked style="width: 18px; height: 18px; cursor: pointer;">
+                        <div style="flex: 1;">
+                            <div style="font-weight: 600; color: #1e293b; margin-bottom: 4px;">Archive (Unlist)</div>
+                            <div style="font-size: 0.875rem; color: #64748b;">Keep the module data but hide it from the project view</div>
+                        </div>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 12px; padding: 16px; border: 2px solid #e2e8f0; border-radius: 8px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.borderColor='#cbd5e1'; this.style.background='#f8fafc';" onmouseout="this.style.borderColor='#e2e8f0'; this.style.background='white';">
+                        <input type="radio" name="removalAction" value="delete" style="width: 18px; height: 18px; cursor: pointer;">
+                        <div style="flex: 1;">
+                            <div style="font-weight: 600; color: #1e293b; margin-bottom: 4px;">Delete</div>
+                            <div style="font-size: 0.875rem; color: #64748b;">Permanently delete all module data for this project</div>
+                        </div>
+                    </label>
+                </div>
+            </div>
+        </div>
+        
+        <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 12px; padding: 20px 24px; border-top: 1px solid #e2e8f0; background: #f8fafc; border-radius: 0 0 12px 12px;">
+            <button onclick="cancelModuleRemoval()" class="btn-cancel">
+                Cancel
+            </button>
+            <button onclick="confirmModuleRemoval()" class="btn-confirm">
+                Confirm
             </button>
         </div>
     </div>
@@ -64,6 +126,7 @@
     flex-direction: column;
     transform: scale(0.95);
     transition: transform 0.3s;
+    padding: 0;
 }
 
 .modal-overlay.active .modal-content {
@@ -99,44 +162,55 @@
 }
 
 .modal-footer {
-    padding: 24px;
+    padding: 20px 24px;
+    border-top: 1px solid #e2e8f0;
+    background: #f8fafc;
+    border-radius: 0 0 12px 12px;
 }
 
-.btn-secondary {
-    background: #f3f4f6;
-    color: #374151;
-    border: none;
+.btn-cancel {
+    background: white;
+    color: #64748b;
+    border: 1px solid #e2e8f0;
+    padding: 10px 20px;
     border-radius: 8px;
-    font-weight: 500;
+    font-weight: 600;
     cursor: pointer;
     transition: all 0.2s;
+    font-size: 0.9rem;
+    min-width: 100px;
+    width: auto;
+    text-align: center;
 }
 
-    .btn-secondary:hover {
-        background: #e5e7eb;
-    }
+.btn-cancel:hover {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+    color: #475569;
+}
 
-    .btn-primary {
-        background: #111827;
-        color: white;
-        border: none;
-        border-radius: 8px;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all 0.2s;
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-    }
+.btn-confirm {
+    background: #10b981;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.9rem;
+    width: auto;
+    text-align: center;
+}
 
-    .btn-primary:hover:not(:disabled) {
-        background: #000;
-    }
+.btn-confirm:hover:not(:disabled) {
+    background: #059669;
+}
 
-    .btn-primary:disabled {
-        opacity: 0.6;
-        cursor: not-allowed;
-    }
+.btn-confirm:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
 
     /* Module Selection Styles */
     .module-item {
@@ -216,6 +290,30 @@
         background: white;
         border: 1px solid #e2e8f0;
     }
+
+    /* Scrollbar styling for removal modules list */
+    #removalModulesList::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    #removalModulesList::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    #removalModulesList::-webkit-scrollbar-thumb {
+        background-color: rgba(0, 0, 0, 0.2);
+        border-radius: 3px;
+    }
+
+    #removalModulesList::-webkit-scrollbar-thumb:hover {
+        background-color: rgba(0, 0, 0, 0.3);
+    }
+
+    /* Firefox scrollbar */
+    #removalModulesList {
+        scrollbar-width: thin;
+        scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+    }
 </style>
 
 <script>
@@ -225,6 +323,12 @@
     let selectedModuleIds = [];
     let originalModuleIds = [];
     let projectId = null;
+    let pendingRemovalModuleId = null;
+    let pendingRemovalModuleName = null;
+    let moduleRemovalActions = {}; // Stores action (archive/delete) for each removed module
+    let allModulesData = {}; // Stores module data for lookup
+    let modulesPendingRemoval = []; // Queue of modules that need confirmation
+    let isSaving = false; // Track if we're in the save process
     
     window.openManageModulesModal = function() {
         const modal = document.getElementById('manageModulesModal');
@@ -258,8 +362,17 @@
             // Reset state
             selectedModuleIds = [];
             originalModuleIds = [];
+            moduleRemovalActions = {};
+            pendingRemovalModuleId = null;
+            pendingRemovalModuleName = null;
+            allModulesData = {};
+            modulesPendingRemoval = [];
+            isSaving = false;
             const saveBtn = document.getElementById('saveModulesBtn');
-            if (saveBtn) saveBtn.style.display = 'none';
+            if (saveBtn) {
+                saveBtn.disabled = true;
+                saveBtn.innerHTML = 'Save Changes';
+            }
         }, 300);
     };
     
@@ -285,7 +398,14 @@
             if (data.success) {
                 originalModuleIds = data.project_module_ids || [];
                 selectedModuleIds = [...originalModuleIds];
+                // Store module data for lookup
+                if (data.all_modules) {
+                    data.all_modules.forEach(function(module) {
+                        allModulesData[module.id] = module;
+                    });
+                }
                 displayModules(data.all_modules, data.project_module_ids);
+                updateSaveButton(); // Update button state after loading
             } else {
                 modulesList.innerHTML = `
                     <div style="grid-column: 1/-1; text-align: center; padding: 32px; color: #ef4444;">
@@ -343,29 +463,111 @@
         const moduleItem = document.querySelector(`.module-item[data-module-id="${moduleId}"]`);
         
         if (index !== -1) {
+            // Unselecting a module
             selectedModuleIds = selectedModuleIds.filter(function(id) {
                 return id !== moduleId;
             });
             if (moduleItem) moduleItem.classList.remove('selected');
+            // Remove any stored action for this module (will be set during save confirmation)
+            delete moduleRemovalActions[moduleId];
         } else {
+            // Selecting a module
             selectedModuleIds.push(moduleId);
             if (moduleItem) moduleItem.classList.add('selected');
+            // Remove any stored action for this module since it's being re-added
+            delete moduleRemovalActions[moduleId];
         }
         
         // Show/hide save button based on changes
         updateSaveButton();
     };
     
-    function updateSaveButton() {
-        const saveBtn = document.getElementById('saveModulesBtn');
-        if (!saveBtn) return;
+    function openModuleRemovalDialog(modulesToRemove) {
+        const dialog = document.getElementById('moduleRemovalDialog');
+        const modulesListEl = document.getElementById('removalModulesList');
+        const moduleCountEl = document.getElementById('removalModuleCount');
         
-        // Check if selection has changed
-        const hasChanged = JSON.stringify(selectedModuleIds.sort()) !== JSON.stringify(originalModuleIds.sort());
-        saveBtn.style.display = hasChanged ? 'inline-flex' : 'none';
+        if (!dialog || !modulesListEl || !moduleCountEl || !modulesToRemove || modulesToRemove.length === 0) {
+            return;
+        }
+        
+        // Update count
+        moduleCountEl.textContent = modulesToRemove.length;
+        
+        // Display modules in the list
+        modulesListEl.innerHTML = modulesToRemove.map(function(module) {
+            return `
+                <div style="display: flex; align-items: center; gap: 12px; padding: 12px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
+                    <div class="module-icon" style="background: ${module.color || '#10b981'}; color: white; border: none; width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 0.875rem; flex-shrink: 0;">
+                        <i class="${module.icon || 'fas fa-cube'}"></i>
+                    </div>
+                    <div style="flex: 1; min-width: 0;">
+                        <div style="font-weight: 600; color: #1e293b; font-size: 0.875rem;">${module.name}</div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+        
+        dialog.style.display = 'flex';
+        setTimeout(() => {
+            dialog.classList.add('active');
+        }, 10);
     }
     
-    window.saveProjectModules = function() {
+    window.closeModuleRemovalDialog = function() {
+        const dialog = document.getElementById('moduleRemovalDialog');
+        if (dialog) {
+            dialog.classList.remove('active');
+            setTimeout(() => {
+                dialog.style.display = 'none';
+                pendingRemovalModuleId = null;
+                pendingRemovalModuleName = null;
+                // Clear the modules list
+                const modulesListEl = document.getElementById('removalModulesList');
+                if (modulesListEl) modulesListEl.innerHTML = '';
+            }, 300);
+        }
+    };
+    
+    window.cancelModuleRemoval = function() {
+        // Cancel the save process
+        isSaving = false;
+        modulesPendingRemoval = [];
+        pendingRemovalModuleId = null;
+        pendingRemovalModuleName = null;
+        
+        // Re-enable save button
+        const saveBtn = document.getElementById('saveModulesBtn');
+        if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = 'Save Changes';
+        }
+        
+        window.closeModuleRemovalDialog();
+    };
+    
+    window.confirmModuleRemoval = function() {
+        const actionInput = document.querySelector('input[name="removalAction"]:checked');
+        const action = actionInput ? actionInput.value : 'archive';
+        
+        // Apply the selected action to all modules pending removal
+        modulesPendingRemoval.forEach(function(module) {
+            moduleRemovalActions[module.id] = action;
+        });
+        
+        // Clear pending removal
+        modulesPendingRemoval = [];
+        pendingRemovalModuleId = null;
+        pendingRemovalModuleName = null;
+        
+        // Close dialog and proceed with save
+        window.closeModuleRemovalDialog();
+        if (isSaving) {
+            performSave();
+        }
+    };
+    
+    function performSave() {
         const saveBtn = document.getElementById('saveModulesBtn');
         if (!saveBtn || !projectId) return;
         
@@ -389,6 +591,17 @@
             return cookieValue;
         }
         
+        // Prepare module actions (archive/delete) for removed modules
+        const moduleActions = {};
+        const removedModuleIds = originalModuleIds.filter(function(id) {
+            return selectedModuleIds.indexOf(id) === -1;
+        });
+        
+        removedModuleIds.forEach(function(moduleId) {
+            const action = moduleRemovalActions[moduleId] || 'archive'; // Default to archive if not set
+            moduleActions[moduleId] = action;
+        });
+        
         fetch(`/dashboard/mentor/projects/${projectId}/modules/update/`, {
             method: 'POST',
             headers: {
@@ -396,13 +609,16 @@
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                module_ids: selectedModuleIds
+                module_ids: selectedModuleIds,
+                module_actions: moduleActions // Send actions for removed modules
             })
         })
         .then(response => response.json())
         .then(data => {
             if (data.success) {
                 originalModuleIds = [...selectedModuleIds];
+                moduleRemovalActions = {}; // Clear removal actions after successful save
+                isSaving = false;
                 updateSaveButton();
                 if (typeof showNotification !== 'undefined') {
                     showNotification('Modules updated successfully', 'success');
@@ -414,6 +630,7 @@
                     window.location.reload();
                 }, 500);
             } else {
+                isSaving = false;
                 if (typeof showNotification !== 'undefined') {
                     showNotification(data.error || 'Failed to update modules', 'error');
                 } else {
@@ -425,6 +642,7 @@
         })
         .catch(error => {
             console.error('Error saving modules:', error);
+            isSaving = false;
             if (typeof showNotification !== 'undefined') {
                 showNotification('An error occurred while saving modules', 'error');
             } else {
@@ -433,14 +651,66 @@
             saveBtn.disabled = false;
             saveBtn.innerHTML = originalText;
         });
+    }
+    
+    function updateSaveButton() {
+        const saveBtn = document.getElementById('saveModulesBtn');
+        if (!saveBtn) return;
+        
+        // Check if selection has changed
+        const hasChanged = JSON.stringify(selectedModuleIds.sort()) !== JSON.stringify(originalModuleIds.sort());
+        saveBtn.disabled = !hasChanged;
+    }
+    
+    window.saveProjectModules = function() {
+        const saveBtn = document.getElementById('saveModulesBtn');
+        if (!saveBtn || !projectId || isSaving) return;
+        
+        // Find modules that are being removed (were originally selected but are not selected now)
+        const removedModuleIds = originalModuleIds.filter(function(id) {
+            return selectedModuleIds.indexOf(id) === -1;
+        });
+        
+        // If there are modules being removed that don't have actions set yet, show confirmation dialog
+        const modulesNeedingConfirmation = removedModuleIds.filter(function(moduleId) {
+            return !moduleRemovalActions.hasOwnProperty(moduleId);
+        });
+        
+        if (modulesNeedingConfirmation.length > 0) {
+            // Set flag that we're saving
+            isSaving = true;
+            
+            // Build list of modules needing confirmation with full module data
+            modulesPendingRemoval = modulesNeedingConfirmation.map(function(moduleId) {
+                const moduleData = allModulesData[moduleId];
+                return {
+                    id: moduleId,
+                    name: moduleData ? moduleData.name : 'Unknown Module',
+                    icon: moduleData ? moduleData.icon : 'fas fa-cube',
+                    color: moduleData ? moduleData.color : '#10b981'
+                };
+            });
+            
+            // Show confirmation dialog with all modules
+            openModuleRemovalDialog(modulesPendingRemoval);
+        } else {
+            // No modules need confirmation, proceed directly with save
+            isSaving = true;
+            performSave();
+        }
     };
     
     // Close on ESC
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
-            const modal = document.getElementById('manageModulesModal');
-            if (modal && modal.classList.contains('active')) {
-                closeManageModulesModal();
+            const removalDialog = document.getElementById('moduleRemovalDialog');
+            if (removalDialog && removalDialog.classList.contains('active')) {
+                window.cancelModuleRemoval();
+            } else {
+                const modal = document.getElementById('manageModulesModal');
+                if (modal && modal.classList.contains('active')) {
+                    closeManageModulesModal();
+                }
             }
         }
     });
@@ -451,6 +721,16 @@
         modal.addEventListener('click', function(e) {
             if (e.target === modal) {
                 closeManageModulesModal();
+            }
+        });
+    }
+    
+    // Close removal dialog on overlay click
+    const removalDialog = document.getElementById('moduleRemovalDialog');
+    if (removalDialog) {
+        removalDialog.addEventListener('click', function(e) {
+            if (e.target === removalDialog) {
+                window.cancelModuleRemoval();
             }
         });
     }

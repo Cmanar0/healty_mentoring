@@ -5415,6 +5415,7 @@ def update_project_modules(request, project_id):
         import json
         data = json.loads(request.body)
         module_ids = data.get('module_ids', [])
+        module_actions = data.get('module_actions', {})  # Dictionary mapping module_id -> 'archive' or 'delete'
         
         # Validate module IDs
         from dashboard_user.models import ProjectModule, ProjectModuleInstance
@@ -5429,7 +5430,7 @@ def update_project_modules(request, project_id):
         
         # Modules to add
         modules_to_add = new_module_ids - current_module_ids
-        # Modules to remove (deactivate)
+        # Modules to remove
         modules_to_remove = current_module_ids - new_module_ids
         
         # Get max order for new modules
@@ -5451,12 +5452,24 @@ def update_project_modules(request, project_id):
                 }
             )
         
-        # Deactivate removed modules
+        # Handle removed modules based on user's choice (archive or delete)
         if modules_to_remove:
-            ProjectModuleInstance.objects.filter(
-                project=project,
-                module_id__in=modules_to_remove
-            ).update(is_active=False)
+            for module_id in modules_to_remove:
+                module_id_str = str(module_id)
+                action = module_actions.get(module_id_str, 'archive')  # Default to archive if not specified
+                
+                if action == 'delete':
+                    # Permanently delete the module instance and its data
+                    ProjectModuleInstance.objects.filter(
+                        project=project,
+                        module_id=module_id
+                    ).delete()
+                else:
+                    # Archive (deactivate) the module instance
+                    ProjectModuleInstance.objects.filter(
+                        project=project,
+                        module_id=module_id
+                    ).update(is_active=False)
         
         # Reactivate modules that were previously deactivated but are now selected
         if modules_to_add:
