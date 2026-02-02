@@ -4303,12 +4303,14 @@
         // Update overlay state
         updateTasksOverlay();
         
-        // Update max-height after DOM updates
-        requestAnimationFrame(() => {
+        // Update max-height after collapse animation completes (0.1s transition)
+        setTimeout(() => {
             requestAnimationFrame(() => {
-                setRoadmapContainerMaxHeight();
+                requestAnimationFrame(() => {
+                    setRoadmapContainerMaxHeight();
+                });
             });
-        });
+        }, 150); // Wait for 0.1s transition + 50ms buffer
     }
     
     // Handle click outside roadmap stages area
@@ -4355,27 +4357,33 @@
         if (isExpanded) {
             // Collapse
             tasksSection.classList.remove('expanded');
+            // Update overlay state
+            updateTasksOverlay();
+            // Update max-height after collapse animation completes (0.1s transition)
+            setTimeout(() => {
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        setRoadmapContainerMaxHeight();
+                    });
+                });
+            }, 150); // Wait for 0.1s transition + 50ms buffer
         } else {
             // Expand
             tasksSection.classList.add('expanded');
-            // Scroll immediately - stage row already exists
-            scrollToStage(stageId);
-            // Load tasks if not already loaded (after scrolling)
+            // Load tasks if not already loaded
             const needsLoading = !tasksSection.dataset.loaded;
             if (needsLoading) {
                 loadStageTasks(stageId);
             }
-        }
-        
-        // Update overlay state
-        updateTasksOverlay();
-        
-        // Update max-height after DOM updates
-        requestAnimationFrame(() => {
+            // Update overlay state
+            updateTasksOverlay();
+            // Update max-height after DOM updates
             requestAnimationFrame(() => {
-                setRoadmapContainerMaxHeight();
+                requestAnimationFrame(() => {
+                    setRoadmapContainerMaxHeight();
+                });
             });
-        });
+        }
     };
     
     // Load tasks for a stage
@@ -4552,21 +4560,35 @@
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                // Reload tasks for this stage
+                // Preserve expanded state - keep this stage open
                 const tasksSection = document.getElementById(`stageTasks_${stageId}`);
-                if (tasksSection) {
-                    tasksSection.dataset.loaded = 'false';
-                    loadStageTasks(stageId);
-                }
+                const wasExpanded = tasksSection && tasksSection.classList.contains('expanded');
+                
                 // Reload stages to update progress
                 loadStages();
                 
-                // Update max-height after content changes
+                // After stages reload, re-expand and reload tasks for this stage
                 setTimeout(() => {
-                    setRoadmapContainerMaxHeight();
+                    const newTasksSection = document.getElementById(`stageTasks_${stageId}`);
+                    if (newTasksSection && wasExpanded) {
+                        newTasksSection.classList.add('expanded');
+                        newTasksSection.dataset.loaded = 'false';
+                        loadStageTasks(stageId);
+                    }
+                    
+                    // Update overlay and max-height
+                    updateTasksOverlay();
+                    requestAnimationFrame(() => {
+                        requestAnimationFrame(() => {
+                            setRoadmapContainerMaxHeight();
+                        });
+                    });
                 }, 100);
+                
                 if (typeof showNotification !== 'undefined') {
                     showNotification('Task created successfully', 'success');
+                } else {
+                    alert('Task created successfully');
                 }
             } else {
                 if (typeof showNotification !== 'undefined') {
@@ -4602,19 +4624,31 @@
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                // Reload tasks for this stage
+                // Preserve expanded state - keep this stage open
                 const tasksSection = document.getElementById(`stageTasks_${stageId}`);
-                if (tasksSection) {
-                    tasksSection.dataset.loaded = 'false';
-                    loadStageTasks(stageId);
-                }
+                const wasExpanded = tasksSection && tasksSection.classList.contains('expanded');
+                
                 // Reload stages to update progress
                 loadStages();
                 
-                // Update max-height after content changes
+                // After stages reload, re-expand and reload tasks for this stage
                 setTimeout(() => {
-                    setRoadmapContainerMaxHeight();
+                    const newTasksSection = document.getElementById(`stageTasks_${stageId}`);
+                    if (newTasksSection && wasExpanded) {
+                        newTasksSection.classList.add('expanded');
+                        newTasksSection.dataset.loaded = 'false';
+                        loadStageTasks(stageId);
+                    }
+                    
+                    // Update overlay and max-height
+                    updateTasksOverlay();
+                    requestAnimationFrame(() => {
+                        requestAnimationFrame(() => {
+                            setRoadmapContainerMaxHeight();
+                        });
+                    });
                 }, 100);
+                
                 if (typeof showNotification !== 'undefined') {
                     showNotification(`${data.tasks_count || 0} tasks generated successfully`, 'success');
                 } else {
