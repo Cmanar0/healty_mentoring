@@ -18,6 +18,48 @@
         gap: 32px;
         align-items: start;
         grid-auto-rows: min-content;
+        position: relative;
+    }
+    
+    /* Blur and darken overlay when stage tasks are open */
+    .roadmap-container::before {
+        content: '';
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
+        z-index: 998;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s ease;
+    }
+    
+    .roadmap-container.has-open-tasks::before {
+        opacity: 1;
+        pointer-events: none; /* Allow scrolling through overlay */
+    }
+    
+    /* Keep stages and backlog visible above overlay */
+    .roadmap-container > main {
+        position: relative;
+        z-index: 999;
+    }
+    
+    .roadmap-container .project-sidebar-backlog {
+        z-index: 999;
+    }
+    
+    /* Blur and darken other elements when tasks are open */
+    .roadmap-container.has-open-tasks .top-nav,
+    .roadmap-container.has-open-tasks .project-sidebar {
+        filter: blur(4px);
+        opacity: 0.5;
+        transition: filter 0.3s ease, opacity 0.3s ease;
+        pointer-events: none;
     }
     
     .roadmap-container .top-nav {
@@ -949,6 +991,7 @@
     .roadmap-header {
         padding: 20px 24px;
         border-bottom: 1px solid #e5e7eb;
+        border-radius: 12px 12px 0 0;
         display: flex;
         justify-content: space-between;
         align-items: center;
@@ -971,6 +1014,13 @@
         align-items: center;
     }
 
+    /* Stages List Container */
+    #stagesList {
+        border-radius: 12px;
+        overflow: hidden;
+        background: white;
+    }
+    
     /* List Items (High Density) */
     .stage-row {
         display: flex;
@@ -983,14 +1033,30 @@
         background: white;
     }
     
+    .stage-row:first-child .stage-row-content {
+        border-radius: 12px 12px 0 0;
+    }
+    
     .stage-row-content {
         display: flex;
         align-items: stretch;
         gap: 0;
     }
-
+    
     .stage-row:last-child {
         border-bottom: none;
+    }
+    
+    .stage-row:last-child .stage-row-content {
+        border-radius: 0 0 12px 12px;
+    }
+    
+    .stage-row:last-child .stage-tasks-section.expanded {
+        border-radius: 0 0 12px 12px;
+    }
+    
+    .stage-row:last-child .row-actions-section {
+        border-radius: 0 0 12px 12px;
     }
 
     .stage-row:hover {
@@ -1201,7 +1267,7 @@
         width: 100%;
         max-height: 0;
         overflow: hidden;
-        transition: max-height 0.3s ease-out, padding 0.3s ease-out, margin 0.3s ease-out;
+        transition: max-height 0.1s ease-out, padding 0.1s ease-out, margin 0.1s ease-out;
         background: #f8fafc;
         border-top: 1px solid #e2e8f0;
         padding: 0;
@@ -4105,6 +4171,169 @@
     };
     
     // Toggle stage tasks section
+    // Check if any stage tasks are open and update overlay
+    function updateTasksOverlay() {
+        const roadmapContainer = document.querySelector('.roadmap-container');
+        if (!roadmapContainer) return;
+        
+        // Check if any stage tasks section is expanded
+        const expandedTasks = roadmapContainer.querySelectorAll('.stage-tasks-section.expanded');
+        const hasOpenTasks = expandedTasks.length > 0;
+        
+        // Add or remove class to show/hide overlay
+        if (hasOpenTasks) {
+            roadmapContainer.classList.add('has-open-tasks');
+        } else {
+            roadmapContainer.classList.remove('has-open-tasks');
+        }
+    }
+    
+    // Scroll to stage row when opened (safe version with error handling)
+    function scrollToStage(stageId) {
+        try {
+            console.log('scrollToStage called for stageId:', stageId);
+            
+            // Try multiple ways to find the stage row
+            let stageRow = null;
+            let tasksSection = document.getElementById(`stageTasks_${stageId}`);
+            
+            if (tasksSection) {
+                // Try closest parent with class stage-row
+                stageRow = tasksSection.closest('.stage-row');
+                
+                // If not found, try parent element
+                if (!stageRow) {
+                    stageRow = tasksSection.parentElement;
+                }
+                
+                // If still not found, try finding by data attribute
+                if (!stageRow) {
+                    stageRow = document.querySelector(`[data-stage-id="${stageId}"]`);
+                }
+            }
+            
+            // Last resort: find by stage ID in the stage row
+            if (!stageRow) {
+                const allStageRows = document.querySelectorAll('.stage-row');
+                for (const row of allStageRows) {
+                    const rowTasksSection = row.querySelector(`#stageTasks_${stageId}`);
+                    if (rowTasksSection) {
+                        stageRow = row;
+                        break;
+                    }
+                }
+            }
+            
+            if (!stageRow) {
+                console.warn('scrollToStage: stageRow not found for stageId:', stageId);
+                return;
+            }
+            
+            console.log('scrollToStage: Found stageRow:', stageRow);
+            
+            // Scroll immediately - the stage row already exists in the DOM
+            // Use requestAnimationFrame to ensure DOM has updated after class addition
+            requestAnimationFrame(() => {
+                try {
+                    // Verify stageRow is still in DOM
+                    if (!document.body.contains(stageRow)) {
+                        return;
+                    }
+                    
+                    // Use scrollIntoView for more reliable scrolling
+                    stageRow.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'center',
+                        inline: 'nearest'
+                    });
+                } catch (error) {
+                    console.error('scrollToStage: Error during scroll:', error);
+                    
+                    // Fallback to manual calculation if scrollIntoView fails
+                    try {
+                        const rowRect = stageRow.getBoundingClientRect();
+                        const scrollY = window.scrollY || window.pageYOffset;
+                        const viewportHeight = window.innerHeight;
+                        const rowHeight = rowRect.height;
+                        
+                        // Calculate target scroll position to center the row
+                        const targetScroll = scrollY + rowRect.top - (viewportHeight / 2) + (rowHeight / 2);
+                        
+                        // Ensure target is within valid scroll range
+                        const maxScroll = Math.max(0, document.documentElement.scrollHeight - viewportHeight);
+                        const finalScroll = Math.max(0, Math.min(targetScroll, maxScroll));
+                        
+                        // Only scroll if the target is different from current position
+                        if (Math.abs(finalScroll - scrollY) > 10) {
+                            window.scrollTo({
+                                top: finalScroll,
+                                behavior: 'smooth'
+                            });
+                        }
+                    } catch (fallbackError) {
+                        console.error('scrollToStage: Fallback also failed:', fallbackError);
+                    }
+                }
+            });
+        } catch (error) {
+            console.error('scrollToStage: Error:', error);
+        }
+    }
+    
+    // Collapse all open stage task lists
+    function collapseAllStageTasks() {
+        const roadmapContainer = document.querySelector('.roadmap-container');
+        if (!roadmapContainer) return;
+        
+        // Find all expanded task sections
+        const expandedTasks = roadmapContainer.querySelectorAll('.stage-tasks-section.expanded');
+        
+        // Collapse each one
+        expandedTasks.forEach(taskSection => {
+            taskSection.classList.remove('expanded');
+        });
+        
+        // Update overlay state
+        updateTasksOverlay();
+        
+        // Update max-height after DOM updates
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                setRoadmapContainerMaxHeight();
+            });
+        });
+    }
+    
+    // Handle click outside roadmap stages area
+    document.addEventListener('click', function(event) {
+        const roadmapContainer = document.querySelector('.roadmap-container');
+        if (!roadmapContainer) return;
+        
+        // Check if any tasks are open
+        const hasOpenTasks = roadmapContainer.classList.contains('has-open-tasks');
+        if (!hasOpenTasks) return;
+        
+        // Get the main stages area and backlog
+        const mainStages = roadmapContainer.querySelector('main');
+        const backlog = roadmapContainer.querySelector('.project-sidebar-backlog');
+        
+        // Check if click is outside both stages and backlog
+        const clickedInsideStages = mainStages && mainStages.contains(event.target);
+        const clickedInsideBacklog = backlog && backlog.contains(event.target);
+        
+        // If clicked outside both, collapse all tasks
+        if (!clickedInsideStages && !clickedInsideBacklog) {
+            collapseAllStageTasks();
+        }
+    });
+    
+    // Handle ESC key press
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape' || event.keyCode === 27) {
+            collapseAllStageTasks();
+        }
+    });
+    
     window.toggleStageTasks = function(stageId, event) {
         // Don't toggle if clicking on actions or dropdown
         if (event && (event.target.closest('.row-actions-section') || event.target.closest('.stage-dropdown-container'))) {
@@ -4122,11 +4351,24 @@
         } else {
             // Expand
             tasksSection.classList.add('expanded');
-            // Load tasks if not already loaded
-            if (!tasksSection.dataset.loaded) {
+            // Scroll immediately - stage row already exists
+            scrollToStage(stageId);
+            // Load tasks if not already loaded (after scrolling)
+            const needsLoading = !tasksSection.dataset.loaded;
+            if (needsLoading) {
                 loadStageTasks(stageId);
             }
         }
+        
+        // Update overlay state
+        updateTasksOverlay();
+        
+        // Update max-height after DOM updates
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                setRoadmapContainerMaxHeight();
+            });
+        });
     };
     
     // Load tasks for a stage
@@ -4153,6 +4395,11 @@
             if (data && data.success) {
                 renderStageTasks(stageId, data.tasks || []);
                 tasksSection.dataset.loaded = 'true';
+                
+                // Update max-height after tasks are rendered
+                setTimeout(() => {
+                    setRoadmapContainerMaxHeight();
+                }, 100);
             } else {
                 tasksSection.innerHTML = `
                     <div style="text-align: center; padding: 20px; color: #ef4444;">
@@ -4225,6 +4472,11 @@
         `;
         
         tasksSection.innerHTML = html;
+        
+        // Update max-height after tasks are rendered
+        setTimeout(() => {
+            setRoadmapContainerMaxHeight();
+        }, 100);
     }
     
     // Toggle task completion
@@ -4249,6 +4501,11 @@
                 }
                 // Reload stages to update progress
                 loadStages();
+                
+                // Update max-height after content changes
+                setTimeout(() => {
+                    setRoadmapContainerMaxHeight();
+                }, 100);
             } else {
                 if (typeof showNotification !== 'undefined') {
                     showNotification(data.error || 'Failed to toggle task', 'error');
@@ -4296,6 +4553,11 @@
                 }
                 // Reload stages to update progress
                 loadStages();
+                
+                // Update max-height after content changes
+                setTimeout(() => {
+                    setRoadmapContainerMaxHeight();
+                }, 100);
                 if (typeof showNotification !== 'undefined') {
                     showNotification('Task created successfully', 'success');
                 }
@@ -4341,6 +4603,11 @@
                 }
                 // Reload stages to update progress
                 loadStages();
+                
+                // Update max-height after content changes
+                setTimeout(() => {
+                    setRoadmapContainerMaxHeight();
+                }, 100);
                 if (typeof showNotification !== 'undefined') {
                     showNotification(`${data.tasks_count || 0} tasks generated successfully`, 'success');
                 } else {
