@@ -4240,36 +4240,43 @@
                         return;
                     }
                     
-                    // Use scrollIntoView for more reliable scrolling
-                    stageRow.scrollIntoView({
-                        behavior: 'smooth',
-                        block: 'center',
-                        inline: 'nearest'
-                    });
+                    // Calculate scroll position to place stage in upper half of viewport
+                    const rowRect = stageRow.getBoundingClientRect();
+                    const scrollY = window.scrollY || window.pageYOffset;
+                    const viewportHeight = window.innerHeight;
+                    
+                    // Position in upper half (approximately 25% from top of viewport)
+                    const targetOffset = viewportHeight * 0.25; // 25% from top
+                    const targetScroll = scrollY + rowRect.top - targetOffset;
+                    
+                    // Ensure target is within valid scroll range
+                    const maxScroll = Math.max(0, document.documentElement.scrollHeight - viewportHeight);
+                    const finalScroll = Math.max(0, Math.min(targetScroll, maxScroll));
+                    
+                    // Only scroll if the target is different from current position
+                    if (Math.abs(finalScroll - scrollY) > 10) {
+                        window.scrollTo({
+                            top: finalScroll,
+                            behavior: 'smooth'
+                        });
+                    } else {
+                        // Fallback to scrollIntoView if calculation results in same position
+                        stageRow.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'start',
+                            inline: 'nearest'
+                        });
+                    }
                 } catch (error) {
                     console.error('scrollToStage: Error during scroll:', error);
                     
-                    // Fallback to manual calculation if scrollIntoView fails
+                    // Fallback to scrollIntoView if manual calculation fails
                     try {
-                        const rowRect = stageRow.getBoundingClientRect();
-                        const scrollY = window.scrollY || window.pageYOffset;
-                        const viewportHeight = window.innerHeight;
-                        const rowHeight = rowRect.height;
-                        
-                        // Calculate target scroll position to center the row
-                        const targetScroll = scrollY + rowRect.top - (viewportHeight / 2) + (rowHeight / 2);
-                        
-                        // Ensure target is within valid scroll range
-                        const maxScroll = Math.max(0, document.documentElement.scrollHeight - viewportHeight);
-                        const finalScroll = Math.max(0, Math.min(targetScroll, maxScroll));
-                        
-                        // Only scroll if the target is different from current position
-                        if (Math.abs(finalScroll - scrollY) > 10) {
-                            window.scrollTo({
-                                top: finalScroll,
-                                behavior: 'smooth'
-                            });
-                        }
+                        stageRow.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'start',
+                            inline: 'nearest'
+                        });
                     } catch (fallbackError) {
                         console.error('scrollToStage: Fallback also failed:', fallbackError);
                     }
