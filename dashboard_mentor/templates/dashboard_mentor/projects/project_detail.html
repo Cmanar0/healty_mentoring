@@ -1036,61 +1036,243 @@
         border-bottom: none;
         transition: background 0.15s ease;
         position: relative;
-        background: white;
+        background: #f9fafb;
         border-radius: 12px;
         box-shadow: 0 1px 3px rgba(0,0,0,0.05);
         border: 1px solid #e5e7eb;
+        overflow: hidden;
     }
     
     .stage-row-content {
         display: flex;
         flex-direction: column;
         gap: 0;
-        border-radius: 12px 12px 0 0;
+        border-radius: 0;
+        overflow: hidden;
     }
     
     .stage-content-wrapper {
         display: flex;
         align-items: stretch;
         gap: 0;
+        background: #f3f4f6;
+        border-radius: 12px 12px 0 0;
     }
     
     .stage-task-input-section {
         width: 100%;
-        background: white;
+        background: #f9fafb;
         border-top: 1px solid #f3f4f6;
+        border-radius: 0;
     }
     
     .stage-task-input-container {
         display: flex;
+        flex-direction: column;
         gap: 8px;
         padding: 12px 24px;
+        background: #f9fafb;
+    }
+    
+    .stage-task-input-row {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+    }
+    
+    .stage-task-input-wrapper {
+        flex: 1;
+        position: relative;
+        display: flex;
         align-items: center;
     }
     
     .stage-task-input {
         flex: 1;
-        padding: 8px 12px;
-        border: 1px solid #e5e7eb;
+        padding: 8px 32px 8px 12px;
+        border: 1px solid #d1d5db;
         border-radius: 6px;
         font-size: 0.875rem;
         transition: border-color 0.2s;
         margin-bottom: 0;
         height: 42px;
+        background: white;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    }
+    
+    .stage-task-input-clear {
+        position: absolute;
+        right: 8px;
+        top: 50%;
+        transform: translateY(-50%);
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #9ca3af;
+        opacity: 0;
+        transition: opacity 0.2s, color 0.2s;
+        pointer-events: none;
+    }
+    
+    .stage-task-input-clear.show {
+        opacity: 1;
+        pointer-events: auto;
+    }
+    
+    .stage-task-input-clear:hover {
+        color: #374151;
+    }
+    
+    .stage-task-input-clear i {
+        font-size: 0.875rem;
+        margin: 0;
+    }
+    
+    .stage-task-buttons-wrapper {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        width: 320px;
+        flex-shrink: 0;
     }
     
     .stage-task-input:focus {
         outline: none;
         border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
     }
     
     .stage-task-input::placeholder {
         color: #9ca3af;
     }
     
+    .stage-task-description-row {
+        display: flex;
+        gap: 8px;
+        align-items: flex-start;
+    }
+    
+    .stage-task-description {
+        flex: 1;
+        padding: 0;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        font-size: 0.875rem;
+        font-family: inherit;
+        resize: none;
+        height: 0;
+        transition: border-color 0.2s, opacity 0.2s, max-height 0.2s, padding 0.2s, height 0.2s;
+        opacity: 0;
+        max-height: 0;
+        overflow: hidden;
+        margin: 0;
+        border-width: 0;
+        background: white;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    }
+    
+    .stage-task-priority-tags-wrapper {
+        width: 320px;
+        flex-shrink: 0;
+        padding: 0 8px;
+    }
+    
+    .stage-task-description.show {
+        opacity: 1;
+        max-height: 80px;
+        height: 80px;
+        margin-top: 0;
+        padding: 8px 12px;
+        border-width: 1px;
+    }
+    
+    .stage-task-description:focus {
+        outline: none;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+    
+    .stage-task-description::placeholder {
+        color: #9ca3af;
+    }
+    
+    .stage-task-priority-tags {
+        display: flex;
+        flex-direction: row;
+        gap: 6px;
+        opacity: 0;
+        max-height: 0;
+        overflow: hidden;
+        transition: opacity 0.2s, max-height 0.2s;
+        width: 100%;
+        flex-wrap: nowrap;
+    }
+    
+    .stage-task-priority-tags.show {
+        opacity: 1;
+        max-height: 80px;
+        padding: 8px;
+    }
+    
+    .priority-tag {
+        flex: 1;
+        padding: 6px 8px;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+        border: 1px solid transparent;
+        white-space: nowrap;
+        text-align: center;
+        min-width: 0;
+    }
+    
+    .priority-tag.priority-low {
+        background-color: #f3f4f6;
+        color: #6b7280;
+        border-color: #e5e7eb;
+    }
+    
+    .priority-tag.priority-medium {
+        background-color: #dbeafe;
+        color: #1e40af;
+        border-color: #bfdbfe;
+    }
+    
+    .priority-tag.priority-high {
+        background-color: #fef3c7;
+        color: #92400e;
+        border-color: #fde68a;
+    }
+    
+    .priority-tag.priority-urgent {
+        background-color: #fee2e2;
+        color: #991b1b;
+        border-color: #fecaca;
+    }
+    
+    .priority-tag.selected {
+        font-weight: 600;
+        box-shadow: 0 0 0 2px currentColor;
+    }
+    
+    .priority-tag:hover {
+        opacity: 0.8;
+        transform: scale(1.05);
+    }
+    
     .btn-add-task:disabled {
         opacity: 0.5;
         cursor: not-allowed;
+    }
+    
+    .stage-row .stage-tasks-section {
+        border-radius: 0;
     }
     
     .stage-row .stage-tasks-section.expanded {
@@ -1125,6 +1307,7 @@
         justify-content: center;
         flex-shrink: 0;
         cursor: grab;
+        border-radius: 12px 0 0 0;
     }
     
     .stage-row:hover .stage-drag-section .drag-grip {
@@ -1165,6 +1348,7 @@
         cursor: pointer;
         transition: background 0.15s ease;
         min-width: 0; /* Allows text truncation */
+        border-radius: 0;
     }
     
     .stage-main-wrapper:hover {
@@ -1178,6 +1362,7 @@
         align-items: center;
         justify-content: center;
         flex-shrink: 0;
+        border-radius: 0 12px 0 0;
     }
     
     .stage-row:hover .row-actions-section .row-actions,
@@ -1310,12 +1495,14 @@
         border-top: 1px solid #e2e8f0;
         padding: 0;
         margin: 0;
+        border-radius: 0;
     }
     
     .stage-tasks-section.expanded {
         max-height: 2000px;
         padding: 20px 24px;
         margin: 0;
+        border-radius: 0 0 12px 12px;
     }
     
     .stage-tasks-header {
@@ -1455,13 +1642,24 @@
         transition: 0.5s;
     }
     
-    .btn-ai-generate:hover {
+    .btn-ai-generate:hover:not(:disabled) {
         background: linear-gradient(135deg, #1d4ed8 0%, #6d28d9 50%, #db2777 100%);
         box-shadow: 0 6px 20px rgba(124, 58, 237, 0.6);
     }
     
-    .btn-ai-generate:hover::before {
+    .btn-ai-generate:hover:not(:disabled)::before {
         left: 100%;
+    }
+    
+    .btn-ai-generate:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        background: linear-gradient(135deg, #94a3b8 0%, #94a3b8 50%, #94a3b8 100%);
+        box-shadow: none;
+    }
+    
+    .btn-ai-generate:disabled::before {
+        display: none;
     }
     
     .btn-ai-generate i,
@@ -3845,30 +4043,62 @@
             const taskInputSectionHtml = `
                 <div class="stage-task-input-section" id="stageButtons_${stage.id}" style="display: none;">
                     <div class="stage-task-input-container">
-                        <input 
-                            type="text" 
-                            class="stage-task-input" 
-                            id="stageTaskInput_${stage.id}"
-                            placeholder="Enter task name..."
-                            onkeyup="handleTaskInputChange(${stage.id}, event)"
-                            onkeydown="handleTaskInputKeydown(${stage.id}, event)"
-                        />
-                        <button 
-                            class="btn-create-task btn-add-task" 
-                            id="btnAddTask_${stage.id}"
-                            onclick="createTaskFromInput(${stage.id})" 
-                            disabled
-                            style="padding: 8px 16px; font-size: 0.875rem; white-space: nowrap;"
-                        >
-                            <i class="fas fa-plus"></i> Add Task
-                        </button>
-                        <button 
-                            class="btn-ai-generate" 
-                            onclick="generateTasksAI(${stage.id})" 
-                            style="padding: 10px 36px; font-size: 0.875rem; white-space: nowrap;"
-                        >
-                            <i class="fas fa-magic"></i> Optimize Tasks with AI
-                        </button>
+                        <div class="stage-task-input-row">
+                            <div class="stage-task-input-wrapper">
+                                <input 
+                                    type="text" 
+                                    class="stage-task-input" 
+                                    id="stageTaskInput_${stage.id}"
+                                    placeholder="Enter task name..."
+                                    onkeyup="handleTaskInputChange(${stage.id}, event)"
+                                    onkeydown="handleTaskInputKeydown(${stage.id}, event)"
+                                />
+                                <button 
+                                    type="button"
+                                    class="stage-task-input-clear" 
+                                    id="stageTaskInputClear_${stage.id}"
+                                    onclick="clearTaskInput(${stage.id})"
+                                    aria-label="Clear input"
+                                >
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                            <div class="stage-task-buttons-wrapper">
+                                <button 
+                                    class="btn-create-task btn-add-task" 
+                                    id="btnAddTask_${stage.id}"
+                                    onclick="createTaskFromInput(${stage.id})" 
+                                    disabled
+                                    style="padding: 8px 16px; font-size: 0.875rem; white-space: nowrap;"
+                                >
+                                    <i class="fas fa-plus"></i> Add Task
+                                </button>
+                                <button 
+                                    class="btn-ai-generate" 
+                                    id="btnAiGenerate_${stage.id}"
+                                    onclick="generateTasksAI(${stage.id})" 
+                                    style="padding: 10px 36px; font-size: 0.875rem; white-space: nowrap;"
+                                >
+                                    <i class="fas fa-magic"></i> Optimize Tasks with AI
+                                </button>
+                            </div>
+                        </div>
+                        <div class="stage-task-description-row">
+                            <textarea 
+                                class="stage-task-description" 
+                                id="stageTaskDescription_${stage.id}"
+                                placeholder="Add description (optional)..."
+                                rows="3"
+                            ></textarea>
+                            <div class="stage-task-priority-tags-wrapper">
+                                <div class="stage-task-priority-tags" id="stageTaskPriorityTags_${stage.id}">
+                                    <div class="priority-tag priority-low" data-priority="low" onclick="selectPriority(${stage.id}, 'low')">Low</div>
+                                    <div class="priority-tag priority-medium selected" data-priority="medium" onclick="selectPriority(${stage.id}, 'medium')">Medium</div>
+                                    <div class="priority-tag priority-high" data-priority="high" onclick="selectPriority(${stage.id}, 'high')">High</div>
+                                    <div class="priority-tag priority-urgent" data-priority="urgent" onclick="selectPriority(${stage.id}, 'urgent')">Urgent</div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             `;
@@ -4343,9 +4573,30 @@
         // Find all expanded task sections
         const expandedTasks = roadmapContainer.querySelectorAll('.stage-tasks-section.expanded');
         
-        // Collapse each one
+        // Collapse each one and hide input sections
         expandedTasks.forEach(taskSection => {
             taskSection.classList.remove('expanded');
+            
+            // Find the stage row and get stage ID
+            const stageRow = taskSection.closest('.stage-row');
+            if (stageRow) {
+                const stageId = stageRow.getAttribute('data-stage-id');
+                if (stageId) {
+                    const buttonsSection = document.getElementById(`stageButtons_${stageId}`);
+                    if (buttonsSection) {
+                        buttonsSection.style.display = 'none';
+                    }
+                }
+            }
+        });
+        
+        // Also hide all visible input sections (in case they're still visible)
+        const allInputSections = roadmapContainer.querySelectorAll('.stage-task-input-section');
+        allInputSections.forEach(inputSection => {
+            const currentDisplay = window.getComputedStyle(inputSection).display;
+            if (currentDisplay !== 'none') {
+                inputSection.style.display = 'none';
+            }
         });
         
         // Update overlay state
@@ -4374,12 +4625,16 @@
         const mainStages = roadmapContainer.querySelector('main');
         const backlog = roadmapContainer.querySelector('.project-sidebar-backlog');
         
+        // Check if click is inside document-card (should also close stages)
+        const documentCard = event.target.closest('.document-card');
+        const clickedInsideDocumentCard = documentCard !== null;
+        
         // Check if click is outside both stages and backlog
         const clickedInsideStages = mainStages && mainStages.contains(event.target);
         const clickedInsideBacklog = backlog && backlog.contains(event.target);
         
-        // If clicked outside both, collapse all tasks
-        if (!clickedInsideStages && !clickedInsideBacklog) {
+        // If clicked outside both stages and backlog, OR clicked on document-card, collapse all tasks
+        if ((!clickedInsideStages && !clickedInsideBacklog) || clickedInsideDocumentCard) {
             collapseAllStageTasks();
         }
     });
@@ -4601,14 +4856,72 @@
     }
     
     // Create task
-    // Handle task input change - enable/disable Add Task button
+    // Handle task input change - enable/disable Add Task button and show/hide description
     window.handleTaskInputChange = function(stageId, event) {
         const input = document.getElementById(`stageTaskInput_${stageId}`);
         const addBtn = document.getElementById(`btnAddTask_${stageId}`);
+        const description = document.getElementById(`stageTaskDescription_${stageId}`);
+        const priorityTags = document.getElementById(`stageTaskPriorityTags_${stageId}`);
+        const aiBtn = document.getElementById(`btnAiGenerate_${stageId}`);
+        const clearBtn = document.getElementById(`stageTaskInputClear_${stageId}`);
         
         if (input && addBtn) {
             const hasText = input.value.trim().length > 0;
             addBtn.disabled = !hasText;
+            
+            // Show/hide clear button
+            if (clearBtn) {
+                if (hasText) {
+                    clearBtn.classList.add('show');
+                } else {
+                    clearBtn.classList.remove('show');
+                }
+            }
+            
+            // Disable AI button when Add Task is enabled, and vice versa
+            if (aiBtn) {
+                aiBtn.disabled = hasText;
+            }
+            
+            // Show/hide description textarea and priority tags
+            if (description && priorityTags) {
+                if (hasText) {
+                    description.classList.add('show');
+                    priorityTags.classList.add('show');
+                } else {
+                    description.classList.remove('show');
+                    description.value = ''; // Clear description when input is cleared
+                    priorityTags.classList.remove('show');
+                }
+            }
+        }
+    };
+    
+    // Clear task input
+    window.clearTaskInput = function(stageId) {
+        const input = document.getElementById(`stageTaskInput_${stageId}`);
+        if (input) {
+            input.value = '';
+            input.focus();
+            // Trigger the change handler to update button states
+            handleTaskInputChange(stageId, null);
+        }
+    };
+    
+    // Handle priority selection
+    window.selectPriority = function(stageId, priority) {
+        const priorityTags = document.getElementById(`stageTaskPriorityTags_${stageId}`);
+        if (!priorityTags) return;
+        
+        // Remove selected class from all tags
+        priorityTags.querySelectorAll('.priority-tag').forEach(tag => {
+            tag.classList.remove('selected');
+        });
+        
+        // Add selected class to clicked tag
+        const selectedTag = priorityTags.querySelector(`[data-priority="${priority}"]`);
+        if (selectedTag) {
+            selectedTag.classList.add('selected');
         }
     };
     
@@ -4633,10 +4946,22 @@
             return;
         }
         
-        // Disable button and input while creating
+        const description = document.getElementById(`stageTaskDescription_${stageId}`);
+        const descriptionText = description ? description.value.trim() : '';
+        const priorityTags = document.getElementById(`stageTaskPriorityTags_${stageId}`);
+        const selectedPriorityTag = priorityTags ? priorityTags.querySelector('.priority-tag.selected') : null;
+        const priority = selectedPriorityTag ? selectedPriorityTag.dataset.priority : 'medium';
         const addBtn = document.getElementById(`btnAddTask_${stageId}`);
+        
+        // Disable button and inputs while creating
         if (addBtn) addBtn.disabled = true;
         input.disabled = true;
+        if (description) description.disabled = true;
+        if (priorityTags) {
+            priorityTags.querySelectorAll('.priority-tag').forEach(tag => {
+                tag.style.pointerEvents = 'none';
+            });
+        }
         
         fetch(`/dashboard/mentor/projects/${PROJECT_ID}/stages/${stageId}/tasks/create/`, {
             method: 'POST',
@@ -4646,15 +4971,33 @@
             },
             body: JSON.stringify({
                 title: title,
-                description: ''
+                description: descriptionText,
+                priority: priority
             })
         })
         .then(response => response.json())
         .then(data => {
-            // Re-enable input and clear it
+            // Re-enable inputs and clear them
             input.disabled = false;
             input.value = '';
             if (addBtn) addBtn.disabled = true;
+            const aiBtn = document.getElementById(`btnAiGenerate_${stageId}`);
+            if (aiBtn) aiBtn.disabled = false;
+            if (description) {
+                description.disabled = false;
+                description.value = '';
+                description.classList.remove('show');
+            }
+            if (priorityTags) {
+                priorityTags.classList.remove('show');
+                priorityTags.querySelectorAll('.priority-tag').forEach(tag => {
+                    tag.classList.remove('selected');
+                    tag.style.pointerEvents = '';
+                });
+                // Reset to medium priority
+                const mediumTag = priorityTags.querySelector('[data-priority="medium"]');
+                if (mediumTag) mediumTag.classList.add('selected');
+            }
             
             if (data.success && data.task_id) {
                 const tasksSection = document.getElementById(`stageTasks_${stageId}`);
@@ -4763,6 +5106,14 @@
             console.error('Error creating task:', error);
             input.disabled = false;
             if (addBtn) addBtn.disabled = false;
+            const description = document.getElementById(`stageTaskDescription_${stageId}`);
+            if (description) description.disabled = false;
+            const priorityTags = document.getElementById(`stageTaskPriorityTags_${stageId}`);
+            if (priorityTags) {
+                priorityTags.querySelectorAll('.priority-tag').forEach(tag => {
+                    tag.style.pointerEvents = '';
+                });
+            }
             if (typeof showNotification !== 'undefined') {
                 showNotification('An error occurred', 'error');
             } else {
@@ -4842,9 +5193,15 @@
     
     // Generate tasks with AI
     window.generateTasksAI = function(stageId) {
-        if (!confirm('Generate tasks using AI for this stage?')) {
+        const aiBtn = document.getElementById(`btnAiGenerate_${stageId}`);
+        if (aiBtn && aiBtn.disabled) {
             return;
         }
+        
+        // Disable button during generation
+        const originalContent = aiBtn.innerHTML;
+        aiBtn.disabled = true;
+        aiBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
         
         fetch(`/dashboard/mentor/projects/${PROJECT_ID}/stages/${stageId}/tasks/generate-ai/`, {
             method: 'POST',
@@ -4856,37 +5213,145 @@
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                // Preserve expanded state - keep this stage open
-                const tasksSection = document.getElementById(`stageTasks_${stageId}`);
-                const wasExpanded = tasksSection && tasksSection.classList.contains('expanded');
-                
-                // Reload stages to update progress
-                loadStages();
-                
-                // After stages reload, re-expand and reload tasks for this stage
-                setTimeout(() => {
-                    const newTasksSection = document.getElementById(`stageTasks_${stageId}`);
-                    if (newTasksSection && wasExpanded) {
-                        newTasksSection.classList.add('expanded');
-                        newTasksSection.dataset.loaded = 'false';
-                        loadStageTasks(stageId);
-                    }
+                // Fetch the newly created tasks
+                fetch(`/dashboard/mentor/projects/${PROJECT_ID}/stages/${stageId}/tasks/api/`, {
+                    method: 'GET',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    credentials: 'same-origin'
+                })
+                .then(response => response.json())
+                .then(tasksData => {
+                    // Re-enable button
+                    aiBtn.disabled = false;
+                    aiBtn.innerHTML = originalContent;
                     
-                    // Update overlay and max-height
-                    updateTasksOverlay();
-                    requestAnimationFrame(() => {
-                        requestAnimationFrame(() => {
-                            setRoadmapContainerMaxHeight();
+                    if (tasksData && tasksData.success && tasksData.tasks) {
+                        const tasksSection = document.getElementById(`stageTasks_${stageId}`);
+                        if (!tasksSection) return;
+                        
+                        // Ensure section is expanded
+                        tasksSection.classList.add('expanded');
+                        
+                        // Remove empty state if present
+                        const emptyState = tasksSection.querySelector('.stage-tasks-empty');
+                        if (emptyState) {
+                            emptyState.remove();
+                        }
+                        
+                        // Get existing tasks to find new ones
+                        const existingTaskIds = new Set();
+                        const existingTasks = tasksSection.querySelectorAll('.stage-task-item');
+                        existingTasks.forEach(task => {
+                            const taskId = task.getAttribute('data-task-id');
+                            if (taskId) existingTaskIds.add(taskId);
                         });
-                    });
-                }, 100);
-                
-                if (typeof showNotification !== 'undefined') {
-                    showNotification(`${data.tasks_count || 0} tasks generated successfully`, 'success');
-                } else {
-                    alert(`${data.tasks_count || 0} tasks generated successfully`);
-                }
+                        
+                        // Get or create tasks list
+                        let tasksList = tasksSection.querySelector('.stage-tasks-list');
+                        let tasksHeader = tasksSection.querySelector('.stage-tasks-title');
+                        
+                        if (!tasksList) {
+                            // Create tasks header and list if they don't exist
+                            tasksSection.innerHTML = `
+                                <div class="stage-tasks-header">
+                                    <div class="stage-tasks-title">Tasks (${tasksData.tasks.length})</div>
+                                </div>
+                                <div class="stage-tasks-list"></div>
+                            `;
+                            tasksList = tasksSection.querySelector('.stage-tasks-list');
+                            tasksHeader = tasksSection.querySelector('.stage-tasks-title');
+                        }
+                        
+                        // Filter to only new tasks (those not already in the list)
+                        const newTasks = tasksData.tasks.filter(task => !existingTaskIds.has(String(task.id)));
+                        
+                        // Reverse tasks to show newest first
+                        const reversedTasks = [...newTasks].reverse();
+                        
+                        // Add each new task with animation
+                        reversedTasks.forEach((task, index) => {
+                            const completedClass = task.completed ? 'completed' : '';
+                            const taskHtml = `
+                                <div class="stage-task-item ${completedClass}" data-task-id="${task.id}" style="opacity: 0; transform: translateY(-10px);">
+                                    <div class="stage-task-checkbox" onclick="toggleTaskComplete(${task.id}, ${stageId}, event)"></div>
+                                    <div class="stage-task-text">${escapeHtml(task.title)}</div>
+                                </div>
+                            `;
+                            
+                            // Insert at the top of the list
+                            tasksList.insertAdjacentHTML('afterbegin', taskHtml);
+                            
+                            // Animate in
+                            const taskElement = tasksList.querySelector(`[data-task-id="${task.id}"]`);
+                            if (taskElement) {
+                                setTimeout(() => {
+                                    taskElement.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+                                    taskElement.style.opacity = '1';
+                                    taskElement.style.transform = 'translateY(0)';
+                                }, index * 50); // Stagger animations
+                            }
+                        });
+                        
+                        // Update task count
+                        if (tasksHeader) {
+                            const currentCount = tasksList.querySelectorAll('.stage-task-item').length;
+                            tasksHeader.textContent = `Tasks (${currentCount})`;
+                        }
+                        
+                        // Update progress bar
+                        const stageRow = tasksSection.closest('.stage-row');
+                        if (stageRow) {
+                            const progressBar = stageRow.querySelector('.stage-progress-fill');
+                            const progressLabel = stageRow.querySelector('.stage-progress-label');
+                            const tasksCount = stageRow.querySelector('.stage-tasks-count');
+                            
+                            if (progressBar && progressLabel && tasksCount) {
+                                const totalTasks = tasksList.querySelectorAll('.stage-task-item').length;
+                                const completedTasks = tasksList.querySelectorAll('.stage-task-item.completed').length;
+                                const newProgress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+                                
+                                progressBar.style.width = `${newProgress}%`;
+                                progressLabel.textContent = `${newProgress}%`;
+                                tasksCount.innerHTML = `<i class="fas fa-tasks"></i><span>${completedTasks}/${totalTasks}</span>`;
+                            }
+                        }
+                        
+                        // Mark as loaded
+                        tasksSection.dataset.loaded = 'true';
+                        
+                        // Update overlay and max-height
+                        updateTasksOverlay();
+                        setTimeout(() => {
+                            setRoadmapContainerMaxHeight();
+                        }, 100);
+                        
+                        if (typeof showNotification !== 'undefined') {
+                            showNotification(`${newTasks.length} tasks generated successfully`, 'success');
+                        }
+                    } else {
+                        // Re-enable button even on error
+                        aiBtn.disabled = false;
+                        aiBtn.innerHTML = originalContent;
+                        if (typeof showNotification !== 'undefined') {
+                            showNotification('Failed to load generated tasks', 'error');
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading generated tasks:', error);
+                    // Re-enable button
+                    aiBtn.disabled = false;
+                    aiBtn.innerHTML = originalContent;
+                    if (typeof showNotification !== 'undefined') {
+                        showNotification('An error occurred while loading tasks', 'error');
+                    }
+                });
             } else {
+                // Re-enable button
+                aiBtn.disabled = false;
+                aiBtn.innerHTML = originalContent;
                 if (typeof showNotification !== 'undefined') {
                     showNotification(data.error || 'Failed to generate tasks', 'error');
                 } else {
@@ -4896,12 +5361,22 @@
         })
         .catch(error => {
             console.error('Error generating tasks:', error);
+            // Re-enable button on error
+            aiBtn.disabled = false;
+            aiBtn.innerHTML = originalContent;
             if (typeof showNotification !== 'undefined') {
                 showNotification('An error occurred', 'error');
             } else {
                 alert('An error occurred');
             }
         });
+    }
+    
+    // Helper function to escape HTML
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
 
     // Toggle stage dropdown menu
