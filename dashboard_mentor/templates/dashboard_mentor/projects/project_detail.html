@@ -992,7 +992,7 @@
     }
 
     .roadmap-header {
-        padding: 20px 24px;
+        padding: 20px 0 20px 24px;
         border-bottom: none;
         border-radius: 0;
         display: flex;
@@ -1039,7 +1039,7 @@
         background: #f9fafb;
         border-radius: 12px;
         box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-        border: 1px solid #e5e7eb;
+        border: none;
         overflow: hidden;
     }
     
@@ -1055,8 +1055,28 @@
         display: flex;
         align-items: stretch;
         gap: 0;
-        background: #f3f4f6;
+        background: white;
         border-radius: 12px 12px 0 0;
+    }
+    
+    .stage-content-wrapper.progress-completed {
+        background-color: #d1fae5;
+    }
+    
+    .stage-content-wrapper.progress-overdue {
+        background-color: #fee2e2;
+    }
+    
+    .stage-content-wrapper.progress-in_progress {
+        background-color: #dbeafe;
+    }
+    
+    .stage-content-wrapper.progress-created {
+        background-color: #fef3c7;
+    }
+    
+    .stage-content-wrapper.progress-disabled {
+        background-color: #f3f4f6;
     }
     
     .stage-task-input-section {
@@ -1070,13 +1090,13 @@
         display: flex;
         flex-direction: column;
         gap: 8px;
-        padding: 12px 24px;
+        padding: 24px 24px 12px 24px;
         background: #f9fafb;
     }
     
     .stage-task-input-row {
         display: flex;
-        gap: 8px;
+        gap: 16px;
         align-items: center;
     }
     
@@ -1134,7 +1154,7 @@
     
     .stage-task-buttons-wrapper {
         display: flex;
-        gap: 8px;
+        gap: 16px;
         align-items: center;
         width: 320px;
         flex-shrink: 0;
@@ -1279,8 +1299,55 @@
         border-radius: 0 0 12px 12px;
     }
 
-    .stage-row:hover {
-        background: #f8fafc;
+    /* When stage is open, apply hover background colors */
+    .stage-row:has(.stage-tasks-section.expanded) .stage-content-wrapper {
+        background: #f3f4f6;
+    }
+    
+    .stage-row:has(.stage-tasks-section.expanded) .stage-content-wrapper.progress-completed {
+        background: #a7f3d0;
+    }
+    
+    .stage-row:has(.stage-tasks-section.expanded) .stage-content-wrapper.progress-overdue {
+        background: #fecaca;
+    }
+    
+    .stage-row:has(.stage-tasks-section.expanded) .stage-content-wrapper.progress-in_progress {
+        background: #bfdbfe;
+    }
+    
+    .stage-row:has(.stage-tasks-section.expanded) .stage-content-wrapper.progress-created {
+        background: #fde68a;
+    }
+    
+    .stage-row:has(.stage-tasks-section.expanded) .stage-content-wrapper.progress-disabled {
+        background: #e5e7eb;
+    }
+
+    .stage-row:hover .stage-content-wrapper,
+    .stage-row:hover .stage-task-input-section,
+    .stage-row:hover .stage-tasks-section {
+        background: #f3f4f6;
+    }
+    
+    .stage-row:hover .stage-content-wrapper.progress-completed {
+        background: #a7f3d0;
+    }
+    
+    .stage-row:hover .stage-content-wrapper.progress-overdue {
+        background: #fecaca;
+    }
+    
+    .stage-row:hover .stage-content-wrapper.progress-in_progress {
+        background: #bfdbfe;
+    }
+    
+    .stage-row:hover .stage-content-wrapper.progress-created {
+        background: #fde68a;
+    }
+    
+    .stage-row:hover .stage-content-wrapper.progress-disabled {
+        background: #e5e7eb;
     }
     
     /* Disabled stage styling - only apply to content, NOT the row itself or dropdown */
@@ -1312,7 +1379,7 @@
     
     .stage-row:hover .stage-drag-section .drag-grip {
         opacity: 0.5;
-        color: #94a3b8;
+        color: #64748b;
     }
     
     .stage-drag-section:active {
@@ -1322,7 +1389,7 @@
     /* Drag Handle */
     .drag-grip {
         cursor: grab;
-        color: #e5e7eb;
+        color: #64748b;
         padding: 8px;
         border-radius: 4px;
         transition: all 0.2s;
@@ -1331,8 +1398,7 @@
         -webkit-user-select: none;
     }
     .drag-grip:hover {
-        background: #f1f5f9;
-        color: #64748b;
+        color: #1f2937;
     }
     .drag-grip:active {
         cursor: grabbing;
@@ -1351,9 +1417,6 @@
         border-radius: 0;
     }
     
-    .stage-main-wrapper:hover {
-        background: rgba(248, 250, 252, 0.5);
-    }
     
     /* Row Actions Section */
     .row-actions-section {
@@ -1430,19 +1493,38 @@
         align-items: center;
         margin-bottom: 4px;
         font-size: 0.75rem;
-        color: #6b7280;
+        color: #000000;
     }
 
     .stage-progress-bar {
-        height: 6px;
-        background: #f3f4f6;
-        border-radius: 3px;
+        height: 10px;
+        background: #e5e7eb;
+        border-radius: 5px;
         overflow: hidden;
+        border: 1px solid #d1d5db;
+        box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
+        position: relative;
     }
 
     .stage-progress-fill {
         height: 100%;
-        transition: width 0.3s;
+        transition: width 0.3s ease-out;
+        border-radius: 5px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+        position: relative;
+    }
+    
+    /* Add subtle gradient overlay for depth */
+    .stage-progress-fill::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(to bottom, rgba(255, 255, 255, 0.2) 0%, transparent 50%);
+        border-radius: 5px;
+        pointer-events: none;
     }
 
     .stage-tasks-count {
@@ -1450,20 +1532,20 @@
         align-items: center;
         gap: 6px;
         font-size: 0.75rem;
-        color: #6b7280;
+        color: #000000;
     }
 
     .stage-tasks-count i {
         font-size: 0.85rem;
-        color: #9ca3af;
+        color: #000000;
     }
 
     .stage-tasks-count.no-tasks {
-        color: #93c5fd; /* Light blue */
+        color: #000000;
     }
 
     .stage-tasks-count.no-tasks i {
-        color: #93c5fd; /* Light blue */
+        color: #000000;
     }
 
     /* Status Tags */
@@ -1479,11 +1561,11 @@
         margin-right: 8px;
         flex-shrink: 0;
     }
-    .status-tag.completed { background-color: #d1fae5; color: #065f46; }
-    .status-tag.pending { background-color: #dbeafe; color: #1e40af; }
-    .status-tag.created { background-color: #fef3c7; color: #92400e; }
-    .status-tag.overdue { background-color: #fee2e2; color: #991b1b; }
-    .status-tag.disabled { background-color: #f3f4f6; color: #6b7280; }
+    .status-tag.completed { background-color: #10b981; color: white; }
+    .status-tag.pending { background-color: #3b82f6; color: white; }
+    .status-tag.created { background-color: #fbbf24; color: white; }
+    .status-tag.overdue { background-color: #ef4444; color: white; }
+    .status-tag.disabled { background-color: #6b7280; color: white; }
     
     /* Expandable Task Section */
     .stage-tasks-section {
@@ -1500,52 +1582,268 @@
     
     .stage-tasks-section.expanded {
         max-height: 2000px;
-        padding: 20px 24px;
+        padding: 0;
         margin: 0;
         border-radius: 0 0 12px 12px;
     }
     
     .stage-tasks-header {
+        padding: 20px 24px;
+        border-bottom: 1px solid #e5e7eb;
+        background: white;
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 16px;
-        flex-wrap: wrap;
-        gap: 12px;
     }
     
     .stage-tasks-title {
         font-size: 0.875rem;
         font-weight: 600;
         color: #1e293b;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .stage-tasks-select-all-checkbox {
+        width: 18px;
+        height: 18px;
+        border: 2px solid #cbd5e1;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.2s;
+        background: white;
+        position: relative;
+        margin-left: 20px;
+        flex-shrink: 0;
+    }
+    
+    .stage-tasks-select-all-checkbox.checked {
+        background: #10b981;
+        border-color: #10b981;
+    }
+    
+    .stage-tasks-select-all-checkbox.checked::after {
+        content: '✓';
+        color: white;
+        font-size: 14px;
+        font-weight: bold;
+        line-height: 1;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+    }
+    
+    .stage-tasks-header-actions {
+        display: flex;
+        flex-direction: row;
+        gap: 8px;
+        align-items: center;
+    }
+    
+    .btn-sort-tasks {
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 6px;
+        padding: 6px 12px;
+        cursor: pointer;
+        color: #64748b;
+        font-size: 0.875rem;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 36px;
+        height: 32px;
+    }
+    
+    .btn-sort-tasks:hover {
+        background: #f9fafb;
+        border-color: #d1d5db;
+        color: #374151;
+    }
+    
+    .btn-sort-tasks.active {
+        background: #f1f5f9;
+        border-color: #3b82f6;
+        color: #3b82f6;
+    }
+    
+    .stage-tasks-actions-select {
+        position: relative;
+    }
+    
+    .custom-select-trigger-actions {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: auto;
+        min-width: 120px;
+        padding: 6px 16px;
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 6px;
+        color: #1e293b;
+        font-size: 0.875rem;
+        font-weight: 400;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        height: 32px;
+    }
+    
+    .custom-select-trigger-actions:disabled {
+        background: #f9fafb;
+        color: #9ca3af;
+        cursor: not-allowed;
+        border-color: #e5e7eb;
+    }
+    
+    .custom-select-trigger-actions:not(:disabled):hover {
+        border-color: #d1d5db;
+    }
+    
+    .custom-select-trigger-actions i {
+        color: #64748b;
+        font-size: 0.75rem;
+        transition: transform 0.2s ease;
+        margin-left: 8px;
+    }
+    
+    .stage-tasks-actions-select.active .custom-select-trigger-actions i {
+        transform: rotate(180deg);
+    }
+    
+    .custom-select-menu-actions {
+        position: absolute;
+        top: calc(100% + 8px);
+        right: 0;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        padding: 0;
+        opacity: 0;
+        visibility: hidden;
+        transform: translateY(-10px);
+        transition: all 0.2s ease;
+        z-index: 10005;
+        min-width: 160px;
+    }
+    
+    .stage-tasks-actions-select.active .custom-select-menu-actions {
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(0);
+    }
+    
+    .custom-select-item-actions {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 20px;
+        color: #1e293b;
+        text-decoration: none;
+        transition: background 0.2s ease;
+        border: none;
+        background: transparent;
+        width: 100%;
+        cursor: pointer;
+        font-size: 0.95rem;
+        font-weight: 400;
+        text-align: left;
+    }
+    
+    .custom-select-item-actions.first-item {
+        border-radius: 12px 12px 0 0;
+    }
+    
+    .custom-select-item-actions.last-item {
+        border-radius: 0 0 12px 12px;
+    }
+    
+    .custom-select-item-actions:hover {
+        background: rgba(16, 185, 129, 0.1);
+        color: #10b981;
+    }
+    
+    .custom-select-item-actions.first-item:hover {
+        border-radius: 12px 12px 0 0;
+    }
+    
+    .custom-select-item-actions.last-item:hover {
+        border-radius: 0 0 12px 12px;
+    }
+    
+    .custom-select-item-actions i {
+        width: 16px;
+        color: inherit;
     }
     
     .stage-tasks-list {
         display: flex;
         flex-direction: column;
-        gap: 8px;
+        gap: 0;
         margin-bottom: 16px;
     }
     
     .stage-task-item {
         display: flex;
         align-items: center;
-        gap: 12px;
-        padding: 12px;
+        gap: 0;
+        padding: 0;
         background: white;
-        border: 1px solid #e2e8f0;
-        border-radius: 8px;
+        border-bottom: 1px solid #f3f4f6;
+        transition: background 0.15s ease;
     }
     
-    @keyframes slideInTask {
-        from {
-            opacity: 0;
-            transform: translateY(-10px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
+    .stage-task-item:hover {
+        background: #f9fafb;
+    }
+    
+    .stage-task-item.completed {
+        opacity: 0.7;
+    }
+    
+    .stage-task-drag-handle {
+        padding: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: grab;
+        color: #e5e7eb;
+        flex-shrink: 0;
+        width: 32px;
+        opacity: 0;
+        transition: all 0.2s;
+        border-radius: 4px;
+        user-select: none;
+        -webkit-user-select: none;
+    }
+    
+    .stage-task-item:hover .stage-task-drag-handle {
+        opacity: 1;
+    }
+    
+    .stage-task-drag-handle:hover {
+        background: #f1f5f9;
+        color: #64748b;
+    }
+    
+    .stage-task-drag-handle:active {
+        cursor: grabbing;
+    }
+    
+    .stage-task-drag-handle i {
+        font-size: 0.875rem;
+    }
+    
+    .stage-task-checkbox-container {
+        padding: 12px 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        width: 40px;
     }
     
     .stage-task-checkbox {
@@ -1554,35 +1852,136 @@
         border: 2px solid #cbd5e1;
         border-radius: 4px;
         cursor: pointer;
-        flex-shrink: 0;
-    }
-    
-    .stage-task-item.completed .stage-task-checkbox {
-        background: #10b981;
-        border-color: #10b981;
+        transition: all 0.2s;
+        background: white;
         position: relative;
     }
     
-    .stage-task-item.completed .stage-task-checkbox::after {
-        content: '\\2713';
+    .stage-task-checkbox.checked {
+        background: #10b981;
+        border-color: #10b981;
+    }
+    
+    .stage-task-checkbox.checked::after {
+        content: '✓';
         color: white;
-        font-size: 12px;
+        font-size: 14px;
         font-weight: bold;
         position: absolute;
         top: 50%;
         left: 50%;
         transform: translate(-50%, -50%);
+        line-height: 1;
     }
     
-    .stage-task-text {
+    .stage-task-content {
         flex: 1;
+        padding: 12px 16px;
+        min-width: 0;
+    }
+    
+    .stage-task-title {
         font-size: 0.875rem;
+        font-weight: 500;
+        color: #374151;
+        margin-bottom: 4px;
+    }
+    
+    .stage-task-item.completed .stage-task-title {
+        text-decoration: line-through;
+        color: #9ca3af;
+    }
+    
+    .stage-task-description-text {
+        font-size: 0.75rem;
+        color: #6b7280;
+        margin-top: 4px;
+        line-height: 1.4;
+    }
+    
+    .stage-task-priority-display {
+        padding: 12px 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        width: 100px;
+    }
+    
+    .stage-task-status-display {
+        padding: 12px 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        width: 120px;
+    }
+    
+    .stage-task-activate {
+        padding: 12px 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        width: 120px;
+    }
+    
+    .stage-task-activate-btn {
+        background: none;
+        border: none;
+        color: #6b7280;
+        font-size: 0.75rem;
+        cursor: pointer;
+        padding: 4px 8px;
+        border-radius: 4px;
+        transition: all 0.2s;
+    }
+    
+    .stage-task-activate-btn:hover {
+        background: #f3f4f6;
         color: #374151;
     }
     
-    .stage-task-item.completed .stage-task-text {
-        text-decoration: line-through;
-        color: #9ca3af;
+    .stage-task-activate-btn.active {
+        color: #10b981;
+    }
+    
+    .stage-task-activate-btn.active:hover {
+        color: #059669;
+    }
+    
+    .stage-task-actions {
+        padding: 12px 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        width: 40px;
+    }
+    
+    .stage-task-dropdown-trigger {
+        background: none;
+        border: none;
+        color: #e5e7eb;
+        cursor: pointer;
+        padding: 8px;
+        border-radius: 4px;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        user-select: none;
+        -webkit-user-select: none;
+    }
+    
+    .stage-task-item:hover .stage-task-dropdown-trigger {
+        opacity: 1;
+    }
+    
+    .stage-task-dropdown-trigger:hover {
+        background: #f1f5f9;
+        color: #64748b;
     }
     
     .stage-tasks-empty {
@@ -2837,7 +3236,7 @@
                         {% csrf_token %}
                         <textarea name="note_text" id="projectNoteText" placeholder="Add an update, observation, or note about this project..." required></textarea>
                         <div style="display: flex; justify-content: flex-end;">
-                            <button type="submit" class="btn btn-primary" id="projectNoteSubmitBtn" style="padding: 8px 16px;">
+                            <button type="submit" class="btn btn-primary" id="projectNoteSubmitBtn" style="padding: 12px 24px; font-size: 1rem;">
                                 Post Update
                             </button>
                         </div>
@@ -3897,14 +4296,18 @@
             let titleClass = '';
             let titleText = stage.title;
             const isDisabled = stage.is_disabled || false;
+            const progressStatus = stage.progress_status || (stage.is_completed ? 'completed' : 'in_progress');
             let rowClass = 'stage-row';
             
+            // Add progress status class for border color
             if (isDisabled) {
-                rowClass = 'stage-row stage-row-disabled';
+                rowClass = 'stage-row stage-row-disabled progress-disabled';
+            } else {
+                rowClass = `stage-row progress-${progressStatus}`;
             }
             
             // Determine status tag and colors based on progress_status (or disabled)
-            const progressStatus = stage.progress_status || (stage.is_completed ? 'completed' : 'in_progress');
+            // Note: progressStatus is already defined above
             let progressColor = '#e5e7eb';
             let statusTitle = '';
             
@@ -3918,24 +4321,24 @@
                 switch(progressStatus) {
                     case 'completed':
                         statusTag = '<span class="status-tag completed">Completed</span>';
-                        progressColor = '#10b981';
+                        progressColor = '#059669'; // Darker green for better contrast
                         statusTitle = 'Completed';
                         titleClass = 'style="text-decoration: line-through; color: #6b7280;"';
                         break;
                     case 'overdue':
                         statusTag = '<span class="status-tag overdue">Overdue</span>';
-                        progressColor = '#ef4444';
+                        progressColor = '#dc2626'; // Darker red for better contrast
                         statusTitle = 'Overdue';
                         break;
                     case 'in_progress':
                         statusTag = '<span class="status-tag pending">In Progress</span>';
-                        progressColor = '#3b82f6';
+                        progressColor = '#2563eb'; // Darker blue for better contrast
                         statusTitle = 'In Progress';
                         break;
                     case 'created':
                     default:
                         statusTag = '<span class="status-tag created">Created</span>';
-                        progressColor = '#fbbf24';
+                        progressColor = '#d97706'; // Darker yellow/orange for better contrast
                         statusTitle = 'Created';
                         break;
                 }
@@ -3947,19 +4350,20 @@
             const progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : (progressStatus === 'completed' ? 100 : 0);
             
             // Override progress color if progress is 0 (no tasks) or use status-based color
+            // Using more saturated, darker colors for better contrast and visual impact
             if (isDisabled) {
-                // Keep disabled color
-                progressColor = '#9ca3af';
+                // Keep disabled color - darker for better contrast
+                progressColor = '#6b7280';
             } else if (progress === 0 && progressStatus !== 'completed') {
-                progressColor = '#e5e7eb';
+                progressColor = '#d1d5db';
             } else if (progressStatus === 'completed') {
-                progressColor = '#10b981';
+                progressColor = '#059669'; // Darker green for better contrast
             } else if (progressStatus === 'overdue') {
-                progressColor = '#ef4444';
+                progressColor = '#dc2626'; // Darker red for better contrast
             } else if (progressStatus === 'in_progress') {
-                progressColor = '#3b82f6';
+                progressColor = '#2563eb'; // Darker blue for better contrast
             } else if (progressStatus === 'created') {
-                progressColor = '#fbbf24';
+                progressColor = '#d97706'; // Darker yellow/orange for better contrast
             }
             
             // Format dates for display
@@ -3983,59 +4387,59 @@
             
             // Build the main content wrapper
             const mainContentHtml = `
-                <div class="stage-content-wrapper">
-                    <div class="stage-drag-section">
-                        <div class="drag-grip">
-                            <i class="fas fa-grip-vertical"></i>
-                        </div>
-                    </div>
-                    <div class="stage-main-wrapper" onclick="toggleStageTasks(${stage.id}, event);">
-                        <div class="stage-main">
-                            <div class="stage-title-meta">
-                                <div class="stage-title">
-                                    ${statusTag}
-                                    <span ${titleClass}>${titleText}</span>
-                                </div>
-                                ${dateRangeHtml}
+                <div class="stage-content-wrapper progress-${isDisabled ? 'disabled' : progressStatus}">
+                        <div class="stage-drag-section">
+                            <div class="drag-grip">
+                                <i class="fas fa-grip-vertical"></i>
                             </div>
                         </div>
-                        <div class="stage-progress-section">
-                            <div class="stage-progress-bar-container">
-                                <div class="stage-progress-label">
-                                    <span>Progress</span>
-                                    <span style="font-weight: 500;">${progress}%</span>
-                                </div>
-                                <div class="stage-progress-bar">
-                                    <div class="stage-progress-fill" style="width: ${progress}%; background: ${progressColor};"></div>
+                        <div class="stage-main-wrapper" onclick="toggleStageTasks(${stage.id}, event);">
+                            <div class="stage-main">
+                                <div class="stage-title-meta">
+                                    <div class="stage-title">
+                                        ${statusTag}
+                                        <span ${titleClass}>${titleText}</span>
+                                    </div>
+                                    ${dateRangeHtml}
                                 </div>
                             </div>
-                            <div class="stage-tasks-count ${totalTasks === 0 ? 'no-tasks' : ''}">
-                                ${totalTasks === 0 
-                                    ? '<span style="color: #93c5fd;">no tasks yet</span>'
-                                    : `<i class="fas fa-tasks"></i><span>${completedTasks}/${totalTasks}</span>`
-                                }
+                            <div class="stage-progress-section">
+                                <div class="stage-progress-bar-container">
+                                    <div class="stage-progress-label">
+                                        <span>Progress</span>
+                                        <span style="font-weight: 500;">${progress}%</span>
+                                    </div>
+                                    <div class="stage-progress-bar">
+                                        <div class="stage-progress-fill" style="width: ${progress}%; background: ${progressColor};"></div>
+                                    </div>
+                                </div>
+                                <div class="stage-tasks-count ${totalTasks === 0 ? 'no-tasks' : ''}">
+                                    ${totalTasks === 0 
+                                        ? '<span style="color: #000000;">no tasks yet</span>'
+                                        : `<i class="fas fa-tasks"></i><span>${completedTasks}/${totalTasks}</span>`
+                                    }
+                                </div>
                             </div>
                         </div>
-                    </div>
-                    <div class="row-actions-section" onclick="event.stopPropagation();">
-                        <div class="row-actions" id="rowActions_${stage.id}">
-                            <div class="stage-dropdown-container" id="stageDropdown_${stage.id}">
-                                <button class="stage-dropdown-trigger" onclick="toggleStageDropdown(${stage.id}, event)">
-                                    <i class="fas fa-ellipsis-v"></i>
-                                </button>
-                                <div class="stage-dropdown-menu" onclick="event.stopPropagation();">
-                                    <button class="stage-dropdown-item first-item" onclick="editStage(${stage.id}); event.stopPropagation();">
-                                        <i class="fas fa-edit"></i>
-                                        <span>Edit</span>
+                        <div class="row-actions-section" onclick="event.stopPropagation();">
+                            <div class="row-actions" id="rowActions_${stage.id}">
+                                <div class="stage-dropdown-container" id="stageDropdown_${stage.id}">
+                                    <button class="stage-dropdown-trigger" onclick="toggleStageDropdown(${stage.id}, event)">
+                                        <i class="fas fa-ellipsis-v"></i>
                                     </button>
-                                    <button class="stage-dropdown-item delete-item last-item" onclick="deleteStage(${stage.id}); event.stopPropagation();">
-                                        <i class="fas fa-trash"></i>
-                                        <span>Delete</span>
-                                    </button>
+                                    <div class="stage-dropdown-menu" onclick="event.stopPropagation();">
+                                        <button class="stage-dropdown-item first-item" onclick="editStage(${stage.id}); event.stopPropagation();">
+                                            <i class="fas fa-edit"></i>
+                                            <span>Edit</span>
+                                        </button>
+                                        <button class="stage-dropdown-item delete-item last-item" onclick="deleteStage(${stage.id}); event.stopPropagation();">
+                                            <i class="fas fa-trash"></i>
+                                            <span>Delete</span>
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
                 </div>
             `;
             
@@ -4730,6 +5134,12 @@
                 renderStageTasks(stageId, data.tasks || []);
                 tasksSection.dataset.loaded = 'true';
                 
+                // Save DB order after rendering (tasks come from API in DB order)
+                saveDBOrder(stageId);
+                
+                // Initialize sortable for tasks
+                initTaskSortable(stageId);
+                
                 // Update max-height after tasks are rendered
                 setTimeout(() => {
                     setRoadmapContainerMaxHeight();
@@ -4781,19 +5191,78 @@
         
         let html = `
             <div class="stage-tasks-header">
-                <div class="stage-tasks-title">Tasks (${tasks.length})</div>
+                <div class="stage-tasks-title">
+                    <div class="stage-tasks-select-all-checkbox" id="selectAllTasks_${stageId}" onclick="toggleSelectAllTasks(${stageId}, event)"></div>
+                    Tasks (${tasks.length})
+                </div>
+                <div class="stage-tasks-header-actions">
+                    <button class="btn-sort-tasks" id="btnSortHigh_${stageId}" onclick="togglePrioritySort(${stageId}, 'high')" title="Sort Priority High to Low">
+                        <i class="fas fa-sort-amount-down"></i>
+                    </button>
+                    <button class="btn-sort-tasks" id="btnSortLow_${stageId}" onclick="togglePrioritySort(${stageId}, 'low')" title="Sort Priority Low to High">
+                        <i class="fas fa-sort-amount-up"></i>
+                    </button>
+                    <div class="stage-tasks-actions-select" id="actionsSelect_${stageId}">
+                        <button class="custom-select-trigger-actions" id="btnActionsTasks_${stageId}" onclick="toggleTasksActionsDropdown(${stageId}, event)" disabled>
+                            Actions <i class="fas fa-chevron-down"></i>
+                        </button>
+                        <div class="custom-select-menu-actions" id="tasksActionsMenu_${stageId}">
+                            <button class="custom-select-item-actions first-item" onclick="activateSelectedTasks(${stageId})">
+                                <i class="fas fa-check-circle"></i> <span>Activate</span>
+                            </button>
+                            <button class="custom-select-item-actions last-item" onclick="deleteSelectedTasks(${stageId})">
+                                <i class="fas fa-trash"></i> <span>Delete</span>
+                    </button>
+                </div>
             </div>
-            <div class="stage-tasks-list">
+                </div>
+            </div>
+            <div class="stage-tasks-list" id="stageTasksList_${stageId}">
         `;
         
         // Reverse tasks array to show newest tasks at the top
         const reversedTasks = [...tasks].reverse();
         reversedTasks.forEach(task => {
             const completedClass = task.completed ? 'completed' : '';
+            const isActive = task.assigned === true;
+            const priorityClass = `priority-${task.priority || 'medium'}`;
+            const statusClass = `status-${task.status || 'todo'}`;
+            const priorityLabel = (task.priority || 'medium').charAt(0).toUpperCase() + (task.priority || 'medium').slice(1);
+            const statusLabel = (task.status || 'todo').replace('_', ' ').split(' ').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' ');
+            
             html += `
-                <div class="stage-task-item ${completedClass}" data-task-id="${task.id}">
-                    <div class="stage-task-checkbox" onclick="toggleTaskComplete(${task.id}, ${stageId}, event)"></div>
-                    <div class="stage-task-text">${escapeHtml(task.title)}</div>
+                <div class="stage-task-item ${completedClass}" data-task-id="${task.id}" data-priority="${task.priority || 'medium'}">
+                    <div class="stage-task-drag-handle">
+                        <i class="fas fa-grip-vertical"></i>
+                    </div>
+                    <div class="stage-task-checkbox-container">
+                        <div class="stage-task-checkbox" onclick="toggleTaskSelection(${task.id}, ${stageId}, event)"></div>
+                    </div>
+                    <div class="stage-task-content">
+                        <div class="stage-task-title">${escapeHtml(task.title)}</div>
+                        ${task.description ? `<div class="stage-task-description-text">${escapeHtml(task.description)}</div>` : ''}
+                    </div>
+                    <div class="stage-task-priority-display">
+                        <span class="priority-tag ${priorityClass}">${priorityLabel}</span>
+                    </div>
+                    <div class="stage-task-status-display">
+                        <span class="status-tag ${statusClass}">${statusLabel}</span>
+                    </div>
+                    <div class="stage-task-activate">
+                        <button class="stage-task-activate-btn ${isActive ? 'active' : ''}" 
+                                data-task-id="${task.id}"
+                                data-is-active="${isActive}"
+                                onmouseover="updateActivateButton(this, ${!isActive})"
+                                onmouseout="updateActivateButton(this, ${isActive})"
+                                onclick="toggleTaskActivation(${task.id}, ${stageId}, event)">
+                            ${isActive ? 'Active' : 'Not Active'}
+                        </button>
+                    </div>
+                    <div class="stage-task-actions">
+                        <button class="stage-task-dropdown-trigger" onclick="toggleTaskDropdown(${task.id}, event)">
+                            <i class="fas fa-ellipsis-v"></i>
+                        </button>
+                    </div>
                 </div>
             `;
         });
@@ -4804,53 +5273,603 @@
         
         tasksSection.innerHTML = html;
         
+        // Save DB order after rendering (tasks come from API in DB order)
+        saveDBOrder(stageId);
+        
+        // Initialize sortable for tasks
+        initTaskSortable(stageId);
+        
         // Update max-height after tasks are rendered
         setTimeout(() => {
             setRoadmapContainerMaxHeight();
         }, 100);
     }
     
-    // Toggle task completion
-    window.toggleTaskComplete = function(taskId, stageId, event) {
+    // Toggle task selection (checkbox only, no API call)
+    window.toggleTaskSelection = function(taskId, stageId, event) {
         event.stopPropagation();
         
-        fetch(`/dashboard/mentor/projects/${PROJECT_ID}/stages/${stageId}/tasks/${taskId}/toggle-complete/`, {
+        const checkbox = event.target;
+        const isChecked = checkbox.classList.contains('checked');
+        
+        if (isChecked) {
+            checkbox.classList.remove('checked');
+        } else {
+            checkbox.classList.add('checked');
+        }
+        
+        // Update actions button state
+        updateTasksActionsButton(stageId);
+    }
+    
+    // Toggle select all tasks
+    window.toggleSelectAllTasks = function(stageId, event) {
+        event.stopPropagation();
+        
+        const selectAllCheckbox = document.getElementById(`selectAllTasks_${stageId}`);
+        if (!selectAllCheckbox) return;
+        
+        const tasksList = document.getElementById(`stageTasksList_${stageId}`);
+        if (!tasksList) return;
+        
+        const allCheckboxes = tasksList.querySelectorAll('.stage-task-checkbox');
+        const isChecked = selectAllCheckbox.classList.contains('checked');
+        
+        // Toggle all task checkboxes
+        allCheckboxes.forEach(checkbox => {
+            if (isChecked) {
+                checkbox.classList.remove('checked');
+            } else {
+                checkbox.classList.add('checked');
+            }
+        });
+        
+        // Toggle select all checkbox
+        if (isChecked) {
+            selectAllCheckbox.classList.remove('checked');
+        } else {
+            selectAllCheckbox.classList.add('checked');
+        }
+        
+        // Update actions button state
+        updateTasksActionsButton(stageId);
+    }
+    
+    // Update select all checkbox state based on individual task checkboxes
+    function updateSelectAllCheckbox(stageId) {
+        const selectAllCheckbox = document.getElementById(`selectAllTasks_${stageId}`);
+        if (!selectAllCheckbox) return;
+        
+        const tasksList = document.getElementById(`stageTasksList_${stageId}`);
+        if (!tasksList) return;
+        
+        const allCheckboxes = tasksList.querySelectorAll('.stage-task-checkbox');
+        const checkedBoxes = tasksList.querySelectorAll('.stage-task-checkbox.checked');
+        
+        if (allCheckboxes.length === 0) {
+            selectAllCheckbox.classList.remove('checked');
+            return;
+        }
+        
+        // If all tasks are checked, check the select all checkbox
+        if (checkedBoxes.length === allCheckboxes.length) {
+            selectAllCheckbox.classList.add('checked');
+        } else {
+            selectAllCheckbox.classList.remove('checked');
+        }
+    }
+    
+    // Update tasks actions button based on selected tasks
+    function updateTasksActionsButton(stageId) {
+        const tasksList = document.getElementById(`stageTasksList_${stageId}`);
+        if (!tasksList) return;
+        
+        const checkedBoxes = tasksList.querySelectorAll('.stage-task-checkbox.checked');
+        const actionsBtn = document.getElementById(`btnActionsTasks_${stageId}`);
+        
+        if (actionsBtn) {
+            actionsBtn.disabled = checkedBoxes.length === 0;
+        }
+        
+        // Update select all checkbox state
+        updateSelectAllCheckbox(stageId);
+    }
+    
+    // Store DB order (persistent) and display order (temporary for sorting)
+    let taskDBOrder = {};  // DB order - persisted in database
+    let taskSortMode = {}; // Current sort mode: 'high', 'low', or null
+    
+    // Save DB order from current DOM state (used when loading tasks or after drag-and-drop)
+    function saveDBOrder(stageId) {
+        const tasksList = document.getElementById(`stageTasksList_${stageId}`);
+        if (!tasksList) return;
+        
+        const tasks = Array.from(tasksList.querySelectorAll('.stage-task-item'));
+        taskDBOrder[stageId] = tasks.map(task => parseInt(task.dataset.taskId));
+    }
+    
+    // Restore DB order (from database)
+    function restoreDBOrder(stageId) {
+        const tasksList = document.getElementById(`stageTasksList_${stageId}`);
+        if (!tasksList || !taskDBOrder[stageId]) return;
+        
+        const tasks = Array.from(tasksList.querySelectorAll('.stage-task-item'));
+        const orderMap = {};
+        tasks.forEach(task => {
+            orderMap[parseInt(task.dataset.taskId)] = task;
+        });
+        
+        // Re-append in DB order
+        taskDBOrder[stageId].forEach(taskId => {
+            if (orderMap[taskId]) {
+                tasksList.appendChild(orderMap[taskId]);
+            }
+        });
+    }
+    
+    // Sort tasks by priority (temporary display order, doesn't affect DB order)
+    function sortTasksByPriority(stageId, direction) {
+        const tasksList = document.getElementById(`stageTasksList_${stageId}`);
+        if (!tasksList) return;
+        
+        const tasks = Array.from(tasksList.querySelectorAll('.stage-task-item'));
+        
+        tasks.sort((a, b) => {
+            const priorityOrder = { 'urgent': 4, 'high': 3, 'medium': 2, 'low': 1 };
+            
+            // Get priority from data attribute or priority-tag class
+            const aTaskId = parseInt(a.dataset.taskId);
+            const bTaskId = parseInt(b.dataset.taskId);
+            
+            // Try to get priority from data attribute first (more reliable)
+            let aPriority = a.dataset.priority || 'medium';
+            let bPriority = b.dataset.priority || 'medium';
+            
+            // Fallback to reading from DOM if data attribute not set
+            if (!a.dataset.priority) {
+                const aPriorityTag = a.querySelector('.stage-task-priority-display .priority-tag');
+                if (aPriorityTag) {
+                    const aClass = Array.from(aPriorityTag.classList).find(c => c.startsWith('priority-'));
+                    if (aClass) {
+                        aPriority = aClass.replace('priority-', '');
+                    }
+                }
+            }
+            
+            if (!b.dataset.priority) {
+                const bPriorityTag = b.querySelector('.stage-task-priority-display .priority-tag');
+                if (bPriorityTag) {
+                    const bClass = Array.from(bPriorityTag.classList).find(c => c.startsWith('priority-'));
+                    if (bClass) {
+                        bPriority = bClass.replace('priority-', '');
+                    }
+                }
+            }
+            
+            const aValue = priorityOrder[aPriority] || 2;
+            const bValue = priorityOrder[bPriority] || 2;
+            
+            if (direction === 'high') {
+                return bValue - aValue; // High to Low
+            } else {
+                return aValue - bValue; // Low to High
+            }
+        });
+        
+        // Re-append sorted tasks
+        tasks.forEach(task => tasksList.appendChild(task));
+    }
+    
+    // Toggle priority sorting (high, low, or off)
+    window.togglePrioritySort = function(stageId, direction) {
+        const tasksList = document.getElementById(`stageTasksList_${stageId}`);
+        if (!tasksList) return;
+        
+        const btnHigh = document.getElementById(`btnSortHigh_${stageId}`);
+        const btnLow = document.getElementById(`btnSortLow_${stageId}`);
+        const currentMode = taskSortMode[stageId];
+        
+        // If clicking the same button, turn off sorting
+        if (currentMode === direction) {
+            // Restore DB order
+            restoreDBOrder(stageId);
+            taskSortMode[stageId] = null;
+            btnHigh?.classList.remove('active');
+            btnLow?.classList.remove('active');
+        } else {
+            // Save current DB order before applying sort (if not already saved)
+            if (!taskDBOrder[stageId]) {
+                saveDBOrder(stageId);
+            }
+            
+            // Apply new sort (temporary display order)
+            sortTasksByPriority(stageId, direction);
+            taskSortMode[stageId] = direction;
+            
+            // Update button states
+            btnHigh?.classList.toggle('active', direction === 'high');
+            btnLow?.classList.toggle('active', direction === 'low');
+        }
+        
+        // Reinitialize sortable after reordering
+        initTaskSortable(stageId);
+    }
+    
+    // Toggle tasks actions dropdown
+    window.toggleTasksActionsDropdown = function(stageId, event) {
+        event.stopPropagation();
+        const selectContainer = document.getElementById(`actionsSelect_${stageId}`);
+        if (selectContainer) {
+            selectContainer.classList.toggle('active');
+        }
+    }
+    
+    // Activate selected tasks
+    window.activateSelectedTasks = function(stageId) {
+        const tasksList = document.getElementById(`stageTasksList_${stageId}`);
+        if (!tasksList) return;
+        
+        const checkedBoxes = tasksList.querySelectorAll('.stage-task-checkbox.checked');
+        const taskIds = Array.from(checkedBoxes).map(cb => {
+            const taskItem = cb.closest('.stage-task-item');
+            return taskItem ? taskItem.dataset.taskId : null;
+        }).filter(id => id !== null);
+        
+        if (taskIds.length === 0) return;
+        
+        // Close dropdown
+        const selectContainer = document.getElementById(`actionsSelect_${stageId}`);
+        if (selectContainer) selectContainer.classList.remove('active');
+        
+        // Activate each task
+        taskIds.forEach(taskId => {
+            const taskItem = tasksList.querySelector(`[data-task-id="${taskId}"]`);
+            if (taskItem) {
+                const activateBtn = taskItem.querySelector('.stage-task-activate-btn');
+                if (activateBtn && activateBtn.dataset.isActive === 'false') {
+                    activateBtn.click();
+                }
+            }
+        });
+        
+        // Clear selections
+        checkedBoxes.forEach(cb => cb.classList.remove('checked'));
+        updateTasksActionsButton(stageId);
+    }
+    
+    // Delete selected tasks
+    window.deleteSelectedTasks = function(stageId) {
+        const tasksList = document.getElementById(`stageTasksList_${stageId}`);
+        if (!tasksList) return;
+        
+        const checkedBoxes = tasksList.querySelectorAll('.stage-task-checkbox.checked');
+        const taskIds = Array.from(checkedBoxes).map(cb => {
+            const taskItem = cb.closest('.stage-task-item');
+            return taskItem ? taskItem.dataset.taskId : null;
+        }).filter(id => id !== null);
+        
+        if (taskIds.length === 0) return;
+        
+        if (!confirm(`Delete ${taskIds.length} task(s)?`)) return;
+        
+        // Close dropdown
+        const selectContainer = document.getElementById(`actionsSelect_${stageId}`);
+        if (selectContainer) selectContainer.classList.remove('active');
+        
+        // Delete tasks
+        Promise.all(taskIds.map(taskId => 
+            fetch(`/dashboard/mentor/projects/${PROJECT_ID}/stages/${stageId}/tasks/${taskId}/delete/`, {
             method: 'POST',
             headers: {
                 'X-CSRFToken': '{{ csrf_token }}',
                 'Content-Type': 'application/json'
             }
         })
-        .then(response => response.json())
+        )).then(responses => {
+            // Check if all deletions were successful
+            const allSuccessful = responses.every(response => response.ok);
+            if (!allSuccessful) {
+                console.error('Some tasks failed to delete');
+                if (typeof showNotification !== 'undefined') {
+                    showNotification('Some tasks failed to delete', 'error');
+                }
+            }
+            
+            const tasksSection = document.getElementById(`stageTasks_${stageId}`);
+            if (!tasksSection) return;
+            
+            // Remove deleted tasks from DOM directly without reloading
+            taskIds.forEach(taskId => {
+                const taskElement = tasksList.querySelector(`[data-task-id="${taskId}"]`);
+                if (taskElement) {
+                    taskElement.remove();
+                }
+            });
+            
+            // Update task count
+            const tasksHeader = tasksSection.querySelector('.stage-tasks-title');
+            if (tasksHeader) {
+                const remainingTasks = tasksList.querySelectorAll('.stage-task-item').length;
+                if (remainingTasks === 0) {
+                    // Show empty state but keep header structure
+                    const tasksListEl = tasksSection.querySelector('.stage-tasks-list');
+                    if (tasksListEl) {
+                        tasksListEl.innerHTML = `
+                            <div class="stage-tasks-empty">
+                                <p style="margin: 0 0 8px 0; font-size: 0.875rem;">No tasks yet</p>
+                            </div>
+                        `;
+                    }
+                    tasksHeader.textContent = `Tasks (0)`;
+                } else {
+                    tasksHeader.textContent = `Tasks (${remainingTasks})`;
+                }
+            }
+            
+            // Update progress bar and stage counts
+            const stageRow = document.querySelector(`[data-stage-id="${stageId}"]`);
+            if (stageRow) {
+                const progressBar = stageRow.querySelector('.stage-progress-fill');
+                const progressLabel = stageRow.querySelector('.stage-progress-label span:last-child');
+                const tasksCount = stageRow.querySelector('.stage-tasks-count');
+                
+                if (progressBar && progressLabel && tasksCount) {
+                    const completedTasks = tasksList.querySelectorAll('.stage-task-item.completed').length;
+                    const totalTasks = tasksList.querySelectorAll('.stage-task-item').length;
+                    const newProgress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+                    
+                    progressBar.style.width = `${newProgress}%`;
+                    progressLabel.textContent = `${newProgress}%`;
+                    tasksCount.innerHTML = `<i class="fas fa-tasks"></i><span>${completedTasks}/${totalTasks}</span>`;
+                }
+            }
+            
+            // Update actions button state
+            updateTasksActionsButton(stageId);
+            
+            // Update DB order after deletion
+            saveDBOrder(stageId);
+            
+            // Reload stages to update overall progress (but keep stage expanded)
+            const wasExpanded = tasksSection.classList.contains('expanded');
+            if (wasExpanded) {
+                // Just reload tasks without collapsing
+                tasksSection.dataset.loaded = 'false';
+                loadStageTasks(stageId);
+            }
+            
+            // Update stages list without collapsing
+            const stagesList = document.getElementById('stagesList');
+            if (stagesList) {
+                // Update the stage row progress without full reload
+                // This is a lightweight update
+            }
+            
+            if (typeof showNotification !== 'undefined') {
+                showNotification(`${taskIds.length} task(s) deleted successfully`, 'success');
+            }
+        }).catch(error => {
+            console.error('Error deleting tasks:', error);
+            if (typeof showNotification !== 'undefined') {
+                showNotification('An error occurred while deleting tasks', 'error');
+            }
+        });
+    }
+    
+    // Update task order in database
+    function updateTaskOrderInDB(stageId) {
+        const tasksList = document.getElementById(`stageTasksList_${stageId}`);
+        if (!tasksList) return;
+        
+        const orders = [];
+        tasksList.querySelectorAll('.stage-task-item').forEach((row, index) => {
+            orders.push({
+                task_id: parseInt(row.dataset.taskId),
+                order: index + 1
+            });
+        });
+        
+        fetch(`/dashboard/mentor/projects/${PROJECT_ID}/stages/${stageId}/tasks/reorder/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({ orders: orders })
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.text().then(text => {
+                    throw new Error(`HTTP error! status: ${response.status}, body: ${text}`);
+                });
+            }
+            return response.json();
+        })
         .then(data => {
-            if (data.success) {
-                // Reload tasks for this stage
+            if (!data.success) {
+                console.error('Failed to reorder tasks:', data.error);
+                // Reload tasks to restore correct order
                 const tasksSection = document.getElementById(`stageTasks_${stageId}`);
                 if (tasksSection) {
                     tasksSection.dataset.loaded = 'false';
                     loadStageTasks(stageId);
                 }
-                // Reload stages to update progress
-                loadStages();
-                
-                // Update max-height after content changes
-                setTimeout(() => {
-                    setRoadmapContainerMaxHeight();
-                }, 100);
             } else {
-                if (typeof showNotification !== 'undefined') {
-                    showNotification(data.error || 'Failed to toggle task', 'error');
-                } else {
-                    alert(data.error || 'Failed to toggle task');
-                }
+                // Update original order after successful DB update
+                saveOriginalTaskOrder(stageId);
             }
         })
         .catch(error => {
-            console.error('Error toggling task:', error);
-            if (typeof showNotification !== 'undefined') {
-                showNotification('An error occurred', 'error');
-            } else {
-                alert('An error occurred');
+            console.error('Error reordering tasks:', error);
+            const tasksSection = document.getElementById(`stageTasks_${stageId}`);
+            if (tasksSection) {
+                tasksSection.dataset.loaded = 'false';
+                loadStageTasks(stageId);
+            }
+        });
+    }
+    
+    // Initialize SortableJS for tasks
+    let taskSortableInstances = {};
+    function initTaskSortable(stageId) {
+        const tasksList = document.getElementById(`stageTasksList_${stageId}`);
+        if (!tasksList) return;
+        
+        // Destroy existing instance if any
+        if (taskSortableInstances[stageId]) {
+            taskSortableInstances[stageId].destroy();
+        }
+        
+        // Wait for Sortable to be loaded
+        if (typeof Sortable === 'undefined') {
+            setTimeout(() => initTaskSortable(stageId), 100);
+            return;
+        }
+        
+        taskSortableInstances[stageId] = new Sortable(tasksList, {
+            animation: 150,
+            handle: '.stage-task-drag-handle',
+            ghostClass: 'sortable-ghost',
+            chosenClass: 'sortable-chosen',
+            dragClass: 'sortable-drag',
+            forceFallback: false,
+            fallbackOnBody: true,
+            swapThreshold: 0.65,
+            onStart: function(evt) {
+                evt.item.style.opacity = '0.5';
+            },
+            onEnd: function(evt) {
+                evt.item.style.opacity = '1';
+                if (evt.newIndex === evt.oldIndex) return;
+                
+                // Check if sort is active
+                const currentSortMode = taskSortMode[stageId];
+                const draggedTaskId = parseInt(evt.item.dataset.taskId);
+                
+                if (currentSortMode) {
+                    // Sort is active - need to restore DB order first to calculate correct new DB order
+                    restoreDBOrder(stageId);
+                    
+                    // Get the new position in DB order
+                    const tasks = Array.from(tasksList.querySelectorAll('.stage-task-item'));
+                    const newIndex = tasks.findIndex(t => parseInt(t.dataset.taskId) === draggedTaskId);
+                    
+                    // Calculate new DB order based on the drag position in DB order
+                    const currentDBOrder = [...taskDBOrder[stageId]];
+                    const oldIndexInDB = currentDBOrder.indexOf(draggedTaskId);
+                    
+                    // Remove from old position
+                    currentDBOrder.splice(oldIndexInDB, 1);
+                    // Insert at new position
+                    currentDBOrder.splice(newIndex, 0, draggedTaskId);
+                    
+                    // Update DB order in memory
+                    taskDBOrder[stageId] = currentDBOrder;
+                    
+                    // Restore DB order temporarily
+                    restoreDBOrder(stageId);
+                    
+                    // Send new order to backend
+                    const orders = [];
+                    currentDBOrder.forEach((taskId, index) => {
+                        orders.push({
+                            task_id: taskId,
+                            order: index + 1
+                        });
+                    });
+                    
+                    fetch(`/dashboard/mentor/projects/${PROJECT_ID}/stages/${stageId}/tasks/reorder/`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': '{{ csrf_token }}'
+                        },
+                        body: JSON.stringify({ orders: orders })
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            return response.text().then(text => {
+                                throw new Error(`HTTP error! status: ${response.status}, body: ${text}`);
+                            });
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (!data.success) {
+                            console.error('Failed to reorder tasks:', data.error);
+                            // Reload tasks to restore correct order
+                            const tasksSection = document.getElementById(`stageTasks_${stageId}`);
+                            if (tasksSection) {
+                                tasksSection.dataset.loaded = 'false';
+                                loadStageTasks(stageId);
+                            }
+                        } else {
+                            // Update DB order in memory after successful save
+                            saveDBOrder(stageId);
+                            // Reapply sort after DB update
+                            sortTasksByPriority(stageId, currentSortMode);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error reordering tasks:', error);
+                        const tasksSection = document.getElementById(`stageTasks_${stageId}`);
+                        if (tasksSection) {
+                            tasksSection.dataset.loaded = 'false';
+                            loadStageTasks(stageId);
+                        }
+                    });
+                } else {
+                    // No sort active - directly update DB order based on current DOM position
+                    const orders = [];
+                    tasksList.querySelectorAll('.stage-task-item').forEach((row, index) => {
+                        orders.push({
+                            task_id: parseInt(row.dataset.taskId),
+                            order: index + 1
+                        });
+                    });
+                    
+                    // Update DB order in memory
+                    taskDBOrder[stageId] = orders.map(o => o.task_id);
+                    
+                    fetch(`/dashboard/mentor/projects/${PROJECT_ID}/stages/${stageId}/tasks/reorder/`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': '{{ csrf_token }}'
+                        },
+                        body: JSON.stringify({ orders: orders })
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            return response.text().then(text => {
+                                throw new Error(`HTTP error! status: ${response.status}, body: ${text}`);
+                            });
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (!data.success) {
+                            console.error('Failed to reorder tasks:', data.error);
+                            // Reload tasks to restore correct order
+                            const tasksSection = document.getElementById(`stageTasks_${stageId}`);
+                            if (tasksSection) {
+                                tasksSection.dataset.loaded = 'false';
+                                loadStageTasks(stageId);
+                            }
+                        } else {
+                            // Update DB order in memory after successful save
+                            saveDBOrder(stageId);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error reordering tasks:', error);
+                        const tasksSection = document.getElementById(`stageTasks_${stageId}`);
+                        if (tasksSection) {
+                            tasksSection.dataset.loaded = 'false';
+                            loadStageTasks(stageId);
+                        }
+                    });
+                }
             }
         });
     }
@@ -4949,8 +5968,36 @@
         const description = document.getElementById(`stageTaskDescription_${stageId}`);
         const descriptionText = description ? description.value.trim() : '';
         const priorityTags = document.getElementById(`stageTaskPriorityTags_${stageId}`);
-        const selectedPriorityTag = priorityTags ? priorityTags.querySelector('.priority-tag.selected') : null;
-        const priority = selectedPriorityTag ? selectedPriorityTag.dataset.priority : 'medium';
+        let priority = 'medium'; // Default priority
+        
+        // Get priority from selected tag (works even if tags are hidden)
+        if (priorityTags) {
+            const selectedPriorityTag = priorityTags.querySelector('.priority-tag.selected');
+            if (selectedPriorityTag && selectedPriorityTag.dataset.priority) {
+                priority = selectedPriorityTag.dataset.priority;
+            } else {
+                // If no tag is selected, find and select medium by default
+                const mediumTag = priorityTags.querySelector('[data-priority="medium"]');
+                if (mediumTag) {
+                    // Remove selected from all tags first
+                    priorityTags.querySelectorAll('.priority-tag').forEach(tag => {
+                        tag.classList.remove('selected');
+                    });
+                    mediumTag.classList.add('selected');
+                    priority = 'medium';
+                }
+            }
+        }
+        
+        // Validate priority value (must be one of the valid choices)
+        const validPriorities = ['low', 'medium', 'high', 'urgent'];
+        if (!validPriorities.includes(priority)) {
+            console.warn(`Invalid priority "${priority}", defaulting to "medium"`);
+            priority = 'medium';
+        }
+        
+        console.log('Creating task with priority:', priority); // Debug log
+        
         const addBtn = document.getElementById(`btnAddTask_${stageId}`);
         
         // Disable button and inputs while creating
@@ -4975,31 +6022,39 @@
                 priority: priority
             })
         })
-        .then(response => response.json())
-        .then(data => {
-            // Re-enable inputs and clear them
-            input.disabled = false;
-            input.value = '';
-            if (addBtn) addBtn.disabled = true;
-            const aiBtn = document.getElementById(`btnAiGenerate_${stageId}`);
-            if (aiBtn) aiBtn.disabled = false;
-            if (description) {
-                description.disabled = false;
-                description.value = '';
-                description.classList.remove('show');
-            }
-            if (priorityTags) {
-                priorityTags.classList.remove('show');
-                priorityTags.querySelectorAll('.priority-tag').forEach(tag => {
-                    tag.classList.remove('selected');
-                    tag.style.pointerEvents = '';
+        .then(response => {
+            if (!response.ok) {
+                return response.text().then(text => {
+                    throw new Error(`HTTP error! status: ${response.status}, body: ${text}`);
                 });
-                // Reset to medium priority
-                const mediumTag = priorityTags.querySelector('[data-priority="medium"]');
-                if (mediumTag) mediumTag.classList.add('selected');
             }
-            
+            return response.json();
+        })
+        .then(data => {
             if (data.success && data.task_id) {
+                // Clear inputs only after successful creation
+                input.value = '';
+                if (description) description.value = '';
+                
+                // Re-enable inputs
+                input.disabled = false;
+                if (addBtn) addBtn.disabled = true;
+                const aiBtn = document.getElementById(`btnAiGenerate_${stageId}`);
+                if (aiBtn) aiBtn.disabled = false;
+                if (description) {
+                    description.disabled = false;
+                    description.classList.remove('show');
+                }
+                if (priorityTags) {
+                    priorityTags.classList.remove('show');
+                    priorityTags.querySelectorAll('.priority-tag').forEach(tag => {
+                        tag.classList.remove('selected');
+                        tag.style.pointerEvents = '';
+                    });
+                    // Reset to medium priority
+                    const mediumTag = priorityTags.querySelector('[data-priority="medium"]');
+                    if (mediumTag) mediumTag.classList.add('selected');
+                }
                 const tasksSection = document.getElementById(`stageTasks_${stageId}`);
                 const tasksList = tasksSection ? tasksSection.querySelector('.stage-tasks-list') : null;
                 const tasksHeader = tasksSection ? tasksSection.querySelector('.stage-tasks-title') : null;
@@ -5014,7 +6069,10 @@
                 if (!tasksList || !tasksHeader) {
                     tasksSection.innerHTML = `
                         <div class="stage-tasks-header">
-                            <div class="stage-tasks-title">Tasks (1)</div>
+                            <div class="stage-tasks-title">
+                                <div class="stage-tasks-select-all-checkbox" id="selectAllTasks_${stageId}" onclick="toggleSelectAllTasks(${stageId}, event)"></div>
+                                Tasks (1)
+                            </div>
                         </div>
                         <div class="stage-tasks-list"></div>
                     `;
@@ -5026,10 +6084,40 @@
                 
                 if (currentTasksList && currentTasksHeader) {
                     // Create new task element using the title from input
+                    const priorityLabel = priority.charAt(0).toUpperCase() + priority.slice(1);
                     const newTaskHtml = `
-                        <div class="stage-task-item" data-task-id="${data.task_id}" style="opacity: 0; transform: translateY(-10px);">
-                            <div class="stage-task-checkbox" onclick="toggleTaskComplete(${data.task_id}, ${stageId}, event)"></div>
-                            <div class="stage-task-text">${escapeHtml(title)}</div>
+                        <div class="stage-task-item" data-task-id="${data.task_id}" data-priority="${priority}" style="opacity: 0; transform: translateY(-10px);">
+                            <div class="stage-task-drag-handle">
+                                <i class="fas fa-grip-vertical"></i>
+                            </div>
+                            <div class="stage-task-checkbox-container">
+                                <div class="stage-task-checkbox" onclick="toggleTaskSelection(${data.task_id}, ${stageId}, event)"></div>
+                            </div>
+                            <div class="stage-task-content">
+                                <div class="stage-task-title">${escapeHtml(title)}</div>
+                                ${descriptionText ? `<div class="stage-task-description-text">${escapeHtml(descriptionText)}</div>` : ''}
+                            </div>
+                            <div class="stage-task-priority-display">
+                                <span class="priority-tag priority-${priority}">${priorityLabel}</span>
+                            </div>
+                            <div class="stage-task-status-display">
+                                <span class="status-tag status-todo">To Do</span>
+                            </div>
+                            <div class="stage-task-activate">
+                                <button class="stage-task-activate-btn" 
+                                        data-task-id="${data.task_id}"
+                                        data-is-active="false"
+                                        onmouseover="updateActivateButton(this, true)"
+                                        onmouseout="updateActivateButton(this, false)"
+                                        onclick="toggleTaskActivation(${data.task_id}, ${stageId}, event)">
+                                    Not Active
+                                </button>
+                            </div>
+                            <div class="stage-task-actions">
+                                <button class="stage-task-dropdown-trigger" onclick="toggleTaskDropdown(${data.task_id}, event)">
+                                    <i class="fas fa-ellipsis-v"></i>
+                                </button>
+                            </div>
                         </div>
                     `;
                     
@@ -5051,8 +6139,8 @@
                     }
                     
                     // Update max-height smoothly
-                    setTimeout(() => {
-                        setRoadmapContainerMaxHeight();
+                setTimeout(() => {
+                    setRoadmapContainerMaxHeight();
                     }, 50);
                     
                     // Update progress bar directly without reloading stages
@@ -5086,15 +6174,25 @@
                             }
                         }
                     }
-                } else {
-                    // Fallback: reload tasks
-                    loadStageTasks(stageId);
+            } else {
+                    // Fallback: reload tasks from server to ensure consistency
+                    const tasksSection = document.getElementById(`stageTasks_${stageId}`);
+                    if (tasksSection) {
+                        tasksSection.dataset.loaded = 'false';
+                        loadStageTasks(stageId);
+                    }
                 }
+                
+                // Save DB order after task creation
+                saveDBOrder(stageId);
+                
+                // Initialize sortable for the new task
+                initTaskSortable(stageId);
                 
                 if (typeof showNotification !== 'undefined') {
                     showNotification('Task created successfully', 'success');
                 }
-            } else {
+                } else {
                 if (typeof showNotification !== 'undefined') {
                     showNotification(data.error || 'Failed to create task', 'error');
                 } else {
@@ -5228,7 +6326,7 @@
                     aiBtn.innerHTML = originalContent;
                     
                     if (tasksData && tasksData.success && tasksData.tasks) {
-                        const tasksSection = document.getElementById(`stageTasks_${stageId}`);
+                const tasksSection = document.getElementById(`stageTasks_${stageId}`);
                         if (!tasksSection) return;
                         
                         // Ensure section is expanded
@@ -5256,9 +6354,33 @@
                             // Create tasks header and list if they don't exist
                             tasksSection.innerHTML = `
                                 <div class="stage-tasks-header">
-                                    <div class="stage-tasks-title">Tasks (${tasksData.tasks.length})</div>
+                                    <div class="stage-tasks-title">
+                                        <div class="stage-tasks-select-all-checkbox" id="selectAllTasks_${stageId}" onclick="toggleSelectAllTasks(${stageId}, event)"></div>
+                                        Tasks (${tasksData.tasks.length})
+                                    </div>
+                                    <div class="stage-tasks-header-actions">
+                                        <button class="btn-sort-tasks" id="btnSortHigh_${stageId}" onclick="togglePrioritySort(${stageId}, 'high')" title="Sort Priority High to Low">
+                                            <i class="fas fa-sort-amount-down"></i>
+                                        </button>
+                                        <button class="btn-sort-tasks" id="btnSortLow_${stageId}" onclick="togglePrioritySort(${stageId}, 'low')" title="Sort Priority Low to High">
+                                            <i class="fas fa-sort-amount-up"></i>
+                                        </button>
+                                        <div class="stage-tasks-actions-select" id="actionsSelect_${stageId}">
+                                            <button class="custom-select-trigger-actions" id="btnActionsTasks_${stageId}" onclick="toggleTasksActionsDropdown(${stageId}, event)" disabled>
+                                                Actions <i class="fas fa-chevron-down"></i>
+                                            </button>
+                                            <div class="custom-select-menu-actions" id="tasksActionsMenu_${stageId}">
+                                                <button class="custom-select-item-actions first-item" onclick="activateSelectedTasks(${stageId})">
+                                                    <i class="fas fa-check-circle"></i> <span>Activate</span>
+                                                </button>
+                                                <button class="custom-select-item-actions last-item" onclick="deleteSelectedTasks(${stageId})">
+                                                    <i class="fas fa-trash"></i> <span>Delete</span>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div class="stage-tasks-list"></div>
+                                <div class="stage-tasks-list" id="stageTasksList_${stageId}"></div>
                             `;
                             tasksList = tasksSection.querySelector('.stage-tasks-list');
                             tasksHeader = tasksSection.querySelector('.stage-tasks-title');
@@ -5273,10 +6395,45 @@
                         // Add each new task with animation
                         reversedTasks.forEach((task, index) => {
                             const completedClass = task.completed ? 'completed' : '';
+                            const isActive = task.assigned === true;
+                            const priorityClass = `priority-${task.priority || 'medium'}`;
+                            const statusClass = `status-${task.status || 'todo'}`;
+                            const priorityLabel = (task.priority || 'medium').charAt(0).toUpperCase() + (task.priority || 'medium').slice(1);
+                            const statusLabel = (task.status || 'todo').replace('_', ' ').split(' ').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' ');
+                            
                             const taskHtml = `
-                                <div class="stage-task-item ${completedClass}" data-task-id="${task.id}" style="opacity: 0; transform: translateY(-10px);">
-                                    <div class="stage-task-checkbox" onclick="toggleTaskComplete(${task.id}, ${stageId}, event)"></div>
-                                    <div class="stage-task-text">${escapeHtml(task.title)}</div>
+                                <div class="stage-task-item ${completedClass}" data-task-id="${task.id}" data-priority="${task.priority || 'medium'}" style="opacity: 0; transform: translateY(-10px);">
+                                    <div class="stage-task-drag-handle">
+                                        <i class="fas fa-grip-vertical"></i>
+                                    </div>
+                                    <div class="stage-task-checkbox-container">
+                                        <div class="stage-task-checkbox" onclick="toggleTaskSelection(${task.id}, ${stageId}, event)"></div>
+                                    </div>
+                                    <div class="stage-task-content">
+                                        <div class="stage-task-title">${escapeHtml(task.title)}</div>
+                                        ${task.description ? `<div class="stage-task-description-text">${escapeHtml(task.description)}</div>` : ''}
+                                    </div>
+                                    <div class="stage-task-priority-display">
+                                        <span class="priority-tag ${priorityClass}">${priorityLabel}</span>
+                                    </div>
+                                    <div class="stage-task-status-display">
+                                        <span class="status-tag ${statusClass}">${statusLabel}</span>
+                                    </div>
+                                    <div class="stage-task-activate">
+                                        <button class="stage-task-activate-btn ${isActive ? 'active' : ''}" 
+                                                data-task-id="${task.id}"
+                                                data-is-active="${isActive}"
+                                                onmouseover="updateActivateButton(this, ${!isActive})"
+                                                onmouseout="updateActivateButton(this, ${isActive})"
+                                                onclick="toggleTaskActivation(${task.id}, ${stageId}, event)">
+                                            ${isActive ? 'Active' : 'Not Active'}
+                                        </button>
+                                    </div>
+                                    <div class="stage-task-actions">
+                                        <button class="stage-task-dropdown-trigger" onclick="toggleTaskDropdown(${task.id}, event)">
+                                            <i class="fas fa-ellipsis-v"></i>
+                                        </button>
+                                    </div>
                                 </div>
                             `;
                             
@@ -5286,7 +6443,7 @@
                             // Animate in
                             const taskElement = tasksList.querySelector(`[data-task-id="${task.id}"]`);
                             if (taskElement) {
-                                setTimeout(() => {
+                setTimeout(() => {
                                     taskElement.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
                                     taskElement.style.opacity = '1';
                                     taskElement.style.transform = 'translateY(0)';
@@ -5321,16 +6478,19 @@
                         // Mark as loaded
                         tasksSection.dataset.loaded = 'true';
                         
-                        // Update overlay and max-height
-                        updateTasksOverlay();
+                        // Initialize sortable for tasks
+                        initTaskSortable(stageId);
+                    
+                    // Update overlay and max-height
+                    updateTasksOverlay();
                         setTimeout(() => {
                             setRoadmapContainerMaxHeight();
-                        }, 100);
-                        
-                        if (typeof showNotification !== 'undefined') {
+                }, 100);
+                
+                if (typeof showNotification !== 'undefined') {
                             showNotification(`${newTasks.length} tasks generated successfully`, 'success');
                         }
-                    } else {
+                } else {
                         // Re-enable button even on error
                         aiBtn.disabled = false;
                         aiBtn.innerHTML = originalContent;
@@ -5374,10 +6534,86 @@
     
     // Helper function to escape HTML
     function escapeHtml(text) {
+        if (!text) return '';
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
     }
+    
+    // Update activate button text on hover
+    window.updateActivateButton = function(button, showActivate) {
+        const isActive = button.dataset.isActive === 'true';
+        if (showActivate && !isActive) {
+            button.textContent = 'Activate';
+        } else if (!showActivate && !isActive) {
+            button.textContent = 'Not Active';
+        } else if (showActivate && isActive) {
+            button.textContent = 'Deactivate';
+        } else {
+            button.textContent = 'Active';
+        }
+    };
+    
+    // Toggle task activation (assign to client active backlog)
+    window.toggleTaskActivation = function(taskId, stageId, event) {
+        event.stopPropagation();
+        
+        const button = event.target.closest('.stage-task-activate-btn');
+        if (!button) return;
+        
+        const isActive = button.dataset.isActive === 'true';
+        const newState = !isActive;
+        
+        // Disable button during request
+        button.disabled = true;
+        const originalText = button.textContent;
+        
+        fetch(`/dashboard/mentor/projects/${PROJECT_ID}/stages/${stageId}/tasks/${taskId}/toggle-activate/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                activate: newState
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            button.disabled = false;
+            if (data.success) {
+                button.dataset.isActive = newState.toString();
+                button.textContent = newState ? 'Active' : 'Not Active';
+                if (newState) {
+                    button.classList.add('active');
+                } else {
+                    button.classList.remove('active');
+                }
+            } else {
+                if (typeof showNotification !== 'undefined') {
+                    showNotification(data.error || 'Failed to update task activation', 'error');
+                } else {
+                    alert(data.error || 'Failed to update task activation');
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error toggling task activation:', error);
+            button.disabled = false;
+            if (typeof showNotification !== 'undefined') {
+                showNotification('An error occurred', 'error');
+            } else {
+                alert('An error occurred');
+            }
+        });
+    };
+    
+    // Toggle task dropdown menu
+    window.toggleTaskDropdown = function(taskId, event) {
+        event.stopPropagation();
+        // TODO: Implement task dropdown menu
+        console.log('Toggle dropdown for task:', taskId);
+    };
 
     // Toggle stage dropdown menu
     window.toggleStageDropdown = function(stageId, event) {
@@ -5452,7 +6688,12 @@
             return;
         }
         
-        // Close all dropdowns
+        // Don't close if clicking inside tasks actions dropdown
+        if (event.target.closest('.stage-tasks-actions-select')) {
+            return;
+        }
+        
+        // Close all stage dropdowns
         document.querySelectorAll('.stage-dropdown-container').forEach(dropdown => {
             dropdown.classList.remove('active');
             const menu = dropdown.querySelector('.stage-dropdown-menu');
@@ -5464,6 +6705,11 @@
             if (rowActions) {
                 rowActions.classList.remove('has-active-dropdown');
             }
+        });
+        
+        // Close all tasks actions menus
+        document.querySelectorAll('.tasks-actions-menu').forEach(menu => {
+            menu.classList.remove('show');
         });
     });
 
@@ -5967,6 +7213,10 @@
             })
             .then(response => response.json())
             .then(data => {
+                // Always reset button state first
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+                
                 if (data.success) {
                     // Clear textarea
                     textarea.value = '';
@@ -6007,8 +7257,6 @@
                     } else {
                         alert(data.error || 'Failed to add note');
                     }
-                    submitBtn.disabled = false;
-                    submitBtn.innerHTML = originalText;
                 }
             })
             .catch(error => {

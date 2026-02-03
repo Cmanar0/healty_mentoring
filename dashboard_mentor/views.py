@@ -6741,6 +6741,12 @@ def create_task(request, project_id, stage_id):
             return JsonResponse({'success': False, 'error': 'Task title is required'}, status=400)
         
         description = data.get('description', '').strip()
+        priority = data.get('priority', 'medium')
+        
+        # Validate priority against Task model choices
+        valid_priorities = ['low', 'medium', 'high', 'urgent']
+        if priority not in valid_priorities:
+            priority = 'medium'  # Fallback to default if invalid
         
         # Calculate order for the new task
         last_task = stage.backlog_tasks.order_by('-order').first()
@@ -6754,6 +6760,7 @@ def create_task(request, project_id, stage_id):
             stage=stage,
             title=title,
             description=description,
+            priority=priority,
             order=next_order,
             created_by=request.user,
             author_name=f"{request.user.profile.first_name} {request.user.profile.last_name}",
@@ -7011,6 +7018,9 @@ def get_tasks_api(request, project_id, stage_id):
                 'title': task.title,
                 'description': task.description or '',
                 'completed': task.completed,
+                'priority': task.priority,
+                'status': task.status,
+                'assigned': task.assigned,
                 'created_at': task.created_at.strftime('%Y-%m-%d %H:%M:%S'),
                 'order': float(task.order),
             })
