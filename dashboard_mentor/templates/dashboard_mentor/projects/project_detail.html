@@ -1044,9 +1044,53 @@
     
     .stage-row-content {
         display: flex;
-        align-items: stretch;
+        flex-direction: column;
         gap: 0;
         border-radius: 12px 12px 0 0;
+    }
+    
+    .stage-content-wrapper {
+        display: flex;
+        align-items: stretch;
+        gap: 0;
+    }
+    
+    .stage-task-input-section {
+        width: 100%;
+        background: white;
+        border-top: 1px solid #f3f4f6;
+    }
+    
+    .stage-task-input-container {
+        display: flex;
+        gap: 8px;
+        padding: 12px 24px;
+        align-items: center;
+    }
+    
+    .stage-task-input {
+        flex: 1;
+        padding: 8px 12px;
+        border: 1px solid #e5e7eb;
+        border-radius: 6px;
+        font-size: 0.875rem;
+        transition: border-color 0.2s;
+        margin-bottom: 0;
+        height: 42px;
+    }
+    
+    .stage-task-input:focus {
+        outline: none;
+        border-color: #3b82f6;
+    }
+    
+    .stage-task-input::placeholder {
+        color: #9ca3af;
+    }
+    
+    .btn-add-task:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
     }
     
     .stage-row .stage-tasks-section.expanded {
@@ -1304,6 +1348,17 @@
         background: white;
         border: 1px solid #e2e8f0;
         border-radius: 8px;
+    }
+    
+    @keyframes slideInTask {
+        from {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
     }
     
     .stage-task-checkbox {
@@ -3728,61 +3783,101 @@
                 dateRangeHtml = `<div class="stage-meta"><i class="far fa-calendar-alt" style="margin-right: 4px;"></i> Ends ${endDateDisplay}</div>`;
             }
             
+            // Build the main content wrapper
+            const mainContentHtml = `
+                <div class="stage-content-wrapper">
+                    <div class="stage-drag-section">
+                        <div class="drag-grip">
+                            <i class="fas fa-grip-vertical"></i>
+                        </div>
+                    </div>
+                    <div class="stage-main-wrapper" onclick="toggleStageTasks(${stage.id}, event);">
+                        <div class="stage-main">
+                            <div class="stage-title-meta">
+                                <div class="stage-title">
+                                    ${statusTag}
+                                    <span ${titleClass}>${titleText}</span>
+                                </div>
+                                ${dateRangeHtml}
+                            </div>
+                        </div>
+                        <div class="stage-progress-section">
+                            <div class="stage-progress-bar-container">
+                                <div class="stage-progress-label">
+                                    <span>Progress</span>
+                                    <span style="font-weight: 500;">${progress}%</span>
+                                </div>
+                                <div class="stage-progress-bar">
+                                    <div class="stage-progress-fill" style="width: ${progress}%; background: ${progressColor};"></div>
+                                </div>
+                            </div>
+                            <div class="stage-tasks-count ${totalTasks === 0 ? 'no-tasks' : ''}">
+                                ${totalTasks === 0 
+                                    ? '<span style="color: #93c5fd;">no tasks yet</span>'
+                                    : `<i class="fas fa-tasks"></i><span>${completedTasks}/${totalTasks}</span>`
+                                }
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row-actions-section" onclick="event.stopPropagation();">
+                        <div class="row-actions" id="rowActions_${stage.id}">
+                            <div class="stage-dropdown-container" id="stageDropdown_${stage.id}">
+                                <button class="stage-dropdown-trigger" onclick="toggleStageDropdown(${stage.id}, event)">
+                                    <i class="fas fa-ellipsis-v"></i>
+                                </button>
+                                <div class="stage-dropdown-menu" onclick="event.stopPropagation();">
+                                    <button class="stage-dropdown-item first-item" onclick="editStage(${stage.id}); event.stopPropagation();">
+                                        <i class="fas fa-edit"></i>
+                                        <span>Edit</span>
+                                    </button>
+                                    <button class="stage-dropdown-item delete-item last-item" onclick="deleteStage(${stage.id}); event.stopPropagation();">
+                                        <i class="fas fa-trash"></i>
+                                        <span>Delete</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Build task input section (shown for all stages when expanded)
+            const taskInputSectionHtml = `
+                <div class="stage-task-input-section" id="stageButtons_${stage.id}" style="display: none;">
+                    <div class="stage-task-input-container">
+                        <input 
+                            type="text" 
+                            class="stage-task-input" 
+                            id="stageTaskInput_${stage.id}"
+                            placeholder="Enter task name..."
+                            onkeyup="handleTaskInputChange(${stage.id}, event)"
+                            onkeydown="handleTaskInputKeydown(${stage.id}, event)"
+                        />
+                        <button 
+                            class="btn-create-task btn-add-task" 
+                            id="btnAddTask_${stage.id}"
+                            onclick="createTaskFromInput(${stage.id})" 
+                            disabled
+                            style="padding: 8px 16px; font-size: 0.875rem; white-space: nowrap;"
+                        >
+                            <i class="fas fa-plus"></i> Add Task
+                        </button>
+                        <button 
+                            class="btn-ai-generate" 
+                            onclick="generateTasksAI(${stage.id})" 
+                            style="padding: 10px 36px; font-size: 0.875rem; white-space: nowrap;"
+                        >
+                            <i class="fas fa-magic"></i> Optimize Tasks with AI
+                        </button>
+                    </div>
+                </div>
+            `;
+            
             return `
                 <div class="${rowClass}" data-stage-id="${stage.id}">
                     <div class="stage-row-content">
-                        <div class="stage-drag-section">
-                            <div class="drag-grip">
-                                <i class="fas fa-grip-vertical"></i>
-                            </div>
-                        </div>
-                        <div class="stage-main-wrapper" onclick="toggleStageTasks(${stage.id}, event);">
-                            <div class="stage-main">
-                                <div class="stage-title-meta">
-                                    <div class="stage-title">
-                                        ${statusTag}
-                                        <span ${titleClass}>${titleText}</span>
-                                    </div>
-                                    ${dateRangeHtml}
-                                </div>
-                            </div>
-                            <div class="stage-progress-section">
-                                <div class="stage-progress-bar-container">
-                                    <div class="stage-progress-label">
-                                        <span>Progress</span>
-                                        <span style="font-weight: 500;">${progress}%</span>
-                                    </div>
-                                    <div class="stage-progress-bar">
-                                        <div class="stage-progress-fill" style="width: ${progress}%; background: ${progressColor};"></div>
-                                    </div>
-                                </div>
-                                <div class="stage-tasks-count ${totalTasks === 0 ? 'no-tasks' : ''}">
-                                    ${totalTasks === 0 
-                                        ? '<span style="color: #93c5fd;">no tasks yet</span>'
-                                        : `<i class="fas fa-tasks"></i><span>${completedTasks}/${totalTasks}</span>`
-                                    }
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row-actions-section" onclick="event.stopPropagation();">
-                            <div class="row-actions" id="rowActions_${stage.id}">
-                                <div class="stage-dropdown-container" id="stageDropdown_${stage.id}">
-                                    <button class="stage-dropdown-trigger" onclick="toggleStageDropdown(${stage.id}, event)">
-                                        <i class="fas fa-ellipsis-v"></i>
-                                    </button>
-                                    <div class="stage-dropdown-menu" onclick="event.stopPropagation();">
-                                        <button class="stage-dropdown-item first-item" onclick="editStage(${stage.id}); event.stopPropagation();">
-                                            <i class="fas fa-edit"></i>
-                                            <span>Edit</span>
-                                        </button>
-                                        <button class="stage-dropdown-item delete-item last-item" onclick="deleteStage(${stage.id}); event.stopPropagation();">
-                                            <i class="fas fa-trash"></i>
-                                            <span>Delete</span>
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                        ${mainContentHtml}
+                        ${taskInputSectionHtml}
                     </div>
                     <div class="stage-tasks-section" id="stageTasks_${stage.id}" data-stage-id="${stage.id}">
                         <!-- Tasks will be loaded here -->
@@ -4310,6 +4405,11 @@
         if (isExpanded) {
             // Collapse
             tasksSection.classList.remove('expanded');
+            // Hide buttons section
+            const buttonsSection = document.getElementById(`stageButtons_${stageId}`);
+            if (buttonsSection) {
+                buttonsSection.style.display = 'none';
+            }
             // Update overlay state
             updateTasksOverlay();
             // Update max-height after collapse animation completes (0.1s transition)
@@ -4327,6 +4427,17 @@
             const needsLoading = !tasksSection.dataset.loaded;
             if (needsLoading) {
                 loadStageTasks(stageId);
+            } else {
+                // Show task input section for all stages (with or without tasks)
+                const buttonsSection = document.getElementById(`stageButtons_${stageId}`);
+                if (buttonsSection) {
+                    buttonsSection.style.display = 'block';
+                    // Focus the input field
+                    const taskInput = document.getElementById(`stageTaskInput_${stageId}`);
+                    if (taskInput) {
+                        setTimeout(() => taskInput.focus(), 100);
+                    }
+                }
             }
             // Update overlay state
             updateTasksOverlay();
@@ -4393,18 +4504,21 @@
         const tasksSection = document.getElementById(`stageTasks_${stageId}`);
         if (!tasksSection) return;
         
+        // Show task input section in stage-row-content (for all stages, with or without tasks)
+        const buttonsSection = document.getElementById(`stageButtons_${stageId}`);
+        if (buttonsSection) {
+            buttonsSection.style.display = 'block';
+            // Focus the input field
+            const taskInput = document.getElementById(`stageTaskInput_${stageId}`);
+            if (taskInput) {
+                setTimeout(() => taskInput.focus(), 100);
+            }
+        }
+        
         if (tasks.length === 0) {
             tasksSection.innerHTML = `
                 <div class="stage-tasks-empty">
                     <p style="margin: 0 0 8px 0; font-size: 0.875rem;">No tasks yet</p>
-                    <div class="stage-tasks-empty-actions">
-                        <button class="btn-ai-generate" onclick="generateTasksAI(${stageId})">
-                            <i class="fas fa-wand-magic-sparkles"></i> Generate Tasks with AI
-                        </button>
-                        <button class="btn-create-task" onclick="createTask(${stageId})">
-                            <i class="fas fa-plus"></i> Create Task
-                        </button>
-                    </div>
                 </div>
             `;
             return;
@@ -4413,19 +4527,13 @@
         let html = `
             <div class="stage-tasks-header">
                 <div class="stage-tasks-title">Tasks (${tasks.length})</div>
-                <div style="display: flex; gap: 8px;">
-                    <button class="btn-ai-generate" onclick="generateTasksAI(${stageId})" style="padding: 10px 36px; font-size: 0.875rem;">
-                        <i class="fas fa-magic"></i> Optimize Tasks with AI
-                    </button>
-                    <button class="btn-create-task" onclick="createTask(${stageId})" style="padding: 6px 12px; font-size: 0.8rem;">
-                        <i class="fas fa-plus"></i> Add Task
-                    </button>
-                </div>
             </div>
             <div class="stage-tasks-list">
         `;
         
-        tasks.forEach(task => {
+        // Reverse tasks array to show newest tasks at the top
+        const reversedTasks = [...tasks].reverse();
+        reversedTasks.forEach(task => {
             const completedClass = task.completed ? 'completed' : '';
             html += `
                 <div class="stage-task-item ${completedClass}" data-task-id="${task.id}">
@@ -4493,6 +4601,177 @@
     }
     
     // Create task
+    // Handle task input change - enable/disable Add Task button
+    window.handleTaskInputChange = function(stageId, event) {
+        const input = document.getElementById(`stageTaskInput_${stageId}`);
+        const addBtn = document.getElementById(`btnAddTask_${stageId}`);
+        
+        if (input && addBtn) {
+            const hasText = input.value.trim().length > 0;
+            addBtn.disabled = !hasText;
+        }
+    };
+    
+    // Handle Enter key press in task input
+    window.handleTaskInputKeydown = function(stageId, event) {
+        if (event.key === 'Enter' || event.keyCode === 13) {
+            event.preventDefault();
+            const addBtn = document.getElementById(`btnAddTask_${stageId}`);
+            if (addBtn && !addBtn.disabled) {
+                createTaskFromInput(stageId);
+            }
+        }
+    };
+    
+    // Create task from input field
+    window.createTaskFromInput = function(stageId) {
+        const input = document.getElementById(`stageTaskInput_${stageId}`);
+        if (!input) return;
+        
+        const title = input.value.trim();
+        if (!title) {
+            return;
+        }
+        
+        // Disable button and input while creating
+        const addBtn = document.getElementById(`btnAddTask_${stageId}`);
+        if (addBtn) addBtn.disabled = true;
+        input.disabled = true;
+        
+        fetch(`/dashboard/mentor/projects/${PROJECT_ID}/stages/${stageId}/tasks/create/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                title: title,
+                description: ''
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            // Re-enable input and clear it
+            input.disabled = false;
+            input.value = '';
+            if (addBtn) addBtn.disabled = true;
+            
+            if (data.success && data.task_id) {
+                const tasksSection = document.getElementById(`stageTasks_${stageId}`);
+                const tasksList = tasksSection ? tasksSection.querySelector('.stage-tasks-list') : null;
+                const tasksHeader = tasksSection ? tasksSection.querySelector('.stage-tasks-title') : null;
+                const isEmptyState = tasksSection ? tasksSection.querySelector('.stage-tasks-empty') : null;
+                
+                // Remove empty state if it exists
+                if (isEmptyState) {
+                    isEmptyState.remove();
+                }
+                
+                // Create tasks header and list if they don't exist
+                if (!tasksList || !tasksHeader) {
+                    tasksSection.innerHTML = `
+                        <div class="stage-tasks-header">
+                            <div class="stage-tasks-title">Tasks (1)</div>
+                        </div>
+                        <div class="stage-tasks-list"></div>
+                    `;
+                }
+                
+                // Get the tasks list (might have been just created)
+                const currentTasksList = tasksSection.querySelector('.stage-tasks-list');
+                const currentTasksHeader = tasksSection.querySelector('.stage-tasks-title');
+                
+                if (currentTasksList && currentTasksHeader) {
+                    // Create new task element using the title from input
+                    const newTaskHtml = `
+                        <div class="stage-task-item" data-task-id="${data.task_id}" style="opacity: 0; transform: translateY(-10px);">
+                            <div class="stage-task-checkbox" onclick="toggleTaskComplete(${data.task_id}, ${stageId}, event)"></div>
+                            <div class="stage-task-text">${escapeHtml(title)}</div>
+                        </div>
+                    `;
+                    
+                    // Insert at the top of the list
+                    currentTasksList.insertAdjacentHTML('afterbegin', newTaskHtml);
+                    
+                    // Update task count
+                    const currentCount = parseInt(currentTasksHeader.textContent.match(/\d+/)?.[0] || '0');
+                    currentTasksHeader.textContent = `Tasks (${currentCount + 1})`;
+                    
+                    // Animate the new task in
+                    const newTaskElement = currentTasksList.querySelector(`[data-task-id="${data.task_id}"]`);
+                    if (newTaskElement) {
+                        requestAnimationFrame(() => {
+                            newTaskElement.style.transition = 'opacity 0.3s ease-out, transform 0.3s ease-out';
+                            newTaskElement.style.opacity = '1';
+                            newTaskElement.style.transform = 'translateY(0)';
+                        });
+                    }
+                    
+                    // Update max-height smoothly
+                    setTimeout(() => {
+                        setRoadmapContainerMaxHeight();
+                    }, 50);
+                    
+                    // Update progress bar directly without reloading stages
+                    const stageRow = document.querySelector(`[data-stage-id="${stageId}"]`);
+                    if (stageRow) {
+                        const progressBar = stageRow.querySelector('.stage-progress-fill');
+                        const progressLabel = stageRow.querySelector('.stage-progress-label span:last-child');
+                        const tasksCount = stageRow.querySelector('.stage-tasks-count');
+                        
+                        if (progressBar && progressLabel && tasksCount) {
+                            // Get current counts
+                            const currentCountText = tasksCount.textContent.trim();
+                            const match = currentCountText.match(/(\d+)\/(\d+)/);
+                            if (match) {
+                                const completed = parseInt(match[1]);
+                                const total = parseInt(match[2]) + 1; // Add 1 for new task
+                                const newProgress = Math.round((completed / total) * 100);
+                                
+                                // Update progress bar
+                                progressBar.style.width = `${newProgress}%`;
+                                progressLabel.textContent = `${newProgress}%`;
+                                
+                                // Update tasks count
+                                tasksCount.innerHTML = `<i class="fas fa-tasks"></i><span>${completed}/${total}</span>`;
+                            } else if (currentCountText.includes('no tasks')) {
+                                // If it was "no tasks yet", update to show 0/1
+                                const newProgress = 0;
+                                progressBar.style.width = `${newProgress}%`;
+                                progressLabel.textContent = `${newProgress}%`;
+                                tasksCount.innerHTML = `<i class="fas fa-tasks"></i><span>0/1</span>`;
+                            }
+                        }
+                    }
+                } else {
+                    // Fallback: reload tasks
+                    loadStageTasks(stageId);
+                }
+                
+                if (typeof showNotification !== 'undefined') {
+                    showNotification('Task created successfully', 'success');
+                }
+            } else {
+                if (typeof showNotification !== 'undefined') {
+                    showNotification(data.error || 'Failed to create task', 'error');
+                } else {
+                    alert(data.error || 'Failed to create task');
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error creating task:', error);
+            input.disabled = false;
+            if (addBtn) addBtn.disabled = false;
+            if (typeof showNotification !== 'undefined') {
+                showNotification('An error occurred', 'error');
+            } else {
+                alert('An error occurred');
+            }
+        });
+    };
+    
+    // Keep the old createTask function for backward compatibility (used in empty state)
     window.createTask = function(stageId) {
         const title = prompt('Enter task title:');
         if (!title || !title.trim()) {
