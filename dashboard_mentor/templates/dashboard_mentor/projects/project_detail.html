@@ -1498,11 +1498,11 @@
 
     .stage-progress-bar {
         height: 10px;
-        background: #e5e7eb;
+        background: #d1d5db;
         border-radius: 5px;
         overflow: hidden;
-        border: 1px solid #d1d5db;
-        box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
+        border: 1px solid #9ca3af;
+        box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.15);
         position: relative;
     }
 
@@ -1588,7 +1588,7 @@
     }
     
     .stage-tasks-header {
-        padding: 20px 24px;
+        padding: 14px 24px;
         border-bottom: 1px solid #e5e7eb;
         background: white;
         display: flex;
@@ -1666,6 +1666,20 @@
     
     .btn-sort-tasks.active {
         background: #f1f5f9;
+    }
+    
+    .btn-sort-tasks:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        background: #f9fafb;
+        border-color: #e5e7eb;
+        color: #9ca3af;
+    }
+    
+    .btn-sort-tasks:disabled:hover {
+        background: #f9fafb;
+        border-color: #e5e7eb;
+        color: #9ca3af;
         border-color: #3b82f6;
         color: #3b82f6;
     }
@@ -4314,7 +4328,7 @@
             if (isDisabled) {
                 // Disabled stage styling
                 statusTag = '<span class="status-tag disabled">Disabled</span>';
-                progressColor = '#9ca3af';
+                progressColor = '#6b7280'; // Darker grey for better contrast
                 statusTitle = 'Disabled';
                 titleClass = 'style="color: #6b7280; opacity: 0.7;"';
             } else {
@@ -5180,15 +5194,7 @@
             }
         }
         
-        if (tasks.length === 0) {
-            tasksSection.innerHTML = `
-                <div class="stage-tasks-empty">
-                    <p style="margin: 0 0 8px 0; font-size: 0.875rem;">No tasks yet</p>
-                </div>
-            `;
-            return;
-        }
-        
+        // Always show the header with sorting buttons and actions, even when there are no tasks
         let html = `
             <div class="stage-tasks-header">
                 <div class="stage-tasks-title">
@@ -5196,10 +5202,10 @@
                     Tasks (${tasks.length})
                 </div>
                 <div class="stage-tasks-header-actions">
-                    <button class="btn-sort-tasks" id="btnSortHigh_${stageId}" onclick="togglePrioritySort(${stageId}, 'high')" title="Sort Priority High to Low">
+                    <button class="btn-sort-tasks" id="btnSortHigh_${stageId}" onclick="togglePrioritySort(${stageId}, 'high')" title="Sort Priority High to Low" ${tasks.length === 0 ? 'disabled' : ''}>
                         <i class="fas fa-sort-amount-down"></i>
                     </button>
-                    <button class="btn-sort-tasks" id="btnSortLow_${stageId}" onclick="togglePrioritySort(${stageId}, 'low')" title="Sort Priority Low to High">
+                    <button class="btn-sort-tasks" id="btnSortLow_${stageId}" onclick="togglePrioritySort(${stageId}, 'low')" title="Sort Priority Low to High" ${tasks.length === 0 ? 'disabled' : ''}>
                         <i class="fas fa-sort-amount-up"></i>
                     </button>
                     <div class="stage-tasks-actions-select" id="actionsSelect_${stageId}">
@@ -5219,6 +5225,14 @@
             </div>
             <div class="stage-tasks-list" id="stageTasksList_${stageId}">
         `;
+        
+        if (tasks.length === 0) {
+            html += `
+                <div class="stage-tasks-empty" style="padding: 20px; text-align: center; color: #9ca3af;">
+                    <p style="margin: 0; font-size: 0.875rem;">No tasks yet</p>
+                </div>
+            `;
+        }
         
         // Reverse tasks array to show newest tasks at the top
         const reversedTasks = [...tasks].reverse();
@@ -6073,14 +6087,41 @@
                                 <div class="stage-tasks-select-all-checkbox" id="selectAllTasks_${stageId}" onclick="toggleSelectAllTasks(${stageId}, event)"></div>
                                 Tasks (1)
                             </div>
+                            <div class="stage-tasks-header-actions">
+                                <button class="btn-sort-tasks" id="btnSortHigh_${stageId}" onclick="togglePrioritySort(${stageId}, 'high')" title="Sort Priority High to Low">
+                                    <i class="fas fa-sort-amount-down"></i>
+                                </button>
+                                <button class="btn-sort-tasks" id="btnSortLow_${stageId}" onclick="togglePrioritySort(${stageId}, 'low')" title="Sort Priority Low to High">
+                                    <i class="fas fa-sort-amount-up"></i>
+                                </button>
+                                <div class="stage-tasks-actions-select" id="actionsSelect_${stageId}">
+                                    <button class="custom-select-trigger-actions" id="btnActionsTasks_${stageId}" onclick="toggleTasksActionsDropdown(${stageId}, event)" disabled>
+                                        Actions <i class="fas fa-chevron-down"></i>
+                                    </button>
+                                    <div class="custom-select-menu-actions" id="tasksActionsMenu_${stageId}">
+                                        <button class="custom-select-item-actions first-item" onclick="activateSelectedTasks(${stageId})">
+                                            <i class="fas fa-check-circle"></i> <span>Activate</span>
+                                        </button>
+                                        <button class="custom-select-item-actions last-item" onclick="deleteSelectedTasks(${stageId})">
+                                            <i class="fas fa-trash"></i> <span>Delete</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <div class="stage-tasks-list"></div>
+                        <div class="stage-tasks-list" id="stageTasksList_${stageId}"></div>
                     `;
                 }
                 
                 // Get the tasks list (might have been just created)
                 const currentTasksList = tasksSection.querySelector('.stage-tasks-list');
                 const currentTasksHeader = tasksSection.querySelector('.stage-tasks-title');
+                
+                // Enable sort buttons if they exist
+                const sortHighBtn = document.getElementById(`btnSortHigh_${stageId}`);
+                const sortLowBtn = document.getElementById(`btnSortLow_${stageId}`);
+                if (sortHighBtn) sortHighBtn.disabled = false;
+                if (sortLowBtn) sortLowBtn.disabled = false;
                 
                 if (currentTasksList && currentTasksHeader) {
                     // Create new task element using the title from input
