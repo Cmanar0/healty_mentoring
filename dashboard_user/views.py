@@ -2607,8 +2607,8 @@ def active_backlog(request):
     completed_count = tasks.filter(completed=True).count()
     total_tasks = tasks.count()
     
-    # Also get tasks assigned from stages (assigned=True, assigned_to=user_profile)
-    assigned_tasks = Task.objects.filter(assigned=True, assigned_to=user_profile, stage__isnull=False).order_by('order', 'created_at')
+    # Also get tasks activated from stages (status='active', user_active_backlog=user_profile, still in stage)
+    assigned_tasks = Task.objects.filter(status='active', user_active_backlog=user_profile, stage__isnull=False).order_by('-moved_to_active_backlog_at', 'order', 'created_at')
     
     # Get all mentors for filter
     relationships = MentorClientRelationship.objects.filter(
@@ -2772,14 +2772,19 @@ def toggle_active_backlog_task_complete(request, task_id):
         data = json.loads(request.body)
         completed = data.get('completed', False)
         
-        task.completed = completed
-        task.status = 'completed' if completed else 'todo'
-        if completed and not task.completed_at:
-            from django.utils import timezone
-            task.completed_at = timezone.now()
-        elif not completed:
+        if completed:
+            # If task was activated from a stage, remove from active backlog but keep in stage
+            if task.stage:
+                task.complete_activated_task(user_profile)
+            else:
+                # Task was created directly in active backlog
+                task.complete_active_backlog_task()
+        else:
+            # Uncomplete task
+            task.completed = False
+            task.status = 'active'
             task.completed_at = None
-        task.save()
+            task.save()
         
         return JsonResponse({
             'success': True,

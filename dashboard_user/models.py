@@ -535,11 +535,12 @@ class Task(models.Model):
     ]
     
     STATUS_CHOICES = [
-        ('todo', 'To Do'),
+        ('pending', 'Not Activated'),
+        ('active', 'Activated'),
         ('in_progress', 'In Progress'),
         ('review', 'Review'),
         ('completed', 'Completed'),
-        ('cancelled', 'Cancelled'),
+        ('archived', 'Archived'),
     ]
     
     ROLE_CHOICES = [
@@ -607,7 +608,7 @@ class Task(models.Model):
     
     # Additional fields
     priority = models.CharField(max_length=20, choices=PRIORITY_CHOICES, default='medium')
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='todo')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     due_date = models.DateField(blank=True, null=True)  # Alternative deadline field (can use deadline instead)
     estimated_duration = models.IntegerField(blank=True, null=True)
     depends_on = models.ManyToManyField('self', symmetrical=False, blank=True, related_name="blocked_by")
@@ -634,10 +635,27 @@ class Task(models.Model):
         ]
     
     def clean(self):
-        """Validate that task is in exactly one location"""
+        """
+        Validate task location.
+        Tasks can be:
+        - In stage only (pending)
+        - In stage AND user_active_backlog (active - activated from stage)
+        - In user_active_backlog only (created directly in active backlog)
+        - In mentor_backlog only
+        But NOT in multiple backlogs (mentor_backlog + user_active_backlog)
+        """
         locations = [self.stage, self.user_active_backlog, self.mentor_backlog]
-        if sum(1 for loc in locations if loc is not None) != 1:
-            raise ValidationError("Task must be in exactly one location: stage, user_active_backlog, or mentor_backlog")
+        non_null_locations = sum(1 for loc in locations if loc is not None)
+        
+        # Allow: stage only, user_active_backlog only, mentor_backlog only, or stage + user_active_backlog
+        if non_null_locations == 0:
+            raise ValidationError("Task must be in at least one location: stage, user_active_backlog, or mentor_backlog")
+        elif non_null_locations > 2:
+            raise ValidationError("Task cannot be in more than 2 locations")
+        elif self.mentor_backlog and self.user_active_backlog:
+            raise ValidationError("Task cannot be in both mentor_backlog and user_active_backlog")
+        elif self.mentor_backlog and self.stage:
+            raise ValidationError("Task cannot be in both mentor_backlog and stage")
     
     def save(self, *args, **kwargs):
         """Cache author info and validate location"""
@@ -660,21 +678,43 @@ class Task(models.Model):
         self.clean()
         super().save(*args, **kwargs)
     
-    def assign_to_client(self, user_profile):
+    def activate_task(self, user_profile):
         """
-        Assign a stage task to client's active backlog.
-        Task remains in stage backlog but is marked as assigned.
+        Activate a stage task - adds it to client's active backlog.
+        Task remains in stage backlog but also appears in active backlog.
+        Sets status to 'active' and user_active_backlog FK.
         """
         if not self.stage:
-            raise ValidationError("Only stage tasks can be assigned to clients")
+            raise ValidationError("Only stage tasks can be activated")
         
-        self.assigned = True
-        self.assigned_to = user_profile
+        if self.user_active_backlog == user_profile:
+            return  # Already activated
+        
+        self.user_active_backlog = user_profile
+        self.status = 'active'
+        from django.utils import timezone
+        if not self.moved_to_active_backlog_at:
+            self.moved_to_active_backlog_at = timezone.now()
+        self.save()
+    
+    def deactivate_task(self):
+        """
+        Deactivate a task - removes it from active backlog.
+        Task remains in stage backlog.
+        Removes user_active_backlog FK and sets status back to 'pending'.
+        """
+        if not self.user_active_backlog:
+            return  # Not activated
+        
+        self.user_active_backlog = None
+        if self.status == 'active':
+            self.status = 'pending'
+        # Keep moved_to_active_backlog_at for history
         self.save()
     
     def move_to_active_backlog(self, user_profile):
         """
-        Move task to user's active backlog.
+        Move task to user's active backlog (for tasks created directly in active backlog).
         Sets moved_to_active_backlog_at timestamp.
         """
         if self.user_active_backlog == user_profile:
@@ -686,36 +726,28 @@ class Task(models.Model):
         self.moved_to_active_backlog_at = timezone.now()
         self.save()
     
-    def unassign_from_client(self):
+    def complete_activated_task(self, user_profile):
         """
-        Unassign task from client when completed.
-        Keeps assignment history but marks as unassigned.
-        """
-        self.assigned = False
-        # Keep assigned_to for history
-        self.save()
-    
-    def complete_assigned_task(self, user_profile):
-        """
-        When client completes an assigned task from stage:
-        - Unassign it (assigned=False)
-        - Mark as completed in stage backlog
-        - Keep assignment history (assigned_to remains)
+        When client completes an activated task from stage:
+        - Remove from active backlog (user_active_backlog = None)
+        - Mark as completed
+        - Keep task in stage backlog
         - Set completed_at timestamp
         """
-        if not self.assigned or self.assigned_to != user_profile:
-            raise ValidationError("Task is not assigned to this client")
+        if not self.user_active_backlog or self.user_active_backlog != user_profile:
+            raise ValidationError("Task is not activated for this client")
         
-        self.assigned = False
+        self.user_active_backlog = None  # Remove from active backlog
         self.completed = True
         self.status = 'completed'
         if not self.completed_at:
+            from django.utils import timezone
             self.completed_at = timezone.now()
         self.save()
     
     def complete_active_backlog_task(self):
         """
-        When client completes a task originally in active backlog:
+        When client completes a task originally created in active backlog:
         - Keep it in active backlog
         - Mark as completed
         - Set completed_at timestamp
@@ -726,6 +758,7 @@ class Task(models.Model):
         self.completed = True
         self.status = 'completed'
         if not self.completed_at:
+            from django.utils import timezone
             self.completed_at = timezone.now()
         self.save()
     
@@ -736,6 +769,18 @@ class Task(models.Model):
         """
         self.reviewed_by_mentor = mentor_profile
         self.reviewed_by_mentor_at = timezone.now()
+        self.save()
+    
+    def archive_task(self):
+        """
+        Archive a completed task.
+        Moves task to history by setting status to 'archived'.
+        Only works on completed tasks.
+        """
+        if not self.completed:
+            raise ValidationError("Only completed tasks can be archived")
+        
+        self.status = 'archived'
         self.save()
     
     def __str__(self):

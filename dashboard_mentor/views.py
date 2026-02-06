@@ -6891,7 +6891,7 @@ def generate_tasks_ai(request, project_id, stage_id):
                 title=task_data['title'],
                 description=task_data.get('description', ''),
                 priority=task_data.get('priority', 'medium'),  # Default to medium priority
-                status=task_data.get('status', 'todo'),  # Default to todo status
+                status=task_data.get('status', 'pending'),  # Default to pending status
                 order=task_order,
                 created_by=request.user,
                 author_name=f"{request.user.profile.first_name} {request.user.profile.last_name}",
@@ -6937,13 +6937,25 @@ def toggle_task_complete(request, project_id, stage_id, task_id):
         data = json.loads(request.body)
         completed = data.get('completed', False)
         
-        task.completed = completed
-        if completed and not task.completed_at:
-            from django.utils import timezone
-            task.completed_at = timezone.now()
-        elif not completed:
+        if completed:
+            # If task is activated (has user_active_backlog), complete it properly
+            if task.user_active_backlog:
+                task.complete_activated_task(task.user_active_backlog)
+            else:
+                # Regular completion
+                task.completed = True
+                task.status = 'completed'
+                if not task.completed_at:
+                    from django.utils import timezone
+                    task.completed_at = timezone.now()
+                task.save()
+        else:
+            # Uncomplete task
+            task.completed = False
+            if task.status == 'completed':
+                task.status = 'active' if task.user_active_backlog else 'pending'
             task.completed_at = None
-        task.save()
+            task.save()
         
         # Update stage completion status based on tasks
         update_stage_completion_status(stage)
@@ -6958,6 +6970,102 @@ def toggle_task_complete(request, project_id, stage_id, task_id):
         import logging
         logger = logging.getLogger(__name__)
         logger.error(f'Error toggling task completion: {str(e)}')
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+@require_POST
+def toggle_task_activate(request, project_id, stage_id, task_id):
+    """Toggle task activation (assign to client active backlog)"""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+    
+    mentor_profile = request.user.mentor_profile
+    project = get_object_or_404(Project, id=project_id, supervised_by=mentor_profile)
+    
+    from dashboard_user.models import ProjectStage, Task
+    stage = get_object_or_404(ProjectStage, id=stage_id, project=project)
+    task = get_object_or_404(Task, id=task_id, stage=stage)
+    
+    try:
+        data = json.loads(request.body)
+        activate = data.get('activate', False)
+        
+        if activate:
+            # Activate task - add to client's active backlog while keeping it in stage
+            if not project.project_owner:
+                return JsonResponse({'success': False, 'error': 'Project has no assigned client'}, status=400)
+            
+            try:
+                task.activate_task(project.project_owner)
+            except Exception as e:
+                # Catch ValidationError or any other error from activate_task
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f'Error activating task: {str(e)}', exc_info=True)
+                return JsonResponse({'success': False, 'error': str(e)}, status=400)
+        else:
+            # Deactivate task - remove from active backlog but keep in stage
+            task.deactivate_task()
+        
+        # Update stage completion status based on tasks
+        update_stage_completion_status(stage)
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Task {"activated" if activate else "deactivated"} successfully',
+            'task': {
+                'id': task.id,
+                'status': task.status,
+                'user_active_backlog': task.user_active_backlog_id if task.user_active_backlog else None,
+            }
+        })
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f'Error toggling task activation: {str(e)}', exc_info=True)
+        error_message = str(e)
+        # Make error message more user-friendly
+        if 'ValidationError' in str(type(e).__name__):
+            error_message = str(e)
+        return JsonResponse({'success': False, 'error': error_message}, status=500)
+
+
+@login_required
+@require_POST
+def archive_task(request, project_id, stage_id, task_id):
+    """Archive a completed task"""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+    
+    mentor_profile = request.user.mentor_profile
+    project = get_object_or_404(Project, id=project_id, supervised_by=mentor_profile)
+    
+    from dashboard_user.models import ProjectStage, Task
+    stage = get_object_or_404(ProjectStage, id=stage_id, project=project)
+    task = get_object_or_404(Task, id=task_id, stage=stage)
+    
+    try:
+        # Only allow archiving completed tasks
+        if not task.completed:
+            return JsonResponse({'success': False, 'error': 'Only completed tasks can be archived'}, status=400)
+        
+        # Archive the task
+        task.archive_task()
+        
+        # Update stage completion status based on tasks
+        update_stage_completion_status(stage)
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Task archived successfully'
+        })
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f'Error archiving task: {str(e)}')
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 
@@ -7020,7 +7128,7 @@ def get_tasks_api(request, project_id, stage_id):
                 'completed': task.completed,
                 'priority': task.priority,
                 'status': task.status,
-                'assigned': task.assigned,
+                'user_active_backlog': task.user_active_backlog_id if task.user_active_backlog else None,
                 'created_at': task.created_at.strftime('%Y-%m-%d %H:%M:%S'),
                 'order': float(task.order),
             })
@@ -7498,9 +7606,10 @@ def get_client_active_backlog_api(request, client_id):
     
     try:
         # Get all tasks in client's active backlog (no limit - display all in scrollable sidebar)
+        # Order by moved_to_active_backlog_at descending (newest first), then by order
         tasks = Task.objects.filter(
             user_active_backlog=client_profile
-        ).order_by('order', 'created_at')
+        ).order_by('-moved_to_active_backlog_at', 'order', 'created_at')
         
         tasks_data = []
         for task in tasks:
@@ -7514,6 +7623,9 @@ def get_client_active_backlog_api(request, client_id):
                 'status': task.status,
                 'created_at': task.created_at.strftime('%Y-%m-%d %H:%M:%S'),
                 'order': float(task.order),
+                'stage_id': task.stage.id if task.stage else None,
+                'project_id': task.stage.project.id if task.stage and task.stage.project else None,
+                'has_stage': task.stage is not None,  # True if task was created from stage
             })
         
         # Get total count for "more tasks" display
