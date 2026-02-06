@@ -2386,29 +2386,14 @@
     
     .stage-task-activate-btn.completed {
         color: #059669;
-        font-weight: 500;
+        font-weight: 700;
         position: relative;
     }
     
     .stage-task-activate-btn.completed:hover {
         color: #ffffff;
-        background: rgba(0, 0, 0, 0.6);
-        backdrop-filter: blur(8px);
-        -webkit-backdrop-filter: blur(8px);
-    }
-    
-    .stage-task-activate-btn.completed:hover::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0, 0, 0, 0.4);
-        backdrop-filter: blur(8px);
-        -webkit-backdrop-filter: blur(8px);
-        border-radius: 6px;
-        z-index: -1;
+        background: #6b7280;
+        font-weight: 700;
     }
     
     .stage-task-activate-btn.archived {
@@ -7575,11 +7560,11 @@
         }
         
         if (isCompletedState) {
-            // Completed tasks - show "Archive" on hover
+            // Completed tasks - show "Archive" with icon on hover, "Completed" with icon by default
             if (showActivate) {
-                button.textContent = 'Archive';
+                button.innerHTML = '<i class="fas fa-archive"></i> Archive';
             } else {
-                button.textContent = 'Completed';
+                button.innerHTML = '<i class="fas fa-check-circle"></i> Completed';
             }
         } else if (showActivate && !isActive) {
             // Show "Activate" with icon on hover (icon to the right of text)
