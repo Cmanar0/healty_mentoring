@@ -359,16 +359,35 @@
                         <label class="create-task-section-label" for="taskTitleInput">
                             Task Name <span style="color: #ef4444;">*</span>
                         </label>
-                        <div class="create-task-input-wrapper">
-                            <input 
-                                type="text" 
-                                id="taskTitleInput" 
-                                name="title" 
-                                class="create-task-input"
-                                placeholder="e.g. Design system review" 
-                                maxlength="200" 
-                                required
-                            >
+                        <div class="create-task-title-row" style="display: flex; gap: 16px; align-items: flex-end;">
+                            <div class="create-task-input-wrapper" style="flex: 1;">
+                                <input 
+                                    type="text" 
+                                    id="taskTitleInput" 
+                                    name="title" 
+                                    class="create-task-input"
+                                    placeholder="e.g. Design system review" 
+                                    maxlength="200" 
+                                    required
+                                >
+                            </div>
+                            <div id="taskStatusWrapper" style="display: none; width: 180px;">
+                                <label class="create-task-section-label" for="taskStatusInput" style="margin-bottom: 8px;">
+                                    Status
+                                </label>
+                                <select 
+                                    id="taskStatusInput" 
+                                    name="status" 
+                                    class="create-task-select"
+                                >
+                                    <option value="pending">Not Activated</option>
+                                    <option value="active">Activated</option>
+                                    <option value="in_progress">In Progress</option>
+                                    <option value="review">Review</option>
+                                    <option value="completed">Completed</option>
+                                    <option value="archived">Archived</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
                     
@@ -413,6 +432,9 @@
                 <input type="hidden" id="selectedProjectId" value="">
                 <input type="hidden" id="selectedStageId" value="">
                 <input type="hidden" id="editTaskId" value="">
+                <input type="hidden" id="clientId" value="">
+                <input type="hidden" id="editProjectId" value="">
+                <input type="hidden" id="editStageId" value="">
             </form>
         </div>
         
@@ -588,37 +610,61 @@
     }
     
     // Open modal (for create or edit)
-    window.openCreateActiveBacklogTaskModal = function(taskId = null, title = '', description = '', deadline = '', priority = 'medium', projectId = null, stageId = null) {
+    window.openCreateActiveBacklogTaskModal = function(taskId = null, title = '', description = '', deadline = '', priority = 'medium', projectId = null, stageId = null, clientId = null, status = 'pending') {
         const modal = document.getElementById('createActiveBacklogTaskModal');
         const modalTitle = document.getElementById('createTaskModalTitle');
         const titleInput = document.getElementById('taskTitleInput');
         const descInput = document.getElementById('taskDescriptionInput');
         const deadlineInput = document.getElementById('taskDeadlineInput');
         const priorityInput = document.getElementById('taskPriorityInput');
+        const statusInput = document.getElementById('taskStatusInput');
+        const statusWrapper = document.getElementById('taskStatusWrapper');
         const editTaskId = document.getElementById('editTaskId');
+        const clientIdInput = document.getElementById('clientId');
+        const editProjectIdInput = document.getElementById('editProjectId');
+        const editStageIdInput = document.getElementById('editStageId');
         const submitBtn = document.getElementById('createTaskBtn');
         
         if (!modal) return;
+        
+        // Store client_id if provided
+        if (clientIdInput && clientId) {
+            clientIdInput.value = clientId;
+        }
+        
+        // Store projectId and stageId for stage tasks
+        if (editProjectIdInput && projectId) {
+            editProjectIdInput.value = projectId;
+        }
+        if (editStageIdInput && stageId) {
+            editStageIdInput.value = stageId;
+        }
         
         // Set edit mode or create mode
         if (taskId) {
             // Edit mode
             editTaskId.value = taskId;
-            modalTitle.textContent = 'Edit Task';
+            modalTitle.textContent = 'Update This Task';
             submitBtn.innerHTML = 'Save Changes';
             if (titleInput) titleInput.value = title;
             if (descInput) descInput.value = description;
             if (deadlineInput) deadlineInput.value = deadline;
             if (priorityInput) priorityInput.value = priority;
+            if (statusInput) statusInput.value = status || 'pending';
+            if (statusWrapper) statusWrapper.style.display = 'block';
         } else {
             // Create mode
             editTaskId.value = '';
+            editProjectIdInput.value = '';
+            editStageIdInput.value = '';
             modalTitle.textContent = 'Create New Active Task';
             submitBtn.innerHTML = 'Create Task';
             if (titleInput) titleInput.value = '';
             if (descInput) descInput.value = '';
             if (deadlineInput) deadlineInput.value = '';
             if (priorityInput) priorityInput.value = 'medium';
+            if (statusInput) statusInput.value = 'pending';
+            if (statusWrapper) statusWrapper.style.display = 'none';
         }
         
         modal.style.display = 'flex';
@@ -654,15 +700,26 @@
         const descInput = document.getElementById('taskDescriptionInput');
         const deadlineInput = document.getElementById('taskDeadlineInput');
         const priorityInput = document.getElementById('taskPriorityInput');
+        const statusInput = document.getElementById('taskStatusInput');
+        const statusWrapper = document.getElementById('taskStatusWrapper');
         const btn = document.getElementById('createTaskBtn');
         const modalTitle = document.getElementById('createTaskModalTitle');
         const editTaskId = document.getElementById('editTaskId');
+        const editProjectIdInput = document.getElementById('editProjectId');
+        const editStageIdInput = document.getElementById('editStageId');
         
         if (titleInput) titleInput.value = '';
         if (descInput) descInput.value = '';
         if (deadlineInput) deadlineInput.value = '';
         if (priorityInput) priorityInput.value = 'medium';
+        if (statusInput) statusInput.value = 'pending';
+        if (statusWrapper) statusWrapper.style.display = 'none';
         if (editTaskId) editTaskId.value = '';
+        if (editProjectIdInput) editProjectIdInput.value = '';
+        if (editStageIdInput) editStageIdInput.value = '';
+        
+        const clientIdInput = document.getElementById('clientId');
+        if (clientIdInput) clientIdInput.value = '';
         
         // Reset button state
         if (btn) {
@@ -696,8 +753,10 @@
         const description = document.getElementById('taskDescriptionInput').value.trim();
         const deadline = document.getElementById('taskDeadlineInput').value || null;
         const priority = document.getElementById('taskPriorityInput').value || 'medium';
-        const projectId = document.getElementById('selectedProjectId').value || null;
-        const stageId = document.getElementById('selectedStageId').value || null;
+        const statusInput = document.getElementById('taskStatusInput');
+        const status = statusInput ? statusInput.value : 'pending';
+        const clientIdInput = document.getElementById('clientId');
+        const clientId = clientIdInput ? clientIdInput.value : null;
         
         // Get CSRF token
         function getCookie(name) {
@@ -715,9 +774,31 @@
             return cookieValue;
         }
         
-        const url = isEditMode
-            ? `/dashboard/mentor/backlog/tasks/${editTaskId.value}/edit/`
-            : `/dashboard/mentor/backlog/tasks/create/`;
+        // Determine URL based on task type
+        const editProjectIdInput = document.getElementById('editProjectId');
+        const editStageIdInput = document.getElementById('editStageId');
+        const editProjectId = editProjectIdInput ? editProjectIdInput.value : null;
+        const editStageId = editStageIdInput ? editStageIdInput.value : null;
+        
+        let url;
+        if (isEditMode) {
+            // If editing a stage task (has projectId and stageId), use stage task edit endpoint
+            if (editProjectId && editStageId) {
+                url = `/dashboard/mentor/projects/${editProjectId}/stages/${editStageId}/tasks/${editTaskId.value}/edit/`;
+            } else if (clientId) {
+                // If editing and we have clientId, use client active backlog edit endpoint
+                url = `/dashboard/mentor/clients/${clientId}/active-backlog/tasks/${editTaskId.value}/edit/`;
+            } else {
+                // Otherwise use mentor backlog edit endpoint
+                url = `/dashboard/mentor/backlog/tasks/${editTaskId.value}/edit/`;
+            }
+        } else if (clientId) {
+            // Create in client's active backlog
+            url = `/dashboard/mentor/clients/${clientId}/active-backlog/tasks/create/`;
+        } else {
+            // Fallback to mentor backlog
+            url = `/dashboard/mentor/backlog/tasks/create/`;
+        }
         
         fetch(url, {
             method: 'POST',
@@ -730,8 +811,7 @@
                 description: description,
                 deadline: deadline,
                 priority: priority,
-                project_id: projectId,
-                stage_id: stageId,
+                ...(isEditMode && status ? { status: status } : {})
             })
         })
         .then(response => response.json())
@@ -741,8 +821,17 @@
                     showNotification(isEditMode ? 'Task updated successfully!' : 'Task created successfully!', 'success');
                 }
                 closeCreateActiveBacklogTaskModal();
-                // Reload active backlog if function exists
-                if (typeof loadActiveBacklog === 'function') {
+                
+                // If editing a stage task, reload stage tasks
+                if (isEditMode && editProjectId && editStageId) {
+                    if (typeof loadStageTasks === 'function') {
+                        loadStageTasks(parseInt(editStageId));
+                    }
+                    if (typeof loadStages === 'function') {
+                        loadStages();
+                    }
+                } else if (typeof loadActiveBacklog === 'function') {
+                    // Reload active backlog if function exists
                     loadActiveBacklog();
                 } else if (typeof loadTasks === 'function') {
                     loadTasks();

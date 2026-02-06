@@ -5852,9 +5852,10 @@ def update_stage_completion_status(stage):
     
     total_tasks = Task.objects.filter(stage=stage).count()
     completed_tasks = Task.objects.filter(stage=stage, completed=True).count()
+    archived_tasks = Task.objects.filter(stage=stage, status='archived').count()
     
-    # If stage has at least one task and all tasks are completed, mark stage as completed
-    if total_tasks > 0 and completed_tasks == total_tasks:
+    # If stage has at least one task and all tasks are completed or archived, mark stage as completed
+    if total_tasks > 0 and (completed_tasks + archived_tasks) == total_tasks:
         if not stage.is_completed:
             stage.is_completed = True
             stage.completed_at = timezone.now()
@@ -6646,6 +6647,8 @@ def get_stages_api(request, project_id):
             from dashboard_user.models import Task
             total_tasks = Task.objects.filter(stage=stage).count()
             completed_tasks = Task.objects.filter(stage=stage, completed=True).count()
+            # Count tasks with status='completed' (excluding archived) for "To be Reviewed" badge
+            completed_status_tasks = Task.objects.filter(stage=stage, status='completed', completed=True).exclude(status='archived').count()
             
             stages_data.append({
                 'id': stage.id,
@@ -6662,6 +6665,7 @@ def get_stages_api(request, project_id):
                 'notes_count': stage.notes.count(),
                 'tasks_total': total_tasks,
                 'tasks_completed': completed_tasks,
+                'tasks_completed_status': completed_status_tasks,  # Tasks with status='completed' for review badge
                 'order': float(stage.order),
             })
         
@@ -6807,9 +6811,23 @@ def edit_task(request, project_id, stage_id, task_id):
             return JsonResponse({'success': False, 'error': 'Task title is required'}, status=400)
         
         description = data.get('description', '').strip()
+        deadline = data.get('deadline')
+        priority = data.get('priority', 'medium')
+        status = data.get('status')
         
         task.title = title
         task.description = description
+        if deadline:
+            from django.utils.dateparse import parse_date
+            parsed_deadline = parse_date(deadline)
+            if parsed_deadline:
+                task.deadline = parsed_deadline
+        elif deadline is None:
+            task.deadline = None
+        if priority in ['low', 'medium', 'high', 'urgent']:
+            task.priority = priority
+        if status and status in ['pending', 'active', 'in_progress', 'review', 'completed', 'archived']:
+            task.status = status
         task.save()
         
         return JsonResponse({
@@ -7313,6 +7331,136 @@ def create_mentor_backlog_task(request):
 
 @login_required
 @require_POST
+def create_client_active_backlog_task(request, client_id):
+    """Create a new task in client's active backlog (for mentors)"""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+    
+    mentor_profile = request.user.mentor_profile
+    from accounts.models import UserProfile, MentorClientRelationship
+    from dashboard_user.models import Task
+    from decimal import Decimal
+    from django.utils import timezone
+    
+    # Verify the client belongs to this mentor
+    relationship = MentorClientRelationship.objects.filter(
+        mentor=mentor_profile,
+        client_id=client_id,
+        confirmed=True
+    ).first()
+    
+    if not relationship:
+        return JsonResponse({'success': False, 'error': 'Client not found or not authorized'}, status=404)
+    
+    client_profile = get_object_or_404(UserProfile, id=client_id)
+    
+    try:
+        data = json.loads(request.body)
+        title = data.get('title', '').strip()
+        if not title:
+            return JsonResponse({'success': False, 'error': 'Task title is required'}, status=400)
+        
+        description = data.get('description', '').strip()
+        deadline = data.get('deadline') or None
+        priority = data.get('priority', 'medium')
+        
+        # Validate priority
+        valid_priorities = ['low', 'medium', 'high', 'urgent']
+        if priority not in valid_priorities:
+            priority = 'medium'
+        
+        # Calculate order for the new task
+        last_task = Task.objects.filter(user_active_backlog=client_profile).order_by('-order').first()
+        if last_task:
+            next_order = last_task.order + Decimal('10')
+        else:
+            next_order = Decimal('10')
+        
+        # Create task directly in client's active backlog (no stage)
+        # Set status to 'active' since it's created directly in the active backlog
+        task = Task.objects.create(
+            user_active_backlog=client_profile,
+            title=title,
+            description=description,
+            deadline=deadline,
+            priority=priority,
+            order=next_order,
+            status='active',  # Active since it's created directly in active backlog
+            created_by=request.user,
+            author_name=f"{request.user.profile.first_name} {request.user.profile.last_name}",
+            author_email=request.user.email,
+            author_role='mentor',
+            moved_to_active_backlog_at=timezone.now()  # Set timestamp when created in active backlog
+        )
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Task created successfully',
+            'task_id': task.id
+        })
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f'Error creating client active backlog task: {str(e)}', exc_info=True)
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+@require_POST
+def toggle_client_active_backlog_task_complete(request, client_id, task_id):
+    """Toggle completion status for a task created directly in client's active backlog (for mentors)"""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+    
+    mentor_profile = request.user.mentor_profile
+    from accounts.models import UserProfile, MentorClientRelationship
+    from dashboard_user.models import Task
+    from django.utils import timezone
+    
+    # Verify the client belongs to this mentor
+    relationship = MentorClientRelationship.objects.filter(
+        mentor=mentor_profile,
+        client_id=client_id,
+        confirmed=True
+    ).first()
+    
+    if not relationship:
+        return JsonResponse({'success': False, 'error': 'Client not found or not authorized'}, status=404)
+    
+    client_profile = get_object_or_404(UserProfile, id=client_id)
+    task = get_object_or_404(Task, id=task_id, user_active_backlog=client_profile)
+    
+    try:
+        data = json.loads(request.body)
+        completed = data.get('completed', False)
+        
+        if completed:
+            # Use the model method for completing active backlog tasks
+            task.complete_active_backlog_task()
+        else:
+            # Uncomplete task
+            task.completed = False
+            task.status = 'active'  # Keep as active since it's in active backlog
+            task.completed_at = None
+            task.save()
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Task marked as {"completed" if completed else "incomplete"}'
+        })
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f'Error toggling client active backlog task completion: {str(e)}', exc_info=True)
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+@require_POST
 def edit_mentor_backlog_task(request, task_id):
     """Edit an existing task in mentor's personal backlog"""
     if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
@@ -7376,6 +7524,71 @@ def edit_mentor_backlog_task(request, task_id):
         import logging
         logger = logging.getLogger(__name__)
         logger.error(f'Error editing mentor backlog task: {str(e)}')
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+@require_POST
+def edit_client_active_backlog_task(request, client_id, task_id):
+    """Edit an existing task in client's active backlog (for mentors)"""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+    
+    mentor_profile = request.user.mentor_profile
+    from accounts.models import UserProfile, MentorClientRelationship
+    from dashboard_user.models import Task
+    
+    # Verify the client belongs to this mentor
+    relationship = MentorClientRelationship.objects.filter(
+        mentor=mentor_profile,
+        client_id=client_id,
+        confirmed=True
+    ).first()
+    
+    if not relationship:
+        return JsonResponse({'success': False, 'error': 'Client not found or not authorized'}, status=404)
+    
+    client_profile = get_object_or_404(UserProfile, id=client_id)
+    task = get_object_or_404(Task, id=task_id, user_active_backlog=client_profile)
+    
+    try:
+        data = json.loads(request.body)
+        title = data.get('title', '').strip()
+        if not title:
+            return JsonResponse({'success': False, 'error': 'Task title is required'}, status=400)
+        
+        description = data.get('description', '').strip()
+        deadline = data.get('deadline') or None
+        priority = data.get('priority', 'medium')
+        
+        # Validate priority
+        valid_priorities = ['low', 'medium', 'high', 'urgent']
+        if priority not in valid_priorities:
+            priority = 'medium'
+        
+        task.title = title
+        task.description = description
+        task.deadline = deadline
+        task.priority = priority
+        task.save()
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Task updated successfully',
+            'task': {
+                'id': task.id,
+                'title': task.title,
+                'description': task.description or '',
+                'deadline': task.deadline.strftime('%Y-%m-%d') if task.deadline else None,
+                'priority': task.priority,
+            }
+        })
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f'Error editing client active backlog task: {str(e)}', exc_info=True)
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 
@@ -7606,9 +7819,13 @@ def get_client_active_backlog_api(request, client_id):
     
     try:
         # Get all tasks in client's active backlog (no limit - display all in scrollable sidebar)
+        # Exclude completed tasks (they remain in DB but shouldn't show in active backlog)
         # Order by moved_to_active_backlog_at descending (newest first), then by order
         tasks = Task.objects.filter(
             user_active_backlog=client_profile
+        ).exclude(
+            completed=True,
+            status='completed'
         ).order_by('-moved_to_active_backlog_at', 'order', 'created_at')
         
         tasks_data = []
@@ -7628,8 +7845,13 @@ def get_client_active_backlog_api(request, client_id):
                 'has_stage': task.stage is not None,  # True if task was created from stage
             })
         
-        # Get total count for "more tasks" display
-        total_count = Task.objects.filter(user_active_backlog=client_profile).count()
+        # Get total count for "more tasks" display (excluding completed tasks)
+        total_count = Task.objects.filter(
+            user_active_backlog=client_profile
+        ).exclude(
+            completed=True,
+            status='completed'
+        ).count()
         
         return JsonResponse({
             'success': True,

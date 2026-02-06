@@ -50,7 +50,7 @@
     }
     
     .roadmap-container .project-sidebar-backlog {
-        z-index: 999;
+        z-index: 1000;
     }
     
     /* Blur and darken other elements when tasks are open */
@@ -115,17 +115,39 @@
         flex-direction: column;
         max-height: 100%;
         overflow: hidden;
+        background: #ffffff !important;
+        position: relative;
+        border: 1px solid #d1d5db;
+        border-radius: 12px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    }
+    
+    .project-sidebar-backlog .client-backlog-card > * {
+        position: relative;
+        z-index: 1;
+    }
+
+    /* Pulsing Life for Header Icon */
+    .active-backlog-title i {
+        animation: iconPulse 3s ease-in-out infinite;
+    }
+
+    @keyframes iconPulse {
+        0%, 100% { transform: scale(1); opacity: 0.8; }
+        50% { transform: scale(1.2); opacity: 1; text-shadow: 0 0 10px rgba(16, 185, 129, 0.5); }
     }
     
     .project-sidebar-backlog #clientActiveBacklogList {
         overflow-y: auto;
+        overflow-x: hidden;
         flex: 1;
         min-height: 0;
+        padding-right: 0;
     }
     
-    /* Minimalistic scrollbar for backlog list */
+    /* Minimalistic overlay scrollbar for backlog list - overlays on top */
     .project-sidebar-backlog #clientActiveBacklogList::-webkit-scrollbar {
-        width: 6px;
+        width: 8px;
     }
     
     .project-sidebar-backlog #clientActiveBacklogList::-webkit-scrollbar-track {
@@ -134,7 +156,9 @@
     
     .project-sidebar-backlog #clientActiveBacklogList::-webkit-scrollbar-thumb {
         background-color: rgba(0, 0, 0, 0.2);
-        border-radius: 3px;
+        border-radius: 4px;
+        border: 2px solid transparent;
+        background-clip: padding-box;
     }
     
     .project-sidebar-backlog #clientActiveBacklogList::-webkit-scrollbar-thumb:hover {
@@ -147,6 +171,12 @@
         scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
     }
     
+    /* Ensure task items extend to full width */
+    .project-sidebar-backlog .active-backlog-task-item {
+        width: 100%;
+        margin-right: 0;
+    }
+    
     /* Active Backlog Header */
     .active-backlog-header-container {
         display: flex;
@@ -154,6 +184,13 @@
         align-items: center;
         gap: 12px;
         flex-wrap: wrap;
+        background: #ffffff;
+        border-bottom: 1px solid #e5e7eb;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    .active-backlog-header-container:hover {
+        background: #f9fafb;
     }
     
     .active-backlog-title {
@@ -167,7 +204,8 @@
     }
     
     .active-backlog-create-btn:hover {
-        background: #000 !important;
+        background: #374151 !important;
+        color: #ffffff !important;
     }
     
     /* When content doesn't fit, switch to column layout */
@@ -198,18 +236,21 @@
     .active-backlog-task-item {
         display: flex;
         flex-direction: column;
-        background: white;
+        background: #fafafa;
         border-bottom: 1px solid #e5e7eb;
         border-radius: 0;
         margin-bottom: 0;
-        transition: all 0.2s ease;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         position: relative;
         overflow: hidden;
     }
     
     .active-backlog-task-item:hover {
-        background: #f9fafb;
+        background: #ffffff;
         z-index: 1;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        border-bottom-color: #d1d5db;
     }
     
     .active-backlog-task-item.completed {
@@ -217,33 +258,7 @@
         background: #f9fafb;
     }
     
-    .active-backlog-task-item::before {
-        content: '';
-        position: absolute;
-        left: 0;
-        top: 0;
-        bottom: 0;
-        width: 4px;
-        background: #9ca3af; /* Default gray for low priority */
-        transition: background 0.2s;
-    }
-    
-    /* Priority-based left border colors */
-    .active-backlog-task-item[data-priority="low"]::before {
-        background: #9ca3af; /* Gray */
-    }
-    
-    .active-backlog-task-item[data-priority="medium"]::before {
-        background: #3b82f6; /* Blue */
-    }
-    
-    .active-backlog-task-item[data-priority="high"]::before {
-        background: #f59e0b; /* Amber/Yellow */
-    }
-    
-    .active-backlog-task-item[data-priority="urgent"]::before {
-        background: #ef4444; /* Red */
-    }
+    /* Removed left border - using priority tag instead */
     
     .active-backlog-task-header {
         display: flex;
@@ -256,9 +271,9 @@
         align-items: stretch;
         justify-content: center;
         flex-shrink: 0;
-        width: 48px;
-        border-right: 1px solid #f3f4f6;
-        background: #f9fafb;
+        width: 55px;
+        border-right: 1px solid #e5e7eb;
+        background: #f3f4f6;
     }
     
     .active-backlog-task-activate.hidden {
@@ -277,6 +292,7 @@
         align-items: center;
         justify-content: center;
         font-size: 1.1rem;
+        position: relative;
     }
     
     .active-backlog-task-activate-btn:hover {
@@ -285,10 +301,44 @@
         border-radius: 0;
     }
     
+    .active-backlog-task-activate-btn .deactivate-popover {
+        position: absolute;
+        bottom: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #111827;
+        color: white;
+        padding: 6px 10px;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        white-space: nowrap;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.15s ease-in-out;
+        margin-bottom: 6px;
+        z-index: 1000;
+    }
+    
+    .active-backlog-task-activate-btn .deactivate-popover::after {
+        content: '';
+        position: absolute;
+        top: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        border: 4px solid transparent;
+        border-top-color: #111827;
+    }
+    
+    .active-backlog-task-activate-btn:hover .deactivate-popover {
+        opacity: 1;
+        pointer-events: auto;
+    }
+    
     .deactivate-icon-stack {
         position: relative;
         display: inline-flex;
         align-items: center;
+        margin-right: 10px;
         justify-content: center;
     }
     
@@ -296,15 +346,16 @@
         flex: 1;
         padding: 16px;
         min-width: 0;
+        cursor: pointer;
     }
     
     .active-backlog-task-content.has-no-activate-btn {
-        background: rgba(59, 130, 246, 0.03);
+        background: transparent;
         transition: background 0.2s;
     }
     
     .active-backlog-task-content.has-no-activate-btn:hover {
-        background: rgba(59, 130, 246, 0.08);
+        background: transparent;
     }
     
     .active-backlog-task-title.single-line {
@@ -329,6 +380,75 @@
         color: #111827;
         margin-bottom: 4px;
         line-height: 1.4;
+    }
+    
+    .active-backlog-task-title-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin-bottom: 4px;
+    }
+    
+    .active-backlog-task-title-text {
+        flex: 1;
+        min-width: 0;
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: #111827;
+        line-height: 1.4;
+    }
+    
+    .active-backlog-task-deadline {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 0.75rem;
+        color: #6b7280;
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+    
+    .active-backlog-task-deadline.overdue {
+        color: #ef4444;
+        position: relative;
+    }
+    
+    .active-backlog-task-deadline.overdue .overdue-popover {
+        position: absolute;
+        top: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #111827;
+        color: white;
+        padding: 6px 10px;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        white-space: nowrap;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0s;
+        margin-top: 6px;
+        z-index: 1000;
+    }
+    
+    .active-backlog-task-deadline.overdue .overdue-popover::after {
+        content: '';
+        position: absolute;
+        bottom: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        border: 4px solid transparent;
+        border-bottom-color: #111827;
+    }
+    
+    .active-backlog-task-deadline.overdue:hover .overdue-popover {
+        opacity: 1;
+        transition: opacity 0s;
+    }
+    
+    .active-backlog-task-content {
+        cursor: pointer;
     }
     
     .active-backlog-task-description {
@@ -357,9 +477,9 @@
         font-weight: 600;
         cursor: pointer;
         transition: all 0.2s;
-        border: 1px solid #e5e7eb;
-        background: white;
-        color: #374151;
+        border: 1px solid #a7f3d0;
+        background: #ecfdf5;
+        color: #047857;
     }
     
     .active-backlog-done-btn:hover {
@@ -375,22 +495,32 @@
     }
     
     .active-backlog-section-header {
-        font-size: 0.75rem;
+        font-size: 1rem;
         font-weight: 600;
-        color: #9ca3af;
+        color: #92a2b8;
         text-transform: uppercase;
         letter-spacing: 0.05em;
-        margin: 20px 0 12px 16px;
+        padding: 32px ;
+        border-bottom: 1px solid #e5e7eb;
         display: flex;
         align-items: center;
+        justify-content: center;
         gap: 8px;
+        position: relative;
+    }
+    
+    .active-backlog-section-header::before {
+        content: '';
+        flex: 1;
+        height: 1px;
+        background: #e5e7eb;
     }
     
     .active-backlog-section-header::after {
         content: '';
         flex: 1;
         height: 1px;
-        background: #f3f4f6;
+        background: #e5e7eb;
     }
     
     
@@ -1283,11 +1413,47 @@
         border-bottom: none;
         transition: background 0.15s ease;
         position: relative;
-        background: #f9fafb;
+        background: white;
         border-radius: 12px;
         box-shadow: 0 1px 3px rgba(0,0,0,0.05);
         border: none;
         overflow: hidden;
+    }
+    
+    /* Border colors based on progress status */
+    .stage-row.progress-completed {
+        border-left: 4px solid #10b981; /* Matches status-tag.completed background */
+        border-top: 1px solid #e5e7eb;
+        border-right: 1px solid #e5e7eb;
+        border-bottom: 1px solid #e5e7eb;
+    }
+    
+    .stage-row.progress-overdue {
+        border-left: 4px solid #ef4444; /* Matches status-tag.overdue background */
+        border-top: 1px solid #e5e7eb;
+        border-right: 1px solid #e5e7eb;
+        border-bottom: 1px solid #e5e7eb;
+    }
+    
+    .stage-row.progress-in_progress {
+        border-left: 4px solid #3b82f6; /* Matches status-tag.pending background */
+        border-top: 1px solid #e5e7eb;
+        border-right: 1px solid #e5e7eb;
+        border-bottom: 1px solid #e5e7eb;
+    }
+    
+    .stage-row.progress-created {
+        border-left: 4px solid #fbbf24; /* Matches status-tag.created background */
+        border-top: 1px solid #e5e7eb;
+        border-right: 1px solid #e5e7eb;
+        border-bottom: 1px solid #e5e7eb;
+    }
+    
+    .stage-row.progress-disabled {
+        border-left: 4px solid #6b7280; /* Matches status-tag.disabled background */
+        border-top: 1px solid #e5e7eb;
+        border-right: 1px solid #e5e7eb;
+        border-bottom: 1px solid #e5e7eb;
     }
     
     .stage-row-content {
@@ -1306,25 +1472,7 @@
         border-radius: 12px 12px 0 0;
     }
     
-    .stage-content-wrapper.progress-completed {
-        background-color: #d1fae5;
-    }
-    
-    .stage-content-wrapper.progress-overdue {
-        background-color: #fee2e2;
-    }
-    
-    .stage-content-wrapper.progress-in_progress {
-        background-color: #dbeafe;
-    }
-    
-    .stage-content-wrapper.progress-created {
-        background-color: #fef3c7;
-    }
-    
-    .stage-content-wrapper.progress-disabled {
-        background-color: #f3f4f6;
-    }
+    /* Removed background colors - using only left border for progress status */
     
     .stage-task-input-section {
         width: 100%;
@@ -1499,6 +1647,11 @@
         min-width: 0;
     }
     
+    /* Priority tag in active backlog should not take full width */
+    .active-backlog-task-content .priority-tag {
+        flex: 0 0 auto;
+    }
+    
     .priority-tag.priority-low {
         background-color: #f3f4f6;
         color: #6b7280;
@@ -1551,25 +1704,7 @@
         background: #f3f4f6;
     }
     
-    .stage-row:has(.stage-tasks-section.expanded) .stage-content-wrapper.progress-completed {
-        background: #a7f3d0;
-    }
-    
-    .stage-row:has(.stage-tasks-section.expanded) .stage-content-wrapper.progress-overdue {
-        background: #fecaca;
-    }
-    
-    .stage-row:has(.stage-tasks-section.expanded) .stage-content-wrapper.progress-in_progress {
-        background: #bfdbfe;
-    }
-    
-    .stage-row:has(.stage-tasks-section.expanded) .stage-content-wrapper.progress-created {
-        background: #fde68a;
-    }
-    
-    .stage-row:has(.stage-tasks-section.expanded) .stage-content-wrapper.progress-disabled {
-        background: #e5e7eb;
-    }
+    /* Removed expanded state background colors - using only left border for progress status */
 
     .stage-row:hover .stage-content-wrapper,
     .stage-row:hover .stage-task-input-section,
@@ -1577,21 +1712,7 @@
         background: #f3f4f6;
     }
     
-    .stage-row:hover .stage-content-wrapper.progress-completed {
-        background: #a7f3d0;
-    }
-    
-    .stage-row:hover .stage-content-wrapper.progress-overdue {
-        background: #fecaca;
-    }
-    
-    .stage-row:hover .stage-content-wrapper.progress-in_progress {
-        background: #bfdbfe;
-    }
-    
-    .stage-row:hover .stage-content-wrapper.progress-created {
-        background: #fde68a;
-    }
+    /* Removed yellow hover background for created status - uses same hover as other statuses */
     
     .stage-row:hover .stage-content-wrapper.progress-disabled {
         background: #e5e7eb;
@@ -1667,7 +1788,7 @@
     
     /* Row Actions Section */
     .row-actions-section {
-        padding: 16px 12px;
+        padding: 16px 12px 16px 0;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -1740,38 +1861,22 @@
         align-items: center;
         margin-bottom: 4px;
         font-size: 0.75rem;
-        color: #000000;
+        color: #6b7280;
     }
 
     .stage-progress-bar {
-        height: 10px;
-        background: #d1d5db;
-        border-radius: 5px;
+        height: 6px;
+        background: #f3f4f6;
+        border-radius: 3px;
         overflow: hidden;
-        border: 1px solid #9ca3af;
-        box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.15);
         position: relative;
     }
 
     .stage-progress-fill {
         height: 100%;
         transition: width 0.3s ease-out;
-        border-radius: 5px;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+        border-radius: 3px;
         position: relative;
-    }
-    
-    /* Add subtle gradient overlay for depth */
-    .stage-progress-fill::after {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: linear-gradient(to bottom, rgba(255, 255, 255, 0.2) 0%, transparent 50%);
-        border-radius: 5px;
-        pointer-events: none;
     }
 
     .stage-tasks-count {
@@ -1779,20 +1884,21 @@
         align-items: center;
         gap: 6px;
         font-size: 0.75rem;
-        color: #000000;
+        color: #6b7280;
     }
 
     .stage-tasks-count i {
         font-size: 0.85rem;
+        color: #6b7280;
         color: #000000;
     }
 
     .stage-tasks-count.no-tasks {
-        color: #000000;
+        color: #6b7280;
     }
 
     .stage-tasks-count.no-tasks i {
-        color: #000000;
+        color: #6b7280;
     }
 
     /* Status Tags */
@@ -2023,8 +2129,16 @@
     }
     
     .custom-select-item-actions:hover {
-        background: rgba(16, 185, 129, 0.1);
-        color: #10b981;
+        background: rgba(239, 68, 68, 0.1);
+        color: #ef4444;
+    }
+    
+    .custom-select-item-actions.first-item.last-item {
+        border-radius: 12px;
+    }
+    
+    .custom-select-item-actions.first-item.last-item:hover {
+        border-radius: 12px;
     }
     
     .custom-select-item-actions.first-item:hover {
@@ -2044,7 +2158,6 @@
         display: flex;
         flex-direction: column;
         gap: 0;
-        margin-bottom: 16px;
     }
     
     .stage-task-item {
@@ -2062,7 +2175,12 @@
     }
     
     .stage-task-item.completed {
-        opacity: 0.7;
+        background: white;
+        border-left: 3px solid #10b981;
+    }
+    
+    .stage-task-item.completed:hover {
+        background: #f9fafb;
     }
     
     .stage-task-drag-handle {
@@ -2137,8 +2255,13 @@
     
     .stage-task-content {
         flex: 1;
-        padding: 12px 16px;
+        padding: 12px 0;
         min-width: 0;
+        cursor: pointer;
+    }
+    
+    .stage-task-content:hover .stage-task-title {
+        color: #111827;
     }
     
     .stage-task-title {
@@ -2150,6 +2273,10 @@
     
     .stage-task-item.completed .stage-task-title {
         text-decoration: line-through;
+        color: #6b7280;
+    }
+    
+    .stage-task-item.completed .stage-task-description-text {
         color: #9ca3af;
     }
     
@@ -2166,6 +2293,7 @@
         align-items: center;
         justify-content: center;
         flex-shrink: 0;
+        cursor: pointer;
         width: 100px;
     }
     
@@ -2211,11 +2339,28 @@
     .stage-task-activate-btn.completed {
         color: #059669;
         font-weight: 500;
+        position: relative;
     }
     
     .stage-task-activate-btn.completed:hover {
-        color: #047857;
-        background: #ecfdf5;
+        color: #ffffff;
+        background: rgba(0, 0, 0, 0.6);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+    }
+    
+    .stage-task-activate-btn.completed:hover::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.4);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        border-radius: 6px;
+        z-index: -1;
     }
     
     .stage-task-activate-btn.archived {
@@ -2225,6 +2370,32 @@
     
     .stage-task-activate-btn.archived:hover {
         color: #4b5563;
+    }
+    
+    /* Disable hover effects for archived buttons in history view */
+    .stage-tasks-list[data-filter="history"] .stage-task-activate-btn.archived {
+        cursor: default;
+    }
+    
+    .stage-tasks-list[data-filter="history"] .stage-task-activate-btn.archived:hover {
+        background: none;
+        color: #6b7280;
+    }
+    
+    /* Blinking animation for activate button on task row hover - exactly 3 blinks */
+    @keyframes blink-attention {
+        0%, 11%, 22%, 33.33%, 44%, 55%, 66.66%, 77%, 88%, 100% { background-color: transparent; }
+        5.5%, 27.5%, 49.5% { background-color: #f3f4f6; }
+    }
+    
+    .stage-task-item:hover .stage-task-activate-btn:not(.archived) {
+        animation: blink-attention 0.9s ease-in-out;
+        animation-iteration-count: 1;
+    }
+    
+    /* Disable blinking in history view */
+    .stage-tasks-list[data-filter="history"] .stage-task-item:hover .stage-task-activate-btn {
+        animation: none;
     }
     
     .task-filter-select {
@@ -2301,6 +2472,35 @@
         border-radius: 10px;
         font-size: 0.7rem;
         font-weight: 600;
+    }
+    
+    .to-be-reviewed-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 12px;
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        font-weight: 500;
+        color: #374151;
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+    
+    .to-be-reviewed-count {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 20px;
+        height: 20px;
+        padding: 0 6px;
+        background: #ef4444;
+        color: white;
+        border-radius: 10px;
+        font-size: 0.7rem;
+        font-weight: 600;
         line-height: 1;
     }
     
@@ -2350,10 +2550,10 @@
         width: 52px;
     }
     
-    .stage-task-dropdown-trigger {
+    .stage-task-delete-btn {
         background: none;
         border: none;
-        color: #64748b;
+        color: #ef4444;
         cursor: pointer;
         padding: 0;
         width: 32px;
@@ -2368,13 +2568,13 @@
         -webkit-user-select: none;
     }
     
-    .stage-task-item:hover .stage-task-dropdown-trigger {
+    .stage-task-item:hover .stage-task-delete-btn {
         opacity: 1;
     }
     
-    .stage-task-dropdown-trigger:hover {
-        background: #f1f5f9;
-        color: #1f2937;
+    .stage-task-delete-btn:hover {
+        background: #fee2e2;
+        color: #dc2626;
     }
     
     .stage-tasks-empty {
@@ -2519,14 +2719,14 @@
     }
 
     .stage-dropdown-trigger:hover {
-        background: #f1f5f9;
+        background: white;
         color: #1f2937;
     }
 
     .stage-dropdown-menu {
         position: absolute;
-        top: calc(100% + 8px);
-        bottom: auto;
+        top: auto;
+        bottom: calc(100% + 8px);
         right: 0;
         background: white;
         border-radius: 12px;
@@ -2535,24 +2735,14 @@
         padding: 0;
         opacity: 0;
         visibility: hidden;
-        transform: translateY(-10px);
+        transform: translateY(10px);
         transition: all 0.2s ease;
         z-index: 1000;
-    }
-
-    .stage-dropdown-menu.dropdown-up {
-        top: auto;
-        bottom: calc(100% + 8px);
-        transform: translateY(10px);
     }
 
     .stage-dropdown-container.active .stage-dropdown-menu {
         opacity: 1;
         visibility: visible;
-        transform: translateY(0);
-    }
-
-    .stage-dropdown-container.active .stage-dropdown-menu.dropdown-up {
         transform: translateY(0);
     }
 
@@ -3597,17 +3787,17 @@
         <!-- Client Active Backlog Card -->
         {% if project.project_owner %}
         <aside class="project-sidebar-backlog">
-            <div id="clientActiveBacklogCard" class="client-backlog-card" style="background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 0; box-shadow: 0 1px 3px rgba(0,0,0,0.05); height: 100%;">
-                <div class="active-backlog-header-container" style="margin-bottom: 16px; flex-shrink: 0; padding: 20px 20px 0 20px;">
-                    <h3 id="clientBacklogTitle" class="active-backlog-title" style="font-size: 0.9rem; font-weight: 600; color: #111827; margin: 0; display: flex; align-items: center; gap: 8px;">
+            <div id="clientActiveBacklogCard" class="client-backlog-card" style="background: white !important; padding: 0; box-shadow: 0 1px 3px rgba(0,0,0,0.05); height: 100%;">
+                <div class="active-backlog-header-container" style="flex-shrink: 0; padding: 20px 20px 20px 20px;">
+                    <h3 id="clientBacklogTitle" class="active-backlog-title" style="font-size: 0.9rem; font-weight: 600; color: #1f2937; margin: 0; display: flex; align-items: center; gap: 8px;">
                         <i class="fas fa-clipboard-list" style="color: #10b981;"></i>
                         <span id="clientBacklogName">{{ project.project_owner.first_name }}'s</span> Active Backlog
                     </h3>
-                    <button onclick="openCreateActiveBacklogTaskModal()" class="active-backlog-create-btn" style="font-size: 1.2rem; color: white; background: #111827; border: none; cursor: pointer; font-weight: 700; padding: 8px 16px; border-radius: 6px; display: flex; align-items: center; justify-content: center; transition: all 0.2s; width: 40px; height: 40px;">
+                    <button onclick="openCreateActiveBacklogTaskModal(null, '', '', '', 'medium', null, null, {{ project.project_owner.id }})" class="active-backlog-create-btn" style="font-size: 1.2rem; color: #ffffff; background: #111827; border: none; cursor: pointer; font-weight: 700; padding: 8px 16px; border-radius: 6px; display: flex; align-items: center; justify-content: center; transition: all 0.2s; width: 40px; height: 40px;">
                         +
                     </button>
                 </div>
-                <div id="clientActiveBacklogList" style="display: flex; flex-direction: column; gap: 0; flex: 1; min-height: 0; padding: 0;">
+                <div id="clientActiveBacklogList" style="display: flex; flex-direction: column; gap: 0; flex: 1; min-height: 0; padding: 0; overflow-x: hidden;">
                     <div style="padding: 16px; text-align: center; color: #9ca3af;">
                         <i class="fas fa-circle-notch fa-spin" style="font-size: 1rem; margin-bottom: 8px; opacity: 0.5;"></i>
                         <p style="margin: 0; font-size: 0.85rem;">Loading...</p>
@@ -3677,11 +3867,8 @@
     console.log('Stages script block loaded');
     const PROJECT_ID = parseInt('{{ project.id }}');
     const STAGE_DETAIL_URL = '{% url "general:dashboard_mentor:stage_detail" project.id 0 %}'.replace('/0/', '/');
-    {% if project.target_completion_date %}
-    const TARGET_COMPLETION_DATE = '{{ project.target_completion_date|date:"Y-m-d" }}';
-    {% else %}
-    const TARGET_COMPLETION_DATE = null;
-    {% endif %}
+    const CLIENT_ID = {% if project.project_owner %}{{ project.project_owner.id }}{% else %}null{% endif %};
+    var TARGET_COMPLETION_DATE = {% if project.target_completion_date %}'{{ project.target_completion_date|date:"Y-m-d" }}'{% else %}null{% endif %};
     let sortableInstance = null;
     
     console.log('PROJECT_ID:', PROJECT_ID);
@@ -4715,24 +4902,24 @@
                 switch(progressStatus) {
                     case 'completed':
                         statusTag = '<span class="status-tag completed">Completed</span>';
-                        progressColor = '#059669'; // Darker green for better contrast
+                        progressColor = '#10b981'; // Matches status-tag.completed background
                         statusTitle = 'Completed';
                         titleClass = 'style="text-decoration: line-through; color: #6b7280;"';
                         break;
                     case 'overdue':
                         statusTag = '<span class="status-tag overdue">Overdue</span>';
-                        progressColor = '#dc2626'; // Darker red for better contrast
+                        progressColor = '#ef4444'; // Matches status-tag.overdue background
                         statusTitle = 'Overdue';
                         break;
                     case 'in_progress':
                         statusTag = '<span class="status-tag pending">In Progress</span>';
-                        progressColor = '#2563eb'; // Darker blue for better contrast
+                        progressColor = '#3b82f6'; // Matches status-tag.pending background
                         statusTitle = 'In Progress';
                         break;
                     case 'created':
                     default:
                         statusTag = '<span class="status-tag created">Created</span>';
-                        progressColor = '#d97706'; // Darker yellow/orange for better contrast
+                        progressColor = '#fbbf24'; // Matches status-tag.created background
                         statusTitle = 'Created';
                         break;
                 }
@@ -4741,23 +4928,24 @@
             // Calculate progress based on tasks
             const totalTasks = stage.tasks_total || 0;
             const completedTasks = stage.tasks_completed || 0;
+            // Count of tasks with status='completed' for "To be Reviewed" badge (excludes archived)
+            const completedStatusTasks = stage.tasks_completed_status || 0;
             const progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : (progressStatus === 'completed' ? 100 : 0);
             
             // Override progress color if progress is 0 (no tasks) or use status-based color
-            // Using more saturated, darker colors for better contrast and visual impact
+            // Using status tag colors for consistency
             if (isDisabled) {
-                // Keep disabled color - darker for better contrast
-                progressColor = '#6b7280';
+                progressColor = '#6b7280'; // Matches status-tag.disabled background
             } else if (progress === 0 && progressStatus !== 'completed') {
                 progressColor = '#d1d5db';
             } else if (progressStatus === 'completed') {
-                progressColor = '#059669'; // Darker green for better contrast
+                progressColor = '#10b981'; // Matches status-tag.completed background
             } else if (progressStatus === 'overdue') {
-                progressColor = '#dc2626'; // Darker red for better contrast
+                progressColor = '#ef4444'; // Matches status-tag.overdue background
             } else if (progressStatus === 'in_progress') {
-                progressColor = '#2563eb'; // Darker blue for better contrast
+                progressColor = '#3b82f6'; // Matches status-tag.pending background
             } else if (progressStatus === 'created') {
-                progressColor = '#d97706'; // Darker yellow/orange for better contrast
+                progressColor = '#fbbf24'; // Matches status-tag.created background
             }
             
             // Format dates for display
@@ -4793,6 +4981,12 @@
                                     <div class="stage-title">
                                         ${statusTag}
                                         <span ${titleClass}>${titleText}</span>
+                                        ${completedStatusTasks > 0 ? `
+                                            <div class="to-be-reviewed-badge" title="To be Reviewed">
+                                                To be Reviewed
+                                                <span class="to-be-reviewed-count">${completedStatusTasks}</span>
+                                            </div>
+                                        ` : ''}
                                     </div>
                                     ${dateRangeHtml}
                                 </div>
@@ -4801,7 +4995,7 @@
                                 <div class="stage-progress-bar-container">
                                     <div class="stage-progress-label">
                                         <span>Progress</span>
-                                        <span style="font-weight: 500;">${progress}%</span>
+                                        <span style="font-weight: 500; color: #6b7280;">${progress}%</span>
                                     </div>
                                     <div class="stage-progress-bar">
                                         <div class="stage-progress-fill" style="width: ${progress}%; background: ${progressColor};"></div>
@@ -4809,7 +5003,7 @@
                                 </div>
                                 <div class="stage-tasks-count ${totalTasks === 0 ? 'no-tasks' : ''}">
                                     ${totalTasks === 0 
-                                        ? '<span style="color: #000000;">no tasks yet</span>'
+                                        ? '<span style="color: #6b7280;">no tasks yet</span>'
                                         : `<i class="fas fa-tasks"></i><span>${completedTasks}/${totalTasks}</span>`
                                     }
                                 </div>
@@ -4993,6 +5187,15 @@
         const apiUrl = '{% url "general:dashboard_mentor:get_stages_api" project.id %}';
         console.log('Fetching stages from:', apiUrl);
         
+        // Save which stages have expanded task sections before reloading
+        const expandedStages = [];
+        document.querySelectorAll('.stage-tasks-section.expanded').forEach(section => {
+            const stageId = section.id.replace('stageTasks_', '');
+            if (stageId) {
+                expandedStages.push(stageId);
+            }
+        });
+        
         fetch(apiUrl, {
             method: 'GET',
             headers: {
@@ -5013,6 +5216,34 @@
             .then(data => {
                 if (data && data.success) {
                     renderStages(data.stages || []);
+                    
+                    // Restore expanded state for stages that were expanded before reload
+                    if (expandedStages.length > 0) {
+                        setTimeout(() => {
+                            expandedStages.forEach(stageId => {
+                                const tasksSection = document.getElementById(`stageTasks_${stageId}`);
+                                if (tasksSection && !tasksSection.classList.contains('expanded')) {
+                                    // Expand the section
+                                    tasksSection.classList.add('expanded');
+                                    
+                                    // Load tasks if not already loaded
+                                    if (!tasksSection.dataset.loaded) {
+                                        loadStageTasks(stageId);
+                                    } else {
+                                        // Just show the input section if tasks are already loaded
+                                        const buttonsSection = document.getElementById(`stageButtons_${stageId}`);
+                                        if (buttonsSection) {
+                                            buttonsSection.style.display = 'block';
+                                        }
+                                    }
+                                    
+                                    // Update overlay state
+                                    updateTasksOverlay();
+                                }
+                            });
+                        }, 50);
+                    }
+                    
                     // Check header layout after rendering
                     setTimeout(() => {
                         const headerContainer = document.querySelector('.active-backlog-header-container');
@@ -5055,6 +5286,7 @@
                 `;
             });
     }
+    
     
     // Load client active backlog
     function loadActiveBacklog() {
@@ -5121,6 +5353,8 @@
         const container = document.getElementById('clientActiveBacklogList');
         if (!container) return;
         
+        const clientId = {% if project.project_owner %}{{ project.project_owner.id }}{% else %}null{% endif %};
+        
         if (tasks.length === 0) {
             container.innerHTML = `
                 <div style="text-align: center; padding: 32px 16px; color: #9ca3af; font-size: 0.85rem;">
@@ -5146,19 +5380,19 @@
                 </div>
             `;
             roadmapTasks.forEach(task => {
-                html += renderBacklogTaskCard(task);
+                html += renderBacklogTaskCard(task, clientId);
             });
         }
         
         // General Tasks Section
         if (directTasks.length > 0) {
             html += `
-                <div class="active-backlog-section-header" style="margin-top: 24px;">
+                <div class="active-backlog-section-header">
                     <i class="fas fa-bolt"></i> General Tasks
-                </div>
+                        </div>
             `;
             directTasks.forEach(task => {
-                html += renderBacklogTaskCard(task);
+                html += renderBacklogTaskCard(task, clientId);
             });
         }
         
@@ -5187,7 +5421,7 @@
     }
     
     // Helper to render a single task card
-    function renderBacklogTaskCard(task) {
+    function renderBacklogTaskCard(task, clientId) {
         const completedClass = task.completed ? 'completed' : '';
         const hasStage = task.has_stage === true;
         const fadeInClass = 'fade-in';
@@ -5199,10 +5433,40 @@
             <div class="deactivate-icon-stack">
                 <i class="fas fa-list" style="font-size: 0.7rem; position: absolute; left: 2px;"></i>
                 <i class="fas fa-chevron-left" style="font-size: 0.5rem; position: absolute; left: -8px;"></i>
-            </div>
+                    </div>
+            <span class="deactivate-popover">Deactivate</span>
         `;
         
+        // Format deadline date and check if overdue
+        let deadlineHtml = '';
+        if (task.deadline) {
+            const deadlineDate = new Date(task.deadline);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            deadlineDate.setHours(0, 0, 0, 0);
+            const isOverdue = deadlineDate < today;
+            
+            const formattedDate = deadlineDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            const overdueClass = isOverdue ? 'overdue' : '';
+            const overduePopover = isOverdue ? '<span class="overdue-popover">Overdue</span>' : '';
+            
+            deadlineHtml = `
+                <div class="active-backlog-task-deadline ${overdueClass}">
+                    <i class="fas fa-calendar-alt" style="font-size: 0.7rem;"></i>
+                    <span>${formattedDate}</span>
+                    ${overduePopover}
+                </div>
+            `;
+        }
+        
         const priority = task.priority || 'medium';
+        const priorityLabel = priority.charAt(0).toUpperCase() + priority.slice(1);
+        const priorityClass = `priority-${priority}`;
+        
+        // Escape single quotes in title and description for onclick handler
+        const escapedTitle = (task.title || '').replace(/'/g, "\\'").replace(/\n/g, ' ');
+        const escapedDescription = (task.description || '').replace(/'/g, "\\'").replace(/\n/g, ' ');
+        
         return `
             <div class="active-backlog-task-item ${completedClass} ${fadeInClass}" 
                  data-task-id="${task.id}" 
@@ -5218,16 +5482,19 @@
                                 data-project-id="${task.project_id || ''}"
                                 onmouseover="updateActiveBacklogActivateButton(this, true)"
                                 onmouseout="updateActiveBacklogActivateButton(this, false)"
-                                onclick="deactivateActiveBacklogTask(${task.id}, ${task.stage_id || 'null'}, ${task.project_id || 'null'}, event)"
-                                title="Deactivate Task">
+                                onclick="deactivateActiveBacklogTask(${task.id}, ${task.stage_id || 'null'}, ${task.project_id || 'null'}, event)">
                             ${deactivateIcon}
                         </button>
                     </div>
-                    <div class="active-backlog-task-content ${hasStage ? '' : 'has-no-activate-btn'}" ${!hasStage ? `onclick="showCompletedTasks(${task.project_id || PROJECT_ID})" style="cursor: pointer;"` : ''}>
-                        <div class="active-backlog-task-title ${!hasStage ? 'single-line' : ''}" style="margin-bottom: ${hasStage ? '4px' : '8px'};">${escapeHtml(task.title)}</div>
+                    <div class="active-backlog-task-content ${hasStage ? '' : 'has-no-activate-btn'}" onclick="editActiveBacklogTask(${task.id}, '${escapedTitle}', '${escapedDescription}', '${task.deadline || ''}', '${task.priority || 'medium'}', ${clientId || 'null'}, event)">
+                        <div class="active-backlog-task-title-row">
+                            <div class="active-backlog-task-title-text ${!hasStage ? 'single-line' : ''}">${escapeHtml(task.title)}</div>
+                            ${deadlineHtml}
+                        </div>
                         ${hasStage ? descriptionHtml : ''}
                         
-                        <div style="display: flex; align-items: center; justify-content: flex-end; margin-top: 4px;">
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 4px;">
+                            <span class="priority-tag ${priorityClass}">${priorityLabel}</span>
                             <div class="active-backlog-done-btn ${task.completed ? 'checked' : ''}" 
                                  onclick="toggleActiveBacklogTaskComplete(${task.id}, ${task.stage_id || 'null'}, ${task.project_id || 'null'}, ${task.has_stage}, event)">
                                 <i class="fas fa-check"></i> Mark Done
@@ -5238,6 +5505,14 @@
             </div>
         `;
     }
+    
+    // Edit active backlog task
+    window.editActiveBacklogTask = function(taskId, title, description, deadline, priority, clientId, event) {
+        event.stopPropagation();
+        if (typeof openCreateActiveBacklogTaskModal === 'function') {
+            openCreateActiveBacklogTaskModal(taskId, title, description, deadline, priority, null, null, clientId);
+        }
+    };
     
     // Update active backlog activate button on hover
     window.updateActiveBacklogActivateButton = function(button, isHover) {
@@ -5354,9 +5629,10 @@
             // Task from stage - use mentor endpoint
             endpoint = `/dashboard/mentor/projects/${projectId}/stages/${stageId}/tasks/${taskId}/toggle-complete/`;
         } else {
-            // Task created directly in active backlog - use client endpoint
+            // Task created directly in active backlog - use mentor endpoint for client active backlog
             {% if project.project_owner %}
-            endpoint = `/dashboard/user/active-backlog/tasks/${taskId}/toggle-complete/`;
+            const clientId = {{ project.project_owner.id }};
+            endpoint = `/dashboard/mentor/clients/${clientId}/active-backlog/tasks/${taskId}/toggle-complete/`;
             {% else %}
             if (typeof showNotification !== 'undefined') {
                 showNotification('Cannot complete task: no client assigned', 'error');
@@ -5389,16 +5665,31 @@
                 if (taskItem) {
                     if (newCompleted) {
                         taskItem.classList.add('completed');
-                        // If task was from stage, remove from active backlog
-                        if (hasStage) {
-                            taskItem.classList.add('fade-out');
-                            setTimeout(() => {
-                                taskItem.remove();
-                                loadActiveBacklog();
-                            }, 400);
-                        }
+                        // Remove task from active backlog (for both stage-linked and general tasks)
+                        taskItem.classList.add('fade-out');
+                        setTimeout(() => {
+                            taskItem.remove();
+                            loadActiveBacklog();
+                            // Reload stage and its tasks if the stage is currently open/expanded (only for stage-linked tasks)
+                            if (hasStage && stageId && projectId) {
+                                const tasksSection = document.getElementById(`stageTasks_${stageId}`);
+                                if (tasksSection && tasksSection.classList.contains('expanded')) {
+                                    // Reload the entire stage to get updated data
+                                    loadStageTasks(stageId);
+                                    // Also reload stages to update stage completion status and progress
+                                    loadStages();
+                                }
+                            }
+                        }, 400);
                     } else {
                         taskItem.classList.remove('completed');
+                        // Reload stage tasks if the stage is currently open/expanded
+                        if (hasStage && stageId && projectId) {
+                            const tasksSection = document.getElementById(`stageTasks_${stageId}`);
+                            if (tasksSection && tasksSection.classList.contains('expanded')) {
+                                loadStageTasks(stageId);
+                            }
+                        }
                     }
                 }
             } else {
@@ -5733,6 +6024,12 @@
         const roadmapContainer = document.querySelector('.roadmap-container');
         if (!roadmapContainer) return;
         
+        // Don't close stages if clicking inside the modal
+        const modal = document.getElementById('createActiveBacklogTaskModal');
+        if (modal && (modal.contains(event.target) || modal.classList.contains('active'))) {
+            return;
+        }
+        
         // Check if any tasks are open
         const hasOpenTasks = roadmapContainer.classList.contains('has-open-tasks');
         if (!hasOpenTasks) return;
@@ -5843,7 +6140,22 @@
         .then(response => response.json())
         .then(data => {
             if (data && data.success) {
-                renderStageTasks(stageId, data.tasks || []);
+                const tasks = data.tasks || [];
+                
+                // Check if this is the first load and if there are completed tasks
+                const filterSelect = document.getElementById(`taskFilter_${stageId}`);
+                const isFirstLoad = !filterSelect;
+                
+                if (isFirstLoad) {
+                    // Check if there are any completed tasks
+                    const completedTasks = tasks.filter(t => t.completed === true && t.status !== 'archived');
+                    if (completedTasks.length > 0) {
+                        // Set a flag to use 'completed' as default filter
+                        tasksSection.dataset.defaultFilter = 'completed';
+                    }
+                }
+                
+                renderStageTasks(stageId, tasks);
                 tasksSection.dataset.loaded = 'true';
                 
                 // Save DB order after rendering (tasks come from API in DB order)
@@ -5894,7 +6206,12 @@
         
         // Get current filter value
         const filterSelect = document.getElementById(`taskFilter_${stageId}`);
-        const currentFilter = filterSelect ? filterSelect.value : 'all';
+        let currentFilter = filterSelect ? filterSelect.value : 'not_active';
+        
+        // If this is the first load and there are completed tasks, use 'completed' as default
+        if (!filterSelect && tasksSection && tasksSection.dataset.defaultFilter === 'completed') {
+            currentFilter = 'completed';
+        }
         
         // Filter tasks based on selection
         let filteredTasks = tasks;
@@ -5934,7 +6251,7 @@
                         <select class="task-filter-select" id="taskFilter_${stageId}" onchange="filterStageTasks(${stageId}, this.value)">
                             <option value="all" ${currentFilter === 'all' ? 'selected' : ''}>All</option>
                             <option value="active" ${currentFilter === 'active' ? 'selected' : ''}>Active</option>
-                            <option value="not_active" ${currentFilter === 'not_active' ? 'selected' : ''}>Not Active</option>
+                            <option value="not_active" ${currentFilter === 'not_active' && (!filterSelect || tasksSection.dataset.defaultFilter !== 'completed') ? 'selected' : ''}>Not Active</option>
                             <option value="completed" ${currentFilter === 'completed' ? 'selected' : ''}>Completed</option>
                             <option value="history" ${currentFilter === 'history' ? 'selected' : ''}>History</option>
                         </select>
@@ -5968,7 +6285,7 @@
             </div>
                 </div>
             </div>
-            <div class="stage-tasks-list" id="stageTasksList_${stageId}">
+            <div class="stage-tasks-list" id="stageTasksList_${stageId}" data-filter="${currentFilter}">
         `;
         
         if (filteredTasks.length === 0) {
@@ -6030,11 +6347,11 @@
                     <div class="stage-task-checkbox-container">
                         <div class="stage-task-checkbox" onclick="toggleTaskSelection(${task.id}, ${stageId}, event)"></div>
                     </div>
-                    <div class="stage-task-content">
+                    <div class="stage-task-content" onclick="openCreateActiveBacklogTaskModal(${task.id}, '${(task.title || '').replace(/'/g, "\\'").replace(/\n/g, ' ')}', '${(task.description || '').replace(/'/g, "\\'").replace(/\n/g, '\\n')}', '${task.deadline || ''}', '${task.priority || 'medium'}', PROJECT_ID, ${stageId}, CLIENT_ID, '${task.status || 'pending'}')">
                         <div class="stage-task-title">${escapeHtml(task.title)}</div>
                         ${task.description ? `<div class="stage-task-description-text">${escapeHtml(task.description)}</div>` : ''}
                     </div>
-                    <div class="stage-task-priority-display">
+                    <div class="stage-task-priority-display" onclick="openCreateActiveBacklogTaskModal(${task.id}, '${(task.title || '').replace(/'/g, "\\'").replace(/\n/g, ' ')}', '${(task.description || '').replace(/'/g, "\\'").replace(/\n/g, '\\n')}', '${task.deadline || ''}', '${task.priority || 'medium'}', PROJECT_ID, ${stageId}, CLIENT_ID, '${task.status || 'pending'}')">
                         <span class="priority-tag ${priorityClass}">${priorityLabel}</span>
                     </div>
                     <div class="stage-task-activate">
@@ -6043,15 +6360,15 @@
                                 data-is-active="${buttonDataState}"
                                 data-is-completed="${buttonDataCompleted}"
                                 data-is-archived="${isArchived ? 'true' : 'false'}"
-                                onmouseover="updateActivateButton(this, ${!isCompleted && !isArchived && !isActive}, ${isCompleted}, ${isArchived})"
+                                onmouseover="updateActivateButton(this, ${isCompleted ? true : (!isArchived && !isActive)}, ${isCompleted}, ${isArchived})"
                                 onmouseout="updateActivateButton(this, ${isActive}, ${isCompleted}, ${isArchived})"
                                 onclick="${isArchived ? 'return false;' : isCompleted ? `archiveTask(${task.id}, ${stageId}, event)` : `toggleTaskActivation(${task.id}, ${stageId}, event)`}">
                             ${buttonText}
                         </button>
                     </div>
                     <div class="stage-task-actions">
-                        <button class="stage-task-dropdown-trigger" onclick="toggleTaskDropdown(${task.id}, event)">
-                            <i class="fas fa-ellipsis-v"></i>
+                        <button class="stage-task-delete-btn" onclick="deleteTask(${task.id}, ${stageId}, event)" title="Delete Task">
+                            <i class="fas fa-trash"></i>
                         </button>
                     </div>
                 </div>
@@ -6375,7 +6692,7 @@
                 if (taskElement) {
                     taskElement.classList.add('fade-out');
                     setTimeout(() => {
-                        taskElement.remove();
+                    taskElement.remove();
                     }, 400 + (index * 50)); // Stagger deletions slightly
                 }
             });
@@ -6849,6 +7166,7 @@
                     const mediumTag = priorityTags.querySelector('[data-priority="medium"]');
                     if (mediumTag) mediumTag.classList.add('selected');
                 }
+                // Declare tasksSection once at the start of the success block
                 const tasksSection = document.getElementById(`stageTasks_${stageId}`);
                 const tasksList = tasksSection ? tasksSection.querySelector('.stage-tasks-list') : null;
                 const tasksHeader = tasksSection ? tasksSection.querySelector('.stage-tasks-title') : null;
@@ -6889,7 +7207,7 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="stage-tasks-list" id="stageTasksList_${stageId}"></div>
+                        <div class="stage-tasks-list" id="stageTasksList_${stageId}" data-filter="not_active"></div>
                     `;
                 }
                 
@@ -6918,7 +7236,7 @@
                                 <div class="stage-task-title">${escapeHtml(title)}</div>
                                 ${descriptionText ? `<div class="stage-task-description-text">${escapeHtml(descriptionText)}</div>` : ''}
                             </div>
-                            <div class="stage-task-priority-display">
+                            <div class="stage-task-priority-display" onclick="openCreateActiveBacklogTaskModal(${data.task_id}, '${(title || '').replace(/'/g, "\\'").replace(/\n/g, ' ')}', '${(descriptionText || '').replace(/'/g, "\\'").replace(/\n/g, '\\n')}', '', '${priority}', PROJECT_ID, ${stageId}, CLIENT_ID)">
                                 <span class="priority-tag priority-${priority}">${priorityLabel}</span>
                             </div>
                             <div class="stage-task-activate">
@@ -6992,9 +7310,9 @@
                     }
             } else {
                     // Fallback: reload tasks from server to ensure consistency
-                    const tasksSection = document.getElementById(`stageTasks_${stageId}`);
-                    if (tasksSection) {
-                        tasksSection.dataset.loaded = 'false';
+                    const fallbackTasksSection = document.getElementById(`stageTasks_${stageId}`);
+                    if (fallbackTasksSection) {
+                        fallbackTasksSection.dataset.loaded = 'false';
                         loadStageTasks(stageId);
                     }
                 }
@@ -7004,6 +7322,17 @@
                 
                 // Initialize sortable for the new task
                 initTaskSortable(stageId);
+                
+                // Reload stages to update completion status if stage was completed before
+                // Check if the stage is currently open/expanded
+                // Get tasksSection again to check if stage is expanded (works for both success paths)
+                const checkTasksSection = document.getElementById(`stageTasks_${stageId}`);
+                if (checkTasksSection && checkTasksSection.classList.contains('expanded')) {
+                    // Reload all stages to update completion status
+                    if (typeof loadStages === 'function') {
+                        loadStages();
+                    }
+                }
                 
                 if (typeof showNotification !== 'undefined') {
                     showNotification('Task created successfully', 'success');
@@ -7127,221 +7456,23 @@
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                // Fetch the newly created tasks
-                fetch(`/dashboard/mentor/projects/${PROJECT_ID}/stages/${stageId}/tasks/api/`, {
-                    method: 'GET',
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest',
-                    },
-                    credentials: 'same-origin'
-                })
-                .then(response => response.json())
-                .then(tasksData => {
-                    // Re-enable button
-                    aiBtn.disabled = false;
-                    aiBtn.innerHTML = originalContent;
-                    
-                    if (tasksData && tasksData.success && tasksData.tasks) {
-                const tasksSection = document.getElementById(`stageTasks_${stageId}`);
-                        if (!tasksSection) return;
-                        
-                        // Ensure section is expanded
-                        tasksSection.classList.add('expanded');
-                        
-                        // Remove empty state if present
-                        const emptyState = tasksSection.querySelector('.stage-tasks-empty');
-                        if (emptyState) {
-                            emptyState.remove();
-                        }
-                        
-                        // Get existing tasks to find new ones
-                        const existingTaskIds = new Set();
-                        const existingTasks = tasksSection.querySelectorAll('.stage-task-item');
-                        existingTasks.forEach(task => {
-                            const taskId = task.getAttribute('data-task-id');
-                            if (taskId) existingTaskIds.add(taskId);
-                        });
-                        
-                        // Get or create tasks list
-                        let tasksList = tasksSection.querySelector('.stage-tasks-list');
-                        let tasksHeader = tasksSection.querySelector('.stage-tasks-title');
-                        
-                        if (!tasksList) {
-                            // Create tasks header and list if they don't exist
-                            tasksSection.innerHTML = `
-                                <div class="stage-tasks-header">
-                                    <div class="stage-tasks-title">
-                                        <div class="stage-tasks-select-all-checkbox" id="selectAllTasks_${stageId}" onclick="toggleSelectAllTasks(${stageId}, event)"></div>
-                                        Tasks (${tasksData.tasks.length})
-                                    </div>
-                                    <div class="stage-tasks-header-actions">
-                                        <button class="btn-sort-tasks" id="btnSortHigh_${stageId}" onclick="togglePrioritySort(${stageId}, 'high')" title="Sort Priority High to Low">
-                                            <i class="fas fa-sort-amount-down"></i>
-                                        </button>
-                                        <button class="btn-sort-tasks" id="btnSortLow_${stageId}" onclick="togglePrioritySort(${stageId}, 'low')" title="Sort Priority Low to High">
-                                            <i class="fas fa-sort-amount-up"></i>
-                                        </button>
-                                        <div class="stage-tasks-actions-select" id="actionsSelect_${stageId}">
-                                            <button class="custom-select-trigger-actions" id="btnActionsTasks_${stageId}" onclick="toggleTasksActionsDropdown(${stageId}, event)" disabled>
-                                                Actions <i class="fas fa-chevron-down"></i>
-                                            </button>
-                                            <div class="custom-select-menu-actions" id="tasksActionsMenu_${stageId}">
-                                                <button class="custom-select-item-actions first-item" onclick="activateSelectedTasks(${stageId})">
-                                                    <i class="fas fa-check-circle"></i> <span>Activate</span>
-                                                </button>
-                                                <button class="custom-select-item-actions last-item" onclick="deleteSelectedTasks(${stageId})">
-                                                    <i class="fas fa-trash"></i> <span>Delete</span>
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="stage-tasks-list" id="stageTasksList_${stageId}"></div>
-                            `;
-                            tasksList = tasksSection.querySelector('.stage-tasks-list');
-                            tasksHeader = tasksSection.querySelector('.stage-tasks-title');
-                        }
-                        
-                        // Filter to only new tasks (those not already in the list)
-                        const newTasks = tasksData.tasks.filter(task => !existingTaskIds.has(String(task.id)));
-                        
-                        // Reverse tasks to show newest first
-                        const reversedTasks = [...newTasks].reverse();
-                        
-                        // Add each new task with animation
-                        reversedTasks.forEach((task, index) => {
-                            const completedClass = task.completed ? 'completed' : '';
-                            const isActive = task.status === 'active';
-                            const isCompleted = task.completed === true;
-                            const isArchived = task.status === 'archived';
-                            const priorityClass = `priority-${task.priority || 'medium'}`;
-                            const statusClass = `status-${task.status || 'pending'}`;
-                            const priorityLabel = (task.priority || 'medium').charAt(0).toUpperCase() + (task.priority || 'medium').slice(1);
-                            const statusLabel = (task.status || 'pending').replace('_', ' ').split(' ').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' ');
-                            
-                            // Determine button text and state
-                            let buttonText = 'Not Active';
-                            let buttonClass = '';
-                            let buttonDataState = 'false';
-                            let buttonDataCompleted = 'false';
-                            
-                            if (isArchived) {
-                                buttonText = 'Archived';
-                                buttonClass = 'archived';
-                                buttonDataState = 'archived';
-                            } else if (isCompleted) {
-                                buttonText = 'Completed';
-                                buttonClass = 'completed';
-                                buttonDataState = 'completed';
-                                buttonDataCompleted = 'true';
-                            } else if (isActive) {
-                                buttonText = 'Active';
-                                buttonClass = 'active';
-                                buttonDataState = 'true';
-                            }
-                            
-                            const taskHtml = `
-                                <div class="stage-task-item fade-in ${completedClass} ${isArchived ? 'archived' : ''}" data-task-id="${task.id}" data-priority="${task.priority || 'medium'}" data-status="${task.status || 'pending'}">
-                                    <div class="stage-task-drag-handle">
-                                        <i class="fas fa-grip-vertical"></i>
-                                    </div>
-                                    <div class="stage-task-checkbox-container">
-                                        <div class="stage-task-checkbox" onclick="toggleTaskSelection(${task.id}, ${stageId}, event)"></div>
-                                    </div>
-                                    <div class="stage-task-content">
-                                        <div class="stage-task-title">${escapeHtml(task.title)}</div>
-                                        ${task.description ? `<div class="stage-task-description-text">${escapeHtml(task.description)}</div>` : ''}
-                                    </div>
-                                    <div class="stage-task-priority-display">
-                                        <span class="priority-tag ${priorityClass}">${priorityLabel}</span>
-                                    </div>
-                                    <div class="stage-task-activate">
-                                        <button class="stage-task-activate-btn ${buttonClass}" 
-                                                data-task-id="${task.id}"
-                                                data-is-active="${buttonDataState}"
-                                                data-is-completed="${buttonDataCompleted}"
-                                                data-is-archived="${isArchived ? 'true' : 'false'}"
-                                                onmouseover="updateActivateButton(this, ${!isCompleted && !isArchived && !isActive}, ${isCompleted}, ${isArchived})"
-                                                onmouseout="updateActivateButton(this, ${isActive}, ${isCompleted}, ${isArchived})"
-                                                onclick="${isArchived ? 'return false;' : isCompleted ? `archiveTask(${task.id}, ${stageId}, event)` : `toggleTaskActivation(${task.id}, ${stageId}, event)`}">
-                                            ${buttonText}
-                                        </button>
-                                    </div>
-                                    <div class="stage-task-actions">
-                                        <button class="stage-task-dropdown-trigger" onclick="toggleTaskDropdown(${task.id}, event)">
-                                            <i class="fas fa-ellipsis-v"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                            `;
-                            
-                            // Insert at the top of the list
-                            tasksList.insertAdjacentHTML('afterbegin', taskHtml);
-                            
-                            // Add fade-in animation
-                            const taskElement = tasksList.querySelector(`[data-task-id="${task.id}"]`);
-                            if (taskElement) {
-                                taskElement.classList.add('fade-in');
-                            }
-                        });
-                        
-                        // Update task count
-                        if (tasksHeader) {
-                            const currentCount = tasksList.querySelectorAll('.stage-task-item').length;
-                            tasksHeader.textContent = `Tasks (${currentCount})`;
-                        }
-                        
-                        // Update progress bar
-                        const stageRow = tasksSection.closest('.stage-row');
-                        if (stageRow) {
-                            const progressBar = stageRow.querySelector('.stage-progress-fill');
-                            const progressLabel = stageRow.querySelector('.stage-progress-label');
-                            const tasksCount = stageRow.querySelector('.stage-tasks-count');
-                            
-                            if (progressBar && progressLabel && tasksCount) {
-                                const totalTasks = tasksList.querySelectorAll('.stage-task-item').length;
-                                const completedTasks = tasksList.querySelectorAll('.stage-task-item.completed').length;
-                                const newProgress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
-                                
-                                progressBar.style.width = `${newProgress}%`;
-                                progressLabel.textContent = `${newProgress}%`;
-                                tasksCount.innerHTML = `<i class="fas fa-tasks"></i><span>${completedTasks}/${totalTasks}</span>`;
-                            }
-                        }
-                        
-                        // Mark as loaded
-                        tasksSection.dataset.loaded = 'true';
-                        
-                        // Initialize sortable for tasks
-                        initTaskSortable(stageId);
-                    
-                    // Update overlay and max-height
-                    updateTasksOverlay();
-                        setTimeout(() => {
-                            setRoadmapContainerMaxHeight();
-                }, 100);
+                // Re-enable button
+                aiBtn.disabled = false;
+                aiBtn.innerHTML = originalContent;
+                
+                // Reload stage tasks to show the newly generated tasks with proper filtering
+                if (typeof loadStageTasks === 'function') {
+                    loadStageTasks(stageId);
+                }
+                
+                // Also reload stages to update progress bars and counts
+                if (typeof loadStages === 'function') {
+                    loadStages();
+                }
                 
                 if (typeof showNotification !== 'undefined') {
-                            showNotification(`${newTasks.length} tasks generated successfully`, 'success');
-                        }
-                } else {
-                        // Re-enable button even on error
-                        aiBtn.disabled = false;
-                        aiBtn.innerHTML = originalContent;
-                        if (typeof showNotification !== 'undefined') {
-                            showNotification('Failed to load generated tasks', 'error');
-                        }
-                    }
-                })
-                .catch(error => {
-                    console.error('Error loading generated tasks:', error);
-                    // Re-enable button
-                    aiBtn.disabled = false;
-                    aiBtn.innerHTML = originalContent;
-                    if (typeof showNotification !== 'undefined') {
-                        showNotification('An error occurred while loading tasks', 'error');
-                    }
-                });
+                    showNotification(data.message || 'Tasks generated successfully!', 'success');
+                }
             } else {
                 // Re-enable button
                 aiBtn.disabled = false;
@@ -7419,7 +7550,7 @@
         
         // Get current filter
         const filterSelect = document.getElementById(`taskFilter_${stageId}`);
-        const currentFilter = filterSelect ? filterSelect.value : 'all';
+        const currentFilter = filterSelect ? filterSelect.value : 'not_active';
         
         // Disable button during request
         button.disabled = true;
@@ -7447,15 +7578,15 @@
             button.disabled = false;
             if (data.success) {
                 // Update button state
-            button.dataset.isActive = newState.toString();
-            button.textContent = newState ? 'Active' : 'Not Active';
+                button.dataset.isActive = newState.toString();
+                button.textContent = newState ? 'Active' : 'Not Active';
             button.dataset.isCompleted = 'false';
-            if (newState) {
-                button.classList.add('active');
+                if (newState) {
+                    button.classList.add('active');
                 button.classList.remove('completed');
                 taskItem.setAttribute('data-status', 'active');
-            } else {
-                button.classList.remove('active');
+                } else {
+                    button.classList.remove('active');
                 taskItem.setAttribute('data-status', 'pending');
             }
                 
@@ -7495,7 +7626,7 @@
                         const tasksHeader = document.querySelector(`#stageTasks_${stageId} .stage-tasks-title`);
                         if (tasksHeader) {
                             const filterSelect = document.getElementById(`taskFilter_${stageId}`);
-                            const currentFilter = filterSelect ? filterSelect.value : 'all';
+                            const currentFilter = filterSelect ? filterSelect.value : 'not_active';
                             let filteredCount = allTasks;
                             if (currentFilter === 'active') {
                                 filteredCount = Array.from(tasksList.querySelectorAll('.stage-task-item:not(.fade-out)')).filter(item => item.querySelector('.stage-task-activate-btn')?.dataset.isActive === 'true').length;
@@ -7703,6 +7834,11 @@
                     }
                 }
                 
+                // Reload stages to update "To be Reviewed" badge count
+                if (typeof loadStages === 'function') {
+                    loadStages();
+                }
+                
                 if (typeof showNotification !== 'undefined') {
                     showNotification('Task archived successfully', 'success');
                 }
@@ -7726,10 +7862,48 @@
     };
     
     // Toggle task dropdown menu
-    window.toggleTaskDropdown = function(taskId, event) {
-        event.stopPropagation();
-        // TODO: Implement task dropdown menu
-        console.log('Toggle dropdown for task:', taskId);
+    window.deleteTask = function(taskId, stageId, event) {
+        if (event) {
+            event.stopPropagation();
+        }
+        
+        if (!confirm('Delete this task?')) return;
+        
+        fetch(`/dashboard/mentor/projects/${PROJECT_ID}/stages/${stageId}/tasks/${taskId}/delete/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => {
+            if (response.ok) {
+                // Find and remove the task element with fade-out animation
+                const taskItem = document.querySelector(`[data-task-id="${taskId}"]`);
+                if (taskItem) {
+                    taskItem.classList.add('fade-out');
+                    setTimeout(() => {
+                        taskItem.remove();
+                        // Reload stage tasks to update counts
+                        loadStageTasks(stageId);
+                    }, 300);
+                }
+                
+                if (typeof showNotification !== 'undefined') {
+                    showNotification('Task deleted successfully', 'success');
+                }
+            } else {
+                throw new Error('Failed to delete task');
+            }
+        })
+        .catch(error => {
+            console.error('Error deleting task:', error);
+            if (typeof showNotification !== 'undefined') {
+                showNotification('An error occurred while deleting the task', 'error');
+            } else {
+                alert('An error occurred while deleting the task');
+            }
+        });
     };
 
     // Toggle stage dropdown menu
@@ -7747,17 +7921,12 @@
         document.querySelectorAll('.stage-dropdown-container').forEach(dropdown => {
             if (dropdown !== container) {
                 dropdown.classList.remove('active');
-                const otherMenu = dropdown.querySelector('.stage-dropdown-menu');
-                if (otherMenu) {
-                    otherMenu.classList.remove('dropdown-up');
-                }
             }
         });
         
         // If clicking the same dropdown, toggle it off
         if (isCurrentlyActive) {
             container.classList.remove('active');
-            menu.classList.remove('dropdown-up');
             // Remove has-active-dropdown class from row actions
             const rowActions = container.closest('.row-actions');
             if (rowActions) {
@@ -7766,29 +7935,7 @@
             return;
         }
         
-        // Get trigger button position relative to viewport
-        const trigger = container.querySelector('.stage-dropdown-trigger');
-        if (!trigger) return;
-        
-        const triggerRect = trigger.getBoundingClientRect();
-        const menuHeight = 100; // Approximate height of dropdown menu (2 items)
-        const spaceBelow = window.innerHeight - triggerRect.bottom;
-        const spaceAbove = triggerRect.top;
-        
-        // Check if it's the last stage row
-        const stageRow = container.closest('.stage-row');
-        const isLastRow = stageRow && !stageRow.nextElementSibling;
-        
-        // Determine if dropdown should appear above
-        if (spaceBelow < menuHeight + 8 || isLastRow) {
-            // Show above if not enough space below or it's the last row
-            menu.classList.add('dropdown-up');
-        } else {
-            // Show below
-            menu.classList.remove('dropdown-up');
-        }
-        
-        // Open the dropdown
+        // Open the dropdown (always appears above)
         container.classList.add('active');
         
         // Keep row actions visible when dropdown is active
@@ -7813,10 +7960,6 @@
         // Close all stage dropdowns
         document.querySelectorAll('.stage-dropdown-container').forEach(dropdown => {
             dropdown.classList.remove('active');
-            const menu = dropdown.querySelector('.stage-dropdown-menu');
-            if (menu) {
-                menu.classList.remove('dropdown-up');
-            }
             // Remove has-active-dropdown class from row actions
             const rowActions = dropdown.closest('.row-actions');
             if (rowActions) {
