@@ -271,9 +271,16 @@
         align-items: stretch;
         justify-content: center;
         flex-shrink: 0;
+        width: 0;
+        border-right: none;
+        background: #f3f4f6;
+        overflow: hidden;
+        transition: width 0.3s ease, border-right 0.3s ease;
+    }
+    
+    .active-backlog-task-item:hover .active-backlog-task-activate {
         width: 55px;
         border-right: 1px solid #e5e7eb;
-        background: #f3f4f6;
     }
     
     .active-backlog-task-activate.hidden {
@@ -293,6 +300,12 @@
         justify-content: center;
         font-size: 1.1rem;
         position: relative;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+    
+    .active-backlog-task-item:hover .active-backlog-task-activate-btn {
+        opacity: 1;
     }
     
     .active-backlog-task-activate-btn:hover {
@@ -347,6 +360,12 @@
         padding: 16px;
         min-width: 0;
         cursor: pointer;
+        height: auto;
+        max-height: 135px;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+        overflow: hidden;
     }
     
     .active-backlog-task-content.has-no-activate-btn {
@@ -397,6 +416,13 @@
         font-weight: 600;
         color: #111827;
         line-height: 1.4;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        line-clamp: 2;
+        -webkit-box-orient: vertical;
+        max-height: 20px;
     }
     
     .active-backlog-task-deadline {
@@ -456,6 +482,14 @@
         color: #4b5563;
         line-height: 1.5;
         margin-bottom: 12px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        line-clamp: 3;
+        -webkit-box-orient: vertical;
+        flex-shrink: 0;
+        max-height: 20px;
     }
     
     .active-backlog-task-footer {
@@ -2321,6 +2355,8 @@
         display: flex;
         align-items: center;
         justify-content: center;
+        gap: 4px;
+        position: relative;
     }
     
     .stage-task-activate-btn:hover {
@@ -2328,12 +2364,24 @@
         color: #374151;
     }
     
+    /* Change "Not Active" button to "Activate" on hover */
+    .stage-task-activate-btn:not(.active):not(.completed):not(.archived):hover {
+        background: #d1fae5;
+        color: #047857;
+        font-weight: 700;
+        animation: none !important;
+        padding-left: 20px;
+    }
+    
     .stage-task-activate-btn.active {
         color: #10b981;
     }
     
     .stage-task-activate-btn.active:hover {
-        color: #059669;
+        background: #fee2e2;
+        color: #ef4444;
+        font-weight: 700;
+        padding-left: 12px;
     }
     
     .stage-task-activate-btn.completed {
@@ -2382,15 +2430,20 @@
         color: #6b7280;
     }
     
-    /* Blinking animation for activate button on task row hover - exactly 3 blinks */
+    /* Calmer blinking animation for activate button on task row hover - exactly 3 blinks */
     @keyframes blink-attention {
         0%, 11%, 22%, 33.33%, 44%, 55%, 66.66%, 77%, 88%, 100% { background-color: transparent; }
-        5.5%, 27.5%, 49.5% { background-color: #f3f4f6; }
+        5.5%, 27.5%, 49.5% { background-color: rgba(209, 213, 219, 0.3); }
     }
     
-    .stage-task-item:hover .stage-task-activate-btn:not(.archived) {
-        animation: blink-attention 0.9s ease-in-out;
+    .stage-task-item:hover .stage-task-activate-btn:not(.archived):not(.active):not(.completed):not(:hover) {
+        animation: blink-attention 2s ease-in-out;
         animation-iteration-count: 1;
+    }
+    
+    /* Stop blinking when hovering directly on button */
+    .stage-task-activate-btn:not(.archived):not(.active):not(.completed):hover {
+        animation: none !important;
     }
     
     /* Disable blinking in history view */
@@ -5491,7 +5544,7 @@
                             <div class="active-backlog-task-title-text ${!hasStage ? 'single-line' : ''}">${escapeHtml(task.title)}</div>
                             ${deadlineHtml}
                         </div>
-                        ${hasStage ? descriptionHtml : ''}
+                        ${descriptionHtml}
                         
                         <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 4px;">
                             <span class="priority-tag ${priorityClass}">${priorityLabel}</span>
@@ -6206,7 +6259,7 @@
         
         // Get current filter value
         const filterSelect = document.getElementById(`taskFilter_${stageId}`);
-        let currentFilter = filterSelect ? filterSelect.value : 'not_active';
+        let currentFilter = filterSelect ? filterSelect.value : 'all';
         
         // If this is the first load and there are completed tasks, use 'completed' as default
         if (!filterSelect && tasksSection && tasksSection.dataset.defaultFilter === 'completed') {
@@ -6318,23 +6371,27 @@
             const priorityLabel = (task.priority || 'medium').charAt(0).toUpperCase() + (task.priority || 'medium').slice(1);
             const statusLabel = (task.status || 'pending').replace('_', ' ').split(' ').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' ');
             
-            // Determine button text and state
+            // Determine button text, icon, and state
             let buttonText = 'Not Active';
+            let buttonIcon = '<i class="fas fa-pause"></i>';
             let buttonClass = '';
             let buttonDataState = 'false';
             let buttonDataCompleted = 'false';
             
             if (isArchived) {
                 buttonText = 'Archived';
+                buttonIcon = '<i class="fas fa-archive"></i>';
                 buttonClass = 'archived';
                 buttonDataState = 'archived';
             } else if (isCompleted) {
                 buttonText = 'Completed';
+                buttonIcon = '<i class="fas fa-check-circle"></i>';
                 buttonClass = 'completed';
                 buttonDataState = 'completed';
                 buttonDataCompleted = 'true';
             } else if (isActive) {
                 buttonText = 'Active';
+                buttonIcon = '<i class="fas fa-play"></i>';
                 buttonClass = 'active';
                 buttonDataState = 'true';
             }
@@ -6360,10 +6417,10 @@
                                 data-is-active="${buttonDataState}"
                                 data-is-completed="${buttonDataCompleted}"
                                 data-is-archived="${isArchived ? 'true' : 'false'}"
-                                onmouseover="updateActivateButton(this, ${isCompleted ? true : (!isArchived && !isActive)}, ${isCompleted}, ${isArchived})"
-                                onmouseout="updateActivateButton(this, ${isActive}, ${isCompleted}, ${isArchived})"
+                                onmouseenter="updateActivateButton(this, ${isCompleted ? true : (!isArchived ? true : false)}, ${isCompleted}, ${isArchived})"
+                                onmouseleave="updateActivateButton(this, ${isActive ? false : false}, ${isCompleted}, ${isArchived})"
                                 onclick="${isArchived ? 'return false;' : isCompleted ? `archiveTask(${task.id}, ${stageId}, event)` : `toggleTaskActivation(${task.id}, ${stageId}, event)`}">
-                            ${buttonText}
+                            <span class="button-text">${buttonIcon} ${buttonText}</span>
                         </button>
                     </div>
                     <div class="stage-task-actions">
@@ -7207,7 +7264,7 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="stage-tasks-list" id="stageTasksList_${stageId}" data-filter="not_active"></div>
+                        <div class="stage-tasks-list" id="stageTasksList_${stageId}" data-filter="all"></div>
                     `;
                 }
                 
@@ -7248,7 +7305,7 @@
                                         onmouseover="updateActivateButton(this, true, false, false)"
                                         onmouseout="updateActivateButton(this, false, false, false)"
                                         onclick="toggleTaskActivation(${data.task_id}, ${stageId}, event)">
-                                    Not Active
+                                    <span class="button-text"><i class="fas fa-pause"></i> Not Active</span>
                                 </button>
                             </div>
                             <div class="stage-task-actions">
@@ -7525,13 +7582,19 @@
                 button.textContent = 'Completed';
             }
         } else if (showActivate && !isActive) {
-            button.textContent = 'Activate';
+            // Show "Activate" with icon on hover (icon to the right of text)
+            button.innerHTML = 'Activate <div class="deactivate-icon-stack" style="position: relative; display: inline-flex; align-items: center; margin-left: 4px; width: 24px;"><i class="fas fa-list" style="font-size: 0.7rem; position: absolute; left: 2px; color: #047857;"></i><i class="fas fa-chevron-right" style="font-size: 0.5rem; position: absolute; left: 17px; top: -4px; color: #047857;"></i></div>';
         } else if (!showActivate && !isActive) {
-            button.textContent = 'Not Active';
-        } else if (showActivate && isActive) {
-            button.textContent = 'Deactivate';
-        } else {
-            button.textContent = 'Active';
+            // Restore original "Not Active" text with icon
+            button.innerHTML = '<span class="button-text"><i class="fas fa-pause"></i> Not Active</span>';
+        } else if (isActive) {
+            if (showActivate) {
+                // Show "Deactivate" with icon on hover (icon to the left of text, same as active backlog)
+                button.innerHTML = '<div class="deactivate-icon-stack" style="position: relative; display: inline-flex; align-items: center; margin-right: 12px;"><i class="fas fa-list" style="font-size: 0.7rem; position: absolute; left: 2px; color: #ef4444;"></i><i class="fas fa-chevron-left" style="font-size: 0.5rem; position: absolute; left: -8px; color: #ef4444;"></i></div> Deactivate';
+            } else {
+                // Show "Active" with icon when not hovering
+                button.innerHTML = '<span class="button-text"><i class="fas fa-play"></i> Active</span>';
+            }
         }
     };
     
@@ -7550,7 +7613,7 @@
         
         // Get current filter
         const filterSelect = document.getElementById(`taskFilter_${stageId}`);
-        const currentFilter = filterSelect ? filterSelect.value : 'not_active';
+        const currentFilter = filterSelect ? filterSelect.value : 'all';
         
         // Disable button during request
         button.disabled = true;

@@ -6826,7 +6826,7 @@ def edit_task(request, project_id, stage_id, task_id):
             task.deadline = None
         if priority in ['low', 'medium', 'high', 'urgent']:
             task.priority = priority
-        if status and status in ['pending', 'active', 'in_progress', 'review', 'completed', 'archived']:
+        if status and status in ['pending', 'active', 'completed', 'archived']:
             task.status = status
         task.save()
         
