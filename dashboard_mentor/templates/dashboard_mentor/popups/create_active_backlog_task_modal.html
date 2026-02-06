@@ -102,6 +102,13 @@
     display: flex;
     flex-direction: column;
     gap: 24px;
+    width: 100%;
+}
+
+.create-task-meta-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
 }
 
 .create-task-form-right {
@@ -383,6 +390,7 @@
                                 id="taskDeadlineInput" 
                                 name="deadline" 
                                 class="create-task-input"
+                                placeholder="dd.mm.yyyy"
                             >
                         </div>
                         
@@ -398,39 +406,6 @@
                                 <option value="high">High</option>
                                 <option value="urgent">Urgent</option>
                             </select>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="create-task-form-right">
-                    <div class="project-selector-section">
-                        <div class="project-selector-header">
-                            <span class="project-selector-title">Link to Project</span>
-                            <button type="button" class="btn-clear-selection" id="clearSelectionBtn" onclick="clearProjectSelection()">
-                                Clear
-                            </button>
-                        </div>
-                        
-                        <!-- Projects List -->
-                        <div class="projects-list" id="projectsList">
-                            <div style="padding: 20px; text-align: center; color: #94a3b8;">
-                                <i class="fas fa-spinner fa-spin"></i> Loading projects...
-                            </div>
-                        </div>
-                        
-                        <!-- Selected Project Display -->
-                        <div class="selected-project-display" id="selectedProjectDisplay">
-                            <div class="selected-project-info">
-                                <div class="selected-project-title" id="selectedProjectTitle"></div>
-                                <div class="selected-project-meta" id="selectedProjectMeta"></div>
-                            </div>
-                            
-                            <div class="stages-section">
-                                <div class="stages-section-title">Select Stage (Optional)</div>
-                                <div class="stages-list" id="stagesList">
-                                    <!-- Stages will be populated here -->
-                                </div>
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -625,46 +600,32 @@
         
         if (!modal) return;
         
-        // Load projects first
-        loadProjects().then(() => {
-            // Set edit mode or create mode
-            if (taskId) {
-                // Edit mode
-                editTaskId.value = taskId;
-                modalTitle.textContent = 'Edit Task';
-                submitBtn.innerHTML = 'Save Changes';
-                if (titleInput) titleInput.value = title;
-                if (descInput) descInput.value = description;
-                if (deadlineInput) deadlineInput.value = deadline;
-                if (priorityInput) priorityInput.value = priority;
-                
-                // Set project and stage if provided
-                if (projectId) {
-                    setTimeout(() => {
-                        selectProject(projectId);
-                        if (stageId) {
-                            setTimeout(() => selectStage(stageId), 100);
-                        }
-                    }, 100);
-                } else {
-                    clearProjectSelection();
-                }
-            } else {
-                // Create mode
-                editTaskId.value = '';
-                modalTitle.textContent = 'Create New Active Task';
-                submitBtn.innerHTML = 'Create Task';
-                if (titleInput) titleInput.value = '';
-                if (descInput) descInput.value = '';
-                if (deadlineInput) deadlineInput.value = '';
-                if (priorityInput) priorityInput.value = 'medium';
-                clearProjectSelection();
-            }
-        });
+        // Set edit mode or create mode
+        if (taskId) {
+            // Edit mode
+            editTaskId.value = taskId;
+            modalTitle.textContent = 'Edit Task';
+            submitBtn.innerHTML = 'Save Changes';
+            if (titleInput) titleInput.value = title;
+            if (descInput) descInput.value = description;
+            if (deadlineInput) deadlineInput.value = deadline;
+            if (priorityInput) priorityInput.value = priority;
+        } else {
+            // Create mode
+            editTaskId.value = '';
+            modalTitle.textContent = 'Create New Active Task';
+            submitBtn.innerHTML = 'Create Task';
+            if (titleInput) titleInput.value = '';
+            if (descInput) descInput.value = '';
+            if (deadlineInput) deadlineInput.value = '';
+            if (priorityInput) priorityInput.value = 'medium';
+        }
         
         modal.style.display = 'flex';
         setTimeout(() => {
             modal.classList.add('active');
+            // Focus on title input
+            if (titleInput) titleInput.focus();
         }, 10);
     };
     
@@ -702,9 +663,6 @@
         if (deadlineInput) deadlineInput.value = '';
         if (priorityInput) priorityInput.value = 'medium';
         if (editTaskId) editTaskId.value = '';
-        
-        // Reset project selection
-        clearProjectSelection();
         
         // Reset button state
         if (btn) {
@@ -783,8 +741,10 @@
                     showNotification(isEditMode ? 'Task updated successfully!' : 'Task created successfully!', 'success');
                 }
                 closeCreateActiveBacklogTaskModal();
-                // Reload tasks dynamically if loadTasks function exists
-                if (typeof loadTasks === 'function') {
+                // Reload active backlog if function exists
+                if (typeof loadActiveBacklog === 'function') {
+                    loadActiveBacklog();
+                } else if (typeof loadTasks === 'function') {
                     loadTasks();
                 } else {
                     // Fallback: reload page

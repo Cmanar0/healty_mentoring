@@ -797,6 +797,13 @@ document.addEventListener('DOMContentLoaded', function() {
       
       // Save state to localStorage
       localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed'));
+      
+      // Recalculate roadmap container height if function exists (for project detail pages)
+      setTimeout(() => {
+        if (typeof setRoadmapContainerMaxHeight === 'function') {
+          setRoadmapContainerMaxHeight();
+        }
+      }, 300); // Wait for sidebar transition to complete
     });
 
     // Close sidebar when clicking outside on mobile

@@ -147,24 +147,69 @@
         scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
     }
     
+    /* Active Backlog Header */
+    .active-backlog-header-container {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+    
+    .active-backlog-title {
+        flex: 1;
+        min-width: 0; /* Allow text to shrink */
+    }
+    
+    .active-backlog-create-btn {
+        flex-shrink: 0;
+        white-space: nowrap;
+    }
+    
+    .active-backlog-create-btn:hover {
+        background: #000 !important;
+    }
+    
+    /* When content doesn't fit, switch to column layout */
+    @media (max-width: 400px) {
+        .active-backlog-header-container {
+            flex-direction: column;
+            align-items: stretch;
+        }
+        
+        .active-backlog-create-btn {
+            width: 100%;
+            justify-content: center;
+        }
+    }
+    
+    /* Use column layout if title is too long (using container query simulation) */
+    .active-backlog-header-container.column-layout {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .active-backlog-header-container.column-layout .active-backlog-create-btn {
+        width: 100%;
+        justify-content: center;
+    }
+    
     /* Active Backlog Modern Card Styles */
     .active-backlog-task-item {
         display: flex;
         flex-direction: column;
         background: white;
-        border: 1px solid #e5e7eb;
-        border-radius: 12px;
-        margin-bottom: 12px;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        border-bottom: 1px solid #e5e7eb;
+        border-radius: 0;
+        margin-bottom: 0;
+        transition: all 0.2s ease;
         position: relative;
         overflow: hidden;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
     }
     
     .active-backlog-task-item:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-        border-color: #d1d5db;
+        background: #f9fafb;
+        z-index: 1;
     }
     
     .active-backlog-task-item.completed {
@@ -179,12 +224,25 @@
         top: 0;
         bottom: 0;
         width: 4px;
-        background: transparent;
+        background: #9ca3af; /* Default gray for low priority */
         transition: background 0.2s;
     }
     
-    .active-backlog-task-item[data-has-stage="true"]::before {
-        background: #10b981;
+    /* Priority-based left border colors */
+    .active-backlog-task-item[data-priority="low"]::before {
+        background: #9ca3af; /* Gray */
+    }
+    
+    .active-backlog-task-item[data-priority="medium"]::before {
+        background: #3b82f6; /* Blue */
+    }
+    
+    .active-backlog-task-item[data-priority="high"]::before {
+        background: #f59e0b; /* Amber/Yellow */
+    }
+    
+    .active-backlog-task-item[data-priority="urgent"]::before {
+        background: #ef4444; /* Red */
     }
     
     .active-backlog-task-header {
@@ -210,7 +268,7 @@
     .active-backlog-task-activate-btn {
         background: none;
         border: none;
-        color: #10b981;
+        color: #9ca3af;
         cursor: pointer;
         padding: 0;
         transition: all 0.2s;
@@ -224,6 +282,7 @@
     .active-backlog-task-activate-btn:hover {
         background: #fee2e2;
         color: #ef4444;
+        border-radius: 0;
     }
     
     .deactivate-icon-stack {
@@ -307,7 +366,6 @@
         background: #10b981;
         border-color: #10b981;
         color: white;
-        box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);
     }
     
     .active-backlog-done-btn.checked {
@@ -322,7 +380,7 @@
         color: #9ca3af;
         text-transform: uppercase;
         letter-spacing: 0.05em;
-        margin: 20px 0 12px 4px;
+        margin: 20px 0 12px 16px;
         display: flex;
         align-items: center;
         gap: 8px;
@@ -2658,6 +2716,7 @@
 {% include 'general/modals/create_stage_modal.html' %}
 {% include 'dashboard_user/projects/modals/manage_modules_modal.html' %}
 {% include 'dashboard_mentor/popups/project_settings.html' %}
+{% include 'dashboard_mentor/popups/create_active_backlog_task_modal.html' %}
 
 <script>
     // Define modal functions early so they're available for onclick handlers
@@ -3539,16 +3598,16 @@
         {% if project.project_owner %}
         <aside class="project-sidebar-backlog">
             <div id="clientActiveBacklogCard" class="client-backlog-card" style="background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 0; box-shadow: 0 1px 3px rgba(0,0,0,0.05); height: 100%;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-shrink: 0; padding: 20px 20px 0 20px;">
-                    <h3 id="clientBacklogTitle" style="font-size: 0.9rem; font-weight: 600; color: #111827; margin: 0; display: flex; align-items: center; gap: 8px;">
+                <div class="active-backlog-header-container" style="margin-bottom: 16px; flex-shrink: 0; padding: 20px 20px 0 20px;">
+                    <h3 id="clientBacklogTitle" class="active-backlog-title" style="font-size: 0.9rem; font-weight: 600; color: #111827; margin: 0; display: flex; align-items: center; gap: 8px;">
                         <i class="fas fa-clipboard-list" style="color: #10b981;"></i>
                         <span id="clientBacklogName">{{ project.project_owner.first_name }}'s</span> Active Backlog
                     </h3>
-                    <a href="{% url 'general:dashboard_mentor:client_detail' project.project_owner.id %}" style="font-size: 0.75rem; color: #10b981; text-decoration: none; font-weight: 500;">
-                        View All
-                    </a>
+                    <button onclick="openCreateActiveBacklogTaskModal()" class="active-backlog-create-btn" style="font-size: 1.2rem; color: white; background: #111827; border: none; cursor: pointer; font-weight: 700; padding: 8px 16px; border-radius: 6px; display: flex; align-items: center; justify-content: center; transition: all 0.2s; width: 40px; height: 40px;">
+                        +
+                    </button>
                 </div>
-                <div id="clientActiveBacklogList" style="display: flex; flex-direction: column; gap: 0; flex: 1; min-height: 0; padding: 0 20px 20px 20px;">
+                <div id="clientActiveBacklogList" style="display: flex; flex-direction: column; gap: 0; flex: 1; min-height: 0; padding: 0;">
                     <div style="padding: 16px; text-align: center; color: #9ca3af;">
                         <i class="fas fa-circle-notch fa-spin" style="font-size: 1rem; margin-bottom: 8px; opacity: 0.5;"></i>
                         <p style="margin: 0; font-size: 0.85rem;">Loading...</p>
@@ -3630,7 +3689,7 @@
     console.log('TARGET_COMPLETION_DATE:', TARGET_COMPLETION_DATE);
     
     // Set roadmap container max-height based on tallest column
-    function setRoadmapContainerMaxHeight() {
+    window.setRoadmapContainerMaxHeight = function() {
         const roadmapContainer = document.querySelector('.roadmap-container');
         if (!roadmapContainer) return;
         
@@ -3661,7 +3720,7 @@
         
         // Set max-height on container
         roadmapContainer.style.maxHeight = maxHeight + 'px';
-    }
+    };
     
     // Update max-height on load and resize
     if (document.readyState === 'loading') {
@@ -4954,6 +5013,25 @@
             .then(data => {
                 if (data && data.success) {
                     renderStages(data.stages || []);
+                    // Check header layout after rendering
+                    setTimeout(() => {
+                        const headerContainer = document.querySelector('.active-backlog-header-container');
+                        if (headerContainer) {
+                            const title = document.getElementById('clientBacklogTitle');
+                            const button = document.querySelector('.active-backlog-create-btn');
+                            if (title && button) {
+                                const titleWidth = title.offsetWidth;
+                                const buttonWidth = button.offsetWidth;
+                                const containerWidth = headerContainer.offsetWidth;
+                                
+                                if (titleWidth + buttonWidth + 12 > containerWidth) {
+                                    headerContainer.classList.add('column-layout');
+                                } else {
+                                    headerContainer.classList.remove('column-layout');
+                                }
+                            }
+                        }
+                    }, 100);
                 } else {
                     console.error('Failed to load stages:', data?.error || 'Unknown error');
                     const errorMsg = data?.error || 'Unknown error';
@@ -4998,6 +5076,25 @@
         .then(data => {
             if (data && data.success) {
                 renderActiveBacklog(data.tasks || [], data.total_count || 0, data.client_name || '');
+                // Check header layout after rendering
+                setTimeout(() => {
+                    const headerContainer = document.querySelector('.active-backlog-header-container');
+                    if (headerContainer) {
+                        const title = document.getElementById('clientBacklogTitle');
+                        const button = document.querySelector('.active-backlog-create-btn');
+                        if (title && button) {
+                            const titleWidth = title.offsetWidth;
+                            const buttonWidth = button.offsetWidth;
+                            const containerWidth = headerContainer.offsetWidth;
+                            
+                            if (titleWidth + buttonWidth + 12 > containerWidth) {
+                                headerContainer.classList.add('column-layout');
+                            } else {
+                                headerContainer.classList.remove('column-layout');
+                            }
+                        }
+                    }
+                }, 100);
             } else {
                 container.innerHTML = `
                     <div style="text-align: center; padding: 16px; color: #9ca3af; font-size: 0.85rem;">
@@ -5041,11 +5138,11 @@
         
         let html = '<div style="display: flex; flex-direction: column;">';
         
-        // Roadmap Tasks Section
+        // Stage linked Tasks Section
         if (roadmapTasks.length > 0) {
             html += `
                 <div class="active-backlog-section-header">
-                    <i class="fas fa-map-marked-alt"></i> Roadmap Tasks
+                    <i class="fas fa-map-marked-alt"></i> Stage linked Tasks
                 </div>
             `;
             roadmapTasks.forEach(task => {
@@ -5053,11 +5150,11 @@
             });
         }
         
-        // Session / Direct Tasks Section
+        // General Tasks Section
         if (directTasks.length > 0) {
             html += `
                 <div class="active-backlog-section-header" style="margin-top: 24px;">
-                    <i class="fas fa-bolt"></i> Quick Session Tasks
+                    <i class="fas fa-bolt"></i> General Tasks
                 </div>
             `;
             directTasks.forEach(task => {
@@ -5067,6 +5164,26 @@
         
         html += '</div>';
         container.innerHTML = html;
+        
+        // Check header layout after rendering
+        setTimeout(() => {
+            const headerContainer = document.querySelector('.active-backlog-header-container');
+            if (headerContainer) {
+                const title = document.getElementById('clientBacklogTitle');
+                const button = document.querySelector('.active-backlog-create-btn');
+                if (title && button) {
+                    const titleWidth = title.offsetWidth;
+                    const buttonWidth = button.offsetWidth;
+                    const containerWidth = headerContainer.offsetWidth;
+                    
+                    if (titleWidth + buttonWidth + 12 > containerWidth) {
+                        headerContainer.classList.add('column-layout');
+                    } else {
+                        headerContainer.classList.remove('column-layout');
+                    }
+                }
+            }
+        }, 100);
     }
     
     // Helper to render a single task card
@@ -5075,16 +5192,25 @@
         const hasStage = task.has_stage === true;
         const fadeInClass = 'fade-in';
         const descriptionHtml = task.description ? `
-            <div class="active-backlog-task-description">${escapeHtml(task.description)}</div>
+            <div class="active-backlog-task-description" style="margin-bottom: 8px;">${escapeHtml(task.description)}</div>
         ` : '';
         
+        const deactivateIcon = `
+            <div class="deactivate-icon-stack">
+                <i class="fas fa-list" style="font-size: 0.7rem; position: absolute; left: 2px;"></i>
+                <i class="fas fa-chevron-left" style="font-size: 0.5rem; position: absolute; left: -8px;"></i>
+            </div>
+        `;
+        
+        const priority = task.priority || 'medium';
         return `
             <div class="active-backlog-task-item ${completedClass} ${fadeInClass}" 
                  data-task-id="${task.id}" 
                  data-has-stage="${hasStage}" 
                  data-stage-id="${task.stage_id || ''}" 
-                 data-project-id="${task.project_id || ''}">
-                <div class="active-backlog-task-header">
+                 data-project-id="${task.project_id || ''}"
+                 data-priority="${priority}">
+                <div class="active-backlog-task-header" style="border-bottom: none;">
                     <div class="active-backlog-task-activate ${hasStage ? '' : 'hidden'}">
                         <button class="active-backlog-task-activate-btn" 
                                 data-task-id="${task.id}"
@@ -5094,22 +5220,19 @@
                                 onmouseout="updateActiveBacklogActivateButton(this, false)"
                                 onclick="deactivateActiveBacklogTask(${task.id}, ${task.stage_id || 'null'}, ${task.project_id || 'null'}, event)"
                                 title="Deactivate Task">
-                            <i class="fas fa-check-circle"></i>
+                            ${deactivateIcon}
                         </button>
                     </div>
                     <div class="active-backlog-task-content ${hasStage ? '' : 'has-no-activate-btn'}" ${!hasStage ? `onclick="showCompletedTasks(${task.project_id || PROJECT_ID})" style="cursor: pointer;"` : ''}>
-                        <span class="active-backlog-task-type-badge">${hasStage ? 'Roadmap' : 'Session Task'}</span>
-                        <div class="active-backlog-task-title ${!hasStage ? 'single-line' : ''}">${escapeHtml(task.title)}</div>
+                        <div class="active-backlog-task-title ${!hasStage ? 'single-line' : ''}" style="margin-bottom: ${hasStage ? '4px' : '8px'};">${escapeHtml(task.title)}</div>
                         ${hasStage ? descriptionHtml : ''}
-                    </div>
-                </div>
-                <div class="active-backlog-task-footer">
-                    <div style="font-size: 0.7rem; color: #9ca3af; font-weight: 500;">
-                        ${hasStage ? `<i class="fas fa-link" style="margin-right: 4px;"></i>Linked to Roadmap` : ''}
-                    </div>
-                    <div class="active-backlog-done-btn ${task.completed ? 'checked' : ''}" 
-                         onclick="toggleActiveBacklogTaskComplete(${task.id}, ${task.stage_id || 'null'}, ${task.project_id || 'null'}, ${task.has_stage}, event)">
-                        <i class="fas fa-check"></i> Mark Done
+                        
+                        <div style="display: flex; align-items: center; justify-content: flex-end; margin-top: 4px;">
+                            <div class="active-backlog-done-btn ${task.completed ? 'checked' : ''}" 
+                                 onclick="toggleActiveBacklogTaskComplete(${task.id}, ${task.stage_id || 'null'}, ${task.project_id || 'null'}, ${task.has_stage}, event)">
+                                <i class="fas fa-check"></i> Mark Done
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -5117,20 +5240,15 @@
     }
     
     // Update active backlog activate button on hover
-    window.updateActiveBacklogActivateButton = function(button, showDeactivate) {
-        const icon = button.querySelector('i');
-        if (showDeactivate) {
-            // Deactivate: list with arrow to the left
-            icon.className = 'fas fa-reply'; // reply is often used as a "back/left" arrow with some context
-            // Alternatively, a custom stack if we want to be very literal
-            button.innerHTML = `
-                <div class="deactivate-icon-stack">
-                    <i class="fas fa-list" style="font-size: 0.7rem; position: absolute; left: 2px;"></i>
-                    <i class="fas fa-chevron-left" style="font-size: 0.5rem; position: absolute; left: -8px;"></i>
-                </div>
-            `;
+    window.updateActiveBacklogActivateButton = function(button, isHover) {
+        // We always show the grey-themed deactivate icon now, but we can change color on hover
+        const stack = button.querySelector('.deactivate-icon-stack');
+        if (!stack) return;
+        
+        if (isHover) {
+            button.style.color = '#ef4444'; // Red on hover
         } else {
-            button.innerHTML = '<i class="fas fa-check-circle"></i>';
+            button.style.color = '#9ca3af'; // Grey by default
         }
     };
     
@@ -5181,9 +5299,12 @@
                         taskItem.remove();
                         // Reload active backlog to update count
                         loadActiveBacklog();
-                        // Reload stage tasks to update the task status and appearance
+                        // Reload stage tasks only if the stage is currently open/expanded
                         if (stageId && projectId) {
-                            loadStageTasks(stageId);
+                            const tasksSection = document.getElementById(`stageTasks_${stageId}`);
+                            if (tasksSection && tasksSection.classList.contains('expanded')) {
+                                loadStageTasks(stageId);
+                            }
                         }
                     }, 400);
                 }
