@@ -302,6 +302,7 @@
         position: relative;
         opacity: 0;
         transition: opacity 0.3s ease;
+        z-index: 1;
     }
     
     .active-backlog-task-item:hover .active-backlog-task-activate-btn {
@@ -316,7 +317,7 @@
     
     .active-backlog-task-activate-btn .deactivate-popover {
         position: absolute;
-        bottom: 100%;
+        bottom: calc(100% + 6px);
         left: 50%;
         transform: translateX(-50%);
         background: #111827;
@@ -328,8 +329,8 @@
         opacity: 0;
         pointer-events: none;
         transition: opacity 0.15s ease-in-out;
-        margin-bottom: 6px;
-        z-index: 1000;
+        z-index: 1001;
+        visibility: hidden;
     }
     
     .active-backlog-task-activate-btn .deactivate-popover::after {
@@ -345,6 +346,11 @@
     .active-backlog-task-activate-btn:hover .deactivate-popover {
         opacity: 1;
         pointer-events: auto;
+        visibility: visible;
+    }
+    
+    .active-backlog-task-activate {
+        overflow: visible;
     }
     
     .deactivate-icon-stack {
@@ -6405,7 +6411,7 @@
                                 onmouseenter="updateActivateButton(this, ${isCompleted ? true : (!isArchived ? true : false)}, ${isCompleted}, ${isArchived})"
                                 onmouseleave="updateActivateButton(this, ${isActive ? false : false}, ${isCompleted}, ${isArchived})"
                                 onclick="${isArchived ? 'return false;' : isCompleted ? `archiveTask(${task.id}, ${stageId}, event)` : `toggleTaskActivation(${task.id}, ${stageId}, event)`}">
-                            <span class="button-text">${buttonIcon} ${buttonText}</span>
+                            <span class="button-text">${buttonIcon}<span style="margin-left: 6px;">${buttonText}</span></span>
                         </button>
                     </div>
                     <div class="stage-task-actions">
@@ -7571,14 +7577,14 @@
             button.innerHTML = 'Activate <div class="deactivate-icon-stack" style="position: relative; display: inline-flex; align-items: center; margin-left: 4px; width: 24px;"><i class="fas fa-list" style="font-size: 0.7rem; position: absolute; left: 2px; color: #047857;"></i><i class="fas fa-chevron-right" style="font-size: 0.5rem; position: absolute; left: 17px; top: -4px; color: #047857;"></i></div>';
         } else if (!showActivate && !isActive) {
             // Restore original "Not Active" text with icon
-            button.innerHTML = '<span class="button-text"><i class="fas fa-pause"></i> Not Active</span>';
+            button.innerHTML = '<span class="button-text"><i class="fas fa-pause"></i><span style="margin-left: 6px;">Not Active</span></span>';
         } else if (isActive) {
             if (showActivate) {
                 // Show "Deactivate" with icon on hover (icon to the left of text, same as active backlog)
-                button.innerHTML = '<div class="deactivate-icon-stack" style="position: relative; display: inline-flex; align-items: center; margin-right: 12px;"><i class="fas fa-list" style="font-size: 0.7rem; position: absolute; left: 2px; color: #ef4444;"></i><i class="fas fa-chevron-left" style="font-size: 0.5rem; position: absolute; left: -8px; color: #ef4444;"></i></div> Deactivate';
+                button.innerHTML = '<div class="deactivate-icon-stack" style="position: relative; display: inline-flex; align-items: center; margin-right: 16px;"><i class="fas fa-list" style="font-size: 0.7rem; position: absolute; left: 2px; color: #ef4444;"></i><i class="fas fa-chevron-left" style="font-size: 0.5rem; position: absolute; left: -8px; color: #ef4444;"></i></div> Deactivate';
             } else {
                 // Show "Active" with icon when not hovering
-                button.innerHTML = '<span class="button-text"><i class="fas fa-play"></i> Active</span>';
+                button.innerHTML = '<span class="button-text"><i class="fas fa-play"></i><span style="margin-left: 6px;">Active</span></span>';
             }
         }
     };
