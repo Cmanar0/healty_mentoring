@@ -6994,8 +6994,20 @@ def toggle_task_complete(request, project_id, stage_id, task_id):
 @login_required
 @require_POST
 def toggle_task_activate(request, project_id, stage_id, task_id):
+<<<<<<< Updated upstream
+<<<<<<< Updated upstream
     """Toggle task activation (assign to client active backlog)"""
     if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+=======
+    """Toggle task activation (assign/unassign to client's active backlog)"""
+    profile = getattr(request.user, 'profile', None)
+    if profile is None or profile.role != 'mentor':
+>>>>>>> Stashed changes
+=======
+    """Toggle task activation (assign/unassign to client's active backlog)"""
+    profile = getattr(request.user, 'profile', None)
+    if profile is None or profile.role != 'mentor':
+>>>>>>> Stashed changes
         return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
     
     mentor_profile = request.user.mentor_profile
@@ -7010,6 +7022,8 @@ def toggle_task_activate(request, project_id, stage_id, task_id):
         activate = data.get('activate', False)
         
         if activate:
+<<<<<<< Updated upstream
+<<<<<<< Updated upstream
             # Activate task - add to client's active backlog while keeping it in stage
             if not project.project_owner:
                 return JsonResponse({'success': False, 'error': 'Project has no assigned client'}, status=400)
@@ -7037,12 +7051,39 @@ def toggle_task_activate(request, project_id, stage_id, task_id):
                 'status': task.status,
                 'user_active_backlog': task.user_active_backlog_id if task.user_active_backlog else None,
             }
+=======
+=======
+>>>>>>> Stashed changes
+            # Activate: assign task to client
+            if not project.project_owner:
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Project has no assigned client. Please assign a client to the project first.'
+                }, status=400)
+            
+            task.assign_to_client(project.project_owner)
+            message = 'Task activated and assigned to client'
+        else:
+            # Deactivate: unassign task from client
+            task.unassign_from_client()
+            message = 'Task deactivated'
+        
+        return JsonResponse({
+            'success': True,
+            'message': message,
+            'is_active': activate
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
+>>>>>>> Stashed changes
         })
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
     except Exception as e:
         import logging
         logger = logging.getLogger(__name__)
+<<<<<<< Updated upstream
+<<<<<<< Updated upstream
         logger.error(f'Error toggling task activation: {str(e)}', exc_info=True)
         error_message = str(e)
         # Make error message more user-friendly
@@ -7084,6 +7125,12 @@ def archive_task(request, project_id, stage_id, task_id):
         import logging
         logger = logging.getLogger(__name__)
         logger.error(f'Error archiving task: {str(e)}')
+=======
+        logger.error(f'Error toggling task activation: {str(e)}')
+>>>>>>> Stashed changes
+=======
+        logger.error(f'Error toggling task activation: {str(e)}')
+>>>>>>> Stashed changes
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 
