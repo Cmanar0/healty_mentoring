@@ -6819,16 +6819,20 @@ def edit_task(request, project_id, stage_id, task_id):
         task.description = description
         if deadline:
             from django.utils.dateparse import parse_date
-            parsed_deadline = parse_date(deadline)
+            parsed_deadline = parse_date(deadline) if isinstance(deadline, str) else deadline
             if parsed_deadline:
                 task.deadline = parsed_deadline
-        elif deadline is None:
+        else:
             task.deadline = None
         if priority in ['low', 'medium', 'high', 'urgent']:
             task.priority = priority
         if status and status in ['pending', 'active', 'completed', 'archived']:
             task.status = status
         task.save()
+        
+        # Format deadline for JSON (handle both date and string from DB)
+        dl = task.deadline
+        deadline_str = (dl.strftime('%Y-%m-%d') if hasattr(dl, 'strftime') else (dl[:10] if isinstance(dl, str) and len(dl) >= 10 else None)) if dl else None
         
         return JsonResponse({
             'success': True,
@@ -6838,6 +6842,9 @@ def edit_task(request, project_id, stage_id, task_id):
                 'title': task.title,
                 'description': task.description or '',
                 'completed': task.completed,
+                'deadline': deadline_str,
+                'priority': task.priority,
+                'status': task.status,
             }
         })
     except json.JSONDecodeError:
@@ -6994,20 +7001,9 @@ def toggle_task_complete(request, project_id, stage_id, task_id):
 @login_required
 @require_POST
 def toggle_task_activate(request, project_id, stage_id, task_id):
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-    """Toggle task activation (assign to client active backlog)"""
-    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
-=======
     """Toggle task activation (assign/unassign to client's active backlog)"""
     profile = getattr(request.user, 'profile', None)
     if profile is None or profile.role != 'mentor':
->>>>>>> Stashed changes
-=======
-    """Toggle task activation (assign/unassign to client's active backlog)"""
-    profile = getattr(request.user, 'profile', None)
-    if profile is None or profile.role != 'mentor':
->>>>>>> Stashed changes
         return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
     
     mentor_profile = request.user.mentor_profile
@@ -7022,81 +7018,44 @@ def toggle_task_activate(request, project_id, stage_id, task_id):
         activate = data.get('activate', False)
         
         if activate:
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-            # Activate task - add to client's active backlog while keeping it in stage
-            if not project.project_owner:
-                return JsonResponse({'success': False, 'error': 'Project has no assigned client'}, status=400)
-            
-            try:
-                task.activate_task(project.project_owner)
-            except Exception as e:
-                # Catch ValidationError or any other error from activate_task
-                import logging
-                logger = logging.getLogger(__name__)
-                logger.error(f'Error activating task: {str(e)}', exc_info=True)
-                return JsonResponse({'success': False, 'error': str(e)}, status=400)
-        else:
-            # Deactivate task - remove from active backlog but keep in stage
-            task.deactivate_task()
-        
-        # Update stage completion status based on tasks
-        update_stage_completion_status(stage)
-        
-        return JsonResponse({
-            'success': True,
-            'message': f'Task {"activated" if activate else "deactivated"} successfully',
-            'task': {
-                'id': task.id,
-                'status': task.status,
-                'user_active_backlog': task.user_active_backlog_id if task.user_active_backlog else None,
-            }
-=======
-=======
->>>>>>> Stashed changes
-            # Activate: assign task to client
+            # Activate: add task to client's active backlog (uses Task.activate_task)
             if not project.project_owner:
                 return JsonResponse({
                     'success': False,
                     'error': 'Project has no assigned client. Please assign a client to the project first.'
                 }, status=400)
-            
-            task.assign_to_client(project.project_owner)
+            try:
+                task.activate_task(project.project_owner)
+            except Exception as e:
+                from django.core.exceptions import ValidationError
+                err_msg = str(e) if isinstance(e, ValidationError) else str(e)
+                return JsonResponse({'success': False, 'error': err_msg}, status=400)
             message = 'Task activated and assigned to client'
         else:
-            # Deactivate: unassign task from client
-            task.unassign_from_client()
+            # Deactivate: remove from client's active backlog (uses Task.deactivate_task)
+            task.deactivate_task()
             message = 'Task deactivated'
         
         return JsonResponse({
             'success': True,
             'message': message,
             'is_active': activate
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
         })
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
     except Exception as e:
         import logging
         logger = logging.getLogger(__name__)
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-        logger.error(f'Error toggling task activation: {str(e)}', exc_info=True)
-        error_message = str(e)
-        # Make error message more user-friendly
-        if 'ValidationError' in str(type(e).__name__):
-            error_message = str(e)
-        return JsonResponse({'success': False, 'error': error_message}, status=500)
+        logger.error(f'Error toggling task activation: {str(e)}')
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 
 @login_required
 @require_POST
 def archive_task(request, project_id, stage_id, task_id):
-    """Archive a completed task"""
-    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+    """Archive a completed task (moves to history)."""
+    profile = getattr(request.user, 'profile', None)
+    if profile is None or profile.role != 'mentor':
         return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
     
     mentor_profile = request.user.mentor_profile
@@ -7107,31 +7066,17 @@ def archive_task(request, project_id, stage_id, task_id):
     task = get_object_or_404(Task, id=task_id, stage=stage)
     
     try:
-        # Only allow archiving completed tasks
-        if not task.completed:
-            return JsonResponse({'success': False, 'error': 'Only completed tasks can be archived'}, status=400)
-        
-        # Archive the task
         task.archive_task()
-        
-        # Update stage completion status based on tasks
         update_stage_completion_status(stage)
-        
         return JsonResponse({
             'success': True,
-            'message': 'Task archived successfully'
+            'message': 'Task archived successfully',
         })
     except Exception as e:
         import logging
         logger = logging.getLogger(__name__)
         logger.error(f'Error archiving task: {str(e)}')
-=======
-        logger.error(f'Error toggling task activation: {str(e)}')
->>>>>>> Stashed changes
-=======
-        logger.error(f'Error toggling task activation: {str(e)}')
->>>>>>> Stashed changes
-        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+        return JsonResponse({'success': False, 'error': str(e)}, status=400)
 
 
 @login_required
@@ -7186,6 +7131,8 @@ def get_tasks_api(request, project_id, stage_id):
         
         tasks_data = []
         for task in tasks:
+            dl = task.deadline
+            deadline_str = (dl.strftime('%Y-%m-%d') if hasattr(dl, 'strftime') else (dl[:10] if isinstance(dl, str) and len(dl) >= 10 else None)) if dl else None
             tasks_data.append({
                 'id': task.id,
                 'title': task.title,
@@ -7193,6 +7140,7 @@ def get_tasks_api(request, project_id, stage_id):
                 'completed': task.completed,
                 'priority': task.priority,
                 'status': task.status,
+                'deadline': deadline_str,
                 'user_active_backlog': task.user_active_backlog_id if task.user_active_backlog else None,
                 'created_at': task.created_at.strftime('%Y-%m-%d %H:%M:%S'),
                 'order': float(task.order),
@@ -7551,6 +7499,8 @@ def edit_mentor_backlog_task(request, task_id):
         task.stage = stage
         task.save()
         
+        dl = task.deadline
+        deadline_str = (dl.strftime('%Y-%m-%d') if hasattr(dl, 'strftime') else (dl[:10] if isinstance(dl, str) and len(dl) >= 10 else None)) if dl else ''
         return JsonResponse({
             'success': True,
             'message': 'Task updated successfully',
@@ -7558,7 +7508,7 @@ def edit_mentor_backlog_task(request, task_id):
                 'id': task.id,
                 'title': task.title,
                 'description': task.description or '',
-                'deadline': task.deadline.strftime('%Y-%m-%d') if task.deadline else '',
+                'deadline': deadline_str,
                 'priority': task.priority,
                 'completed': task.completed,
                 'project_id': task.project.id if task.project else None,
@@ -7605,7 +7555,7 @@ def edit_client_active_backlog_task(request, client_id, task_id):
             return JsonResponse({'success': False, 'error': 'Task title is required'}, status=400)
         
         description = data.get('description', '').strip()
-        deadline = data.get('deadline') or None
+        deadline_raw = data.get('deadline')
         priority = data.get('priority', 'medium')
         
         # Validate priority
@@ -7615,9 +7565,18 @@ def edit_client_active_backlog_task(request, client_id, task_id):
         
         task.title = title
         task.description = description
-        task.deadline = deadline
+        if deadline_raw:
+            from django.utils.dateparse import parse_date
+            parsed = parse_date(deadline_raw) if isinstance(deadline_raw, str) else deadline_raw
+            task.deadline = parsed
+        else:
+            task.deadline = None
         task.priority = priority
         task.save()
+        
+        # Format deadline for JSON (handle both date and string from DB e.g. SQLite)
+        dl = task.deadline
+        deadline_str = (dl.strftime('%Y-%m-%d') if hasattr(dl, 'strftime') else (dl[:10] if isinstance(dl, str) and len(dl) >= 10 else None)) if dl else None
         
         return JsonResponse({
             'success': True,
@@ -7626,7 +7585,7 @@ def edit_client_active_backlog_task(request, client_id, task_id):
                 'id': task.id,
                 'title': task.title,
                 'description': task.description or '',
-                'deadline': task.deadline.strftime('%Y-%m-%d') if task.deadline else None,
+                'deadline': deadline_str,
                 'priority': task.priority,
             }
         })
@@ -7710,15 +7669,27 @@ def get_mentor_backlog_tasks_api(request):
         
         tasks_data = []
         for task in tasks:
-            is_overdue = task.deadline and task.deadline < today if task.deadline else False
-            is_due_this_week = task.deadline and task.deadline <= week_from_now if task.deadline else False
+            from datetime import date as date_type
+            dl = task.deadline
+            deadline_date = None
+            if dl:
+                if hasattr(dl, 'year'):
+                    deadline_date = dl
+                elif isinstance(dl, str) and len(dl) >= 10:
+                    try:
+                        deadline_date = date_type.fromisoformat(dl[:10])
+                    except (ValueError, TypeError):
+                        pass
+            deadline_str = (deadline_date.strftime('%Y-%m-%d') if deadline_date else None) or (dl[:10] if isinstance(dl, str) and len(dl) >= 10 else None) if dl else None
+            is_overdue = deadline_date and deadline_date < today if deadline_date else False
+            is_due_this_week = deadline_date and deadline_date <= week_from_now if deadline_date else False
             
             tasks_data.append({
                 'id': task.id,
                 'title': task.title,
                 'description': task.description or '',
                 'completed': task.completed,
-                'deadline': task.deadline.strftime('%Y-%m-%d') if task.deadline else None,
+                'deadline': deadline_str,
                 'priority': task.priority,
                 'status': task.status,
                 'created_at': task.created_at.strftime('%Y-%m-%d %H:%M:%S'),
@@ -7877,12 +7848,14 @@ def get_client_active_backlog_api(request, client_id):
         
         tasks_data = []
         for task in tasks:
+            dl = task.deadline
+            deadline_str = (dl.strftime('%Y-%m-%d') if hasattr(dl, 'strftime') else (dl[:10] if isinstance(dl, str) and len(dl) >= 10 else None)) if dl else None
             tasks_data.append({
                 'id': task.id,
                 'title': task.title,
                 'description': task.description or '',
                 'completed': task.completed,
-                'deadline': task.deadline.strftime('%Y-%m-%d') if task.deadline else None,
+                'deadline': deadline_str,
                 'priority': task.priority,
                 'status': task.status,
                 'created_at': task.created_at.strftime('%Y-%m-%d %H:%M:%S'),

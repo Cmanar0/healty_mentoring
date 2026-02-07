@@ -83,13 +83,7 @@ urlpatterns = [
     path('projects/<int:project_id>/stages/<int:stage_id>/tasks/api/', views.get_tasks_api, name='get_tasks_api'),
     path('projects/<int:project_id>/stages/<int:stage_id>/tasks/<int:task_id>/toggle-complete/', views.toggle_task_complete, name='toggle_task_complete'),
     path('projects/<int:project_id>/stages/<int:stage_id>/tasks/<int:task_id>/toggle-activate/', views.toggle_task_activate, name='toggle_task_activate'),
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
     path('projects/<int:project_id>/stages/<int:stage_id>/tasks/<int:task_id>/archive/', views.archive_task, name='archive_task'),
-=======
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
     path('projects/<int:project_id>/stages/<int:stage_id>/tasks/<int:task_id>/delete/', views.delete_task, name='delete_task'),
     path('projects/<int:project_id>/stages/<int:stage_id>/tasks/reorder/', views.reorder_tasks, name='reorder_tasks'),
     path('projects/<int:project_id>/stages/reorder/', views.reorder_stages, name='reorder_stages'),
