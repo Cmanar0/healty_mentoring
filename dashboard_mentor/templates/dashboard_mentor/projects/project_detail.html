@@ -2304,6 +2304,20 @@
         color: #111827;
     }
     
+    .stage-task-title-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin-bottom: 4px;
+    }
+    
+    .stage-task-title-row .stage-task-title {
+        flex: 1;
+        min-width: 0;
+        margin-bottom: 0;
+    }
+    
     .stage-task-title {
         font-size: 0.875rem;
         font-weight: 500;
@@ -6387,6 +6401,26 @@
                 buttonDataState = 'true';
             }
             
+            // Deadline in top right (same as active backlog)
+            let stageDeadlineHtml = '';
+            if (task.deadline) {
+                const deadlineDate = new Date(task.deadline);
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                deadlineDate.setHours(0, 0, 0, 0);
+                const isOverdue = deadlineDate < today;
+                const formattedDate = deadlineDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                const overdueClass = isOverdue ? 'overdue' : '';
+                const overduePopover = isOverdue ? '<span class="overdue-popover">Overdue</span>' : '';
+                stageDeadlineHtml = `
+                    <div class="active-backlog-task-deadline ${overdueClass}">
+                        <i class="fas fa-calendar-alt" style="font-size: 0.7rem;"></i>
+                        <span>${formattedDate}</span>
+                        ${overduePopover}
+                    </div>
+                `;
+            }
+            
             html += `
                 <div class="stage-task-item fade-in ${completedClass} ${isArchived ? 'archived' : ''}" data-task-id="${task.id}" data-priority="${task.priority || 'medium'}" data-status="${task.status || 'pending'}">
                     <div class="stage-task-drag-handle">
@@ -6396,7 +6430,10 @@
                         <div class="stage-task-checkbox" onclick="toggleTaskSelection(${task.id}, ${stageId}, event)"></div>
                     </div>
                     <div class="stage-task-content" onclick="openCreateActiveBacklogTaskModal(${task.id}, '${(task.title || '').replace(/'/g, "\\'").replace(/\n/g, ' ')}', '${(task.description || '').replace(/'/g, "\\'").replace(/\n/g, '\\n')}', '${task.deadline || ''}', '${task.priority || 'medium'}', PROJECT_ID, ${stageId}, CLIENT_ID, '${task.status || 'pending'}')">
-                        <div class="stage-task-title">${escapeHtml(task.title)}</div>
+                        <div class="stage-task-title-row">
+                            <div class="stage-task-title">${escapeHtml(task.title)}</div>
+                            ${stageDeadlineHtml}
+                        </div>
                         ${task.description ? `<div class="stage-task-description-text">${escapeHtml(task.description)}</div>` : ''}
                     </div>
                     <div class="stage-task-priority-display" onclick="openCreateActiveBacklogTaskModal(${task.id}, '${(task.title || '').replace(/'/g, "\\'").replace(/\n/g, ' ')}', '${(task.description || '').replace(/'/g, "\\'").replace(/\n/g, '\\n')}', '${task.deadline || ''}', '${task.priority || 'medium'}', PROJECT_ID, ${stageId}, CLIENT_ID, '${task.status || 'pending'}')">
@@ -7281,10 +7318,13 @@
                                 <div class="stage-task-checkbox" onclick="toggleTaskSelection(${data.task_id}, ${stageId}, event)"></div>
                             </div>
                             <div class="stage-task-content">
-                                <div class="stage-task-title">${escapeHtml(title)}</div>
+                                <div class="stage-task-title-row">
+                                    <div class="stage-task-title">${escapeHtml(title)}</div>
+                                    ${(data.deadline && data.deadline !== '') ? `<div class="active-backlog-task-deadline"><i class="fas fa-calendar-alt" style="font-size: 0.7rem;"></i><span>${new Date(data.deadline).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span></div>` : ''}
+                                </div>
                                 ${descriptionText ? `<div class="stage-task-description-text">${escapeHtml(descriptionText)}</div>` : ''}
                             </div>
-                            <div class="stage-task-priority-display" onclick="openCreateActiveBacklogTaskModal(${data.task_id}, '${(title || '').replace(/'/g, "\\'").replace(/\n/g, ' ')}', '${(descriptionText || '').replace(/'/g, "\\'").replace(/\n/g, '\\n')}', '', '${priority}', PROJECT_ID, ${stageId}, CLIENT_ID)">
+                            <div class="stage-task-priority-display" onclick="openCreateActiveBacklogTaskModal(${data.task_id}, '${(title || '').replace(/'/g, "\\'").replace(/\n/g, ' ')}', '${(descriptionText || '').replace(/'/g, "\\'").replace(/\n/g, '\\n')}', '${data.deadline || ''}', '${priority}', PROJECT_ID, ${stageId}, CLIENT_ID)">
                                 <span class="priority-tag priority-${priority}">${priorityLabel}</span>
                             </div>
                             <div class="stage-task-activate">
