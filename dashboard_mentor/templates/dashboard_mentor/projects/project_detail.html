@@ -1837,7 +1837,7 @@
     }
     
     .stage-row:hover .row-actions-section .row-actions,
-    .stage-row .row-actions-section .row-actions.has-active-dropdown {
+    .stage-row .row-actions-section .row-actions:has(.dropdown-menu.show) {
         opacity: 1;
     }
     
@@ -2730,10 +2730,11 @@
     
     /* Keep row actions visible when dropdown is active */
     .stage-row .row-actions.has-active-dropdown,
-    .stage-row:hover .row-actions {
+    .stage-row:hover .row-actions,
+    .stage-row .row-actions:has(.dropdown-menu.show) {
         opacity: 1;
     }
-    
+
     .action-icon-btn {
         padding: 6px;
         border-radius: 6px;
@@ -2751,67 +2752,13 @@
         color: #dc2626;
     }
 
-    /* Stage Dropdown Menu */
-    .stage-dropdown-container {
-        position: relative;
-        z-index: 10; /* Ensure dropdown container is above other elements */
-    }
-
-    .stage-dropdown-trigger {
-        padding: 0;
-        width: 32px; /* Slightly bigger */
-        height: 32px;
-        border-radius: 50%; /* Make it circular */
-        color: #64748b;
-        border: none;
-        background: transparent;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: all 0.2s;
-    }
-    
-    .stage-dropdown-trigger i {
-        font-size: 1rem; /* Slightly bigger icon */
-    }
-
-    .stage-dropdown-trigger:hover {
-        background: white;
-        color: #1f2937;
-    }
-
-    .stage-dropdown-menu {
-        position: absolute;
-        top: auto;
-        bottom: calc(100% + 8px);
-        right: 0;
-        background: white;
-        border-radius: 12px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-        min-width: 180px;
-        padding: 0;
-        opacity: 0;
-        visibility: hidden;
-        transform: translateY(10px);
-        transition: all 0.2s ease;
-        z-index: 1000;
-    }
-
-    .stage-dropdown-container.active .stage-dropdown-menu {
-        opacity: 1;
-        visibility: visible;
-        transform: translateY(0);
-    }
-
-    .stage-dropdown-item {
+    /* Stage actions dropdown: same structure as upcoming sessions, option styling (red delete, roundness) */
+    .stage-actions-menu .dropdown-item {
         display: flex;
         align-items: center;
         gap: 12px;
         padding: 12px 20px;
         color: #1e293b;
-        text-decoration: none;
-        transition: background 0.2s ease;
         border: none;
         background: transparent;
         width: 100%;
@@ -2819,30 +2766,31 @@
         font-size: 0.95rem;
         font-weight: 400;
         text-align: left;
+        transition: background 0.2s ease;
     }
 
-    .stage-dropdown-item.first-item {
+    .stage-actions-menu .dropdown-item.first-item {
         border-radius: 12px 12px 0 0;
     }
 
-    .stage-dropdown-item.last-item {
+    .stage-actions-menu .dropdown-item.last-item {
         border-radius: 0 0 12px 12px;
     }
 
-    .stage-dropdown-item:hover {
+    .stage-actions-menu .dropdown-item:hover {
         background: rgba(16, 185, 129, 0.1);
         color: #10b981;
     }
 
-    .stage-dropdown-item.first-item:hover {
+    .stage-actions-menu .dropdown-item.first-item:hover {
         border-radius: 12px 12px 0 0;
     }
 
-    .stage-dropdown-item.last-item:hover {
+    .stage-actions-menu .dropdown-item.last-item:hover {
         border-radius: 0 0 12px 12px;
     }
 
-    .stage-dropdown-item i {
+    .stage-actions-menu .dropdown-item i {
         width: 20px;
         text-align: center;
         color: #94a3b8;
@@ -2850,16 +2798,16 @@
         flex-shrink: 0;
     }
 
-    .stage-dropdown-item:hover i {
+    .stage-actions-menu .dropdown-item:hover i {
         color: #10b981;
     }
 
-    .stage-dropdown-item.delete-item:hover {
+    .stage-actions-menu .dropdown-item.delete-item:hover {
         background: rgba(239, 68, 68, 0.1);
         color: #ef4444;
     }
 
-    .stage-dropdown-item.delete-item:hover i {
+    .stage-actions-menu .dropdown-item.delete-item:hover i {
         color: #ef4444;
     }
 
@@ -5196,16 +5144,16 @@
                         </div>
                         <div class="row-actions-section" onclick="event.stopPropagation();">
                             <div class="row-actions" id="rowActions_${stage.id}">
-                                <div class="stage-dropdown-container" id="stageDropdown_${stage.id}">
-                                    <button class="stage-dropdown-trigger" onclick="toggleStageDropdown(${stage.id}, event)">
-                                        <i class="fas fa-ellipsis-v"></i>
+                                <div class="dropdown">
+                                    <button class="session-action-btn" type="button" onclick="toggleDropdown(this)">
+                                        <i class="fas fa-ellipsis-h"></i>
                                     </button>
-                                    <div class="stage-dropdown-menu" onclick="event.stopPropagation();">
-                                        <button class="stage-dropdown-item first-item" onclick="editStage(${stage.id}); event.stopPropagation();">
+                                    <div class="dropdown-menu stage-actions-menu" onclick="event.stopPropagation();">
+                                        <button type="button" class="dropdown-item stage-action-item first-item" onclick="editStage(${stage.id}); event.stopPropagation();">
                                             <i class="fas fa-edit"></i>
                                             <span>Edit</span>
                                         </button>
-                                        <button class="stage-dropdown-item delete-item last-item" onclick="deleteStage(${stage.id}); event.stopPropagation();">
+                                        <button type="button" class="dropdown-item stage-action-item delete-item last-item" onclick="deleteStage(${stage.id}); event.stopPropagation();">
                                             <i class="fas fa-trash"></i>
                                             <span>Delete</span>
                                         </button>
@@ -5451,24 +5399,34 @@
                 } else {
                     console.error('Failed to load stages:', data?.error || 'Unknown error');
                     const errorMsg = data?.error || 'Unknown error';
-                    document.getElementById('stagesList').innerHTML = `
-                        <div style="padding: 48px; text-align: center; color: #ef4444;">
-                            <i class="fas fa-exclamation-triangle" style="font-size: 24px; margin-bottom: 12px;"></i>
-                            <p>Error loading stages: ${errorMsg}</p>
-                        </div>
-                    `;
+                    var sl = document.getElementById('stagesList');
+                    if (sl) {
+                        sl.innerHTML = `
+                            <div class="stages-load-error-state" style="padding: 48px 24px; text-align: center; background: #f8fafc; border-radius: 12px; margin: 16px 0; border: 1px solid #e2e8f0;">
+                                <i class="fas fa-info-circle" style="font-size: 28px; color: #94a3b8; margin-bottom: 12px;"></i>
+                                <p style="margin: 0 0 16px; color: #475569;">${errorMsg}</p>
+                                <button type="button" onclick="if (typeof loadStages === 'function') loadStages();" class="btn-primary" style="padding: 10px 20px; border-radius: 8px; border: none; background: var(--dash-primary); color: white; font-weight: 500; cursor: pointer;"><i class="fas fa-redo" style="margin-right: 6px;"></i> Retry</button>
+                            </div>
+                        `;
+                    }
                 }
             })
             .catch(error => {
                 console.error('Error fetching stages:', error);
-                document.getElementById('stagesList').innerHTML = `
-                    <div style="padding: 48px; text-align: center; color: #ef4444;">
-                        <i class="fas fa-exclamation-triangle" style="font-size: 24px; margin-bottom: 12px;"></i>
-                        <p>Network error: ${error.message}</p>
-                        <p style="font-size: 0.8rem; margin-top: 8px; color: #6b7280;">URL: ${apiUrl}</p>
-                        <p style="font-size: 0.8rem; margin-top: 4px;">Please check the browser console (F12) for details.</p>
-                    </div>
-                `;
+                var stagesList = document.getElementById('stagesList');
+                if (stagesList) {
+                    var isConnectionError = (error.message || '').toLowerCase().indexOf('fetch') !== -1 || (error.message || '').toLowerCase().indexOf('network') !== -1;
+                    stagesList.innerHTML = `
+                        <div class="stages-load-error-state" style="padding: 48px 24px; text-align: center; background: #f8fafc; border-radius: 12px; margin: 16px 0; border: 1px solid #e2e8f0;">
+                            <i class="fas fa-cloud-showers-heavy" style="font-size: 28px; color: #94a3b8; margin-bottom: 12px;"></i>
+                            <p style="margin: 0 0 8px; color: #475569; font-weight: 500;">Couldn't load stages</p>
+                            <p style="margin: 0 0 16px; font-size: 0.875rem; color: #64748b;">${isConnectionError ? 'Connection was reset or interrupted. Check that the server is running and try again.' : (error.message || 'Something went wrong.')}</p>
+                            <button type="button" onclick="if (typeof loadStages === 'function') loadStages();" class="btn-primary" style="padding: 10px 20px; border-radius: 8px; border: none; background: var(--dash-primary); color: white; font-weight: 500; cursor: pointer;">
+                                <i class="fas fa-redo" style="margin-right: 6px;"></i> Retry
+                            </button>
+                        </div>
+                    `;
+                }
             });
     }
     
@@ -6269,7 +6227,7 @@
     
     window.toggleStageTasks = function(stageId, event) {
         // Don't toggle if clicking on actions or dropdown
-        if (event && (event.target.closest('.row-actions-section') || event.target.closest('.stage-dropdown-container'))) {
+        if (event && (event.target.closest('.row-actions-section') || event.target.closest('.dropdown'))) {
             return;
         }
         
@@ -8164,68 +8122,12 @@
         });
     };
 
-    // Toggle stage dropdown menu
-    window.toggleStageDropdown = function(stageId, event) {
-        event.stopPropagation();
-        const container = document.getElementById(`stageDropdown_${stageId}`);
-        if (!container) return;
-        
-        const menu = container.querySelector('.stage-dropdown-menu');
-        if (!menu) return;
-        
-        const isCurrentlyActive = container.classList.contains('active');
-        
-        // Close all other dropdowns first
-        document.querySelectorAll('.stage-dropdown-container').forEach(dropdown => {
-            if (dropdown !== container) {
-                dropdown.classList.remove('active');
-            }
-        });
-        
-        // If clicking the same dropdown, toggle it off
-        if (isCurrentlyActive) {
-            container.classList.remove('active');
-            // Remove has-active-dropdown class from row actions
-            const rowActions = container.closest('.row-actions');
-            if (rowActions) {
-                rowActions.classList.remove('has-active-dropdown');
-            }
-            return;
-        }
-        
-        // Open the dropdown (always appears above)
-        container.classList.add('active');
-        
-        // Keep row actions visible when dropdown is active
-        const rowActions = document.getElementById(`rowActions_${stageId}`);
-        if (rowActions) {
-            rowActions.classList.add('has-active-dropdown');
-        }
-    };
-
-    // Close dropdowns when clicking outside
+    // Return all scrollable ancestors of el (attach to every scroll that might move the trigger)
+    // Close tasks actions menus when clicking outside (stage row dropdowns use base template toggleDropdown)
     document.addEventListener('click', function(event) {
-        // Don't close if clicking inside a dropdown container (trigger or menu)
-        if (event.target.closest('.stage-dropdown-container')) {
-            return;
-        }
-        
-        // Don't close if clicking inside tasks actions dropdown
         if (event.target.closest('.stage-tasks-actions-select')) {
             return;
         }
-        
-        // Close all stage dropdowns
-        document.querySelectorAll('.stage-dropdown-container').forEach(dropdown => {
-            dropdown.classList.remove('active');
-            // Remove has-active-dropdown class from row actions
-            const rowActions = dropdown.closest('.row-actions');
-            if (rowActions) {
-                rowActions.classList.remove('has-active-dropdown');
-            }
-        });
-        
-        // Close all tasks actions menus
         document.querySelectorAll('.tasks-actions-menu').forEach(menu => {
             menu.classList.remove('show');
         });
@@ -8233,12 +8135,16 @@
 
     // Edit stage - open modal with stage data
     window.editStage = function(stageId) {
-        // Close dropdown
-        const container = document.getElementById(`stageDropdown_${stageId}`);
-        if (container) {
-            container.classList.remove('active');
+        // Close dropdown (same as upcoming sessions - uses .dropdown and clearSessionDropdownFixed from base)
+        const rowActions = document.getElementById('rowActions_' + stageId);
+        if (rowActions) {
+            const menu = rowActions.querySelector('.dropdown-menu.show');
+            if (menu) {
+                menu.classList.remove('show');
+                if (typeof clearSessionDropdownFixed === 'function') clearSessionDropdownFixed(menu);
+            }
         }
-        
+
         // Fetch stage data
         fetch(`/dashboard/mentor/projects/${PROJECT_ID}/stages/api/`, {
             method: 'GET',

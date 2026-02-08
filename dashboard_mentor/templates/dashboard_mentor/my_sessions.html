@@ -15,7 +15,7 @@
           data-open-mentor-calendar
         >
           <i class="fas fa-calendar-alt"></i>
-          <span>Manage Session and Availability slots</span>
+          <span>Manage Calendar</span>
         </button>
         <a href="{% url 'general:dashboard_mentor:session_history' %}" class="session-history-btn">
           <i class="fas fa-history"></i>
@@ -51,10 +51,10 @@
                 <button class="session-action-btn" onclick="toggleDropdown(this)">
                   <i class="fas fa-ellipsis-h"></i>
                 </button>
-                <div class="dropdown-menu">
-                  <a href="#" class="dropdown-item" onclick="if (typeof openSessionDetailModal === 'function') { openSessionDetailModal({{ session.id }}); } return false;">View Details</a>
-                  <button type="button" class="dropdown-item" onclick="if (typeof openSessionSettingsForSessionId === 'function') openSessionSettingsForSessionId({{ session.id }});">Edit Session</button>
-                  <button type="button" class="dropdown-item" onclick="if (typeof openCancelSessionModal === 'function') openCancelSessionModal({{ session.id }});">Delete</button>
+                <div class="dropdown-menu session-row-actions-menu" onclick="event.stopPropagation();">
+                  <a href="#" class="dropdown-item first-item" onclick="if (typeof openSessionDetailModal === 'function') { openSessionDetailModal({{ session.id }}); } return false;"><i class="fas fa-info-circle"></i><span>View Details</span></a>
+                  <button type="button" class="dropdown-item" onclick="if (typeof openSessionSettingsForSessionId === 'function') openSessionSettingsForSessionId({{ session.id }});"><i class="fas fa-edit"></i><span>Edit Session</span></button>
+                  <button type="button" class="dropdown-item delete-item last-item" onclick="if (typeof openCancelSessionModal === 'function') openCancelSessionModal({{ session.id }});"><i class="fas fa-trash"></i><span>Delete</span></button>
                 </div>
               </div>
             </div>
@@ -98,29 +98,28 @@
 
 <style>
     .session-item[data-clickable-session] .session-left { cursor: pointer; }
+    .manage-availability-btn,
+    .session-history-btn {
+        font-size: 0.9375rem;
+        padding: 10px 16px;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 500;
+        border-radius: 8px;
+    }
     .manage-availability-btn {
         background: var(--dash-primary);
         color: white;
         border: none;
-        border-radius: 8px;
         cursor: pointer;
-        font-weight: 500;
         max-width: 300px;
-        padding: 10px 16px;
-        display: flex;
-        align-items: center;
-        gap: 8px;
+        font-weight: 700;
     }
     .session-history-btn {
         background: #f1f5f9;
         color: var(--dash-text-main);
         border: 1px solid #e2e8f0;
-        border-radius: 8px;
-        font-weight: 500;
-        padding: 10px 16px;
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
         text-decoration: none;
         transition: background 0.2s, border-color 0.2s;
     }
@@ -271,10 +270,10 @@
             <button class="session-action-btn" onclick="toggleDropdown(this)">
               <i class="fas fa-ellipsis-h"></i>
             </button>
-            <div class="dropdown-menu">
-              <a href="#" class="dropdown-item" onclick="if (typeof openSessionDetailModal === 'function') { openSessionDetailModal(${session.id}); } return false;">View Details</a>
-              <button type="button" class="dropdown-item" onclick="if (typeof openSessionSettingsForSessionId === 'function') openSessionSettingsForSessionId(${session.id});">Edit Session</button>
-              <button type="button" class="dropdown-item" onclick="if (typeof openCancelSessionModal === 'function') openCancelSessionModal(${session.id});">Delete</button>
+            <div class="dropdown-menu session-row-actions-menu" onclick="event.stopPropagation();">
+              <a href="#" class="dropdown-item first-item" onclick="if (typeof openSessionDetailModal === 'function') { openSessionDetailModal(${session.id}); } return false;"><i class="fas fa-info-circle"></i><span>View Details</span></a>
+              <button type="button" class="dropdown-item" onclick="if (typeof openSessionSettingsForSessionId === 'function') openSessionSettingsForSessionId(${session.id});"><i class="fas fa-edit"></i><span>Edit Session</span></button>
+              <button type="button" class="dropdown-item delete-item last-item" onclick="if (typeof openCancelSessionModal === 'function') openCancelSessionModal(${session.id});"><i class="fas fa-trash"></i><span>Delete</span></button>
             </div>
           </div>
         </div>

@@ -254,10 +254,10 @@
                                             <button class="session-action-btn" onclick="toggleDropdown(this)">
                                                 <i class="fas fa-ellipsis-h"></i>
                                             </button>
-                                            <div class="dropdown-menu">
-                                                <button type="button" class="dropdown-item" onclick="if (typeof openSessionDetailModal === 'function') openSessionDetailModal({{ session.id }});">View Details</button>
-                                                <button type="button" class="dropdown-item" onclick="if (typeof openSessionSettingsForSessionId === 'function') openSessionSettingsForSessionId({{ session.id }});">Edit Session</button>
-                                                <button type="button" class="dropdown-item" onclick="if (typeof openCancelSessionModal === 'function') openCancelSessionModal({{ session.id }});">Delete</button>
+                                            <div class="dropdown-menu session-row-actions-menu" onclick="event.stopPropagation();">
+                                                <button type="button" class="dropdown-item first-item" onclick="if (typeof openSessionDetailModal === 'function') openSessionDetailModal({{ session.id }});"><i class="fas fa-info-circle"></i><span>View Details</span></button>
+                                                <button type="button" class="dropdown-item" onclick="if (typeof openSessionSettingsForSessionId === 'function') openSessionSettingsForSessionId({{ session.id }});"><i class="fas fa-edit"></i><span>Edit Session</span></button>
+                                                <button type="button" class="dropdown-item delete-item last-item" onclick="if (typeof openCancelSessionModal === 'function') openCancelSessionModal({{ session.id }});"><i class="fas fa-trash"></i><span>Delete</span></button>
                                             </div>
                                         </div>
                                     </div>
@@ -1430,10 +1430,10 @@ document.addEventListener('keydown', function(e) {
                     <button class="session-action-btn" onclick="toggleDropdown(this)">
                       <i class="fas fa-ellipsis-h"></i>
                     </button>
-                    <div class="dropdown-menu">
-                      <button type="button" class="dropdown-item" onclick="if (typeof openSessionDetailModal === 'function') openSessionDetailModal(${session.id});">View Details</button>
-                      <button type="button" class="dropdown-item" onclick="if (typeof openSessionSettingsForSessionId === 'function') openSessionSettingsForSessionId(${session.id});">Edit Session</button>
-                      <button type="button" class="dropdown-item" onclick="if (typeof openCancelSessionModal === 'function') openCancelSessionModal(${session.id});">Delete</button>
+                    <div class="dropdown-menu session-row-actions-menu" onclick="event.stopPropagation();">
+                      <button type="button" class="dropdown-item first-item" onclick="if (typeof openSessionDetailModal === 'function') openSessionDetailModal(${session.id});"><i class="fas fa-info-circle"></i><span>View Details</span></button>
+                      <button type="button" class="dropdown-item" onclick="if (typeof openSessionSettingsForSessionId === 'function') openSessionSettingsForSessionId(${session.id});"><i class="fas fa-edit"></i><span>Edit Session</span></button>
+                      <button type="button" class="dropdown-item delete-item last-item" onclick="if (typeof openCancelSessionModal === 'function') openCancelSessionModal(${session.id});"><i class="fas fa-trash"></i><span>Delete</span></button>
                     </div>
                   </div>
                 </div>

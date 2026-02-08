@@ -4,11 +4,132 @@ This document describes the standard styling and structure for dropdown menus in
 
 ## Overview
 
-This guide covers dropdown menus in two main scenarios:
+This guide covers dropdown menus in three main scenarios:
 1. **Form Input Dropdowns** - Custom styled select inputs for forms (e.g., Mentor Type selector)
 2. **Navigation/Action Dropdowns** - Dropdown menus triggered by clicking any element (e.g., user profile menu, notification menu)
+3. **Row-Action Dropdowns** - Three-dots (ellipsis) menus inside scrollable lists (e.g. upcoming sessions, project stages). These use fixed positioning so the menu is never clipped by overflow and repositions when the user scrolls.
 
 All dropdown menus should follow the styling patterns established in the navbar avatar dropdown menu. This guide covers font styling, hover effects, rounded corners, icon styling, spacing, and trigger element styling.
+
+---
+
+## Row-Action Dropdowns (Scrollable Lists)
+
+Use this pattern when the dropdown lives inside a **scrollable container** (e.g. a list of sessions, stages, or cards). The menu must stay visible when the user scrolls and must not be clipped by the parent’s `overflow`.
+
+### When to use
+- Upcoming sessions list (three-dots per row)
+- Project stages list (three-dots per stage)
+- Any list or timeline where each row has an actions menu and the list can scroll
+
+### HTML structure (required)
+
+Use this **exact** structure so the base template’s JavaScript can handle opening, fixed positioning, and scroll repositioning:
+
+```html
+<div class="dropdown">
+  <button class="session-action-btn" type="button" onclick="toggleDropdown(this)">
+    <i class="fas fa-ellipsis-h"></i>
+  </button>
+  <div class="dropdown-menu" onclick="event.stopPropagation();">
+    <button type="button" class="dropdown-item first-item" onclick="doAction1(); event.stopPropagation();">
+      <i class="fas fa-edit"></i>
+      <span>Edit</span>
+    </button>
+    <button type="button" class="dropdown-item delete-item last-item" onclick="doAction2(); event.stopPropagation();">
+      <i class="fas fa-trash"></i>
+      <span>Delete</span>
+    </button>
+  </div>
+</div>
+```
+
+**Required:**
+- **Wrapper:** One element with class `dropdown` (no custom container class).
+- **Trigger:** A **button** with class `session-action-btn` and `onclick="toggleDropdown(this)"`. The trigger must be the **direct previous sibling** of the menu (base uses `button.nextElementSibling` to find the menu).
+- **Menu:** A **div** with class `dropdown-menu`. It receives `show` and `session-row-dropdown-menu--fixed` when open. Use `onclick="event.stopPropagation();"` on the menu so clicks on items don’t close it before the handler runs.
+- **Items:** Buttons (or links) with class `dropdown-item`. Add `first-item` to the first and `last-item` to the last for rounded corners. Use `event.stopPropagation()` in item `onclick` if needed.
+
+**Optional:** Add an extra class on the menu for scoped styling (e.g. `dropdown-menu stage-actions-menu`), then style only items inside that menu (e.g. red delete hover, custom padding).
+
+### Scroll context (where the dropdown lives)
+
+The base template (`dashboard_mentor/base.html`) applies **fixed positioning and scroll repositioning** only when the dropdown is inside a known scroll context:
+
+- **`.session-timeline-container`** – e.g. upcoming sessions, session history.
+- **`#stagesList`** – project detail stages list.
+
+If you add a **new** scrollable list that should have row-action dropdowns:
+
+1. Keep the same HTML structure above (`dropdown`, `session-action-btn`, `dropdown-menu`).
+2. In `base.html`, extend the condition that decides “use fixed positioning” to include your container. In `toggleDropdown`, the check is `dropdown.closest('.session-timeline-container') || dropdown.closest('#stagesList')`. Add your container (e.g. `dropdown.closest('#myListId')`).
+3. In `positionSessionDropdownFixed`, set `scrollContainer` the same way (e.g. `dropdown.closest('.session-timeline-container') || dropdown.closest('#stagesList') || dropdown.closest('#myListId')`).
+4. If your list scrolls via a **specific** element (e.g. `#dashboardMain` or a div with `overflow-y: auto`), the base logic already attaches scroll listeners to `window` and, for `#stagesList`, to all scrollable ancestors of the trigger. For a new context you may need to add the same “scrollable ancestors” behaviour for your container in `positionSessionDropdownFixed` (see the `scrollContainer.id === 'stagesList'` branch).
+
+### JavaScript: use the global toggle only
+
+- **Do not** implement a custom open/close or positioning function for this pattern.
+- **Do** use the global `toggleDropdown(button)` provided by the mentor base template. It:
+  - Opens the menu and applies fixed positioning when the dropdown is inside a recognized scroll context.
+  - Repositions the menu on scroll so it stays under the trigger.
+  - Closes other open `.dropdown-menu` and closes on outside click (any click not inside a `.dropdown`).
+
+When an item’s action should close the menu (e.g. “Edit” opens a modal), close it explicitly:
+
+```javascript
+// Example: close the row’s dropdown before opening a modal
+const rowActions = document.getElementById('rowActions_' + rowId);
+if (rowActions) {
+  const menu = rowActions.querySelector('.dropdown-menu.show');
+  if (menu) {
+    menu.classList.remove('show');
+    if (typeof clearSessionDropdownFixed === 'function') clearSessionDropdownFixed(menu);
+  }
+}
+```
+
+### CSS: base and optional scoped styles
+
+- **Base styles** are in `static/css/dashboard.css`:
+  - `.dropdown`, `.dropdown-menu`, `.dropdown-menu.show`, `.dropdown-menu.session-row-dropdown-menu--fixed`
+  - `.session-action-btn` (no border, circular, used as the three-dots trigger)
+- **Position** when fixed is set by the base script (below the trigger, right-aligned; flips above if no room). Do not override `position`/`top`/`left` for the open state.
+- **Optional:** Add a class on the menu (e.g. `stage-actions-menu`) and scope item styles (padding, icons, first/last rounded corners, red hover for delete) under that class so they don’t affect other dropdowns.
+
+Example for a “delete” item and rounded corners (same idea as stage-actions):
+
+```css
+.your-menu-class .dropdown-item.first-item { border-radius: 12px 12px 0 0; }
+.your-menu-class .dropdown-item.last-item { border-radius: 0 0 12px 12px; }
+.your-menu-class .dropdown-item.delete-item:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
+.your-menu-class .dropdown-item.delete-item:hover i { color: #ef4444; }
+```
+
+### Keeping the trigger visible while the menu is open
+
+If the trigger (or its wrapper) is hidden by default and only shown on row hover (e.g. `opacity: 0` until `.stage-row:hover`), it will disappear when the user moves the mouse to the menu. Keep it visible while the menu is open by using `:has(.dropdown-menu.show)`:
+
+```css
+.stage-row:hover .row-actions,
+.stage-row .row-actions:has(.dropdown-menu.show) {
+  opacity: 1;
+}
+```
+
+Apply the same idea to whatever wrapper you use so the three-dots (and the open menu) stay visible until the user closes the menu.
+
+### Checklist for row-action dropdowns
+
+- [ ] Wrapper is `<div class="dropdown">` with no extra container around trigger + menu.
+- [ ] Trigger is a **button** with class `session-action-btn` and `onclick="toggleDropdown(this)"`.
+- [ ] Menu is the **immediate next sibling** of the trigger and has class `dropdown-menu`.
+- [ ] Dropdown is inside a recognized scroll context (e.g. `.session-timeline-container` or `#stagesList`), or the base template was updated to support your container.
+- [ ] Menu has `onclick="event.stopPropagation();"` so item clicks don’t bubble and close the menu before handlers run.
+- [ ] Item actions that should close the menu call `clearSessionDropdownFixed(menu)` (from base) when closing.
+- [ ] If the trigger is only visible on row hover, CSS keeps it visible with `:has(.dropdown-menu.show)` so the menu stays usable.
 
 ---
 
@@ -841,6 +962,12 @@ When creating a new dropdown menu, ensure:
 - [ ] Icons use Font Awesome (`fas fa-*`)
 - [ ] Dividers are used appropriately between groups
 
+### Row-Action Dropdowns (scrollable lists)
+- [ ] Use the exact structure in the [Row-Action Dropdowns](#row-action-dropdowns-scrollable-lists) section: `.dropdown` → `.session-action-btn` + `.dropdown-menu` (siblings), and `toggleDropdown(this)` on the trigger
+- [ ] Dropdown lives inside a supported scroll context (`.session-timeline-container`, `#stagesList`, or a container added in base template)
+- [ ] Do not add custom open/close or positioning JS; use global `toggleDropdown` and `clearSessionDropdownFixed` only
+- [ ] If the trigger is shown only on row hover, use `:has(.dropdown-menu.show)` so it stays visible while the menu is open
+
 ---
 
 ## Common Mistakes to Avoid
@@ -854,6 +981,8 @@ When creating a new dropdown menu, ensure:
 7. **❌ Wrong hover colors** - Use light green background (`rgba(16, 185, 129, 0.1)`) for navigation/action dropdowns, or light grey (`#f1f5f9`) for form input dropdowns
 8. **❌ Missing transitions** - Always include smooth transitions for better UX
 9. **❌ Not handling single/two item cases** - Corner rounding must adapt to number of items
+10. **❌ Row-action dropdowns: custom structure or JS** - Inside scrollable lists use only the standard structure (`.dropdown`, `.session-action-btn`, `.dropdown-menu`) and global `toggleDropdown(this)`; do not implement your own fixed positioning or scroll logic.
+11. **❌ Row-action dropdown: trigger disappears when menu is open** - If the trigger is visible only on row hover, add a rule so the trigger (or its wrapper) stays visible when the menu is open, e.g. `.row-actions:has(.dropdown-menu.show) { opacity: 1; }`.
 
 ---
 
@@ -866,4 +995,4 @@ When creating a new dropdown menu, ensure:
 - Form input triggers should NOT have background color changes on hover
 - Icons should always use Font Awesome (`fas fa-*`) when used
 - Colors use CSS variables for easy theming
-- This guide covers both form inputs and navigation/action dropdowns
+- This guide covers form inputs, navigation/action dropdowns, and **row-action dropdowns** (three-dots menus in scrollable lists). For the latter, follow the [Row-Action Dropdowns](#row-action-dropdowns-scrollable-lists) section so fixed positioning and scroll repositioning work correctly.
