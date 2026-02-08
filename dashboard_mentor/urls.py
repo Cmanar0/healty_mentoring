@@ -6,6 +6,7 @@ app_name = "dashboard_mentor"
 
 urlpatterns = [
     path('', views.dashboard, name='dashboard'),
+    path('guides/claim/', views.claim_guide_coins, name='claim_guide_coins'),
     path('account/', views.account, name='account'),
     path('profile/', views.profile, name='profile'),
     path('settings/', views.settings_view, name='settings'),

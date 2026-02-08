@@ -13,18 +13,143 @@
             <div class="dashboard-col-left">
                 <!-- Split Stats Cards -->
                 <div class="dashboard-stats-split">
-                    <!-- Next Step Card -->
-                    <div class="dashboard-card stats-card-half">
-                        <div class="card-header">
-                            <h3 class="card-title">Next step</h3>
-                        </div>
+                    <!-- Next Step Card (click opens modal with subtasks) -->
+                    <div class="dashboard-card stats-card-half next-step-card">
                         <div class="next-step-content">
-                            <div class="next-step-item">
-                                <i class="fas fa-check-circle"></i>
-                                <span>Complete your profile setup</span>
+                            {% if current_guide_item %}
+                                {% if current_guide_item.claim_ready %}
+                                <div class="next-step-claim-card-clickable" id="nextStepClaimCard" role="button" tabindex="0" title="Click to claim your AI coins">
+                                    <div class="next-step-card-inner next-step-card-claim">
+                                        <div class="next-step-card-left next-step-claim-left">
+                                            <h3 class="next-step-card-title next-step-claim-title">Congratulations!</h3>
+                                            <div class="next-step-claim-text-block">
+                                                <p class="next-step-claim-text">You completed <strong>{{ current_guide_item.guide.name }}</strong></p>
+                                                <button type="button" class="next-step-claim-now-btn" id="nextStepClaimBtn">Claim your AI coins</button>
+                                            </div>
+                                        </div>
+                                        <div class="next-step-card-right">
+                                            <img src="{% static 'images/guide_2.png' %}" alt="Celebration" loading="lazy">
+                                        </div>
+                                    </div>
+                                </div>
+                                {% else %}
+                                <div class="next-step-card-clickable" id="nextStepCard" role="button" tabindex="0" title="Click to view details">
+                                    <div class="next-step-card-inner">
+                                        <div class="next-step-card-left">
+                                            <h3 class="next-step-card-title">Next step</h3>
+                                            <div class="next-step-card-middle">
+                                                <h4 class="next-step-guide-title">{{ current_guide_item.guide.name }}</h4>
+                                                {% if current_guide_item.guide.subtitle %}<p class="next-step-guide-subtitle">{{ current_guide_item.guide.subtitle }}</p>{% endif %}
+                                                {% if current_guide_item.guide.description %}<p class="next-step-guide-desc">{{ current_guide_item.guide.description }}</p>{% endif %}
+                                            </div>
+                                            <p class="next-step-view-subtasks">
+                                                <span class="next-step-view-subtasks-label">View subtasks</span>
+                                                <span class="next-step-subtasks-count">{{ current_guide_item.step_completed_ids|length }}/{{ current_guide_item.steps|length }} completed</span>
+                                            </p>
+                                        </div>
+                                        <div class="next-step-card-right">
+                                            {% if current_guide_item.image_url %}
+                                                <img src="{{ current_guide_item.image_url }}" alt="{{ current_guide_item.guide.name }}" loading="lazy">
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endif %}
+                            {% else %}
+                                <div class="next-step-all-done">
+                                    <i class="fas fa-check-circle"></i>
+                                    <span>All steps completed</span>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Next Step Modal (two columns: left = title/description/video, right = subtasks) -->
+                    {% if current_guide_item %}
+                    <div class="next-step-modal-overlay" id="nextStepModal" aria-hidden="true" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 9999; align-items: center; justify-content: center; padding: 24px;" data-guide-id="{{ current_guide_item.guide.id }}" data-step-ids="{% for step in current_guide_item.steps %}{{ step.id }}{% if not forloop.last %},{% endif %}{% endfor %}">
+                        <div class="next-step-modal" role="dialog" aria-labelledby="nextStepModalTitle">
+                            <div class="next-step-modal-header">
+                                <button type="button" class="next-step-modal-close" id="nextStepModalClose" aria-label="Close"><i class="fas fa-times"></i></button>
+                            </div>
+                            <div class="next-step-modal-body">
+                                <div class="next-step-modal-left">
+                                    <div class="next-step-modal-title-row">
+                                        <h3 id="nextStepModalTitle" class="next-step-modal-title">{{ current_guide_item.guide.name }}</h3>
+                                        <span class="next-step-modal-coins" title="Earn when you complete this guide">{{ current_guide_item.guide.ai_coins }} <i class="fas fa-coins"></i></span>
+                                    </div>
+                                    <p class="next-step-modal-coins-hint">Earn these AI coins when you complete this guide and each subtask.</p>
+                                    {% if current_guide_item.guide.subtitle %}<p class="next-step-modal-subtitle">{{ current_guide_item.guide.subtitle }}</p>{% endif %}
+                                    {% if current_guide_item.guide.description %}<div class="next-step-modal-desc">{{ current_guide_item.guide.description }}</div>{% endif %}
+                                    {% if current_guide_item.guide.youtube_url %}
+                                        <div class="next-step-modal-video" data-youtube-url="{{ current_guide_item.guide.youtube_url }}">
+                                            <iframe id="nextStepGuideVideoIframe" src="" title="Guide video" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                <div class="next-step-modal-right">
+                                    <h4 class="next-step-modal-subtasks-title">Subtasks</h4>
+                                    <p class="next-step-modal-earn-hint">Complete each item to earn the AI coins shown.</p>
+                                    <ul class="next-step-modal-list">
+                                        {% for step in current_guide_item.steps %}
+                                        <li class="next-step-modal-item {% if step.id in current_guide_item.step_completed_ids %}completed{% endif %}">
+                                            {% if step.url %}
+                                            <a href="{{ step.url }}{% if step.action_id %}?action_id={{ step.action_id }}{% endif %}" class="next-step-modal-item-row">
+                                            {% else %}
+                                            <div class="next-step-modal-item-row next-step-modal-item-row--no-link">
+                                            {% endif %}
+                                                <span class="next-step-modal-item-num">{{ forloop.counter }}</span>
+                                                <span class="next-step-modal-item-name">{{ step.name }}</span>
+                                                <span class="next-step-modal-item-coins" title="AI coins">{{ step.ai_coins }} <i class="fas fa-coins"></i></span>
+                                                {% if step.youtube_url %}<span class="next-step-modal-youtube-icon" role="button" tabindex="0" title="Watch video" data-youtube-url="{{ step.youtube_url }}" onclick="event.preventDefault(); event.stopPropagation(); window.open(this.dataset.youtubeUrl)" onkeydown="if(event.key==='Enter'){ event.preventDefault(); event.stopPropagation(); window.open(this.dataset.youtubeUrl); }"><i class="fab fa-youtube"></i></span>{% endif %}
+                                                <span class="next-step-modal-item-action">{% if step.url %}{{ step.button_name }} <i class="fas fa-chevron-right"></i>{% else %}{{ step.button_name }}{% endif %}</span>
+                                            {% if step.url %}
+                                            </a>
+                                            {% else %}
+                                            </div>
+                                            {% endif %}
+                                        </li>
+                                        {% empty %}
+                                        <li class="next-step-modal-item next-step-modal-item-empty">No subtasks for this guide.</li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
                             </div>
                         </div>
                     </div>
+                    {% endif %}
+
+                    <!-- Claim AI coins modal (when all subtasks done, before claiming main guide) -->
+                    {% if current_guide_item and current_guide_item.claim_ready %}
+                    <div class="next-step-claim-modal-overlay" id="nextStepClaimModal" aria-hidden="true" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 10000; align-items: center; justify-content: center; padding: 24px;" data-claim-url="{% url 'general:dashboard_mentor:claim_guide_coins' %}">
+                        <div class="next-step-claim-modal">
+                            <div class="next-step-claim-modal-header">
+                                <h3>Claim your AI coins</h3>
+                                <button type="button" class="next-step-modal-close" id="nextStepClaimModalClose" aria-label="Close"><i class="fas fa-times"></i></button>
+                            </div>
+                            <div class="next-step-claim-modal-body">
+                                <p class="next-step-claim-modal-intro">You completed <strong>{{ current_guide_item.guide.name }}</strong>. Here’s your reward:</p>
+                                <div class="next-step-modal-coins-summary">
+                                    <table class="next-step-modal-coins-table">
+                                        {% for row in current_guide_item.coins_breakdown %}
+                                        <tr class="next-step-modal-coins-{{ row.type }}-row">
+                                            <td class="next-step-modal-coins-label">
+                                                <span class="next-step-modal-coins-row-type">{% if row.type == 'main' %}Main guide{% else %}Subtask {{ forloop.counter0 }}{% endif %}</span>
+                                                <span class="next-step-modal-coins-row-name">{{ row.label }}</span>
+                                            </td>
+                                            <td class="next-step-modal-coins-amount">{{ row.amount }} <i class="fas fa-coins"></i></td>
+                                        </tr>
+                                        {% endfor %}
+                                        <tr class="next-step-modal-coins-total-row">
+                                            <td class="next-step-modal-coins-label">Total</td>
+                                            <td class="next-step-modal-coins-amount">{{ current_guide_item.total_ai_coins }} <i class="fas fa-coins"></i></td>
+                                        </tr>
+                                    </table>
+                                </div>
+                                <button type="button" class="next-step-claim-now-btn" id="nextStepClaimNowBtn" data-guide-id="{{ current_guide_item.guide.id }}">Accept Reward</button>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
 
                     <!-- Stats Card -->
                     <div class="dashboard-card stats-card-half" id="statsCard">
@@ -297,30 +422,727 @@
     color: #1e293b;
 }
 
-.next-step-content {
-    padding-top: 8px;
+/* Next step card: 0 padding on card, content fills full height; two columns; "Next step:" + title + real button */
+.next-step-card {
+    padding: 0 !important;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
 }
-
-.next-step-item {
+.next-step-card .next-step-content {
+    padding: 0;
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+.next-step-card-clickable {
+    cursor: pointer;
+    flex: 1;
+    min-height: 0;
+    display: flex;
+}
+.next-step-card-clickable:hover { background: #f9fafb; }
+.next-step-card-inner {
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    gap: 0;
+    flex: 1;
+    min-height: 0;
+}
+.next-step-card-left {
+    flex: 1;
+    min-width: 0;
+    padding: 16px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    min-height: 0;
+}
+.next-step-card-title {
+    margin: 0 0 10px 0;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--dash-text-main);
+    flex-shrink: 0;
+}
+.next-step-card-middle {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 4px;
+}
+.next-step-guide-title {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #111827;
+    line-height: 1.35;
+    letter-spacing: -0.01em;
+}
+.next-step-guide-subtitle {
+    margin: 0;
+    font-size: 0.875rem;
+    color: #6b7280;
+    font-weight: 500;
+}
+.next-step-guide-desc {
+    margin: 4px 0 0 0;
+    font-size: 0.8125rem;
+    color: #6b7280;
+    line-height: 1.4;
+}
+.next-step-view-subtasks {
+    margin: 12px 0 0 0;
+    align-self: flex-start;
+    flex-shrink: 0;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+.next-step-view-subtasks-label {
+    color: var(--dash-primary, #10b981);
+    font-weight: 600;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+.next-step-card-clickable:hover .next-step-view-subtasks-label {
+    color: #059669;
+    text-decoration: underline;
+}
+.next-step-subtasks-count {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: #6b7280;
+    background: #f3f4f6;
+    padding: 3px 8px;
+    border-radius: 6px;
+}
+/* Claim card button (still a button) */
+.next-step-view-btn {
+    margin-top: auto;
+    align-self: flex-start;
+    flex-shrink: 0;
+    padding: 8px 14px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #fff;
+    background: var(--dash-primary, #10b981);
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.next-step-view-btn:hover { background: #059669; }
+.next-step-card-right {
+    width: 200px;
+    flex-shrink: 0;
+    padding: 16px 20px 0 0;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    min-height: 140px;
+}
+.next-step-card-right img {
+    height: 100%;
+    width: auto;
+    max-width: 100%;
+    object-fit: contain;
+    object-position: bottom;
+    border-radius: 0 8px 8px 0;
+}
+.next-step-all-done {
+    padding: 14px 16px;
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 12px;
-    background: #f9fafb;
-    border-radius: 8px;
-    color: #374151;
+    color: #10b981;
     font-size: 0.95rem;
 }
+.next-step-all-done i { font-size: 1.1rem; }
 
-.next-step-item i {
-    color: #10b981;
+.next-step-card-claim .next-step-claim-text { margin: 0; font-size: 0.95rem; color: #374151; }
+
+/* Congratulations card: clickable, celebrating style, centered button, always guide_2.png */
+.next-step-claim-card-clickable {
+    cursor: pointer;
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    border-radius: 12px;
+    overflow: hidden;
+}
+.next-step-claim-card-clickable:hover { opacity: 0.98; }
+.next-step-claim-card-clickable .next-step-card-inner {
+    width: 100%;
+}
+.next-step-claim-left {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+.next-step-claim-title { color: #065f46; margin-bottom: 4px; }
+.next-step-claim-text-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+.next-step-claim-text-block .next-step-claim-text { margin: 0 0 12px 0; }
+.next-step-claim-text-block .next-step-claim-now-btn { margin-top: 0; }
+
+/* Navbar AI coins highlight after claim (smooth blink) */
+@keyframes navbar-ai-coins-blink {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(234, 179, 8, 0); }
+    25% { box-shadow: 0 0 0 6px rgba(234, 179, 8, 0.35); }
+    50% { box-shadow: 0 0 0 0 rgba(234, 179, 8, 0); }
+    75% { box-shadow: 0 0 0 6px rgba(234, 179, 8, 0.25); }
+}
+.navbar-ai-coins-highlight {
+    animation: navbar-ai-coins-blink 1.2s ease-in-out 2;
+}
+
+/* Claim AI coins modal */
+.next-step-claim-modal-overlay { display: none; }
+.next-step-claim-modal-overlay[aria-hidden="false"] { display: flex !important; }
+.next-step-claim-modal {
+    background: #fff;
+    border-radius: 12px;
+    width: 96vw;
+    max-width: 480px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.2);
+    position: relative;
+}
+.next-step-claim-modal-header {
+    flex-shrink: 0;
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid #e5e7eb;
+}
+.next-step-claim-modal-header h3 { margin: 0; font-size: 1.15rem; font-weight: 600; color: #111827; }
+.next-step-claim-modal-body {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+.next-step-claim-modal-intro { margin: 0; font-size: 0.9rem; color: #6b7280; }
+.next-step-claim-modal-body .next-step-modal-coins-summary { margin: 0; }
+.next-step-claim-now-btn {
+    margin-top: 8px;
+    padding: 12px 24px;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #fff;
+    background: linear-gradient(135deg, #eab308 0%, #ca8a04 100%);
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+}
+.next-step-claim-now-btn::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 60%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.35), transparent);
+    transition: none;
+}
+.next-step-claim-now-btn:hover {
+    color: #fff;
+    background: linear-gradient(135deg, #eab308 0%, #ca8a04 100%);
+}
+.next-step-claim-now-btn:hover::after {
+    animation: next-step-claim-btn-shine 0.6s ease-in-out;
+}
+@keyframes next-step-claim-btn-shine {
+    0% { left: -100%; }
+    100% { left: 150%; }
+}
+.next-step-claim-now-btn:disabled { opacity: 0.7; cursor: not-allowed; }
+.next-step-claim-now-btn:disabled:hover::after { animation: none; }
+
+/* Next step modal: bigger; two columns; left = title, subtitle, description, video (max space); right = subtasks; close btn like other modals */
+.next-step-modal-overlay { display: none; }
+.next-step-modal-overlay[aria-hidden="false"] { display: flex !important; }
+.next-step-modal {
+    background: #fff;
+    border-radius: 12px;
+    width: 96vw;
+    max-width: 1600px;
+    height: 88vh;
+    max-height: 88vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.2);
+    position: relative;
+}
+.next-step-modal-header {
+    flex-shrink: 0;
+    padding: 0;
+    display: flex;
+    justify-content: flex-end;
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    z-index: 10;
+}
+.next-step-modal-close {
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: #fff;
+    font-size: 1rem;
+    cursor: pointer;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    padding: 0;
+    line-height: 1;
+}
+.next-step-modal-close:hover {
+    background: #ef4444;
+    border-color: #ef4444;
+    transform: rotate(90deg) scale(1.1);
+    box-shadow: 0 0 15px rgba(239, 68, 68, 0.5);
+}
+.next-step-modal-body {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 24px;
+    padding: 24px;
+    overflow: hidden;
+    min-height: 0;
+    flex: 1;
+}
+.next-step-modal-left {
+    overflow-y: auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+.next-step-modal-title-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 4px;
+}
+.next-step-modal-title {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #111827;
+}
+.next-step-modal-coins {
+    font-size: 0.85rem;
+    color: #6b7280;
+}
+.next-step-modal-coins i { color: #eab308; }
+.next-step-modal-coins-hint {
+    margin: 0 0 12px 0;
+    font-size: 0.8rem;
+    color: #6b7280;
+    line-height: 1.4;
+}
+.next-step-modal-subtitle {
+    margin: 0 0 12px;
+    font-size: 0.9rem;
+    color: #6b7280;
+}
+.next-step-modal-desc {
+    font-size: 0.875rem;
+    color: #374151;
+    line-height: 1.5;
+    margin-bottom: 12px;
+    flex-shrink: 0;
+}
+.next-step-modal-video {
+    position: relative;
+    width: 100%;
+    flex: 1;
+    min-height: 200px;
+    overflow: hidden;
+    border-radius: 8px;
+    background: #000;
+}
+.next-step-modal-video iframe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+.next-step-modal-right {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    min-width: 0;
+    border-left: 1px solid #e5e7eb;
+    padding-left: 24px;
+}
+.next-step-modal-right .next-step-modal-list {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+}
+.next-step-modal-coins-summary {
+    margin-top: auto;
+    flex-shrink: 0;
+}
+.next-step-modal-subtasks-title {
+    margin: 0 0 4px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #374151;
+}
+.next-step-modal-earn-hint {
+    margin: 0 0 12px 0;
+    font-size: 0.8rem;
+    color: #6b7280;
+    line-height: 1.4;
+}
+.next-step-modal-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.next-step-modal-item {
+    list-style: none;
+}
+.next-step-modal-item-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    border-radius: 10px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    font-size: 0.9rem;
+    color: #374151;
+    text-decoration: none;
+    transition: background 0.2s, border-color 0.2s, box-shadow 0.2s;
+}
+a.next-step-modal-item-row:hover {
+    background: #f1f5f9;
+    border-color: var(--dash-primary, #10b981);
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.15);
+}
+.next-step-modal-item-row--no-link {
+    cursor: default;
+}
+.next-step-modal-item.completed .next-step-modal-item-row {
+    background: #f0fdf4;
+    border-color: #bbf7d0;
+}
+.next-step-modal-item.completed .next-step-modal-item-num {
+    background: #10b981;
+    color: #fff;
+}
+.next-step-modal-item-num {
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    background: #e2e8f0;
+    color: #475569;
+    font-weight: 600;
+    font-size: 0.85rem;
+}
+a.next-step-modal-item-row:hover .next-step-modal-item-num {
+    background: var(--dash-primary, #10b981);
+    color: #fff;
+}
+.next-step-modal-item-name {
+    flex: 1;
+    min-width: 0;
+    font-weight: 500;
+}
+.next-step-modal-item.completed .next-step-modal-item-name {
+    text-decoration: line-through;
+    color: #94a3b8;
+}
+.next-step-modal-item-coins {
+    font-size: 0.8rem;
+    color: #6b7280;
+}
+.next-step-modal-item-coins i { color: #eab308; }
+.next-step-modal-item-action {
+    font-size: 0.8rem;
+    color: var(--dash-primary, #10b981);
+    font-weight: 500;
+}
+.next-step-modal-item-action i.fa-chevron-right {
+    font-size: 0.7rem;
+    margin-left: 2px;
+}
+.next-step-modal-youtube-icon {
+    color: #ff0000;
     font-size: 1.1rem;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+}
+.next-step-modal-youtube-icon:hover {
+    color: #cc0000;
+    background: rgba(255, 0, 0, 0.08);
+}
+.next-step-modal-item-empty {
+    color: #6b7280;
+    font-size: 0.875rem;
+    padding: 14px 16px;
+}
+.next-step-modal-coins-summary {
+    padding: 16px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+}
+.next-step-modal-coins-summary-title {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    margin-bottom: 12px;
+}
+.next-step-modal-coins-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+}
+.next-step-modal-coins-table td {
+    padding: 6px 0;
+    vertical-align: top;
+}
+.next-step-modal-coins-label {
+    color: #475569;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.next-step-modal-coins-row-type {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #64748b;
+}
+.next-step-modal-coins-main-row .next-step-modal-coins-row-type {
+    color: var(--dash-primary, #10b981);
+}
+.next-step-modal-coins-row-name {
+    font-size: 0.875rem;
+    color: #0f172a;
+    font-weight: 500;
+}
+.next-step-modal-coins-main-row {
+    border-left: 3px solid var(--dash-primary, #10b981);
+}
+.next-step-modal-coins-main-row .next-step-modal-coins-label {
+    padding-left: 10px;
+}
+.next-step-modal-coins-subtask-row .next-step-modal-coins-label {
+    padding-left: 6px;
+}
+.next-step-modal-coins-subtask-row .next-step-modal-coins-row-name {
+    font-size: 0.8125rem;
+    color: #475569;
+}
+.next-step-modal-coins-amount {
+    text-align: right;
+    white-space: nowrap;
+    color: #0f172a;
+    font-weight: 500;
+}
+.next-step-modal-coins-amount i { color: #eab308; }
+.next-step-modal-coins-total-row td {
+    padding-top: 12px;
+    border-top: 2px solid #e2e8f0;
+    font-weight: 600;
+    color: #0f172a;
+}
+.next-step-modal-coins-total-row .next-step-modal-coins-amount {
+    font-weight: 700;
+}
+@media (min-width: 1024px) {
+    .next-step-modal-overlay[aria-hidden="false"] {
+        padding-top: 56px !important;
+        align-items: flex-start;
+        padding-bottom: 24px;
+    }
+}
+@media (max-width: 640px) {
+    .next-step-modal-body { grid-template-columns: 1fr; }
+    .next-step-modal-right { border-left: none; padding-left: 0; padding-top: 16px; border-top: 1px solid #e5e7eb; }
 }
 </style>
 
-<!-- Page-specific JS: stats dropdown -->
+<!-- Page-specific JS: stats dropdown + next step modal -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // After claim reward reload: show toast and highlight navbar AI coins
+    try {
+        var claimToast = sessionStorage.getItem('mentor_claim_toast');
+        if (claimToast) {
+            sessionStorage.removeItem('mentor_claim_toast');
+            var data = JSON.parse(claimToast);
+            var coins = data && data.coins != null ? data.coins : 0;
+            if (typeof showNotification === 'function' && coins) {
+                showNotification('Successfully claimed ' + coins + ' AI coins!', 'success');
+            }
+            var navbarCoins = document.getElementById('navbarAiCoins');
+            if (navbarCoins) {
+                navbarCoins.classList.add('navbar-ai-coins-highlight');
+                setTimeout(function() { navbarCoins.classList.remove('navbar-ai-coins-highlight'); }, 3000);
+            }
+        }
+    } catch (e) {}
+
+    // Next step card: open modal on click
+    const nextStepCard = document.getElementById('nextStepCard');
+    const nextStepModal = document.getElementById('nextStepModal');
+    const nextStepModalClose = document.getElementById('nextStepModalClose');
+    if (nextStepCard && nextStepModal) {
+        function extractYouTubeVideoId(url) {
+            if (!url) return null;
+            var regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+            var match = url.match(regExp);
+            return (match && match[2].length === 11) ? match[2] : null;
+        }
+        nextStepCard.addEventListener('click', function() {
+            nextStepModal.setAttribute('aria-hidden', 'false');
+            nextStepModal.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+            var guideId = nextStepModal.getAttribute('data-guide-id');
+            var stepIdsStr = nextStepModal.getAttribute('data-step-ids');
+            var stepIds = stepIdsStr ? stepIdsStr.split(',').filter(Boolean) : [];
+            console.log('Next step modal opened – guide id:', guideId, 'subtask ids:', stepIds);
+            var videoWrap = nextStepModal.querySelector('.next-step-modal-video');
+            var iframe = document.getElementById('nextStepGuideVideoIframe');
+            if (videoWrap && iframe) {
+                var youtubeUrl = videoWrap.getAttribute('data-youtube-url');
+                var videoId = extractYouTubeVideoId(youtubeUrl);
+                if (videoId) {
+                    iframe.src = 'https://www.youtube-nocookie.com/embed/' + videoId + '?rel=0';
+                } else {
+                    iframe.src = '';
+                }
+            }
+        });
+        function closeNextStepModal() {
+            nextStepModal.setAttribute('aria-hidden', 'true');
+            nextStepModal.style.display = 'none';
+            document.body.style.overflow = '';
+            var iframe = document.getElementById('nextStepGuideVideoIframe');
+            if (iframe) iframe.src = '';
+        }
+        if (nextStepModalClose) nextStepModalClose.addEventListener('click', closeNextStepModal);
+        nextStepModal.addEventListener('click', function(e) {
+            if (e.target === nextStepModal) closeNextStepModal();
+        });
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && nextStepModal.getAttribute('aria-hidden') === 'false') closeNextStepModal();
+        });
+    }
+
+    // Claim AI coins modal: open on card or button click, close, and Claim Now
+    const nextStepClaimCard = document.getElementById('nextStepClaimCard');
+    const nextStepClaimBtn = document.getElementById('nextStepClaimBtn');
+    const nextStepClaimModal = document.getElementById('nextStepClaimModal');
+    const nextStepClaimModalClose = document.getElementById('nextStepClaimModalClose');
+    const nextStepClaimNowBtn = document.getElementById('nextStepClaimNowBtn');
+    function openClaimModal() {
+        if (nextStepClaimModal) {
+            nextStepClaimModal.setAttribute('aria-hidden', 'false');
+            nextStepClaimModal.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        }
+    }
+    if (nextStepClaimModal) {
+        if (nextStepClaimCard) {
+            nextStepClaimCard.addEventListener('click', openClaimModal);
+            nextStepClaimCard.addEventListener('keydown', function(e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openClaimModal(); } });
+        }
+        if (nextStepClaimBtn) nextStepClaimBtn.addEventListener('click', function(e) { e.stopPropagation(); openClaimModal(); });
+        function closeClaimModal() {
+            nextStepClaimModal.setAttribute('aria-hidden', 'true');
+            nextStepClaimModal.style.display = 'none';
+            document.body.style.overflow = '';
+        }
+        if (nextStepClaimModalClose) nextStepClaimModalClose.addEventListener('click', closeClaimModal);
+        nextStepClaimModal.addEventListener('click', function(e) {
+            if (e.target === nextStepClaimModal) closeClaimModal();
+        });
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && nextStepClaimModal.getAttribute('aria-hidden') === 'false') closeClaimModal();
+        });
+        if (nextStepClaimNowBtn) {
+            nextStepClaimNowBtn.addEventListener('click', function() {
+                var guideId = nextStepClaimNowBtn.getAttribute('data-guide-id');
+                var claimUrl = nextStepClaimModal.getAttribute('data-claim-url');
+                if (!guideId || !claimUrl) return;
+                var csrfInput = document.querySelector('input[name="csrfmiddlewaretoken"]');
+                var csrf = csrfInput ? csrfInput.value : (document.cookie.match(/csrftoken=([^;]+)/) || [])[1];
+                if (!csrf) return;
+                nextStepClaimNowBtn.disabled = true;
+                nextStepClaimNowBtn.textContent = 'Claiming…';
+                var formData = new FormData();
+                formData.append('guide_id', guideId);
+                formData.append('csrfmiddlewaretoken', csrf);
+                fetch(claimUrl, { method: 'POST', body: formData, credentials: 'same-origin', headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                    .then(function(r) { return r.json().then(function(data) { return { ok: r.ok, data: data }; }); })
+                    .then(function(result) {
+                        nextStepClaimNowBtn.disabled = false;
+                        nextStepClaimNowBtn.textContent = 'Accept Reward';
+                        if (result.ok && result.data.success) {
+                            try {
+                                sessionStorage.setItem('mentor_claim_toast', JSON.stringify({ coins: result.data.coins_added }));
+                            } catch (e) {}
+                            closeClaimModal();
+                            window.location.reload();
+                        } else {
+                            if (typeof showNotification === 'function') {
+                                showNotification(result.data.error || 'Could not claim coins', 'error');
+                            }
+                        }
+                    })
+                    .catch(function() {
+                        nextStepClaimNowBtn.disabled = false;
+                        nextStepClaimNowBtn.textContent = 'Accept Reward';
+                        if (typeof showNotification === 'function') showNotification('Request failed', 'error');
+                    });
+            });
+        }
+    }
+
     // Stats Period Dropdown
     const statsPeriodTrigger = document.getElementById('statsPeriodTrigger');
     const statsPeriodMenu = document.getElementById('statsPeriodMenu');

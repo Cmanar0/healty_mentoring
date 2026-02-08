@@ -91,6 +91,17 @@ def unresolved_tickets_count(request):
         'unresolved_tickets_count': 0,
     }
 
+def mentor_ai_coins(request):
+    """Context processor to provide mentor AI coins for navbar (mentor dashboard only)."""
+    if request.user.is_authenticated:
+        profile = getattr(request.user, 'profile', None)
+        if profile is not None and profile.role == 'mentor':
+            mentor_profile = getattr(request.user, 'mentor_profile', None)
+            if mentor_profile is not None:
+                return {'mentor_ai_coins': getattr(mentor_profile, 'ai_coins', 0)}
+    return {'mentor_ai_coins': 0}
+
+
 def pending_project_assignments(request):
     """
     Context processor to provide pending project assignments count for user dashboard.

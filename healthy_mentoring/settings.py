@@ -64,6 +64,7 @@ TEMPLATES = [{
         "general.context_processors.pending_sessions_count",
         "general.context_processors.unresolved_tickets_count",
         "general.context_processors.pending_project_assignments",
+        "general.context_processors.mentor_ai_coins",
     ]},
 }]
 

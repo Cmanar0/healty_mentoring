@@ -154,6 +154,51 @@ def dashboard(request):
             }
             backlog_tasks.append(task_dict)
     
+    # Mentor guide (Next step): show first incomplete guide; card opens modal with subtasks
+    current_guide_item = None
+    if mentor_profile:
+        from dashboard_mentor.models import Guide, GuideStep, MentorGuideProgress
+        guides = Guide.objects.filter(is_active=True).prefetch_related('steps').order_by('order', 'name')
+        progress_qs = MentorGuideProgress.objects.filter(mentor_profile=mentor_profile).select_related('guide', 'guide_step')
+        completed_set = set()  # (guide_id, step_id or None for main)
+        for p in progress_qs:
+            step_id = p.guide_step_id if p.guide_step_id else None
+            completed_set.add((p.guide_id, step_id))
+        for guide in guides:
+            steps = list(guide.steps.filter(is_active=True).order_by('order', 'name'))
+            main_done = (guide.id, None) in completed_set
+            step_done_ids = {s.id for s in steps if (guide.id, s.id) in completed_set}
+            all_steps_done = len(steps) == 0 or step_done_ids == {s.id for s in steps}
+            fully_completed = main_done and all_steps_done
+            # YouTube embed URL for modal (extract video ID; use nocookie domain for better compatibility)
+            youtube_embed_url = None
+            if guide.youtube_url:
+                import re
+                m = re.search(r'(?:youtube\.com/watch\?v=|youtu\.be/)([a-zA-Z0-9_-]{11})', guide.youtube_url)
+                if m:
+                    video_id = m.group(1)
+                    youtube_embed_url = f'https://www.youtube-nocookie.com/embed/{video_id}?rel=0'
+            coins_breakdown = [{'label': guide.name, 'amount': guide.ai_coins, 'type': 'main'}]
+            for s in steps:
+                coins_breakdown.append({'label': s.name, 'amount': s.ai_coins, 'type': 'subtask'})
+            total_ai_coins = guide.ai_coins + sum(s.ai_coins for s in steps)
+            claim_ready = all_steps_done and not main_done
+            item = {
+                'guide': guide,
+                'steps': steps,
+                'main_completed': main_done,
+                'step_completed_ids': step_done_ids,
+                'image_url': guide.image.url if guide.image else None,
+                'youtube_embed_url': youtube_embed_url,
+                'coins_breakdown': coins_breakdown,
+                'total_ai_coins': total_ai_coins,
+                'claim_ready': claim_ready,
+            }
+            if current_guide_item is None and not fully_completed:
+                current_guide_item = item
+            if current_guide_item is not None:
+                break
+    
     return render(request, 'dashboard_mentor/dashboard_mentor.html', {
         'debug': settings.DEBUG,
         'upcoming_sessions': upcoming_sessions,
@@ -161,7 +206,51 @@ def dashboard(request):
         'project_templates': templates,
         'project_modules': modules,
         'backlog_tasks': backlog_tasks,
+        'current_guide_item': current_guide_item,
+        'mentor_ai_coins': getattr(mentor_profile, 'ai_coins', 0) if mentor_profile else 0,
     })
+
+
+@login_required
+@require_POST
+def claim_guide_coins(request):
+    """Claim AI coins for a guide when all subtasks are done. Adds coins to MentorProfile and marks main guide complete."""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        return JsonResponse({'success': False, 'error': 'Forbidden'}, status=403)
+    mentor_profile = getattr(request.user, 'mentor_profile', None)
+    if not mentor_profile:
+        return JsonResponse({'success': False, 'error': 'Mentor profile not found'}, status=404)
+    from dashboard_mentor.models import Guide, MentorGuideProgress
+    guide_id = request.POST.get('guide_id')
+    if not guide_id:
+        return JsonResponse({'success': False, 'error': 'guide_id required'}, status=400)
+    guide = get_object_or_404(Guide, id=guide_id, is_active=True)
+    steps = list(guide.steps.filter(is_active=True))
+    completed_steps = set(
+        MentorGuideProgress.objects.filter(
+            mentor_profile=mentor_profile, guide=guide, guide_step__isnull=False
+        ).values_list('guide_step_id', flat=True)
+    )
+    all_steps_done = len(steps) == 0 or completed_steps == {s.id for s in steps}
+    if not all_steps_done:
+        return JsonResponse({'success': False, 'error': 'Complete all subtasks first'}, status=400)
+    if MentorGuideProgress.objects.filter(mentor_profile=mentor_profile, guide=guide, guide_step__isnull=True).exists():
+        return JsonResponse({'success': False, 'error': 'Already claimed'}, status=400)
+    total_coins = guide.ai_coins + sum(s.ai_coins for s in steps)
+    mentor_profile.ai_coins = getattr(mentor_profile, 'ai_coins', 0) + total_coins
+    mentor_profile.save(update_fields=['ai_coins'])
+    MentorGuideProgress.objects.get_or_create(
+        mentor_profile=mentor_profile,
+        guide=guide,
+        guide_step=None,
+        defaults={'completed_at': timezone.now()}
+    )
+    return JsonResponse({
+        'success': True,
+        'coins_added': total_coins,
+        'total_coins': mentor_profile.ai_coins,
+    })
+
 
 @login_required
 def account(request):
@@ -716,6 +805,104 @@ def update_slots_for_session_length(mentor_profile, old_length, new_length):
     
     return False  # No change in length
 
+
+def _compute_profile_completion(profile):
+    """Compute profile completion percentage (0-100) using same 15-field logic as profile view."""
+    filled = 0
+    total = 0
+    if profile.first_name:
+        filled += 1
+    total += 1
+    if profile.last_name:
+        filled += 1
+    total += 1
+    timezone_value = getattr(profile, 'selected_timezone', None) or getattr(profile, 'time_zone', None)
+    if timezone_value:
+        filled += 1
+    total += 1
+    if getattr(profile, 'bio', None) and str(profile.bio).strip():
+        filled += 1
+    total += 1
+    if getattr(profile, 'quote', None) and str(profile.quote).strip():
+        filled += 1
+    total += 1
+    if getattr(profile, 'mentor_type', None) and str(profile.mentor_type).strip():
+        filled += 1
+    total += 1
+    if getattr(profile, 'profile_picture', None):
+        filled += 1
+    total += 1
+    quals = getattr(profile, 'qualifications', None) or []
+    if len(quals) > 0:
+        filled += 1
+    total += 1
+    tags = getattr(profile, 'tags', None) or []
+    if len(tags) > 0:
+        filled += 1
+    total += 1
+    langs = getattr(profile, 'languages', None) or []
+    if len(langs) > 0:
+        filled += 1
+    total += 1
+    cats = getattr(profile, 'categories', None) or []
+    if len(cats) > 0:
+        filled += 1
+    total += 1
+    if getattr(profile, 'price_per_hour', None):
+        filled += 1
+    total += 1
+    sl = getattr(profile, 'session_length', None)
+    if sl is not None and sl > 0:
+        filled += 1
+    total += 1
+    if getattr(profile, 'cover_image', None):
+        filled += 1
+    total += 1
+    if getattr(profile, 'video_introduction_url', None) and str(profile.video_introduction_url).strip():
+        filled += 1
+    total += 1
+    has_social = bool(getattr(profile, 'instagram_name', None) or getattr(profile, 'linkedin_name', None) or getattr(profile, 'personal_website', None))
+    if has_social:
+        filled += 1
+    total += 1
+    return int(round((filled / total) * 100)) if total else 0
+
+
+def _update_setup_profile_guide_progress(mentor_profile, profile, profile_completion_pct):
+    """When profile is saved, mark Setup Your Profile guide steps complete if conditions are met."""
+    from dashboard_mentor.models import Guide, GuideStep, MentorGuideProgress
+    setup_guide = Guide.objects.filter(name='Setup Your Profile', is_active=True).prefetch_related('steps').first()
+    if not setup_guide:
+        return
+    steps = list(setup_guide.steps.filter(is_active=True))
+    for step in steps:
+        action_id = (step.action_id or '').strip()
+        completed = False
+        if action_id == 'guide_setup_profile_80':
+            completed = profile_completion_pct >= 80
+        elif action_id == 'guide_setup_mentor_type':
+            completed = bool(getattr(profile, 'mentor_type', None) and str(profile.mentor_type).strip())
+        elif action_id == 'guide_setup_bio':
+            completed = bool(getattr(profile, 'bio', None) and str(profile.bio).strip())
+        elif action_id == 'guide_setup_languages':
+            completed = len(getattr(profile, 'languages', None) or []) > 0
+        elif action_id == 'guide_setup_categories':
+            completed = len(getattr(profile, 'categories', None) or []) > 0
+        elif action_id == 'guide_setup_pricing':
+            p = getattr(profile, 'price_per_hour', None)
+            completed = p is not None and float(p) > 0
+        elif action_id == 'guide_setup_session_length':
+            sl = getattr(profile, 'session_length', None)
+            completed = sl is not None and int(sl) > 0
+        if completed:
+            MentorGuideProgress.objects.get_or_create(
+                mentor_profile=mentor_profile,
+                guide=setup_guide,
+                guide_step=step,
+                defaults={'completed_at': timezone.now()}
+            )
+
+
 @login_required
 def profile(request):
     if not hasattr(request.user, 'profile'):
@@ -960,6 +1147,11 @@ def profile(request):
                 # Redirect to my_sessions page with flag to open calendar
                 return redirect("/dashboard/mentor/my-sessions/?open_calendar=true")
             else:
+                # Mark Setup Your Profile guide subtasks complete when conditions are met
+                profile_completion_after_save = _compute_profile_completion(profile)
+                mentor_profile = getattr(request.user, 'mentor_profile', None)
+                if mentor_profile:
+                    _update_setup_profile_guide_progress(mentor_profile, profile, profile_completion_after_save)
                 messages.success(request, 'Profile updated successfully!')
                 return redirect("/dashboard/mentor/profile/")
     

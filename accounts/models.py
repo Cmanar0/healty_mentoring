@@ -207,6 +207,9 @@ class MentorProfile(models.Model):
     #   }
     # ]
     
+    # AI coins earned from completing guides (claimed via dashboard "Claim your AI coins")
+    ai_coins = models.PositiveIntegerField(default=0)
+
     # Sessions (using ForeignKey relationship)
     sessions = models.ManyToManyField("general.Session", related_name="mentors", blank=True)
     
