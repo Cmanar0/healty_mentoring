@@ -4,42 +4,71 @@
   <div class="session-detail-modal" role="dialog" aria-modal="true" aria-labelledby="sessionDetailModalTitle">
     <header class="session-detail-modal-header">
       <h2 id="sessionDetailModalTitle" class="session-detail-modal-title">Session detail</h2>
-      <button type="button" class="session-detail-modal-close" data-session-detail-close aria-label="Close">&times;</button>
+      <button type="button" class="session-detail-modal-close" data-session-detail-close aria-label="Close">
+        <i class="fas fa-times"></i>
+      </button>
     </header>
     <div class="session-detail-modal-body">
       <div id="sessionDetailModalError" class="session-detail-modal-error" style="display: none;"></div>
       <div id="sessionDetailModalContent" style="display: none;">
-        <div class="session-detail-meta">
-          <span id="sessionDetailStatus" class="session-detail-status"></span>
-          <span id="sessionDetailClient" class="session-detail-client"></span>
-        </div>
-        <div class="session-detail-grid">
-          <div class="session-detail-block">
-            <div class="session-detail-block-title">Time</div>
-            <div class="session-detail-label">Start</div>
-            <div id="sessionDetailStart" class="session-detail-value"></div>
-            <div class="session-detail-label">End</div>
-            <div id="sessionDetailEnd" class="session-detail-value"></div>
-            <div id="sessionDetailTimezone" class="session-detail-timezone"></div>
-          </div>
-          <div class="session-detail-block">
-            <div class="session-detail-block-title">Pricing</div>
-            <div class="session-detail-label">Session price</div>
-            <div id="sessionDetailPrice" class="session-detail-value"></div>
-            <div class="session-detail-note">Payment is not implemented yet.</div>
-          </div>
-          <div id="sessionDetailMeetingWrap" class="session-detail-block session-detail-block-full" style="display: none;">
-            <div class="session-detail-block-title">Meeting link</div>
-            <a id="sessionDetailMeetingLink" href="#" target="_blank" rel="noopener" class="session-detail-meeting-link"></a>
-          </div>
-          <div class="session-detail-block session-detail-block-full">
-            <div class="session-detail-block-title">Notes</div>
-            <div id="sessionDetailNote" class="session-detail-note-text"></div>
-          </div>
-          <div class="session-detail-block session-detail-block-full">
-            <div class="session-detail-block-title">Tasks</div>
-            <ul id="sessionDetailTasks" class="session-detail-tasks-list"></ul>
-            <div id="sessionDetailTasksEmpty" class="session-detail-empty">No tasks.</div>
+        <div class="session-detail-top-wrapper">
+          <div class="session-detail-info-grid">
+            <div class="session-detail-block">
+              <div class="session-detail-block-title"><i class="fas fa-info-circle"></i> Status & Client</div>
+              <div class="session-detail-meta">
+                <span id="sessionDetailStatus" class="session-detail-status"></span>
+                <span id="sessionDetailClient" class="session-detail-client"></span>
+              </div>
+            </div>
+
+            <div class="session-detail-block">
+              <div class="session-detail-block-title"><i class="fas fa-clock"></i> Time</div>
+              <div class="session-detail-value-row">
+                <div class="session-detail-value-item">
+                  <div class="session-detail-label">Start</div>
+                  <div id="sessionDetailStart" class="session-detail-value"></div>
+                </div>
+                <div class="session-detail-value-item">
+                  <div class="session-detail-label">End</div>
+                  <div id="sessionDetailEnd" class="session-detail-value"></div>
+                </div>
+              </div>
+              <div id="sessionDetailTimezone" class="session-detail-timezone"></div>
+            </div>
+
+            <div class="session-detail-block">
+              <div class="session-detail-block-title"><i class="fas fa-dollar-sign"></i> Pricing</div>
+              <div class="session-detail-label">Session price</div>
+              <div id="sessionDetailPrice" class="session-detail-value"></div>
+            </div>
+
+            <div id="sessionDetailMeetingRow" class="session-detail-full-width" style="display: none;">
+              <!-- Meeting link card injected here -->
+              <div id="sessionDetailMeetingCard" class="session-settings-meeting-card" style="margin-top: 0;">
+                <div class="session-settings-meeting-icon">
+                  <i class="fas fa-video"></i>
+                </div>
+                <div class="session-settings-meeting-content">
+                  <div class="session-settings-meeting-label">Meeting link</div>
+                  <a id="sessionDetailMeetingLink" href="#" target="_blank" rel="noopener" class="session-settings-meeting-link-url"></a>
+                </div>
+                <button type="button" class="session-settings-meeting-copy-btn" id="sessionDetailMeetingCopyBtn" title="Copy link">
+                  <i class="fas fa-copy"></i>
+                  <span>Copy</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="session-detail-block">
+              <div class="session-detail-block-title"><i class="fas fa-sticky-note"></i> Notes</div>
+              <div id="sessionDetailNote" class="session-detail-note-text"></div>
+            </div>
+
+            <div class="session-detail-block">
+              <div class="session-detail-block-title"><i class="fas fa-tasks"></i> Tasks</div>
+              <ul id="sessionDetailTasks" class="session-detail-tasks-list"></ul>
+              <div id="sessionDetailTasksEmpty" class="session-detail-empty">No tasks.</div>
+            </div>
           </div>
         </div>
       </div>
@@ -83,6 +112,7 @@
         var noteEl = document.getElementById('sessionDetailNote');
         if (noteEl) noteEl.textContent = s.note || 'No notes.';
         if (noteEl && !s.note) noteEl.classList.add('session-detail-muted'); else if (noteEl) noteEl.classList.remove('session-detail-muted');
+        
         var tasksList = document.getElementById('sessionDetailTasks');
         var tasksEmpty = document.getElementById('sessionDetailTasksEmpty');
         var tasks = Array.isArray(s.tasks) ? s.tasks : [];
@@ -96,20 +126,61 @@
           });
         }
         if (tasksEmpty) tasksEmpty.style.display = tasks.length ? 'none' : 'block';
-        var meetingWrap = document.getElementById('sessionDetailMeetingWrap');
+        
+        var meetingRow = document.getElementById('sessionDetailMeetingRow');
         var meetingLink = document.getElementById('sessionDetailMeetingLink');
-        if (meetingWrap && meetingLink) {
+        var meetingCard = document.getElementById('sessionDetailMeetingCard');
+        var copyBtn = document.getElementById('sessionDetailMeetingCopyBtn');
+        
+        if (meetingRow && meetingLink) {
           if (s.meeting_url) {
-            meetingWrap.style.display = 'block';
+            meetingRow.style.display = 'block';
             meetingLink.href = s.meeting_url;
             meetingLink.textContent = s.meeting_url;
+            
+            // Re-bind listeners for the card and copy button to ensure they use current URL
+            if (meetingCard && !meetingCard._clickBound) {
+              meetingCard._clickBound = true;
+              meetingCard.addEventListener('click', function(e) {
+                if (e.target.closest('#sessionDetailMeetingCopyBtn')) return;
+                var url = meetingLink.href;
+                if (url && url !== '#' && !url.includes(window.location.host + '/#')) {
+                  window.open(url, '_blank', 'noopener');
+                }
+              });
+            }
+            
+            if (copyBtn && !copyBtn._clickBound) {
+              copyBtn._clickBound = true;
+              copyBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                var url = meetingLink.href;
+                if (!url || url === '#' || url.includes(window.location.host + '/#')) return;
+                
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                  navigator.clipboard.writeText(url).then(function() {
+                    if (typeof showNotification === 'function') showNotification('Link copied!', 'success');
+                  });
+                } else {
+                  var ta = document.createElement('textarea');
+                  ta.value = url;
+                  document.body.appendChild(ta);
+                  ta.select();
+                  document.execCommand('copy');
+                  document.body.removeChild(ta);
+                  if (typeof showNotification === 'function') showNotification('Link copied!', 'success');
+                }
+              });
+            }
           } else {
-            meetingWrap.style.display = 'none';
+            meetingRow.style.display = 'none';
           }
         }
         content.style.display = 'block';
       })
-      .catch(function() {
+      .catch(function(err) {
+        console.error('[SessionDetail] Error loading detail:', err);
         errorEl.textContent = 'Failed to load session.';
         errorEl.style.display = 'block';
       });
@@ -125,7 +196,14 @@
     try {
       var d = new Date(iso);
       if (isNaN(d.getTime())) return iso;
-      return d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+      return d.toLocaleString(undefined, { 
+        weekday: 'short', 
+        month: 'short', 
+        day: 'numeric', 
+        hour: 'numeric', 
+        minute: 'numeric',
+        hour12: true 
+      });
     } catch (e) { return iso; }
   }
   document.addEventListener('DOMContentLoaded', function() {
@@ -133,6 +211,11 @@
     if (!overlay) return;
     overlay.querySelectorAll('[data-session-detail-close]').forEach(function(el) {
       el.addEventListener('click', window.closeSessionDetailModal);
+    });
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape' && overlay && overlay.getAttribute('aria-hidden') === 'false') {
+        window.closeSessionDetailModal();
+      }
     });
   });
 })();
@@ -145,8 +228,10 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 20px;
-  background: rgba(0,0,0,0.4);
+  padding: 40px;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 .session-detail-modal-backdrop {
   position: absolute;
@@ -154,67 +239,243 @@
 }
 .session-detail-modal {
   position: relative;
-  width: 100%;
-  max-width: 560px;
+  width: 80vw;
+  max-width: 1200px;
   max-height: 90vh;
-  overflow: auto;
-  background: #fff;
-  border-radius: 14px;
-  box-shadow: 0 18px 60px rgba(0,0,0,0.25);
-  border: 1px solid var(--dash-border, #e2e8f0);
+  background: #ffffff;
+  border-radius: 24px;
+  box-shadow: 0 25px 70px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 .session-detail-modal-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 20px;
-  border-bottom: 1px solid var(--dash-border, #e2e8f0);
+  padding: 24px 32px;
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
 }
-.session-detail-modal-title { margin: 0; font-size: 1.1rem; font-weight: 700; color: #0f172a; }
+.session-detail-modal-title { 
+  margin: 0; 
+  font-size: 1.25rem; 
+  font-weight: 800; 
+  color: #0f172a;
+  letter-spacing: -0.02em;
+}
 .session-detail-modal-close {
   border: none;
-  background: transparent;
+  background: #f1f5f9;
   cursor: pointer;
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
   color: #64748b;
-  font-size: 1.5rem;
-  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
-.session-detail-modal-close:hover { background: #f1f5f9; color: #0f172a; }
-.session-detail-modal-body { padding: 20px; }
-.session-detail-modal-error {
-  padding: 12px;
-  background: #fef2f2;
-  color: #991b1b;
-  border-radius: 10px;
-  font-weight: 600;
+.session-detail-modal-close:hover {
+  background: #fee2e2;
+  color: #ef4444;
+  transform: rotate(90deg);
 }
-.session-detail-meta { margin-bottom: 16px; color: var(--dash-text-muted, #64748b); font-weight: 600; font-size: 0.9rem; }
-.session-detail-status { text-transform: capitalize; }
-.session-detail-client { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace; }
-.session-detail-grid {
+.session-detail-modal-body { 
+  padding: 32px;
+  overflow-y: auto;
+  flex: 1;
+}
+.session-detail-top-wrapper {
+  max-width: 1000px;
+  margin: 0 auto;
+}
+.session-detail-info-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
+  align-items: start;
 }
 .session-detail-block {
+  background: #ffffff;
   border: 1px solid #e2e8f0;
-  border-radius: 14px;
-  padding: 14px;
+  border-radius: 20px;
+  padding: 24px;
+  transition: all 0.2s ease;
 }
-.session-detail-block-full { grid-column: 1 / -1; }
-.session-detail-block-title { font-weight: 800; color: #0f172a; margin-bottom: 8px; }
-.session-detail-label { color: #334155; font-weight: 700; font-size: 0.9rem; }
-.session-detail-value { color: #0f172a; font-weight: 800; margin-bottom: 10px; }
-.session-detail-timezone { margin-top: 10px; color: #64748b; font-weight: 600; font-size: 0.9rem; }
-.session-detail-note { margin-top: 12px; color: #64748b; font-size: 0.9rem; }
-.session-detail-note-text { color: #334155; }
+.session-detail-block:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+}
+.session-detail-full-width {
+  grid-column: 1 / -1;
+}
+.session-detail-block-title { 
+  font-weight: 800; 
+  color: #475569; 
+  margin-bottom: 16px;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.session-detail-block-title i {
+  color: #10b981;
+}
+.session-detail-value-row {
+  display: flex;
+  gap: 32px;
+  flex-wrap: wrap;
+}
+.session-detail-label { 
+  color: #64748b; 
+  font-weight: 700; 
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+.session-detail-value { 
+  color: #0f172a; 
+  font-weight: 800; 
+  font-size: 1.05rem;
+}
+.session-detail-timezone { 
+  margin-top: 12px; 
+  color: #94a3b8; 
+  font-weight: 600; 
+  font-size: 0.85rem;
+  padding-top: 12px;
+  border-top: 1px dashed #e2e8f0;
+}
+.session-detail-meta { 
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.session-detail-status { 
+  text-transform: capitalize;
+  font-weight: 800;
+  color: #0f172a;
+  font-size: 1.1rem;
+}
+.session-detail-client { 
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  color: #10b981;
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+.session-detail-note-text { 
+  color: #334155;
+  font-weight: 500;
+  line-height: 1.6;
+}
 .session-detail-note-text.session-detail-muted { color: #94a3b8; }
-.session-detail-tasks-list { margin: 0; padding-left: 18px; color: #334155; }
-.session-detail-tasks-list li { margin: 4px 0; }
-.session-detail-empty { color: #94a3b8; }
-.session-detail-meeting-link { display: block; color: var(--dash-primary, #10b981); font-size: 0.9rem; word-break: break-all; }
-.session-detail-meeting-link:hover { text-decoration: underline; }
+.session-detail-tasks-list { 
+  margin: 0; 
+  padding-left: 20px; 
+  color: #334155; 
+}
+.session-detail-tasks-list li { 
+  margin: 8px 0;
+  font-weight: 600;
+}
+.session-detail-empty { color: #94a3b8; font-style: italic; }
+
+/* Inverted Meeting Card Styles (adapted from session settings) */
+.session-settings-meeting-card {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  background: #10b981;
+  padding: 24px;
+  border-radius: 20px;
+  box-shadow: 0 10px 30px rgba(16, 185, 129, 0.25);
+  border: 1px solid #10b981;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+}
+.session-settings-meeting-card:hover {
+  background: #ffffff;
+  border-color: #10b981;
+  box-shadow: 0 15px 40px rgba(16, 185, 129, 0.15);
+}
+.session-settings-meeting-icon {
+  width: 56px;
+  height: 56px;
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  flex-shrink: 0;
+  transition: all 0.3s ease;
+}
+.session-settings-meeting-card:hover .session-settings-meeting-icon {
+  background: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+}
+.session-settings-meeting-content {
+  flex: 1;
+  min-width: 0;
+}
+.session-settings-meeting-label {
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.9);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 4px;
+  transition: color 0.3s ease;
+}
+.session-settings-meeting-card:hover .session-settings-meeting-label {
+  color: #64748b;
+}
+.session-settings-meeting-link-url {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 1rem;
+  color: #ffffff;
+  text-decoration: none;
+  font-weight: 700;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: color 0.3s ease;
+}
+.session-settings-meeting-card:hover .session-settings-meeting-link-url {
+  color: #10b981;
+}
+.session-settings-meeting-copy-btn {
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: #ffffff;
+  padding: 12px 20px;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: all 0.3s ease;
+}
+.session-settings-meeting-card:hover .session-settings-meeting-copy-btn {
+  background: #f1f5f9;
+  color: #475569;
+  border-color: #e2e8f0;
+}
+.session-settings-meeting-copy-btn:hover {
+  background: rgba(255, 255, 255, 0.3) !important;
+}
+.session-settings-meeting-card:hover .session-settings-meeting-copy-btn:hover {
+  background: #e2e8f0 !important;
+  color: #0f172a !important;
+}
 </style>

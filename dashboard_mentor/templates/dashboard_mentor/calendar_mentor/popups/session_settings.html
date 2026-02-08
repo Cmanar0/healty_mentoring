@@ -180,7 +180,7 @@
 
             <!-- Meeting link (shown when session is confirmed) -->
             <div id="sessionSettingsMeetingLinkWrap" class="session-settings-meeting-link-wrap" hidden>
-              <div class="session-settings-meeting-card">
+              <div class="session-settings-meeting-card" id="sessionSettingsMeetingCard">
                 <div class="session-settings-meeting-icon">
                   <i class="fas fa-video"></i>
                 </div>
@@ -881,33 +881,36 @@
     display: flex;
     align-items: center;
     gap: 16px;
-    background: #ffffff;
+    background: #10b981;
     padding: 16px;
     border-radius: 16px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-    border: 1px solid #e2e8f0;
+    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.2);
+    border: 1px solid #10b981;
     margin-top: 16px;
-    transition: box-shadow 0.2s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
   }
   .session-settings-meeting-card:hover {
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+    background: #ffffff;
+    border-color: #10b981;
+    box-shadow: 0 8px 25px rgba(16, 185, 129, 0.15);
   }
   .session-settings-meeting-icon {
     width: 48px;
     height: 48px;
-    background: rgba(16, 185, 129, 0.1);
-    color: #10b981;
+    background: rgba(255, 255, 255, 0.2);
+    color: #ffffff;
     border-radius: 12px;
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 1.25rem;
     flex-shrink: 0;
-    transition: all 0.2s ease;
+    transition: all 0.3s ease;
   }
   .session-settings-meeting-card:hover .session-settings-meeting-icon {
-    background: #10b981;
-    color: #ffffff;
+    background: rgba(16, 185, 129, 0.1);
+    color: #10b981;
   }
   .session-settings-meeting-content {
     flex: 1;
@@ -917,29 +920,37 @@
     gap: 4px;
   }
   .session-settings-meeting-label {
-    font-size: 0.8rem;
+    font-size: 0.75rem;
     font-weight: 800;
-    color: #64748b;
+    color: rgba(255, 255, 255, 0.9);
     text-transform: uppercase;
     letter-spacing: 0.05em;
+    transition: color 0.3s ease;
+  }
+  .session-settings-meeting-card:hover .session-settings-meeting-label {
+    color: #64748b;
   }
   .session-settings-meeting-link-url {
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
     font-size: 0.9rem;
-    color: #10b981;
+    color: #ffffff;
     text-decoration: none;
-    font-weight: 600;
+    font-weight: 700;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    transition: color 0.3s ease;
+  }
+  .session-settings-meeting-card:hover .session-settings-meeting-link-url {
+    color: #10b981;
   }
   .session-settings-meeting-link-url:hover {
     text-decoration: underline;
   }
   .session-settings-meeting-copy-btn {
-    border: none;
-    background: #f1f5f9;
-    color: #475569;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    background: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
     padding: 10px 16px;
     border-radius: 10px;
     font-weight: 700;
@@ -948,18 +959,22 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    transition: all 0.2s ease;
+    transition: all 0.3s ease;
+  }
+  .session-settings-meeting-card:hover .session-settings-meeting-copy-btn {
+    background: #f1f5f9;
+    color: #475569;
+    border-color: #e2e8f0;
   }
   .session-settings-meeting-copy-btn:hover {
-    background: #e2e8f0;
-    color: #0f172a;
+    background: rgba(255, 255, 255, 0.25) !important;
+  }
+  .session-settings-meeting-card:hover .session-settings-meeting-copy-btn:hover {
+    background: #e2e8f0 !important;
+    color: #0f172a !important;
   }
   .session-settings-meeting-copy-btn i {
     font-size: 0.9rem;
-  }
-
-  .is-confirmed .session-settings-meeting-card {
-    border-color: rgba(255, 255, 255, 0.2);
   }
 
   .session-settings-apply-first-note {

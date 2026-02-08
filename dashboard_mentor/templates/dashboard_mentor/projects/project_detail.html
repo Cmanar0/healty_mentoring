@@ -2966,7 +2966,134 @@
 {% include 'dashboard_mentor/popups/project_settings.html' %}
 {% include 'dashboard_mentor/popups/create_active_backlog_task_modal.html' %}
 
+<!-- Insufficient AI coins modal (buy packages; no payment gateway yet) -->
+<div id="insufficientAiCoinsModal" class="modal-overlay" style="display: none;" role="dialog" aria-labelledby="insufficientAiCoinsModalTitle" aria-modal="true" onclick="if(event.target === this) closeInsufficientAiCoinsModal()">
+    <div class="modal-content insufficient-ai-coins-modal" style="max-width: 480px;">
+        <div class="modal-header">
+            <h2 id="insufficientAiCoinsModalTitle" class="modal-title">
+                <i class="fas fa-coins" style="color: #f59e0b; margin-right: 8px;"></i>Insufficient AI coins
+            </h2>
+            <button type="button" class="modal-close" onclick="closeInsufficientAiCoinsModal()" aria-label="Close">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p id="insufficientAiCoinsMessage" class="insufficient-ai-coins-message">
+                You don't have enough AI coins. Your current balance: <strong id="insufficientAiCoinsBalance">0</strong> coin(s).
+            </p>
+            <p class="insufficient-ai-coins-hint">Choose a package to add coins (payment gateway coming soon):</p>
+            <div class="ai-coins-packages-row" id="aiCoinsPackagesRow">
+                <div class="ai-coin-package-card" data-package="small" data-amount="5" tabindex="0" role="button">
+                    <span class="ai-coin-package-amount">5</span>
+                    <span class="ai-coin-package-label">coins</span>
+                </div>
+                <div class="ai-coin-package-card" data-package="medium" data-amount="15" tabindex="0" role="button">
+                    <span class="ai-coin-package-amount">15</span>
+                    <span class="ai-coin-package-label">coins</span>
+                </div>
+                <div class="ai-coin-package-card" data-package="large" data-amount="50" tabindex="0" role="button">
+                    <span class="ai-coin-package-amount">50</span>
+                    <span class="ai-coin-package-label">coins</span>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer" style="display: flex; gap: 12px; justify-content: flex-end; padding-top: 16px;">
+            <button type="button" class="btn-secondary" onclick="closeInsufficientAiCoinsModal()">Cancel</button>
+            <button type="button" id="buyAiCoinsBtn" class="btn-primary" onclick="buyAiCoinsFromModal()" disabled>Buy AI coins</button>
+        </div>
+    </div>
+</div>
+<style>
+.insufficient-ai-coins-modal .modal-body { padding: 16px 24px; }
+.insufficient-ai-coins-message { margin-bottom: 8px; color: #4b5563; }
+.insufficient-ai-coins-hint { margin-bottom: 16px; font-size: 0.9rem; color: #6b7280; }
+.ai-coins-packages-row { display: flex; gap: 12px; flex-wrap: wrap; }
+.ai-coin-package-card {
+    flex: 1; min-width: 100px;
+    border: 2px solid #e5e7eb; border-radius: 12px;
+    padding: 16px; text-align: center; cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+}
+.ai-coin-package-card:hover { border-color: #f59e0b; background: rgba(245, 158, 11, 0.06); }
+.ai-coin-package-card.selected { border-color: #f59e0b; background: rgba(245, 158, 11, 0.12); }
+.ai-coin-package-amount { display: block; font-size: 1.5rem; font-weight: 700; color: #1f2937; }
+.ai-coin-package-label { font-size: 0.8rem; color: #6b7280; }
+</style>
+
 <script>
+    // --- Insufficient AI coins modal & navbar update ---
+    window.updateNavbarAiCoins = function(amount) {
+        var el = document.querySelector('.navbar-ai-coins-value');
+        if (el) el.textContent = String(amount);
+    };
+    window.openInsufficientAiCoinsModal = function(currentCoins) {
+        var modal = document.getElementById('insufficientAiCoinsModal');
+        var balanceEl = document.getElementById('insufficientAiCoinsBalance');
+        var row = document.getElementById('aiCoinsPackagesRow');
+        var buyBtn = document.getElementById('buyAiCoinsBtn');
+        if (balanceEl) balanceEl.textContent = String(currentCoins != null ? currentCoins : 0);
+        if (row) {
+            row.querySelectorAll('.ai-coin-package-card').forEach(function(card) { card.classList.remove('selected'); });
+        }
+        if (buyBtn) buyBtn.disabled = true;
+        if (modal) {
+            modal.style.display = 'flex';
+            setTimeout(function() { modal.classList.add('active'); }, 10);
+        }
+        row.querySelectorAll('.ai-coin-package-card').forEach(function(card) {
+            card.onclick = function() {
+                row.querySelectorAll('.ai-coin-package-card').forEach(function(c) { c.classList.remove('selected'); });
+                card.classList.add('selected');
+                buyBtn.disabled = false;
+            };
+        });
+    };
+    window.closeInsufficientAiCoinsModal = function() {
+        var modal = document.getElementById('insufficientAiCoinsModal');
+        if (modal) {
+            modal.classList.remove('active');
+            setTimeout(function() { modal.style.display = 'none'; }, 300);
+        }
+    };
+    window.buyAiCoinsFromModal = function() {
+        var selected = document.querySelector('.ai-coin-package-card.selected');
+        var buyBtn = document.getElementById('buyAiCoinsBtn');
+        if (!selected || !buyBtn) return;
+        var package_ = selected.getAttribute('data-package');
+        if (!package_) return;
+        buyBtn.disabled = true;
+        buyBtn.textContent = 'Adding...';
+        fetch('{% url "general:dashboard_mentor:add_ai_coins" %}', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ package: package_ })
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) {
+                window.updateNavbarAiCoins(data.ai_coins);
+                window.closeInsufficientAiCoinsModal();
+                if (typeof showNotification !== 'undefined') {
+                    showNotification('Added ' + data.added + ' AI coins. New balance: ' + data.ai_coins, 'success');
+                }
+            } else {
+                if (typeof showNotification !== 'undefined') {
+                    showNotification(data.error || 'Failed to add coins', 'error');
+                }
+            }
+        })
+        .catch(function() {
+            if (typeof showNotification !== 'undefined') {
+                showNotification('An error occurred', 'error');
+            }
+        })
+        .finally(function() {
+            buyBtn.disabled = false;
+            buyBtn.textContent = 'Buy AI coins';
+        });
+    };
+
     // Define modal functions early so they're available for onclick handlers
     // Assign Project Owner Modal Functions - Make them globally accessible early
     window.openAssignProjectOwnerModal = function() {
@@ -5868,39 +5995,62 @@
         btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Generating...';
         btn.disabled = true;
         btn.style.opacity = '0.7';
-        
-        fetch('{% url "general:dashboard_mentor:generate_stages_ai" project.id %}', {
-            method: 'POST',
-            headers: {'X-CSRFToken': '{{ csrf_token }}'}
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                if (typeof showNotification !== 'undefined') {
-                    showNotification('Stages generated successfully!', 'success');
-                }
-                loadStages();
-            } else {
-                if (typeof showNotification !== 'undefined') {
-                    showNotification(data.error || 'Failed to generate stages', 'error');
-                } else {
-                    alert('Error: ' + (data.error || 'Unknown error occurred'));
-                }
-            }
+        function restoreBtn() {
             btn.innerHTML = originalContent;
             btn.disabled = false;
             btn.style.opacity = '1';
+        }
+        
+        fetch('{% url "general:dashboard_mentor:get_mentor_ai_coins" %}', { method: 'GET', headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(function(r) { return r.json(); })
+        .then(function(coinsData) {
+            var aiCoins = (coinsData.success && coinsData.ai_coins != null) ? coinsData.ai_coins : 0;
+            if (aiCoins < 1) {
+                restoreBtn();
+                if (typeof openInsufficientAiCoinsModal === 'function') {
+                    openInsufficientAiCoinsModal(aiCoins);
+                } else {
+                    if (typeof showNotification !== 'undefined') {
+                        showNotification('You need at least 1 AI coin to generate stages. Your balance: ' + aiCoins, 'error');
+                    }
+                }
+                return Promise.reject('no_coins');
+            }
+            return fetch('{% url "general:dashboard_mentor:generate_stages_ai" project.id %}', {
+                method: 'POST',
+                headers: {'X-CSRFToken': '{{ csrf_token }}'}
+            });
         })
-        .catch(error => {
-            console.error('Error:', error);
+        .then(function(response) {
+            if (!response || !response.json) return;
+            return response.json().then(function(data) {
+                if (data.success) {
+                    if (data.new_ai_coins != null && typeof updateNavbarAiCoins === 'function') {
+                        updateNavbarAiCoins(data.new_ai_coins);
+                    }
+                    if (typeof showNotification !== 'undefined') {
+                        showNotification('Stages generated successfully!', 'success');
+                    }
+                    loadStages();
+                } else {
+                    if ((data.insufficient_ai_coins || response.status === 402) && typeof openInsufficientAiCoinsModal === 'function') {
+                        openInsufficientAiCoinsModal(data.ai_coins != null ? data.ai_coins : 0);
+                    } else if (typeof showNotification !== 'undefined') {
+                        showNotification(data.error || 'Failed to generate stages', 'error');
+                    } else {
+                        alert('Error: ' + (data.error || 'Unknown error occurred'));
+                    }
+                }
+                restoreBtn();
+            });
+        })
+        .catch(function(err) {
+            if (err === 'no_coins') return;
+            console.error('Error:', err);
+            restoreBtn();
             if (typeof showNotification !== 'undefined') {
                 showNotification('A network error occurred. Please try again.', 'error');
-            } else {
-                alert('A network error occurred. Please try again.');
             }
-            btn.innerHTML = originalContent;
-            btn.disabled = false;
-            btn.style.opacity = '1';
         });
     };
     
@@ -7522,61 +7672,75 @@
         });
     }
     
-    // Generate tasks with AI
+    // Generate tasks with AI (1 AI coin deducted after success)
     window.generateTasksAI = function(stageId) {
-        const aiBtn = document.getElementById(`btnAiGenerate_${stageId}`);
+        const aiBtn = document.getElementById('btnAiGenerate_' + stageId);
         if (aiBtn && aiBtn.disabled) {
             return;
         }
-        
-        // Disable button during generation
         const originalContent = aiBtn.innerHTML;
         aiBtn.disabled = true;
         aiBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
-        
-        fetch(`/dashboard/mentor/projects/${PROJECT_ID}/stages/${stageId}/tasks/generate-ai/`, {
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': '{{ csrf_token }}',
-                'Content-Type': 'application/json'
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                // Re-enable button
-                aiBtn.disabled = false;
-                aiBtn.innerHTML = originalContent;
-                
-                // Reload stage tasks to show the newly generated tasks with proper filtering
-                if (typeof loadStageTasks === 'function') {
-                    loadStageTasks(stageId);
-                }
-                
-                // Also reload stages to update progress bars and counts
-                if (typeof loadStages === 'function') {
-                    loadStages();
-                }
-                
-                if (typeof showNotification !== 'undefined') {
-                    showNotification(data.message || 'Tasks generated successfully!', 'success');
-                }
-            } else {
-                // Re-enable button
-                aiBtn.disabled = false;
-                aiBtn.innerHTML = originalContent;
-                if (typeof showNotification !== 'undefined') {
-                    showNotification(data.error || 'Failed to generate tasks', 'error');
-                } else {
-                    alert(data.error || 'Failed to generate tasks');
-                }
-            }
-        })
-        .catch(error => {
-            console.error('Error generating tasks:', error);
-            // Re-enable button on error
+        function restoreBtn() {
             aiBtn.disabled = false;
             aiBtn.innerHTML = originalContent;
+        }
+        
+        fetch('{% url "general:dashboard_mentor:get_mentor_ai_coins" %}', { method: 'GET', headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(function(r) { return r.json(); })
+        .then(function(coinsData) {
+            var aiCoins = (coinsData.success && coinsData.ai_coins != null) ? coinsData.ai_coins : 0;
+            if (aiCoins < 1) {
+                restoreBtn();
+                if (typeof openInsufficientAiCoinsModal === 'function') {
+                    openInsufficientAiCoinsModal(aiCoins);
+                } else {
+                    if (typeof showNotification !== 'undefined') {
+                        showNotification('You need at least 1 AI coin to generate tasks. Your balance: ' + aiCoins, 'error');
+                    }
+                }
+                return Promise.reject('no_coins');
+            }
+            return fetch('/dashboard/mentor/projects/' + PROJECT_ID + '/stages/' + stageId + '/tasks/generate-ai/', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'Content-Type': 'application/json'
+                }
+            });
+        })
+        .then(function(response) {
+            if (!response || !response.json) return;
+            return response.json().then(function(data) {
+                if (data.success) {
+                    if (data.new_ai_coins != null && typeof updateNavbarAiCoins === 'function') {
+                        updateNavbarAiCoins(data.new_ai_coins);
+                    }
+                    if (typeof loadStageTasks === 'function') {
+                        loadStageTasks(stageId);
+                    }
+                    if (typeof loadStages === 'function') {
+                        loadStages();
+                    }
+                    if (typeof showNotification !== 'undefined') {
+                        showNotification(data.message || 'Tasks generated successfully!', 'success');
+                    }
+                } else {
+                    if ((data.insufficient_ai_coins || (response && response.status === 402)) && typeof openInsufficientAiCoinsModal === 'function') {
+                        openInsufficientAiCoinsModal(data.ai_coins != null ? data.ai_coins : 0);
+                    } else if (typeof showNotification !== 'undefined') {
+                        showNotification(data.error || 'Failed to generate tasks', 'error');
+                    } else {
+                        alert(data.error || 'Failed to generate tasks');
+                    }
+                }
+                restoreBtn();
+            });
+        })
+        .catch(function(err) {
+            if (err === 'no_coins') return;
+            console.error('Error generating tasks:', err);
+            restoreBtn();
             if (typeof showNotification !== 'undefined') {
                 showNotification('An error occurred', 'error');
             } else {

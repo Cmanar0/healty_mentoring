@@ -49,10 +49,10 @@ def dashboard(request):
         
         if mentor_profile:
             now = timezone.now()
-            # Get all upcoming sessions (invited and confirmed)
+            # Get all upcoming + ongoing sessions (exclude only when session end is in the past)
             all_upcoming = mentor_profile.sessions.filter(
                 status__in=['invited', 'confirmed'],
-                start_datetime__gte=now
+                end_datetime__gte=now
             ).order_by('start_datetime').select_related('created_by').prefetch_related('attendees')
             
             # Get total count to check if there are more than 4
@@ -250,6 +250,57 @@ def claim_guide_coins(request):
         'success': True,
         'coins_added': total_coins,
         'total_coins': mentor_profile.ai_coins,
+    })
+
+
+# AI coin packages for "buy" (no payment gateway yet – just add coins)
+AI_COIN_PACKAGES = {
+    'small': 5,
+    'medium': 15,
+    'large': 50,
+}
+
+
+@login_required
+def get_mentor_ai_coins(request):
+    """Return current AI coin balance for the mentor (for navbar/checks)."""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+    mentor_profile = getattr(request.user, 'mentor_profile', None)
+    if not mentor_profile:
+        return JsonResponse({'success': False, 'error': 'Mentor profile not found'}, status=404)
+    coins = getattr(mentor_profile, 'ai_coins', 0) or 0
+    return JsonResponse({'success': True, 'ai_coins': coins})
+
+
+@login_required
+@require_POST
+def add_ai_coins(request):
+    """Add AI coins to mentor (buy flow – no payment gateway yet). Body: {"package": "small"|"medium"|"large"}."""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+    mentor_profile = getattr(request.user, 'mentor_profile', None)
+    if not mentor_profile:
+        return JsonResponse({'success': False, 'error': 'Mentor profile not found'}, status=404)
+    try:
+        data = json.loads(request.body) if request.body else {}
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+    package = (data.get('package') or '').strip().lower()
+    if package not in AI_COIN_PACKAGES:
+        return JsonResponse({
+            'success': False,
+            'error': 'Invalid package. Choose small, medium, or large.',
+            'packages': list(AI_COIN_PACKAGES.keys()),
+        }, status=400)
+    amount = AI_COIN_PACKAGES[package]
+    current = getattr(mentor_profile, 'ai_coins', 0) or 0
+    mentor_profile.ai_coins = current + amount
+    mentor_profile.save(update_fields=['ai_coins'])
+    return JsonResponse({
+        'success': True,
+        'ai_coins': mentor_profile.ai_coins,
+        'added': amount,
     })
 
 
@@ -1663,12 +1714,12 @@ def my_sessions(request):
     from django.utils import timezone
     now = timezone.now()
     
-    # Get all upcoming sessions (invited and confirmed) - first page
+    # Get all upcoming + ongoing sessions (exclude only when session end is in the past)
     initial_sessions = []
     try:
         all_upcoming = mentor_profile.sessions.filter(
             status__in=['invited', 'confirmed'],
-            start_datetime__gte=now
+            end_datetime__gte=now
         ).order_by('start_datetime').select_related('created_by').prefetch_related('attendees')
         
         # Get first 10 sessions for initial load
@@ -1755,10 +1806,10 @@ def get_sessions_paginated(request):
         
         now = timezone.now()
         
-        # Get all upcoming sessions (invited and confirmed)
+        # Get all upcoming + ongoing sessions (exclude only when session end is in the past)
         all_upcoming = mentor_profile.sessions.filter(
             status__in=['invited', 'confirmed'],
-            start_datetime__gte=now
+            end_datetime__gte=now
         ).order_by('start_datetime').select_related('created_by').prefetch_related('attendees')
         
         # Paginate
@@ -1816,10 +1867,10 @@ def get_dashboard_upcoming_sessions(request):
         
         now = timezone.now()
         
-        # Get all upcoming sessions (invited and confirmed)
+        # Get all upcoming + ongoing sessions (exclude only when session end is in the past)
         all_upcoming = mentor_profile.sessions.filter(
             status__in=['invited', 'confirmed'],
-            start_datetime__gte=now
+            end_datetime__gte=now
         ).order_by('start_datetime').select_related('created_by').prefetch_related('attendees')
         
         # Get total count to check if there are more than 4
@@ -6107,6 +6158,7 @@ def project_detail(request, project_id):
         'questionnaire_completed': project.questionnaire_completed,
         'active_modules': active_modules,
         'project_notes': project_notes,
+        'mentor_ai_coins': getattr(mentor_profile, 'ai_coins', 0) or 0,
     }
     
     return render(request, 'dashboard_mentor/projects/project_detail.html', context)
@@ -6338,12 +6390,21 @@ def create_stage(request, project_id):
 @login_required
 @require_POST
 def generate_stages_ai(request, project_id):
-    """Generate stages using AI mockup (creates 3 sample stages)"""
+    """Generate stages using AI mockup (creates 3 sample stages). Deducts 1 AI coin after success."""
     if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
         return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
     
     mentor_profile = request.user.mentor_profile
     project = get_object_or_404(Project, id=project_id, supervised_by=mentor_profile)
+    
+    current_coins = getattr(mentor_profile, 'ai_coins', 0) or 0
+    if current_coins < 1:
+        return JsonResponse({
+            'success': False,
+            'error': 'Insufficient AI coins. You need at least 1 coin to generate stages.',
+            'insufficient_ai_coins': True,
+            'ai_coins': current_coins,
+        }, status=402)
     
     if not project.questionnaire_completed:
         return JsonResponse({'success': False, 'error': 'Questionnaire must be completed before generating stages'}, status=400)
@@ -6438,11 +6499,15 @@ def generate_stages_ai(request, project_id):
             )
             created_stages.append(stage.id)
         
+        mentor_profile.ai_coins = max(0, current_coins - 1)
+        mentor_profile.save(update_fields=['ai_coins'])
+        
         return JsonResponse({
             'success': True,
             'message': f'{len(created_stages)} stages generated successfully. Please review and confirm them.',
             'stages_count': len(created_stages),
-            'stage_ids': created_stages
+            'stage_ids': created_stages,
+            'new_ai_coins': mentor_profile.ai_coins,
         })
     except Exception as e:
         import logging
@@ -7185,12 +7250,21 @@ def edit_task(request, project_id, stage_id, task_id):
 @login_required
 @require_POST
 def generate_tasks_ai(request, project_id, stage_id):
-    """Generate tasks using AI mockup (creates 3 sample tasks)"""
+    """Generate tasks using AI mockup (creates 3 sample tasks). Deducts 1 AI coin after success."""
     if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
         return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
     
     mentor_profile = request.user.mentor_profile
     project = get_object_or_404(Project, id=project_id, supervised_by=mentor_profile)
+    
+    current_coins = getattr(mentor_profile, 'ai_coins', 0) or 0
+    if current_coins < 1:
+        return JsonResponse({
+            'success': False,
+            'error': 'Insufficient AI coins. You need at least 1 coin to generate tasks.',
+            'insufficient_ai_coins': True,
+            'ai_coins': current_coins,
+        }, status=402)
     
     from dashboard_user.models import ProjectStage, Task
     from decimal import Decimal
@@ -7257,11 +7331,15 @@ def generate_tasks_ai(request, project_id, stage_id):
         # Update stage completion status based on tasks
         update_stage_completion_status(stage)
         
+        mentor_profile.ai_coins = max(0, current_coins - 1)
+        mentor_profile.save(update_fields=['ai_coins'])
+        
         return JsonResponse({
             'success': True,
             'message': f'{len(created_tasks)} tasks generated successfully.',
             'tasks_count': len(created_tasks),
-            'task_ids': created_tasks
+            'task_ids': created_tasks,
+            'new_ai_coins': mentor_profile.ai_coins,
         })
     except Exception as e:
         import logging

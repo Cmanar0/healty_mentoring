@@ -937,6 +937,7 @@
   const sessionSettingsRefundConfirmBtn = document.getElementById('sessionSettingsRefundConfirmBtn');
   const sessionSettingsConfirmedByLabel = document.getElementById('sessionSettingsConfirmedByLabel');
   const sessionSettingsMeetingLinkWrap = document.getElementById('sessionSettingsMeetingLinkWrap');
+  const sessionSettingsMeetingCard = document.getElementById('sessionSettingsMeetingCard');
   const sessionSettingsMeetingLink = document.getElementById('sessionSettingsMeetingLink');
   const sessionSettingsMeetingCopyBtn = document.getElementById('sessionSettingsMeetingCopyBtn');
   const scheduleSessionOverlay = document.getElementById('mentorScheduleSessionOverlay');
@@ -1877,6 +1878,50 @@
         sessionSettingsMeetingLink.href = meetingUrl;
         sessionSettingsMeetingLink.textContent = meetingUrl;
       }
+    }
+
+    // Meeting card click logic (open link in new tab)
+    if (sessionSettingsMeetingCard && !sessionSettingsMeetingCard.__bound) {
+      sessionSettingsMeetingCard.__bound = true;
+      sessionSettingsMeetingCard.addEventListener('click', (e) => {
+        // Only trigger if we're not clicking the copy button
+        if (e.target.closest('#sessionSettingsMeetingCopyBtn')) return;
+        
+        const url = (sessionSettingsMeetingLink?.href || '').trim();
+        if (url && url !== '#' && url !== window.location.href) {
+          window.open(url, '_blank', 'noopener');
+        }
+      });
+    }
+
+    // Copy meeting link logic (prevent propagation to card click)
+    if (sessionSettingsMeetingCopyBtn && !sessionSettingsMeetingCopyBtn.__bound) {
+      sessionSettingsMeetingCopyBtn.__bound = true;
+      sessionSettingsMeetingCopyBtn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        e.stopPropagation(); // Stop from triggering card click
+        
+        const url = (sessionSettingsMeetingLink?.href || '').trim();
+        if (!url || url === '#' || url === window.location.href) return;
+        
+        try {
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(url);
+          } else {
+            const el = document.createElement('textarea');
+            el.value = url;
+            document.body.appendChild(el);
+            el.select();
+            document.execCommand('copy');
+            document.body.removeChild(el);
+          }
+          if (typeof showNotification === 'function') {
+            showNotification('Meeting link copied to clipboard!', 'success');
+          }
+        } catch (err) {
+          console.warn('[SessionSettings] Failed to copy link:', err);
+        }
+      });
     }
 
     // Initial render of invite/reminder UI state

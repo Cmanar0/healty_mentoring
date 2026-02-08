@@ -21,7 +21,7 @@
     <div class="session-timeline-container scrollable-content" id="sessionsContainer" data-mentor-timezone="{{ mentor_timezone }}">
       {% if initial_sessions %}
         {% for session in initial_sessions %}
-          <div class="session-item status-{{ session.status }}" data-session-id="{{ session.id }}" data-clickable-session>
+          <div class="session-item status-{{ session.status }}" data-session-id="{{ session.id }}" data-clickable-session data-start="{{ session.start_datetime|date:'c' }}" data-end="{{ session.end_datetime|date:'c' }}">
             <div class="session-left">
               <div class="session-date">
                 <span class="date-day">{{ session.start_datetime|date:"d" }}</span>
@@ -214,16 +214,23 @@
       : 'background: rgba(251, 191, 36, 0.1); color: #f59e0b;';
     
     const firstSessionTag = session.is_first_session ? '<span class="first-session-tag">1st</span>' : '';
-    
+    const startMs = startDate.getTime();
+    const endMs = endDate.getTime();
+    const now = Date.now();
+    const isOngoing = session.status === 'confirmed' && startMs <= now && now <= endMs;
+    const ongoingClass = isOngoing ? ' session-item--ongoing' : '';
+    const liveBadge = isOngoing ? '<span class="live-pulse-badge"><span class="live-dot"></span>LIVE</span>' : '';
+    const startIso = typeof session.start_datetime === 'string' ? session.start_datetime : (session.start_datetime && session.start_datetime.toISOString ? session.start_datetime.toISOString() : startDate.toISOString());
+    const endIso = typeof session.end_datetime === 'string' ? session.end_datetime : (session.end_datetime && session.end_datetime.toISOString ? session.end_datetime.toISOString() : endDate.toISOString());
     return `
-      <div class="session-item status-${session.status}" data-session-id="${session.id}" data-clickable-session>
+      <div class="session-item status-${session.status}${ongoingClass}" data-session-id="${session.id}" data-clickable-session data-start="${startIso}" data-end="${endIso}">
         <div class="session-left">
           <div class="session-date">
             <span class="date-day">${day}</span>
             <span class="date-month">${month}</span>
           </div>
           <div class="session-info">
-            <h4 class="session-title">Session with ${session.client_name} ${firstSessionTag}</h4>
+            <h4 class="session-title">Session with ${session.client_name} ${firstSessionTag} ${liveBadge}</h4>
             <div class="session-meta-row">
               <span class="session-time">
                 <i class="far fa-clock"></i> ${startTime} - ${endTime}
@@ -303,14 +310,53 @@
     }
   }
   
-  // Click on session row (not on dropdown) opens session settings modal
+  // Mark session rows that are currently ongoing (confirmed and now between start and end)
+  function markOngoingSessionRows(cont) {
+    if (!cont) return;
+    var now = Date.now();
+    cont.querySelectorAll('.session-item[data-clickable-session][data-start][data-end]').forEach(function(row) {
+      var start = new Date(row.getAttribute('data-start')).getTime();
+      var end = new Date(row.getAttribute('data-end')).getTime();
+      var confirmed = row.classList.contains('status-confirmed');
+      var isOngoing = confirmed && start <= now && now <= end;
+      
+      if (isOngoing) {
+        row.classList.add('session-item--ongoing');
+        var title = row.querySelector('.session-title');
+        if (title && !title.querySelector('.live-pulse-badge')) {
+          title.insertAdjacentHTML('beforeend', '<span class="live-pulse-badge"><span class="live-dot"></span>LIVE</span>');
+        }
+      } else {
+        row.classList.remove('session-item--ongoing');
+        var badge = row.querySelector('.live-pulse-badge');
+        if (badge) badge.remove();
+      }
+    });
+  }
+  markOngoingSessionRows(sessionsContainer);
+  document.addEventListener('DOMContentLoaded', function() { markOngoingSessionRows(sessionsContainer); });
+
+  // Click on session row: if ongoing open session detail, else open session settings
   sessionsContainer.addEventListener('click', function(e) {
     var row = e.target.closest('.session-item[data-clickable-session]');
     if (!row) return;
     if (e.target.closest('.session-right')) return;
     var sessionId = row.getAttribute('data-session-id');
-    if (sessionId && typeof openSessionSettingsForSessionId === 'function') {
-      openSessionSettingsForSessionId(parseInt(sessionId, 10));
+    if (!sessionId) return;
+    var sid = parseInt(sessionId, 10);
+    var startAttr = row.getAttribute('data-start');
+    var endAttr = row.getAttribute('data-end');
+    var isOngoing = false;
+    if (startAttr && endAttr && row.classList.contains('status-confirmed')) {
+      var now = Date.now();
+      var start = new Date(startAttr).getTime();
+      var end = new Date(endAttr).getTime();
+      isOngoing = start <= now && now <= end;
+    }
+    if (isOngoing && typeof openSessionDetailModal === 'function') {
+      openSessionDetailModal(sid);
+    } else if (typeof openSessionSettingsForSessionId === 'function') {
+      openSessionSettingsForSessionId(sid);
     }
   });
   
