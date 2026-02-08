@@ -15,6 +15,7 @@ urlpatterns = [
     path('support/', views.support_view, name='support'),
     path('billing/', views.billing, name='billing'),
     path('my-sessions/', views.my_sessions, name='my_sessions'),
+    path('my-sessions/history/', views.session_history, name='session_history'),
     path('my-sessions/get-availability/', views.get_availability, name='get_availability'),
     path('my-sessions/check-collisions/', views.check_availability_collisions, name='check_availability_collisions'),
     path('my-sessions/save-availability/', views.save_availability, name='save_availability'),

@@ -8,14 +8,20 @@
   <div class="dashboard-card flex-scroll-card">
     <div class="card-header" style="align-items: center;">
       <h3 class="card-title">Upcoming sessions</h3>
-      <button
-        type="button"
-        class="manage-availability-btn"
-        data-open-mentor-calendar
-      >
-            <i class="fas fa-calendar-alt"></i>
-        <span>Manage Session and Availability slots</span>
+      <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+        <button
+          type="button"
+          class="manage-availability-btn"
+          data-open-mentor-calendar
+        >
+          <i class="fas fa-calendar-alt"></i>
+          <span>Manage Session and Availability slots</span>
         </button>
+        <a href="{% url 'general:dashboard_mentor:session_history' %}" class="session-history-btn">
+          <i class="fas fa-history"></i>
+          <span>Session History</span>
+        </a>
+      </div>
     </div>
 
     <div class="session-timeline-container scrollable-content" id="sessionsContainer" data-mentor-timezone="{{ mentor_timezone }}">
@@ -104,6 +110,24 @@
         display: flex;
         align-items: center;
         gap: 8px;
+    }
+    .session-history-btn {
+        background: #f1f5f9;
+        color: var(--dash-text-main);
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        font-weight: 500;
+        padding: 10px 16px;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        text-decoration: none;
+        transition: background 0.2s, border-color 0.2s;
+    }
+    .session-history-btn:hover {
+        background: #e2e8f0;
+        border-color: #cbd5e1;
+        color: var(--dash-text-main);
     }
 </style>
 

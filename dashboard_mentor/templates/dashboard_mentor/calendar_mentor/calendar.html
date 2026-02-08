@@ -1504,6 +1504,49 @@
     }
   }
 
+  function openSessionSettingsForEventWithBlinkThenModal(fcEvent) {
+    if (!calendar || !root || !fcEvent || !fcEvent.start) {
+      if (fcEvent) openSessionSettingsForEvent(fcEvent);
+      return;
+    }
+    var eventId = fcEvent.id || ('session_' + (fcEvent.extendedProps && fcEvent.extendedProps.sessionDbId));
+    if (!eventId) {
+      openSessionSettingsForEvent(fcEvent);
+      return;
+    }
+    var currentView = calendar.view && calendar.view.type;
+    if (currentView !== 'timeGridWeek') {
+      calendar.changeView('timeGridWeek', fcEvent.start);
+    } else {
+      calendar.gotoDate(fcEvent.start);
+    }
+    window.setTimeout(function() {
+      try {
+        calendar.updateSize();
+      } catch (e) {}
+      window.setTimeout(function() {
+        try {
+          if (window.luxon && window.luxon.DateTime && fcEvent.start) {
+            var dt = window.luxon.DateTime.fromJSDate(fcEvent.start).setZone(timezone_variable);
+            if (dt.isValid) {
+              calendar.scrollToTime(dt.toFormat('HH:mm:ss'));
+            }
+          }
+        } catch (e) {}
+        var el = root.querySelector('.fc-event[data-event-id="' + CSS.escape(String(eventId)) + '"]');
+        if (el) {
+          el.classList.add('session-settings-close-blink');
+          window.setTimeout(function() {
+            el.classList.remove('session-settings-close-blink');
+            openSessionSettingsForEvent(fcEvent);
+          }, 500);
+        } else {
+          openSessionSettingsForEvent(fcEvent);
+        }
+      }, 350);
+    }, 100);
+  }
+
   function openSessionSettingsForEvent(fcEvent) {
     if (!sessionSettingsOverlay || !fcEvent) return;
     if (!sessionSettingsDateInput || !sessionSettingsTimeInput) return;
@@ -3381,7 +3424,7 @@
         var match = window.location.search.match(/[?&]openSessionSettings=(\d+)/);
         if (match && calendar) {
           var ev = calendar.getEventById('session_' + match[1]);
-          if (ev) openSessionSettingsForEvent(ev);
+          if (ev) openSessionSettingsForEventWithBlinkThenModal(ev);
           var u = new URL(window.location.href);
           u.searchParams.delete('openSessionSettings');
           history.replaceState({}, '', u.toString());
@@ -3402,11 +3445,11 @@
     if (calendar) {
       var ev = calendar.getEventById('session_' + sessionId);
       if (ev) {
-        openSessionSettingsForEvent(ev);
+        openSessionSettingsForEventWithBlinkThenModal(ev);
         return;
       }
     }
-    // Calendar not open or event not loaded yet: open calendar, then open session settings after load
+    // Calendar not open or event not loaded yet: open calendar, then navigate + blink + open settings after load
     window.__pendingOpenSessionSettingsId = sessionId;
     if (window.MentorCalendar && typeof window.MentorCalendar.open === 'function') {
       window.MentorCalendar.open();
@@ -5202,8 +5245,24 @@
         var pendingId = window.__pendingOpenSessionSettingsId;
         if (pendingId != null && calendar) {
           delete window.__pendingOpenSessionSettingsId;
-          var ev = calendar.getEventById('session_' + pendingId);
-          if (ev) openSessionSettingsForEvent(ev);
+          function tryOpenWithBlink() {
+            var ev = calendar.getEventById('session_' + pendingId);
+            if (ev) {
+              openSessionSettingsForEventWithBlinkThenModal(ev);
+              return true;
+            }
+            return false;
+          }
+          if (!tryOpenWithBlink()) {
+            window.setTimeout(function() {
+              if (!tryOpenWithBlink()) {
+                window.setTimeout(function() {
+                  var ev = calendar.getEventById('session_' + pendingId);
+                  if (ev) openSessionSettingsForEvent(ev);
+                }, 400);
+              }
+            }, 600);
+          }
         }
     }, 50);
   }

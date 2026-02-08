@@ -1785,6 +1785,63 @@ def my_sessions(request):
         'initial_sessions': initial_sessions,
     })
 
+
+@login_required
+def session_history(request):
+    """Session history page: past sessions (end_datetime in the past)."""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        return redirect('general:index')
+    mentor_profile = request.user.mentor_profile if hasattr(request.user, 'mentor_profile') else None
+    if not mentor_profile:
+        return redirect('general:index')
+    from general.models import Session
+    now = timezone.now()
+    past_sessions = []
+    try:
+        qs = mentor_profile.sessions.filter(
+            end_datetime__lt=now
+        ).exclude(status='cancelled').order_by('-start_datetime').select_related('created_by').prefetch_related('attendees')[:50]
+        for session in qs:
+            client = session.attendees.first() if session.attendees.exists() else None
+            client_name = None
+            if client and hasattr(client, 'profile'):
+                client_name = f"{client.profile.first_name} {client.profile.last_name}".strip()
+                if not client_name:
+                    client_name = client.email.split('@')[0]
+            is_first_session = False
+            if client:
+                try:
+                    user_profile = getattr(client, 'user_profile', None)
+                    if user_profile:
+                        all_client_sessions = mentor_profile.sessions.filter(
+                            attendees=client
+                        ).exclude(status__in=['cancelled', 'expired']).exclude(id=session.id)
+                        if not all_client_sessions.exists():
+                            is_first_session = True
+                        else:
+                            earliest = all_client_sessions.order_by('start_datetime').first()
+                            if earliest and session.start_datetime and earliest.start_datetime:
+                                is_first_session = session.start_datetime <= earliest.start_datetime
+                except Exception:
+                    pass
+            past_sessions.append({
+                'id': session.id,
+                'start_datetime': session.start_datetime,
+                'end_datetime': session.end_datetime,
+                'status': session.status,
+                'client_name': client_name or 'Client',
+                'note': session.note,
+                'is_first_session': is_first_session,
+            })
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error fetching session history: {str(e)}")
+    return render(request, 'dashboard_mentor/session_history.html', {
+        'past_sessions': past_sessions,
+    })
+
+
 @login_required
 def get_sessions_paginated(request):
     """API endpoint for paginated sessions (infinite scroll)"""
