@@ -211,7 +211,7 @@ class MentorProfileQualificationInline(admin.TabularInline):
 # Mentor Profile Admin
 class MentorProfileAdmin(admin.ModelAdmin):
     inlines = [MentorProfileQualificationInline]
-    list_display = ('first_name', 'last_name', 'email_display', 'role', 'mentor_type', 'collisions')
+    list_display = ('first_name', 'last_name', 'email_display', 'role', 'mentor_type', 'ai_coins', 'collisions')
     list_filter = ('role', 'mentor_type', 'collisions')
     search_fields = ('first_name', 'last_name', 'user__email')
     readonly_fields = ('role', 'user_email_display')  # Role is not changeable
@@ -237,7 +237,7 @@ class MentorProfileAdmin(admin.ModelAdmin):
             'description': 'Legacy field - kept for backward compatibility. Use selected_timezone instead.'
         }),
         ('Pricing & Session', {
-            'fields': ('price_per_hour', 'session_length', 'first_session_free', 'first_session_length', 'collisions')
+            'fields': ('price_per_hour', 'session_length', 'first_session_free', 'first_session_length', 'ai_coins', 'collisions')
         }),
         ('Social Media & Links', {
             'fields': ('instagram_name', 'linkedin_name', 'personal_website')
