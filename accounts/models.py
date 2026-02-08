@@ -83,6 +83,10 @@ class UserProfile(models.Model):
     # Legacy field (kept for backward compatibility, will be migrated)
     time_zone = models.CharField(max_length=64, blank=True, null=True)
     profile_picture = models.ImageField(upload_to="profiles/", blank=True, null=True)
+    instagram_name = models.CharField(max_length=100, blank=True, null=True)
+    linkedin_name = models.CharField(max_length=100, blank=True, null=True)
+    personal_website = models.URLField(blank=True, null=True)
+    video_introduction_url = models.URLField(blank=True, null=True, help_text="URL to YouTube/Vimeo or other video")
     mentors = models.ManyToManyField("accounts.MentorProfile", related_name="users", blank=True)
     sessions = models.ManyToManyField("general.Session", related_name="user_profiles", blank=True)
     manuals = models.JSONField(default=list, blank=True)  # Navigation tutorial manuals
@@ -330,6 +334,7 @@ class MentorClientRelationship(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     invited_at = models.DateTimeField(auto_now_add=True, help_text="When the invitation/confirmation was sent")
     verified_at = models.DateTimeField(blank=True, null=True, help_text="When the client completed registration or confirmed")
+    mentor_notes = models.TextField(blank=True, null=True, help_text="Private notes about this client, visible only to the mentor")
     
     class Meta:
         verbose_name = "Mentor-Client Relationship"

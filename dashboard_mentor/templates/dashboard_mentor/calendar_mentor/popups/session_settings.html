@@ -102,35 +102,97 @@
       <div class="session-settings-col session-settings-col--right" aria-label="Assign client and session detail">
         <!-- Right column: assign/invite client -->
         <section class="session-settings-section session-settings-section--assign" aria-label="Assign client">
-          <div class="session-settings-assign-label" id="sessionSettingsInviteCardTitle">Invite a Client</div>
-          <div class="session-settings-assign-field">
-            <input
-              id="sessionSettingsClientEmail"
-              class="session-settings-input"
-              type="text"
-              placeholder="Search client by name or email"
-              name="client_search_email"
-              autocomplete="new-password"
-              autocapitalize="off"
-              autocorrect="off"
-              spellcheck="false"
-              inputmode="email"
-            />
-            <div id="sessionSettingsClientSuggestions" class="session-settings-suggestions" hidden></div>
+          <div id="sessionSettingsPreInviteBlock" class="session-settings-pre-invite-block">
+            <div id="sessionSettingsInviteCardTitleWrap" class="session-settings-state-banner session-settings-state-banner--draft session-settings-invite-title-card">
+              <div class="session-settings-state-icon">
+                <i class="fas fa-user-plus" aria-hidden="true"></i>
+              </div>
+              <div class="session-settings-state-text">
+                <div class="session-settings-state-title" id="sessionSettingsInviteCardTitle">Invite a Client</div>
+              </div>
+            </div>
+            <div class="session-settings-assign-field">
+              <input
+                id="sessionSettingsClientEmail"
+                class="session-settings-input"
+                type="text"
+                placeholder="Search client by name or email"
+                name="client_search_email"
+                autocomplete="new-password"
+                autocapitalize="off"
+                autocorrect="off"
+                spellcheck="false"
+                inputmode="email"
+              />
+              <div id="sessionSettingsClientSuggestions" class="session-settings-suggestions" hidden></div>
+            </div>
+            <div id="sessionSettingsDraftBanner" class="session-settings-draft-banner" hidden>
+              <div class="session-settings-draft-card-outer">
+                <button type="button" class="session-settings-draft-remove" id="sessionSettingsDraftRemoveBtn" aria-label="Remove client">&times;</button>
+                <div id="sessionSettingsDraftClientCard" class="session-settings-state-client-card-wrap"></div>
+              </div>
+            </div>
+            <button type="button" class="session-settings-btn session-settings-btn--success session-settings-invite-btn" id="sessionSettingsInviteBtn" disabled>
+              <span class="session-settings-invite-btn-label">Send Invitation</span>
+              <span class="session-settings-invite-btn-spinner" aria-hidden="true"></span>
+            </button>
           </div>
-          <button type="button" class="session-settings-btn session-settings-btn--success session-settings-invite-btn" id="sessionSettingsInviteBtn" disabled>
-            <span class="session-settings-invite-btn-label">Send Invitation</span>
-            <span class="session-settings-invite-btn-spinner" aria-hidden="true"></span>
-          </button>
 
           <!-- Sent state (shown after an invite was sent for this session) -->
           <div id="sessionSettingsInviteSentState" class="session-settings-invite-state" hidden>
-            <div class="session-settings-sent-subtitle" id="sessionSettingsInviteSentSubtitle">We emailed the client.</div>
-            <button type="button" class="session-settings-btn session-settings-btn--secondary" id="sessionSettingsReminderBtn">
-              Send reminder
-            </button>
-            <div class="session-settings-sent-help" id="sessionSettingsReminderHelp">
-              You can send one reminder per day.
+            <!-- Banners (shown after an invite was sent) -->
+            <div id="sessionSettingsConfirmedBanner" class="session-settings-state-banner session-settings-state-banner--confirmed" hidden>
+              <div class="session-settings-confirmed-banner-top">
+                <div class="session-settings-state-icon">
+                  <i class="fas fa-check-circle"></i>
+                </div>
+                <div class="session-settings-state-text">
+                  <div class="session-settings-state-title">Session Confirmed</div>
+                  <div class="session-settings-state-subtitle">The client has confirmed the meeting.</div>
+                </div>
+              </div>
+              <div id="sessionSettingsConfirmedByRow" class="session-settings-confirmed-by-row" hidden>
+                <div id="sessionSettingsConfirmedByLabel" class="session-settings-confirmed-by-label">Confirmed by:</div>
+                <div id="sessionSettingsConfirmedClientCard" class="session-settings-state-client-card-wrap"></div>
+              </div>
+            </div>
+
+            <div id="sessionSettingsInvitedBanner" class="session-settings-state-banner session-settings-state-banner--invited" hidden>
+              <div class="session-settings-state-icon">
+                <i class="fas fa-paper-plane"></i>
+              </div>
+              <div class="session-settings-state-text">
+                <div class="session-settings-state-title">Invitation Sent</div>
+                <div class="session-settings-state-subtitle">Waiting for client confirmation.</div>
+                <div id="sessionSettingsInvitedClientCard" class="session-settings-state-client-card-wrap"></div>
+              </div>
+            </div>
+            <div class="session-settings-sent-subtitle" id="sessionSettingsInviteSentSubtitle" hidden>We emailed the client.</div>
+            
+            <div class="session-settings-reminder-row">
+              <button type="button" class="session-settings-btn session-settings-btn--secondary" id="sessionSettingsReminderBtn">
+                Send reminder
+              </button>
+              <div class="session-settings-sent-help" id="sessionSettingsReminderHelp">
+                You can send one reminder per day.
+              </div>
+            </div>
+
+            <!-- Meeting link (shown when session is confirmed) -->
+            <div id="sessionSettingsMeetingLinkWrap" class="session-settings-meeting-link-wrap" hidden>
+              <div class="session-settings-meeting-card">
+                <div class="session-settings-meeting-icon">
+                  <i class="fas fa-video"></i>
+                </div>
+                <div class="session-settings-meeting-content">
+                  <div class="session-settings-meeting-label">Meeting link</div>
+                  <a id="sessionSettingsMeetingLink" href="#" target="_blank" rel="noopener" class="session-settings-meeting-link-url"></a>
+                </div>
+                <button type="button" class="session-settings-meeting-copy-btn" id="sessionSettingsMeetingCopyBtn" title="Copy link">
+                  <i class="fas fa-copy"></i>
+                  <span>Copy</span>
+                </button>
+              </div>
             </div>
           </div>
 
@@ -238,8 +300,7 @@
 
   .session-settings-modal {
     position: relative;
-    width: auto;
-    max-width: 920px !important;
+    width: 80vw;
     background: #ffffff;
     border-radius: 14px;
     box-shadow: 0 18px 60px rgba(0,0,0,0.25);
@@ -262,46 +323,65 @@
   }
   .session-settings-close {
     border: none;
-    background: transparent;
+    background: #f8fafc;
     cursor: pointer;
     width: 36px;
     height: 36px;
-    border-radius: 10px;
+    border-radius: 50%;
     color: #64748b;
     font-size: 1.35rem;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     line-height: 1;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 1px solid #e2e8f0;
   }
   .session-settings-close:hover {
-    background: #f1f5f9;
-    color: #0f172a;
+    background: #dc2626;
+    color: #fff;
+    border-color: #dc2626;
+    transform: rotate(90deg);
   }
 
   .session-settings-body {
-    padding: 14px 16px;
     display: flex;
     gap: 12px;
-    align-items: start;
+    align-items: stretch;
   }
   .session-settings-col {
     flex: 1;
     min-width: 0;
+    padding: 14px 16px;
   }
   .session-settings-col--right {
-    display: grid;
+    display: flex;
+    flex-direction: column;
     gap: 12px;
-    align-content: start;
+    min-height: 0;
   }
   .session-settings-section {
-    border: 1px solid #e2e8f0;
     border-radius: 12px;
     overflow: hidden;
     background: #ffffff;
   }
   .session-settings-section--assign {
     padding: 14px 16px 16px;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    flex: 1;
+  }
+  .session-settings-invite-title-card {
+    margin-bottom: 12px;
+    border: 1px solid rgba(234, 88, 12, 0.2);
+    box-shadow: 0 4px 12px rgba(249, 115, 22, 0.05);
+  }
+  .session-settings-state-banner--draft.session-settings-invite-title-card .session-settings-state-icon {
+    color: #ea580c;
+  }
+  .session-settings-state-banner--draft.session-settings-invite-title-card .session-settings-state-title {
+    color: #c2410c;
   }
 
   .session-settings-row {
@@ -363,8 +443,12 @@
 
   .session-settings-footer {
     display: flex;
-    justify-content: flex-end;
+    justify-content: stretch;
     gap: 10px;
+  }
+  .session-settings-footer .session-settings-btn {
+    flex: 1;
+    min-width: 0;
   }
 
   .session-settings-btn {
@@ -415,13 +499,9 @@
     color: #2563eb;
   }
 
-  .session-settings-assign-label {
-    font-weight: 800;
-    color: #0f172a;
-    margin-bottom: 10px;
-  }
   .session-settings-assign-field {
     position: relative;
+    flex-shrink: 0;
   }
   .session-settings-suggestions {
     position: absolute;
@@ -434,18 +514,39 @@
     box-shadow: 0 12px 30px rgba(0,0,0,0.12);
     overflow: hidden;
     z-index: 2;
-    max-height: 240px;
+    max-height: min(280px, 50vh);
     overflow-y: auto;
   }
   .session-settings-suggestion-item {
     padding: 10px 12px;
     cursor: pointer;
     display: flex;
-    flex-direction: column;
-    gap: 2px;
+    align-items: center;
+    gap: 12px;
   }
   .session-settings-suggestion-item:hover {
     background: #f8fafc;
+  }
+  .session-settings-suggestion-avatar,
+  .session-settings-suggestion-avatar-placeholder {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+  }
+  .session-settings-suggestion-avatar-placeholder {
+    background: #e2e8f0;
+    color: #64748b;
+    font-weight: 700;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .session-settings-suggestion-info {
+    flex: 1;
+    min-width: 0;
   }
   .session-settings-suggestion-name {
     font-weight: 800;
@@ -533,10 +634,332 @@
     font-weight: 600;
     font-size: 0.92rem;
   }
+  .session-settings-confirmed-by-row {
+    margin-top: 12px;
+    padding: 0;
+  }
+  .session-settings-confirmed-by-label {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--dash-text-main);
+    margin-bottom: 6px;
+  }
+
+  .session-settings-reminder-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
   .session-settings-sent-help {
     color: #94a3b8;
     font-size: 0.85rem;
     font-weight: 600;
+    margin: 0;
+  }
+
+  .session-settings-invite-client-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: 10px;
+    text-decoration: none;
+    color: inherit;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    transition: background 0.15s ease, border-color 0.15s ease;
+  }
+  .session-settings-invite-client-card:hover {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+  }
+  .session-settings-invite-client-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+  }
+  .session-settings-invite-client-avatar-placeholder {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #e2e8f0;
+    color: #64748b;
+    font-weight: 700;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .session-settings-invite-client-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+  .session-settings-invite-client-name {
+    font-weight: 700;
+    color: #0f172a;
+    font-size: 0.92rem;
+  }
+  .session-settings-invite-client-email {
+    color: #64748b;
+    font-size: 0.82rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  }
+
+  /* Right column: status colors (match session slot colors) */
+  .session-settings-col--right.is-draft {
+    background: rgba(249, 115, 22, 0.04) !important;
+    border-left: 4px solid #ea580c !important;
+  }
+  .session-settings-col--right.is-draft .session-settings-assign-label,
+  .session-settings-col--right.is-draft .session-settings-section--assign .session-settings-state-title {
+    color: #c2410c;
+  }
+  .session-settings-col--right.is-invited {
+    background: rgba(251, 191, 36, 0.04) !important;
+    border-left: 4px solid #f59e0b !important;
+  }
+  .session-settings-col--right.is-invited .session-settings-assign-label,
+  .session-settings-col--right.is-invited .session-settings-section--assign .session-settings-state-title {
+    color: #92400e;
+  }
+  .session-settings-col--right.is-confirmed {
+    background: rgba(34, 197, 94, 0.04) !important;
+    border-left: 4px solid #16a34a !important;
+  }
+  .session-settings-col--right.is-confirmed .session-settings-assign-label,
+  .session-settings-col--right.is-confirmed .session-settings-section--assign .session-settings-state-title {
+    color: #065f46;
+  }
+
+  .session-settings-col--right.is-confirmed .session-settings-section,
+  .session-settings-col--right.is-invited .session-settings-section,
+  .session-settings-col--right.is-draft .session-settings-section {
+    background: transparent !important;
+  }
+
+  /* Universal State Banner Styles */
+  .session-settings-state-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 16px;
+    background: #ffffff;
+    border-radius: 14px;
+    margin-bottom: 16px;
+    animation: fadeInUp 0.4s ease-out forwards;
+    border: 1px solid transparent;
+  }
+  .session-settings-state-banner--confirmed {
+    border-color: rgba(16, 185, 129, 0.2);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.05);
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .session-settings-confirmed-banner-top {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .session-settings-confirmed-banner-top .session-settings-state-text {
+    flex: 1;
+    min-width: 0;
+  }
+  .session-settings-state-banner--invited {
+    border-color: rgba(245, 158, 11, 0.2);
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.05);
+  }
+  /* When session is confirmed, never show the Invitation Sent banner */
+  .session-settings-col--right.is-confirmed #sessionSettingsInvitedBanner {
+    display: none !important;
+  }
+
+  /* Draft banner: selected client card with remove (X) button inside card top-right */
+  .session-settings-draft-banner {
+    margin-top: 12px;
+    flex-shrink: 0;
+  }
+  .session-settings-draft-card-outer {
+    position: relative;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 8px 12px;
+    padding-top: 8px;
+    padding-right: 40px;
+  }
+  .session-settings-draft-remove {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 1px solid #e2e8f0;
+    background: #fff;
+    color: #64748b;
+    font-size: 1.1rem;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s, color 0.2s, border-color 0.2s;
+  }
+  .session-settings-draft-remove:hover {
+    background: #fef2f2;
+    color: #dc2626;
+    border-color: #fecaca;
+  }
+  .session-settings-draft-card-outer .session-settings-state-client-card-wrap .session-settings-invite-client-card {
+    background: transparent;
+    border: none;
+    margin-top: 0;
+    box-shadow: none;
+    padding: 0;
+  }
+
+  .session-settings-state-icon {
+    font-size: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding-top: 4px;
+  }
+  .session-settings-state-banner--confirmed .session-settings-state-icon { color: #10b981; }
+  .session-settings-state-banner--invited .session-settings-state-icon { color: #f59e0b; }
+
+  .session-settings-state-text {
+    flex: 1;
+    min-width: 0;
+  }
+  .session-settings-state-title {
+    font-weight: 800;
+    font-size: 1.1rem;
+    margin-bottom: 2px;
+  }
+  .session-settings-state-banner--confirmed .session-settings-state-title { color: #065f46; }
+  .session-settings-state-banner--invited .session-settings-state-title { color: #92400e; }
+
+  .session-settings-state-subtitle {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #64748b;
+    margin-bottom: 8px;
+  }
+
+  /* Adjust client card when inside the banner */
+  .session-settings-state-client-card-wrap .session-settings-invite-client-card {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    margin-top: 0;
+    box-shadow: none;
+    padding: 8px 12px;
+  }
+  .session-settings-state-client-card-wrap .session-settings-invite-client-card:hover {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+  }
+
+  .session-settings-col--right.is-confirmed .session-settings-invite-state,
+  .session-settings-col--right.is-invited .session-settings-invite-state,
+  .session-settings-col--right.is-draft .session-settings-invite-state {
+    background: transparent !important;
+    border-color: transparent !important;
+    padding: 0 !important;
+    margin-top: 0 !important;
+  }
+
+  /* Premium Meeting Link Card */
+  .session-settings-meeting-card {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: #ffffff;
+    padding: 16px;
+    border-radius: 16px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    border: 1px solid #e2e8f0;
+    margin-top: 16px;
+    transition: box-shadow 0.2s ease;
+  }
+  .session-settings-meeting-card:hover {
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+  }
+  .session-settings-meeting-icon {
+    width: 48px;
+    height: 48px;
+    background: rgba(16, 185, 129, 0.1);
+    color: #10b981;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    flex-shrink: 0;
+    transition: all 0.2s ease;
+  }
+  .session-settings-meeting-card:hover .session-settings-meeting-icon {
+    background: #10b981;
+    color: #ffffff;
+  }
+  .session-settings-meeting-content {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .session-settings-meeting-label {
+    font-size: 0.8rem;
+    font-weight: 800;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .session-settings-meeting-link-url {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.9rem;
+    color: #10b981;
+    text-decoration: none;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .session-settings-meeting-link-url:hover {
+    text-decoration: underline;
+  }
+  .session-settings-meeting-copy-btn {
+    border: none;
+    background: #f1f5f9;
+    color: #475569;
+    padding: 10px 16px;
+    border-radius: 10px;
+    font-weight: 700;
+    font-size: 0.85rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s ease;
+  }
+  .session-settings-meeting-copy-btn:hover {
+    background: #e2e8f0;
+    color: #0f172a;
+  }
+  .session-settings-meeting-copy-btn i {
+    font-size: 0.9rem;
+  }
+
+  .is-confirmed .session-settings-meeting-card {
+    border-color: rgba(255, 255, 255, 0.2);
   }
 
   .session-settings-apply-first-note {

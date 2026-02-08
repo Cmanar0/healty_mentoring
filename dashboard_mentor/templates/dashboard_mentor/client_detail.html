@@ -4,203 +4,274 @@
 {% block page_title %}Client Details{% endblock %}
 
 {% block dashboard_content %}
+<form style="display: none;" id="clientDetailCsrfForm">{% csrf_token %}</form>
 <div class="dashboard-content-container" style="max-width: 980px;">
-  <div style="margin-bottom: 24px;">
-    <a href="{% url 'general:dashboard_mentor:clients_list' %}" class="btn btn-secondary" style="text-decoration: none; display: inline-flex; align-items: center; gap: 8px;">
-      <i class="fas fa-arrow-left"></i> Back to Clients
-    </a>
-  </div>
-
-  <!-- Client Info Card -->
-  <div class="dashboard-card" style="margin-bottom: 24px;">
-    <h2 class="card-title" style="margin-bottom: 20px;">Client Information</h2>
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-      <div>
-        <div style="font-weight: 600; color: var(--dash-text-muted); margin-bottom: 4px;">Name</div>
-        <div style="font-size: 1.1rem; font-weight: 600; color: var(--dash-text-main);">
-          {{ client_profile.first_name }} {{ client_profile.last_name }}
-        </div>
-      </div>
-      <div>
-        <div style="font-weight: 600; color: var(--dash-text-muted); margin-bottom: 4px;">Email</div>
-        <div style="font-size: 1rem; color: var(--dash-text-main);">
-          {{ client_profile.user.email }}
-        </div>
-      </div>
-      <div>
-        <div style="font-weight: 600; color: var(--dash-text-muted); margin-bottom: 4px;">Relationship Status</div>
-        <div>
-          {% if relationship.status == 'confirmed' %}
-            <span class="status-badge confirmed-badge">Confirmed</span>
-          {% elif relationship.status == 'active' %}
-            <span class="status-badge active-badge">Active</span>
+  <div class="client-detail-header" style="margin-bottom: 32px; background: white; border-radius: 20px; overflow: hidden; border: 1px solid var(--dash-border); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);">
+    <div style="padding: 32px;">
+      <div style="display: flex; align-items: flex-end; gap: 24px; flex-wrap: wrap;">
+        <div style="width: 120px; height: 120px; border-radius: 24px; border: 2px solid var(--dash-border); background: white; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); overflow: hidden; flex-shrink: 0;">
+          {% if client_profile.profile_picture %}
+            <img src="{{ client_profile.profile_picture.url }}" alt="{{ client_profile.first_name }}" style="width: 100%; height: 100%; object-fit: cover;">
           {% else %}
-            <span class="status-badge inactive-badge">Inactive</span>
+            <div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: #f1f5f9; color: var(--dash-text-muted); font-size: 2.5rem;">
+              <i class="fas fa-user"></i>
+            </div>
           {% endif %}
         </div>
-      </div>
-      <div>
-        <div style="font-weight: 600; color: var(--dash-text-muted); margin-bottom: 4px;">Total Sessions</div>
-        <div style="font-size: 1.1rem; font-weight: 600; color: var(--dash-text-main);">
-          {{ relationship.sessions_count }}
+        <div style="flex: 1; padding-bottom: 8px;">
+          <h1 style="font-size: 2rem; font-weight: 700; color: var(--dash-text-main); margin: 0 0 8px 0; font-family: 'Outfit', sans-serif;">
+            {{ client_profile.first_name }} {{ client_profile.last_name }}
+          </h1>
+          <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
+            <div style="display: flex; align-items: center; gap: 8px; color: var(--dash-text-muted); font-size: 0.95rem;">
+              <i class="far fa-envelope"></i> {{ client_profile.user.email }}
+            </div>
+            {% if relationship.status == 'confirmed' %}
+              <span class="status-badge confirmed-badge" style="font-size: 0.85rem; padding: 4px 12px; border-radius: 20px;"><i class="fas fa-check-circle" style="margin-right: 4px;"></i>My Client</span>
+            {% elif relationship.status == 'active' %}
+              <span class="status-badge active-badge" style="font-size: 0.85rem; padding: 4px 12px; border-radius: 20px;"><i class="fas fa-bolt" style="margin-right: 4px;"></i>Active</span>
+            {% else %}
+              <span class="status-badge inactive-badge" style="font-size: 0.85rem; padding: 4px 12px; border-radius: 20px;"><i class="fas fa-clock" style="margin-right: 4px;"></i>{{ relationship.get_status_display }}</span>
+            {% endif %}
+          </div>
+        </div>
+        <div style="margin-bottom: 8px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+          {% if client_profile.instagram_name %}
+            <a href="https://www.instagram.com/{{ client_profile.instagram_name|cut:"@" }}/" target="_blank" rel="noopener noreferrer" class="client-detail-social-link" title="Instagram" style="width: 40px; height: 40px; border-radius: 12px; border: 1px solid var(--dash-border); background: white; color: #333; display: inline-flex; align-items: center; justify-content: center; text-decoration: none; transition: background 0.2s, border-color 0.2s;"><i class="fab fa-instagram" style="font-size: 1.2rem;"></i></a>
+          {% endif %}
+          {% if client_profile.linkedin_name %}
+            <a href="https://www.linkedin.com/in/{{ client_profile.linkedin_name|cut:"@" }}/" target="_blank" rel="noopener noreferrer" class="client-detail-social-link" title="LinkedIn" style="width: 40px; height: 40px; border-radius: 12px; border: 1px solid var(--dash-border); background: white; color: #0a66c2; display: inline-flex; align-items: center; justify-content: center; text-decoration: none; transition: background 0.2s, border-color 0.2s;"><i class="fab fa-linkedin" style="font-size: 1.2rem;"></i></a>
+          {% endif %}
+          {% if client_profile.personal_website %}
+            <a href="{{ client_profile.personal_website }}" target="_blank" rel="noopener noreferrer" class="client-detail-social-link" title="Website" style="width: 40px; height: 40px; border-radius: 12px; border: 1px solid var(--dash-border); background: white; color: var(--dash-text-main); display: inline-flex; align-items: center; justify-content: center; text-decoration: none; transition: background 0.2s, border-color 0.2s;"><i class="fas fa-globe" style="font-size: 1.1rem;"></i></a>
+          {% endif %}
+          {% if client_profile.video_introduction_url %}
+            <a href="{{ client_profile.video_introduction_url }}" target="_blank" rel="noopener noreferrer" class="client-detail-social-link" title="YouTube / Video" style="width: 40px; height: 40px; border-radius: 12px; border: 1px solid var(--dash-border); background: white; color: #ff0000; display: inline-flex; align-items: center; justify-content: center; text-decoration: none; transition: background 0.2s, border-color 0.2s;"><i class="fab fa-youtube" style="font-size: 1.2rem;"></i></a>
+          {% endif %}
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Sessions Card -->
-  <div class="dashboard-card" style="margin-bottom: 24px;">
-    <h2 class="card-title" style="margin-bottom: 20px;">Sessions</h2>
-    {% if sessions %}
-      <div style="display: flex; flex-direction: column; gap: 12px;">
-        {% for session in sessions %}
-          <a href="{% url 'general:dashboard_mentor:session_detail' session.id %}" style="text-decoration: none; color: inherit; display: block;">
-            <div style="padding: 16px; border: 1px solid #e5e7eb; border-radius: 8px; background: #f9fafb; transition: all 0.2s ease; cursor: pointer;" onmouseover="this.style.background='#f3f4f6'; this.style.borderColor='#10b981';" onmouseout="this.style.background='#f9fafb'; this.style.borderColor='#e5e7eb';">
-              <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
-                <div>
-                  <div style="font-weight: 600; color: var(--dash-text-main); margin-bottom: 4px;">
-                    {{ session.start_datetime|date:"F d, Y" }} at {{ session.start_datetime|time:"g:i A" }}
-                  </div>
-                  <div style="font-size: 0.9rem; color: var(--dash-text-muted);">
-                    Duration: {{ session.start_datetime|timesince:session.end_datetime }}
-                  </div>
-                </div>
-                <span class="status-badge {% if session.status == 'completed' %}confirmed-badge{% elif session.status == 'confirmed' %}active-badge{% else %}inactive-badge{% endif %}" style="text-transform: capitalize;">
-                  {{ session.status }}
-                </span>
-              </div>
-              {% if session.note %}
-                <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #e5e7eb; color: var(--dash-text-muted); font-size: 0.9rem;">
-                  {{ session.note }}
-                </div>
-              {% endif %}
-            </div>
-          </a>
-        {% endfor %}
+  <!-- Statistics Quick Row -->
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 24px; margin-bottom: 32px;">
+    <div class="dashboard-card" style="padding: 20px; border-radius: 16px; display: flex; flex-direction: row; align-items: center; gap: 16px;">
+      <div style="width: 48px; height: 48px; border-radius: 12px; background: rgba(16, 185, 129, 0.1); color: var(--dash-primary); display: flex; align-items: center; justify-content: center; font-size: 1.25rem;">
+        <i class="fas fa-calendar-check"></i>
       </div>
-    {% else %}
-      <div style="text-align: center; padding: 40px; color: var(--dash-text-muted);">
-        <i class="fas fa-calendar-times" style="font-size: 2rem; margin-bottom: 12px; opacity: 0.5;"></i>
-        <p>No sessions yet</p>
+      <div>
+        <div style="font-size: 0.85rem; color: var(--dash-text-muted); font-weight: 500;">Total Sessions</div>
+        <div style="font-size: 1.25rem; font-weight: 700; color: var(--dash-text-main);">{{ relationship.sessions_count }}</div>
       </div>
-    {% endif %}
+    </div>
+    <div class="dashboard-card" style="padding: 20px; border-radius: 16px; display: flex; flex-direction: row; align-items: center; gap: 16px;">
+      <div style="width: 48px; height: 48px; border-radius: 12px; background: rgba(59, 130, 246, 0.1); color: var(--dash-accent); display: flex; align-items: center; justify-content: center; font-size: 1.25rem;">
+        <i class="fas fa-project-diagram"></i>
+      </div>
+      <div>
+        <div style="font-size: 0.85rem; color: var(--dash-text-muted); font-weight: 500;">Active Projects</div>
+        <div style="font-size: 1.25rem; font-weight: 700; color: var(--dash-text-main);">{{ client_projects.count }}</div>
+      </div>
+    </div>
+    <div class="dashboard-card" style="padding: 20px; border-radius: 16px; display: flex; flex-direction: row; align-items: center; gap: 16px;">
+      <div style="width: 48px; height: 48px; border-radius: 12px; background: rgba(245, 158, 11, 0.1); color: #f59e0b; display: flex; align-items: center; justify-content: center; font-size: 1.25rem;">
+        <i class="fas fa-coins"></i>
+      </div>
+      <div>
+        <div style="font-size: 0.85rem; color: var(--dash-text-muted); font-weight: 500;">Earnings</div>
+        <div style="font-size: 1.25rem; font-weight: 700; color: var(--dash-text-main);">€{{ relationship.total_earnings }}</div>
+      </div>
+    </div>
   </div>
 
-  <!-- Projects Section -->
-  {% if client_projects %}
-    <div class="dashboard-card" style="margin-bottom: 24px;">
-      <h2 class="card-title" style="margin-bottom: 20px;">Projects</h2>
-      <div style="display: flex; flex-direction: column; gap: 12px;">
-        {% for project in client_projects %}
-          <a href="{% url 'general:dashboard_mentor:project_detail' project.id %}" style="text-decoration: none; color: inherit; display: block;">
-            <div style="padding: 16px; border: 1px solid #e5e7eb; border-radius: 8px; background: #f9fafb; transition: all 0.2s ease; cursor: pointer;" onmouseover="this.style.background='#f3f4f6'; this.style.borderColor='#10b981';" onmouseout="this.style.background='#f9fafb'; this.style.borderColor='#e5e7eb';">
-              <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
-                <div style="flex: 1;">
-                  <div style="font-weight: 600; color: var(--dash-text-main); margin-bottom: 4px;">
+  <div style="display: grid; grid-template-columns: 1fr 340px; gap: 32px; align-items: start;">
+    <!-- Left Column: Sessions -->
+    <div style="display: flex; flex-direction: column; gap: 24px;">
+      <div class="dashboard-card" style="padding: 24px; border-radius: 20px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+          <h2 class="card-title" style="font-size: 1.25rem; font-weight: 700;"><i class="fas fa-history" style="margin-right: 8px; color: var(--dash-primary);"></i>Sessions History</h2>
+        </div>
+
+        {% if sessions %}
+          <div class="session-timeline-container" style="padding-left: 20px; position: relative;">
+            <div style="position: absolute; left: 7px; top: 0; bottom: 0; width: 2px; background: #f1f5f9; border-radius: 1px;"></div>
+            <div style="display: flex; flex-direction: column; gap: 24px;">
+              {% for session in sessions %}
+                <div style="position: relative; padding-left: 24px;">
+                  <!-- Timeline Dot -->
+                  <div class="timeline-dot status-{{ session.status }}" style="position: absolute; left: -18px; top: 6px; width: 12px; height: 12px; border-radius: 50%; background: white; z-index: 2; box-shadow: 0 0 0 4px white; border: 3px solid transparent;"></div>
+                  
+                  <a href="#" onclick="if (typeof openSessionDetailModal === 'function') { openSessionDetailModal({{ session.id }}); } return false;" style="text-decoration: none; color: inherit; display: block;">
+                    <div style="padding: 16px; border: 1px solid var(--dash-border); border-radius: 16px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer;" class="session-item-card status-{{ session.status }}">
+                      <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
+                        <div>
+                          <div style="font-weight: 700; font-size: 1.05rem; margin-bottom: 2px;" class="session-card-title">
+                            {{ session.start_datetime|date:"F d, Y" }}
+                          </div>
+                          <div style="font-size: 0.9rem; display: flex; align-items: center; gap: 6px;" class="session-card-meta">
+                            <i class="far fa-clock"></i> {{ session.start_datetime|time:"g:i A" }} · {{ session.start_datetime|timesince:session.end_datetime }}
+                          </div>
+                        </div>
+                        <span class="status-badge status-{{ session.status }}">
+                          {{ session.status }}
+                        </span>
+                      </div>
+                      {% if session.note %}
+                        <div style="margin-top: 12px; padding: 10px; background: #f8fafc; border-radius: 12px; color: var(--dash-text-muted); font-size: 0.9rem; line-height: 1.5;">
+                          <i class="fas fa-sticky-note" style="margin-right: 6px; opacity: 0.5;"></i>{{ session.note }}
+                        </div>
+                      {% endif %}
+                    </div>
+                  </a>
+                </div>
+              {% endfor %}
+            </div>
+          </div>
+        {% else %}
+          <div style="text-align: center; padding: 60px 40px; color: var(--dash-text-muted);">
+            <div style="width: 64px; height: 64px; border-radius: 50%; background: #f8fafc; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
+              <i class="fas fa-calendar-times" style="font-size: 2rem; opacity: 0.3;"></i>
+            </div>
+            <p style="font-weight: 600;">No sessions scheduled yet</p>
+            <p style="font-size: 0.9rem;">Sessions with this client will appear here.</p>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Right Column: Projects & Review -->
+    <div style="display: flex; flex-direction: column; gap: 24px;">
+      <!-- Projects Card -->
+      <div class="dashboard-card" style="padding: 24px; border-radius: 20px;">
+        <h2 class="card-title" style="font-size: 1.1rem; font-weight: 700; margin-bottom: 16px;"><i class="fas fa-project-diagram" style="margin-right: 8px; color: var(--dash-accent);"></i>Projects</h2>
+        {% if client_projects %}
+          <div style="display: flex; flex-direction: column; gap: 12px;">
+            {% for project in client_projects %}
+              <a href="{% url 'general:dashboard_mentor:project_detail' project.id %}" style="text-decoration: none; color: inherit; display: block;">
+                <div style="padding: 16px; border: 1px solid var(--dash-border); border-radius: 16px; background: white; transition: all 0.2s ease; cursor: pointer;" onmouseover="this.style.borderColor='var(--dash-accent)'; this.style.background='#f8fafc';" onmouseout="this.style.borderColor='var(--dash-border)'; this.style.background='white';">
+                  <div style="font-weight: 700; color: var(--dash-text-main); margin-bottom: 4px; font-size: 0.95rem;">
                     {{ project.title }}
                   </div>
-                  {% if project.template %}
-                    <div style="font-size: 0.85rem; color: var(--dash-text-muted); margin-bottom: 4px;">
-                      <i class="fas fa-layer-group" style="margin-right: 4px;"></i>{{ project.template.name }}
-                    </div>
-                  {% endif %}
-                  {% if project.description %}
-                    <div style="font-size: 0.9rem; color: var(--dash-text-muted); margin-top: 8px;">
-                      {{ project.description|truncatewords:20 }}
-                    </div>
-                  {% endif %}
+                  <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span class="status-badge {% if project.assignment_status == 'accepted' %}confirmed-badge{% elif project.assignment_status == 'assigned' %}active-badge{% else %}inactive-badge{% endif %}" style="text-transform: capitalize; font-size: 0.7rem; padding: 2px 8px; border-radius: 6px;">
+                      {{ project.get_assignment_status_display }}
+                    </span>
+                    <span style="font-size: 0.75rem; color: var(--dash-text-muted);">
+                      {{ project.created_at|date:"M d, Y" }}
+                    </span>
+                  </div>
                 </div>
-                <span class="status-badge {% if project.assignment_status == 'accepted' %}confirmed-badge{% elif project.assignment_status == 'assigned' %}active-badge{% else %}inactive-badge{% endif %}" style="text-transform: capitalize; margin-left: 12px;">
-                  {{ project.get_assignment_status_display }}
-                </span>
-              </div>
-              <div style="font-size: 0.85rem; color: var(--dash-text-muted); margin-top: 8px; padding-top: 8px; border-top: 1px solid #e5e7eb;">
-                Created: {{ project.created_at|date:"M d, Y" }}
-              </div>
-            </div>
-          </a>
-        {% endfor %}
-      </div>
-    </div>
-  {% endif %}
-
-  <!-- Review Section -->
-  <div class="dashboard-card">
-    <h2 class="card-title" style="margin-bottom: 20px;">Review</h2>
-    
-    {% if review %}
-      <!-- Existing Review -->
-      <div style="padding: 20px; background: #f9fafb; border-radius: 8px; margin-bottom: 20px;">
-        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
-          <div style="color: #fbbf24; font-size: 1.2rem;">
-            {% for i in "12345"|make_list %}
-              {% if forloop.counter <= review.rating %}
-                <i class="fas fa-star"></i>
-              {% else %}
-                <i class="far fa-star"></i>
-              {% endif %}
+              </a>
             {% endfor %}
           </div>
-          <span style="font-weight: 600; color: var(--dash-text-main);">{{ review.rating }}/5</span>
-          {% if review.status == 'published' %}
-            <span class="status-badge confirmed-badge" style="margin-left: auto;">Published</span>
-          {% else %}
-            <span class="status-badge inactive-badge" style="margin-left: auto;">Draft</span>
-          {% endif %}
-        </div>
-        <div style="color: var(--dash-text-main); line-height: 1.6; margin-bottom: 16px;">
-          {{ review.text }}
-        </div>
-        {% if review.published_at %}
-          <div style="font-size: 0.85rem; color: var(--dash-text-muted);">
-            Published: {{ review.published_at|date:"F d, Y" }}
+        {% else %}
+          <div style="text-align: center; padding: 24px; color: var(--dash-text-muted); background: #f8fafc; border-radius: 12px;">
+            <p style="font-size: 0.9rem; margin-bottom: 0;">No projects found</p>
           </div>
         {% endif %}
       </div>
 
-      <!-- Reply Section -->
-      <div style="margin-top: 24px;">
-        <h3 style="font-size: 1rem; font-weight: 600; margin-bottom: 12px; color: var(--dash-text-main);">Your Reply</h3>
-        {% if review.reply %}
-          <div style="padding: 16px; background: white; border: 1px solid #e5e7eb; border-radius: 8px; margin-bottom: 12px;">
-            <div style="color: var(--dash-text-main); line-height: 1.6; margin-bottom: 8px;">
-              {{ review.reply.text }}
+      <!-- Review Card -->
+      <div class="dashboard-card" style="padding: 24px; border-radius: 20px;">
+        <h2 class="card-title" style="font-size: 1.1rem; font-weight: 700; margin-bottom: 16px;"><i class="fas fa-star" style="margin-right: 8px; color: #fbbf24;"></i>Review</h2>
+        
+        {% if review %}
+          <!-- Existing Review -->
+          <div style="padding: 20px; background: #fffcf0; border: 1px solid #fde68a; border-radius: 16px; margin-bottom: 20px;">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+              <div style="color: #fbbf24; font-size: 1rem; display: flex; gap: 2px;">
+                {% for i in "12345"|make_list %}
+                  {% if forloop.counter <= review.rating %}
+                    <i class="fas fa-star"></i>
+                  {% else %}
+                    <i class="far fa-star"></i>
+                  {% endif %}
+                {% endfor %}
+              </div>
+              <span style="font-weight: 700; color: var(--dash-text-main); font-size: 0.95rem; margin-left: 4px;">{{ review.rating }}.0</span>
+              {% if review.status == 'published' %}
+                <span class="status-badge confirmed-badge" style="margin-left: auto; font-size: 0.65rem; border-radius: 6px;">Published</span>
+              {% else %}
+                <span class="status-badge inactive-badge" style="margin-left: auto; font-size: 0.65rem; border-radius: 6px;">Draft</span>
+              {% endif %}
             </div>
-            <div style="font-size: 0.85rem; color: var(--dash-text-muted);">
-              Last updated: {{ review.reply.updated_at|date:"F d, Y g:i A" }}
+            <div style="color: var(--dash-text-main); line-height: 1.5; font-size: 0.95rem; font-style: italic; margin-bottom: 12px;">
+              "{{ review.text }}"
             </div>
+            {% if review.published_at %}
+              <div style="font-size: 0.8rem; color: var(--dash-text-muted);">
+                {{ review.published_at|date:"F d, Y" }}
+              </div>
+            {% endif %}
+          </div>
+
+          <!-- Reply Section -->
+          <div style="margin-top: 8px;">
+            <h3 style="font-size: 0.9rem; font-weight: 700; margin-bottom: 12px; color: var(--dash-text-main); display: flex; align-items: center; gap: 8px;">
+              <i class="fas fa-reply" style="transform: scaleX(-1); color: var(--dash-primary); font-size: 0.8rem;"></i>Your Reply
+            </h3>
+            
+            {% if review.reply %}
+              <div id="replyViewBlock" style="padding: 16px; background: white; border: 1px solid var(--dash-border); border-radius: 16px; margin-bottom: 16px; position: relative; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;">
+                <div style="flex: 1; min-width: 0;">
+                  <div id="replyViewText" style="color: var(--dash-text-main); line-height: 1.5; font-size: 0.9rem;">{{ review.reply.text }}</div>
+                  <div style="font-size: 0.75rem; color: var(--dash-text-muted); margin-top: 8px;">Updated {{ review.reply.updated_at|date:"M d, Y" }}</div>
+                </div>
+                <button type="button" id="replyEditPencil" aria-label="Edit reply" style="flex-shrink: 0; width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--dash-border); background: white; color: var(--dash-text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s;" onmouseover="this.style.background='#f8fafc'; this.style.color='var(--dash-primary)';" onmouseout="this.style.background='white'; this.style.color='var(--dash-text-muted)';"><i class="fas fa-pencil-alt" style="font-size: 0.8rem;"></i></button>
+              </div>
+              <div id="replyEditBlock" style="display: none; position: relative;">
+                <textarea id="replyText" rows="3" style="width: 100%; padding: 12px; border: 1px solid var(--dash-border); border-radius: 12px; font-family: inherit; font-size: 0.9rem; resize: none; transition: all 0.2s;" placeholder="Write your reply..." onfocus="this.style.borderColor='var(--dash-primary)'; this.style.boxShadow='0 0 0 4px rgba(16, 185, 129, 0.1)';" onblur="this.style.borderColor='var(--dash-border)'; this.style.boxShadow='none';">{{ review.reply.text }}</textarea>
+                <div style="display: flex; gap: 8px; align-items: center; margin-top: 12px;">
+                  <button type="button" id="replyEditCancel" class="btn btn-outline" style="border-radius: 12px; padding: 10px 16px;"><i class="fas fa-times" style="margin-right: 6px;"></i>Cancel</button>
+                  <button type="button" onclick="saveReply('{{ review.id }}')" class="btn btn-primary" style="border-radius: 12px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 20px;"><i class="fas fa-paper-plane"></i> Update Reply</button>
+                </div>
+              </div>
+            {% else %}
+              <div id="replyEditBlock" style="position: relative;">
+                <textarea id="replyText" rows="3" style="width: 100%; padding: 12px; border: 1px solid var(--dash-border); border-radius: 12px; font-family: inherit; font-size: 0.9rem; resize: none; transition: all 0.2s;" placeholder="Write your reply..." onfocus="this.style.borderColor='var(--dash-primary)'; this.style.boxShadow='0 0 0 4px rgba(16, 185, 129, 0.1)';" onblur="this.style.borderColor='var(--dash-border)'; this.style.boxShadow='none';"></textarea>
+                <button onclick="saveReply('{{ review.id }}')" class="btn btn-primary" style="margin-top: 12px; width: 100%; border-radius: 12px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                  <i class="fas fa-paper-plane"></i> Send Reply
+                </button>
+              </div>
+            {% endif %}
+          </div>
+        {% else %}
+          <!-- No Review - Request Button -->
+          <div style="text-align: center; padding: 24px 16px;">
+            {% if can_request_review %}
+              <div style="width: 48px; height: 48px; border-radius: 50%; background: #fffbeb; color: #fbbf24; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; font-size: 1.5rem;">
+                <i class="fas fa-star"></i>
+              </div>
+              <p style="color: var(--dash-text-muted); margin-bottom: 20px; font-size: 0.9rem;">
+                No review yet. Help your profile grow by requesting one!
+              </p>
+              <button onclick="requestReview('{{ client_profile.id }}')" id="requestReviewBtn" class="btn btn-primary" style="width: 100%; border-radius: 12px; font-weight: 600;">
+                <i class="fas fa-paper-plane" style="margin-right: 8px;"></i> Request Review
+              </button>
+              <div id="requestReviewMessage" style="margin-top: 16px; display: none;"></div>
+            {% else %}
+              <div style="width: 40px; height: 40px; border-radius: 50%; background: #f8fafc; color: #94a3b8; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px;">
+                <i class="fas fa-info-circle"></i>
+              </div>
+              <p style="color: var(--dash-text-muted); font-size: 0.85rem; margin-bottom: 0;">
+                {% if request_error %}{{ request_error }}{% else %}Review cannot be requested yet.{% endif %}
+              </p>
+            {% endif %}
           </div>
         {% endif %}
-        <textarea id="replyText" rows="4" style="width: 100%; padding: 12px; border: 1px solid #e5e7eb; border-radius: 8px; font-family: inherit; font-size: 0.95rem; resize: vertical;" placeholder="Write your reply to this review...">{% if review.reply %}{{ review.reply.text }}{% endif %}</textarea>
-        <button onclick="saveReply({{ review.id }})" class="btn btn-primary" style="margin-top: 12px;">
-          <i class="fas fa-save"></i> {% if review.reply %}Update Reply{% else %}Save Reply{% endif %}
+      </div>
+
+      <!-- My notes about this client (mentor only) -->
+      <div class="dashboard-card" style="padding: 24px; border-radius: 20px;">
+        <h2 class="card-title" style="font-size: 1.1rem; font-weight: 700; margin-bottom: 16px;"><i class="fas fa-sticky-note" style="margin-right: 8px; color: var(--dash-primary);"></i>My notes about this client</h2>
+        <p style="font-size: 0.85rem; color: var(--dash-text-muted); margin-bottom: 12px;">Private notes only you can see.</p>
+        <textarea id="mentorNotesText" rows="4" style="width: 100%; padding: 12px; border: 1px solid var(--dash-border); border-radius: 12px; font-family: inherit; font-size: 0.9rem; resize: vertical; transition: all 0.2s;" placeholder="e.g. goals, preferences, follow-up ideas..." onfocus="this.style.borderColor='var(--dash-primary)'; this.style.boxShadow='0 0 0 4px rgba(16, 185, 129, 0.1)';" onblur="this.style.borderColor='var(--dash-border)'; this.style.boxShadow='none';">{{ relationship.mentor_notes|default:'' }}</textarea>
+        <button type="button" id="saveMentorNotesBtn" class="btn btn-primary" style="margin-top: 12px; border-radius: 12px; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+          <i class="fas fa-save"></i> Save notes
         </button>
+        <div id="mentorNotesMessage" style="margin-top: 12px; display: none; font-size: 0.9rem;"></div>
       </div>
-    {% else %}
-      <!-- No Review - Request Button -->
-      <div style="text-align: center; padding: 40px;">
-        {% if can_request_review %}
-          <i class="fas fa-star" style="font-size: 3rem; color: #fbbf24; margin-bottom: 16px; opacity: 0.7;"></i>
-          <p style="color: var(--dash-text-muted); margin-bottom: 24px;">
-            Request a review from this client to help build your reputation.
-          </p>
-          <button onclick="requestReview({{ client_profile.id }})" id="requestReviewBtn" class="btn btn-primary">
-            <i class="fas fa-paper-plane"></i> Request Review
-          </button>
-          <div id="requestReviewMessage" style="margin-top: 16px; display: none;"></div>
-        {% else %}
-          <i class="fas fa-info-circle" style="font-size: 2rem; color: #6b7280; margin-bottom: 16px; opacity: 0.7;"></i>
-          <p style="color: var(--dash-text-muted);">
-            {% if request_error %}{{ request_error }}{% else %}Review cannot be requested at this time.{% endif %}
-          </p>
-          {% if not has_completed_session %}
-            <p style="color: var(--dash-text-muted); font-size: 0.9rem; margin-top: 8px;">
-              At least one session must be completed before requesting a review.
-            </p>
-          {% endif %}
-        {% endif %}
-      </div>
-    {% endif %}
+    </div>
   </div>
 </div>
 
@@ -280,6 +351,72 @@ function saveReply(reviewId) {
     alert('An error occurred. Please try again.');
   });
 }
+
+(function() {
+  var replyViewBlock = document.getElementById('replyViewBlock');
+  var replyEditBlock = document.getElementById('replyEditBlock');
+  var replyEditPencil = document.getElementById('replyEditPencil');
+  var replyEditCancel = document.getElementById('replyEditCancel');
+  if (replyViewBlock && replyEditBlock && replyEditPencil) {
+    replyEditPencil.addEventListener('click', function() {
+      replyViewBlock.style.display = 'none';
+      replyEditBlock.style.display = 'block';
+    });
+    if (replyEditCancel) {
+      replyEditCancel.addEventListener('click', function() {
+        replyViewBlock.style.display = 'flex';
+        replyEditBlock.style.display = 'none';
+        var replyText = document.getElementById('replyText');
+        if (replyText && document.getElementById('replyViewText')) {
+          replyText.value = document.getElementById('replyViewText').textContent;
+        }
+      });
+    }
+  }
+})();
+
+(function() {
+  var btn = document.getElementById('saveMentorNotesBtn');
+  var textarea = document.getElementById('mentorNotesText');
+  var messageEl = document.getElementById('mentorNotesMessage');
+  if (!btn || !textarea) return;
+  var clientId = {{ client_profile.id }};
+  var csrfToken = document.querySelector('[name=csrfmiddlewaretoken]') && document.querySelector('[name=csrfmiddlewaretoken]').value;
+  btn.addEventListener('click', function() {
+    messageEl.style.display = 'none';
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+    fetch('/dashboard/mentor/clients/' + clientId + '/mentor-notes/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': csrfToken || '',
+      },
+      body: JSON.stringify({ notes: textarea.value })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.success) {
+        messageEl.style.display = 'block';
+        messageEl.className = 'success-message';
+        messageEl.innerHTML = '<i class="fas fa-check-circle"></i> Notes saved.';
+      } else {
+        messageEl.style.display = 'block';
+        messageEl.className = 'error-message';
+        messageEl.innerHTML = (data.error || 'Failed to save.');
+      }
+    })
+    .catch(function() {
+      messageEl.style.display = 'block';
+      messageEl.className = 'error-message';
+      messageEl.innerHTML = 'Network error. Try again.';
+    })
+    .finally(function() {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-save"></i> Save notes';
+    });
+  });
+})();
 </script>
 
 <style>
@@ -289,22 +426,101 @@ function saveReply(reviewId) {
   border-radius: 12px;
   font-size: 0.8rem;
   font-weight: 500;
+  transition: all 0.2s ease;
 }
 
-.confirmed-badge {
-  background: rgba(16, 185, 129, 0.1);
-  color: #065f46;
+.status-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: capitalize;
+  white-space: nowrap;
 }
 
-.active-badge {
-  background: rgba(59, 130, 246, 0.1);
-  color: #1e40af;
+/* Session Status Colors (Card + Dot) */
+.status-confirmed {
+  background: rgba(34, 197, 94, 0.08) !important;
+  border-color: rgba(34, 197, 94, 0.3) !important;
+  color: #15803d !important;
+}
+.timeline-dot.status-confirmed {
+  border-color: #22c55e !important;
 }
 
-.inactive-badge {
-  background: rgba(107, 114, 128, 0.1);
-  color: #374151;
+.status-invited {
+  background: rgba(234, 179, 8, 0.08) !important;
+  border-color: rgba(234, 179, 8, 0.3) !important;
+  color: #a16207 !important;
 }
+.timeline-dot.status-invited {
+  border-color: #eab308 !important;
+}
+
+.status-draft {
+  background: rgba(249, 115, 22, 0.08) !important;
+  border-color: rgba(249, 115, 22, 0.3) !important;
+  color: #c2410c !important;
+}
+.timeline-dot.status-draft {
+  border-color: #f97316 !important;
+}
+
+.status-expired {
+  background: rgba(148, 163, 184, 0.08) !important;
+  border-color: rgba(148, 163, 184, 0.3) !important;
+  color: #475569 !important;
+}
+.timeline-dot.status-expired {
+  border-color: #94a3b8 !important;
+}
+
+.status-completed {
+  background: rgba(21, 128, 61, 0.08) !important;
+  border-color: rgba(21, 128, 61, 0.3) !important;
+  color: #14532d !important;
+}
+.timeline-dot.status-completed {
+  border-color: #15803d !important;
+}
+
+.status-refunded {
+  background: rgba(99, 102, 241, 0.08) !important;
+  border-color: rgba(99, 102, 241, 0.3) !important;
+  color: #4338ca !important;
+}
+.timeline-dot.status-refunded {
+  border-color: #6366f1 !important;
+}
+
+.status-collision {
+  background: rgba(239, 68, 68, 0.08) !important;
+  border-color: rgba(239, 68, 68, 0.3) !important;
+  color: #b91c1c !important;
+}
+.timeline-dot.status-collision {
+  border-color: #ef4444 !important;
+}
+
+/* Badge specific overrides to keep them readable on colored backgrounds */
+.status-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: rgba(255,255,255,0.5) !important;
+  border: 1px solid currentColor;
+}
+
+/* Fallbacks for legacy classes if any */
+.active-badge { background: rgba(34, 197, 94, 0.1); color: #22c55e; }
+.waiting-badge { background: rgba(234, 179, 8, 0.1); color: #eab308; }
+.inactive-badge { background: rgba(148, 163, 184, 0.1); color: #94a3b8; }
+.confirmed-badge { background: rgba(21, 128, 61, 0.1); color: #15803d; }
 
 .success-message {
   padding: 12px 16px;
@@ -320,6 +536,43 @@ function saveReply(reviewId) {
   color: #991b1b;
   border-radius: 8px;
   border-left: 3px solid #ef4444;
+}
+
+/* Animations and Premium Touches */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.dashboard-card {
+  animation: fadeInUp 0.4s ease-out forwards;
+}
+
+.client-detail-header {
+  animation: fadeInUp 0.5s ease-out forwards;
+}
+
+.session-item-card:hover {
+  transform: translateY(-2px);
+}
+
+.btn-primary {
+  transition: all 0.2s ease;
+}
+
+.btn-primary:active {
+  transform: scale(0.98);
+}
+
+.client-detail-social-link:hover {
+  background: #f8fafc !important;
+  border-color: var(--dash-primary) !important;
 }
 </style>
 {% endblock %}

@@ -1,4 +1,5 @@
 from django.shortcuts import render, redirect, get_object_or_404
+from django.urls import reverse
 from django.contrib.auth.decorators import login_required
 from django.conf import settings
 from django.contrib import messages
@@ -3016,6 +3017,7 @@ def get_availability(request):
                     'can_remind': can_remind,
                     'last_invite_sent_at': last_sent_at.isoformat() if last_sent_at else None,
                     'is_first_session': is_first_session,
+                    'meeting_url': getattr(s, 'meeting_url', None) or None,
                 })
         except Exception:
             sessions = []
@@ -3049,10 +3051,15 @@ def client_suggestions(request):
             try:
                 up = rel.client
                 email = up.user.email if up and up.user else ''
+                avatar_url = ''
+                if up and getattr(up, 'profile_picture', None) and up.profile_picture:
+                    avatar_url = request.build_absolute_uri(up.profile_picture.url)
                 clients.append({
+                    'id': up.id if up else None,
                     'first_name': up.first_name if up else '',
                     'last_name': up.last_name if up else '',
                     'email': email,
+                    'profile_picture_url': avatar_url or None,
                 })
             except Exception:
                 continue
@@ -3946,54 +3953,154 @@ def remind_session(request):
 
 @login_required
 def session_detail(request, session_id: int):
-    """Mentor-only dedicated session detail page."""
-    if not hasattr(request.user, 'profile'):
+    """Redirect to my-sessions and open session detail modal (no dedicated page)."""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
         return redirect('general:index')
-    
-    # Prevent admin users from accessing mentor dashboard
-    if request.user.profile.role == 'admin':
-        from django.contrib.auth import logout
-        logout(request)
-        messages.error(request, "You do not have permission to access this page.")
-        return redirect('accounts:login')
-    
-    if request.user.profile.role != 'mentor':
-        return redirect('general:index')
-
     mentor_profile = request.user.mentor_profile
     from general.models import Session
-
     s = mentor_profile.sessions.filter(id=session_id).first()
     if not s:
         messages.error(request, 'Session not found.')
         return redirect('general:dashboard_mentor:my_sessions')
+    # Redirect to my-sessions with query param so the modal can be opened on load
+    from urllib.parse import urlencode
+    url = reverse('general:dashboard_mentor:my_sessions') + '?' + urlencode({'openSession': session_id})
+    return redirect(url)
 
+
+@login_required
+@require_POST
+def cancel_session(request, session_id: int):
+    """Cancel (delete) a single session and notify the client. Reuses the same flow as save_availability deleted_sessions."""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        return JsonResponse({'success': False, 'error': 'Forbidden'}, status=403)
+    from general.models import Session
+    mentor_profile = request.user.mentor_profile
+    session = mentor_profile.sessions.filter(id=session_id).exclude(
+        status__in=['completed', 'refunded', 'expired']
+    ).prefetch_related('attendees').first()
+    if not session:
+        return JsonResponse({'success': False, 'error': 'Session not found or cannot be cancelled'}, status=404)
+    deleted_sessions_info = []
+    session_data = {
+        'id': session.id,
+        'start_datetime': session.start_datetime,
+        'end_datetime': session.end_datetime,
+        'session_price': session.session_price,
+        'session_type': getattr(session, 'session_type', 'individual'),
+        'status': session.status,
+    }
+    for attendee in session.attendees.all():
+        client_email = (attendee.email or '').lower().strip()
+        if client_email:
+            deleted_sessions_info.append({'session_data': session_data, 'client_email': client_email})
+    session.delete()
+    if deleted_sessions_info:
+        deleted_sessions_by_client = {}
+        for item in deleted_sessions_info:
+            client_email = item['client_email']
+            if client_email not in deleted_sessions_by_client:
+                deleted_sessions_by_client[client_email] = []
+            deleted_sessions_by_client[client_email].append(item['session_data'])
+        for client_email, deleted_sessions_list in deleted_sessions_by_client.items():
+            try:
+                mentor_name = f"{mentor_profile.first_name} {mentor_profile.last_name}".strip() or 'your mentor'
+                EmailService.send_email(
+                    subject='Session Cancelled',
+                    recipient_email=client_email,
+                    template_name='session_deleted_notification',
+                    context={
+                        'mentor_name': mentor_name,
+                        'deleted_sessions': deleted_sessions_list,
+                        'client_email': client_email,
+                    },
+                    fail_silently=True,
+                )
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error('Error sending session deleted email to %s: %s', client_email, str(e))
+    return JsonResponse({'success': True})
+
+
+@login_required
+def session_detail_api(request, session_id: int):
+    """Return session detail as JSON for the session detail modal."""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        return JsonResponse({'success': False, 'error': 'Forbidden'}, status=403)
+    from general.models import Session
+    mentor_profile = request.user.mentor_profile
+    s = mentor_profile.sessions.filter(id=session_id).first()
+    if not s:
+        return JsonResponse({'success': False, 'error': 'Session not found'}, status=404)
     client_email = None
     try:
         client_email = s.attendees.first().email if s.attendees.exists() else None
     except Exception:
         client_email = None
-
-    # Render times in mentor timezone (best effort)
-    tz_name = mentor_profile.selected_timezone or mentor_profile.detected_timezone or mentor_profile.time_zone or 'UTC'
+    tz_name = mentor_profile.selected_timezone or mentor_profile.detected_timezone or getattr(mentor_profile, 'time_zone', None) or 'UTC'
     start_local = None
     end_local = None
     try:
         from zoneinfo import ZoneInfo
         tzinfo = ZoneInfo(str(tz_name))
-        start_local = s.start_datetime.astimezone(tzinfo) if s.start_datetime else None
-        end_local = s.end_datetime.astimezone(tzinfo) if s.end_datetime else None
+        start_local = s.start_datetime.astimezone(tzinfo).isoformat() if s.start_datetime else None
+        end_local = s.end_datetime.astimezone(tzinfo).isoformat() if s.end_datetime else None
     except Exception:
-        start_local = s.start_datetime
-        end_local = s.end_datetime
+        start_local = s.start_datetime.isoformat() if s.start_datetime else None
+        end_local = s.end_datetime.isoformat() if s.end_datetime else None
+    return JsonResponse({
+        'success': True,
+        'session': {
+            'id': s.id,
+            'status': s.status or 'draft',
+            'client_email': client_email,
+            'mentor_timezone': tz_name,
+            'start_local': start_local,
+            'end_local': end_local,
+            'session_price': str(s.session_price) if s.session_price is not None else None,
+            'note': s.note or '',
+            'tasks': s.tasks if isinstance(s.tasks, list) else [],
+            'meeting_url': getattr(s, 'meeting_url', None) or None,
+        }
+    })
 
-    return render(request, 'dashboard_mentor/session_detail.html', {
-        'debug': settings.DEBUG,
-        'session': s,
-        'client_email': client_email,
-        'mentor_timezone': tz_name,
-        'start_local': start_local,
-        'end_local': end_local,
+
+@login_required
+def ongoing_session_api(request):
+    """Return the mentor's currently ongoing confirmed session (if any) for the navbar indicator."""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        return JsonResponse({'success': True, 'session': None})
+    from general.models import Session
+    now = timezone.now()
+    ongoing = (
+        request.user.mentor_profile.sessions.filter(
+            status='confirmed',
+            start_datetime__lte=now,
+            end_datetime__gte=now,
+        )
+        .order_by('-start_datetime')
+        .first()
+    )
+    if not ongoing:
+        return JsonResponse({'success': True, 'session': None})
+    client_name = ''
+    try:
+        att = ongoing.attendees.first()
+        if att and hasattr(att, 'user_profile'):
+            fn = getattr(att.user_profile, 'first_name', '') or ''
+            ln = getattr(att.user_profile, 'last_name', '') or ''
+            client_name = f'{fn} {ln}'.strip() or att.email or 'Client'
+        elif att:
+            client_name = att.email or 'Client'
+    except Exception:
+        client_name = 'Client'
+    return JsonResponse({
+        'success': True,
+        'session': {
+            'id': ongoing.id,
+            'client_name': client_name or 'Client',
+        },
     })
 
 
@@ -4354,6 +4461,33 @@ def client_detail(request, client_id):
         'request_error': request_error,
         'client_projects': client_projects,
     })
+
+
+@login_required
+@require_POST
+def save_mentor_notes(request, client_id):
+    """Save mentor's private notes for this client (relationship.mentor_notes)."""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        return JsonResponse({'success': False, 'error': 'Forbidden'}, status=403)
+    try:
+        data = json.loads(request.body) if request.body else {}
+    except (ValueError, TypeError):
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+    notes = data.get('notes')
+    if notes is None:
+        notes = ''
+    notes = str(notes).strip() if notes else ''
+    mentor_profile = request.user.mentor_profile
+    client_profile = get_object_or_404(UserProfile, id=client_id)
+    relationship = MentorClientRelationship.objects.filter(
+        mentor=mentor_profile,
+        client=client_profile
+    ).first()
+    if not relationship:
+        return JsonResponse({'success': False, 'error': 'Relationship not found'}, status=404)
+    relationship.mentor_notes = notes or None
+    relationship.save(update_fields=['mentor_notes'])
+    return JsonResponse({'success': True})
 
 
 @login_required

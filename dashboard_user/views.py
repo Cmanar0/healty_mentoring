@@ -198,11 +198,23 @@ def profile(request):
             first_name = request.POST.get("first_name")
             last_name = request.POST.get("last_name")
             time_zone = request.POST.get("time_zone")
+            instagram_name = request.POST.get("instagram_name")
+            linkedin_name = request.POST.get("linkedin_name")
+            personal_website = request.POST.get("personal_website")
+            video_introduction_url = request.POST.get("video_introduction_url")
             
             if first_name is not None:
                 profile.first_name = first_name
             if last_name is not None:
                 profile.last_name = last_name
+            if instagram_name is not None:
+                profile.instagram_name = (instagram_name or '').strip() or None
+            if linkedin_name is not None:
+                profile.linkedin_name = (linkedin_name or '').strip() or None
+            if personal_website is not None:
+                profile.personal_website = (personal_website or '').strip() or None
+            if video_introduction_url is not None:
+                profile.video_introduction_url = (video_introduction_url or '').strip() or None
             
             # Store old timezone before updating
             old_selected_timezone = profile.selected_timezone
@@ -1050,6 +1062,7 @@ def session_management(request):
                         session.changed_by = None
                         session.status = 'confirmed'
                         session.save()
+                        session.ensure_meeting_url()
                         messages.success(request, f'Session #{session_id} changes confirmed.')
                     except Session.DoesNotExist:
                         messages.error(request, 'Session not found.')
@@ -1083,6 +1096,7 @@ def session_management(request):
                         pass
                     session.status = 'confirmed'
                     session.save()
+                    session.ensure_meeting_url()
                     inv.accepted_at = timezone.now()
                     inv.save()
                     
@@ -1119,6 +1133,7 @@ def session_management(request):
                         pass
                     session.status = 'confirmed'
                     session.save()
+                    session.ensure_meeting_url()
                     inv.accepted_at = timezone.now()
                     inv.save()
                     
@@ -1143,6 +1158,7 @@ def session_management(request):
                     session.changed_by = None
                     session.status = 'confirmed'
                     session.save()
+                    session.ensure_meeting_url()
                     confirmed_count += 1
                 
                 if confirmed_count > 0:
@@ -1419,6 +1435,7 @@ def book_session(request):
             session_price=price,
             tasks=[],
         )
+        session.ensure_meeting_url()
         mentor_profile.sessions.add(session)
         
         if user:

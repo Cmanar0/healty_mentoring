@@ -1,0 +1,109 @@
+{# Cancel session confirmation modal - open via openCancelSessionModal(sessionId) #}
+<div id="cancelSessionModalOverlay" class="session-detail-modal-overlay" aria-hidden="true" style="display: none;">
+  <div class="session-detail-modal-backdrop" data-cancel-session-close></div>
+  <div class="session-detail-modal" role="dialog" aria-modal="true" aria-labelledby="cancelSessionModalTitle" style="max-width: 420px;">
+    <header class="session-detail-modal-header">
+      <h2 id="cancelSessionModalTitle" class="session-detail-modal-title">Cancel session</h2>
+      <button type="button" class="session-detail-modal-close" data-cancel-session-close aria-label="Close">&times;</button>
+    </header>
+    <div class="session-detail-modal-body">
+      <p id="cancelSessionModalMessage" style="margin: 0 0 1.25rem; color: var(--dash-text, #334155);">
+        Are you sure you want to cancel this session? The client will be notified.
+      </p>
+      <div id="cancelSessionModalError" style="display: none; color: var(--dash-error, #dc2626); margin-bottom: 1rem; font-size: 0.9rem;"></div>
+      <div style="display: flex; gap: 10px; justify-content: flex-end;">
+        <button type="button" class="btn btn-outline" data-cancel-session-close>Keep session</button>
+        <button type="button" id="cancelSessionConfirmBtn" class="btn btn-primary" style="background: var(--dash-error, #dc2626); border-color: var(--dash-error, #dc2626);">Cancel session</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+(function() {
+  var cancelUrlTemplate = "{% url 'general:dashboard_mentor:cancel_session' 0 %}";  // .../session/0/cancel/
+  var overlay = document.getElementById('cancelSessionModalOverlay');
+  var confirmBtn = document.getElementById('cancelSessionConfirmBtn');
+  var errorEl = document.getElementById('cancelSessionModalError');
+  var currentSessionId = null;
+  var onSuccess = null;
+
+  function getCookie(name) {
+    var match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+    return match ? decodeURIComponent(match[2]) : '';
+  }
+
+  function closeModal() {
+    if (overlay) {
+      overlay.style.display = 'none';
+      overlay.setAttribute('aria-hidden', 'true');
+    }
+    currentSessionId = null;
+    onSuccess = null;
+    if (errorEl) errorEl.style.display = 'none';
+  }
+
+  window.openCancelSessionModal = function(sessionId, successCallback) {
+    currentSessionId = sessionId;
+    onSuccess = typeof successCallback === 'function' ? successCallback : null;
+    if (errorEl) errorEl.style.display = 'none';
+    if (overlay) {
+      overlay.style.display = 'flex';
+      overlay.setAttribute('aria-hidden', 'false');
+    }
+  };
+
+  function doCancel() {
+    if (!currentSessionId) return;
+    var url = cancelUrlTemplate.replace('/0/', '/' + currentSessionId + '/');
+    if (errorEl) errorEl.style.display = 'none';
+    if (confirmBtn) confirmBtn.disabled = true;
+    fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCookie('csrftoken'),
+        'X-Requested-With': 'XMLHttpRequest'
+      },
+      credentials: 'same-origin',
+      body: JSON.stringify({})
+    })
+      .then(function(r) { return r.json().then(function(data) { return { ok: r.ok, data: data }; }); })
+      .then(function(result) {
+        if (result.ok && result.data.success) {
+          closeModal();
+          if (onSuccess) onSuccess();
+          if (typeof refreshMySessionsPage === 'function') refreshMySessionsPage();
+          if (typeof refreshDashboardUpcomingSessions === 'function') refreshDashboardUpcomingSessions();
+          if (typeof window.MentorCalendarLoadAvailability === 'function') window.MentorCalendarLoadAvailability();
+        } else {
+          if (errorEl) {
+            errorEl.textContent = result.data.error || 'Failed to cancel session.';
+            errorEl.style.display = 'block';
+          }
+        }
+      })
+      .catch(function() {
+        if (errorEl) {
+          errorEl.textContent = 'Network error. Please try again.';
+          errorEl.style.display = 'block';
+        }
+      })
+      .finally(function() {
+        if (confirmBtn) confirmBtn.disabled = false;
+      });
+  }
+
+  if (confirmBtn) confirmBtn.addEventListener('click', doCancel);
+  [].forEach.call(document.querySelectorAll('[data-cancel-session-close]'), function(el) {
+    el.addEventListener('click', closeModal);
+  });
+  if (overlay) {
+    overlay.addEventListener('click', function(e) {
+      if (e.target === overlay || e.target.classList.contains('session-detail-modal-backdrop')) closeModal();
+    });
+  }
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && overlay && overlay.style.display === 'flex') closeModal();
+  });
+})();
+</script>

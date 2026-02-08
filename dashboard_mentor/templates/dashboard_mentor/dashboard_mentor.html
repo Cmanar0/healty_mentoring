@@ -230,7 +230,7 @@
                     <div class="session-timeline-container scrollable-content" id="dashboardUpcomingSessions">
                         {% if upcoming_sessions %}
                             {% for session in upcoming_sessions %}
-                                <div class="session-item status-{{ session.status }}">
+                                <div class="session-item status-{{ session.status }}" data-session-id="{{ session.id }}" data-clickable-session>
                                     <div class="session-left">
                                         <div class="session-date">
                                             <span class="date-day">{{ session.start_datetime|date:"d" }}</span>
@@ -255,8 +255,9 @@
                                                 <i class="fas fa-ellipsis-h"></i>
                                             </button>
                                             <div class="dropdown-menu">
-                                                <button class="dropdown-item">View Details</button>
-                                                <button class="dropdown-item">Edit Session</button>
+                                                <button type="button" class="dropdown-item" onclick="if (typeof openSessionDetailModal === 'function') openSessionDetailModal({{ session.id }});">View Details</button>
+                                                <button type="button" class="dropdown-item" onclick="if (typeof openSessionSettingsForSessionId === 'function') openSessionSettingsForSessionId({{ session.id }});">Edit Session</button>
+                                                <button type="button" class="dropdown-item" onclick="if (typeof openCancelSessionModal === 'function') openCancelSessionModal({{ session.id }});">Delete</button>
                                             </div>
                                         </div>
                                     </div>
@@ -265,7 +266,7 @@
                             
                             {% if has_more_sessions %}
                                 <div class="session-item session-item-view-all" style="border-left: none; padding: 16px; text-align: center;">
-                                    <a href="http://localhost:8000/dashboard/mentor/my-sessions/" class="btn-link" style="color: var(--dash-text-muted); font-weight: 500;">View all upcoming sessions</a>
+                                    <a href="{% url 'general:dashboard_mentor:my_sessions' %}" class="btn-link" style="color: var(--dash-text-muted); font-weight: 500;">View all upcoming sessions</a>
                                 </div>
                             {% endif %}
                         {% else %}
@@ -1398,7 +1399,7 @@ document.addEventListener('keydown', function(e) {
             const firstSessionTag = session.is_first_session ? '<span class="first-session-tag">1st</span>' : '';
             
             const sessionHTML = `
-              <div class="session-item status-${session.status}">
+              <div class="session-item status-${session.status}" data-session-id="${session.id}" data-clickable-session>
                 <div class="session-left">
                   <div class="session-date">
                     <span class="date-day">${day}</span>
@@ -1423,8 +1424,9 @@ document.addEventListener('keydown', function(e) {
                       <i class="fas fa-ellipsis-h"></i>
                     </button>
                     <div class="dropdown-menu">
-                      <button class="dropdown-item">View Details</button>
-                      <button class="dropdown-item">Edit Session</button>
+                      <button type="button" class="dropdown-item" onclick="if (typeof openSessionDetailModal === 'function') openSessionDetailModal(${session.id});">View Details</button>
+                      <button type="button" class="dropdown-item" onclick="if (typeof openSessionSettingsForSessionId === 'function') openSessionSettingsForSessionId(${session.id});">Edit Session</button>
+                      <button type="button" class="dropdown-item" onclick="if (typeof openCancelSessionModal === 'function') openCancelSessionModal(${session.id});">Delete</button>
                     </div>
                   </div>
                 </div>
@@ -1438,7 +1440,7 @@ document.addEventListener('keydown', function(e) {
           if (data.has_more_sessions) {
             const viewAllHTML = `
               <div class="session-item session-item-view-all" style="border-left: none; padding: 16px; text-align: center;">
-                <a href="http://localhost:8000/dashboard/mentor/my-sessions/" class="btn-link" style="color: var(--dash-text-muted); font-weight: 500;">View all upcoming sessions</a>
+                <a href="{% url 'general:dashboard_mentor:my_sessions' %}" class="btn-link" style="color: var(--dash-text-muted); font-weight: 500;">View all upcoming sessions</a>
               </div>
             `;
             container.insertAdjacentHTML('beforeend', viewAllHTML);
@@ -1457,7 +1459,26 @@ document.addEventListener('keydown', function(e) {
     }
   };
 })();
+
+// Click on session row (not dropdown) opens session settings modal
+(function() {
+  var container = document.getElementById('dashboardUpcomingSessions');
+  if (!container) return;
+  container.addEventListener('click', function(e) {
+    var row = e.target.closest('.session-item[data-clickable-session]');
+    if (!row) return;
+    if (e.target.closest('.session-right')) return;
+    var sessionId = row.getAttribute('data-session-id');
+    if (sessionId && typeof openSessionSettingsForSessionId === 'function') {
+      openSessionSettingsForSessionId(parseInt(sessionId, 10));
+    }
+  });
+})();
 </script>
+
+<style>
+  .session-item[data-clickable-session] .session-left { cursor: pointer; }
+</style>
 
 <!-- Include Create Project Modal -->
 {% include "general/modals/create_project_modal.html" %}

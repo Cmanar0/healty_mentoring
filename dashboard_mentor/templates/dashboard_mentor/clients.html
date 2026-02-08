@@ -4,83 +4,109 @@
 {% block page_title %}Clients{% endblock %}
 
 {% block dashboard_content %}
-<div class="clients-page">
-  <div class="clients-header">
-    <h1>My Clients</h1>
-    <button class="btn-invite-client" onclick="openInviteClientModal()">
-      <i class="fas fa-user-plus"></i> Invite Client
+<div class="dashboard-content-container" style="min-width: 100%; padding: 32px;">
+  <div class="clients-header" style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 32px; flex-wrap: wrap; gap: 20px;">
+    <div>
+      <h1 style="font-size: 2.25rem; font-weight: 800; color: var(--dash-text-main); margin: 0 0 4px 0; font-family: 'Outfit', sans-serif;">My Clients</h1>
+      <p style="color: var(--dash-text-muted); margin: 0; font-size: 1rem;">Manage and interact with all your mentored clients</p>
+    </div>
+    <button class="btn btn-primary" onclick="openInviteClientModal()" style="border-radius: 14px; padding: 12px 24px; font-weight: 700; display: inline-flex; align-items: center; gap: 10px; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);">
+      <i class="fas fa-user-plus"></i> Invite New Client
     </button>
   </div>
 
-  <div class="clients-container">
+  <div class="clients-list-wrapper">
     {% if relationships %}
-      <div class="clients-table">
-        <div class="clients-table-header">
-          <div class="client-col-name">Name</div>
-          <div class="client-col-email">Email</div>
-          <div class="client-col-status">Status</div>
-          <div class="client-col-sessions">Sessions</div>
-          <div class="client-col-review">Review</div>
-          <div class="client-col-actions"></div>
+      <div class="clients-grid" style="display: flex; flex-direction: column; gap: 16px;">
+        <div class="list-header" style="display: grid; grid-template-columns: 2.5fr 2fr 1.5fr 1fr 1fr 60px; padding: 0 24px 12px; color: var(--dash-text-muted); font-size: 0.85rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid var(--dash-border);">
+          <div>Client</div>
+          <div>Contact</div>
+          <div>Status</div>
+          <div style="text-align: center;">Sessions</div>
+          <div style="text-align: center;">Review</div>
+          <div></div>
         </div>
-        <div class="clients-table-body">
-          {% for relationship in relationships %}
-            <a href="{% url 'general:dashboard_mentor:client_detail' relationship.client.id %}" class="client-row-link">
-            <div class="client-row {% if relationship.status == 'inactive' and not relationship.confirmed %}pending{% endif %}">
-              <div class="client-col-name">
-                {% if relationship.client.first_name or relationship.client.last_name %}
-                  {{ relationship.client.first_name }} {{ relationship.client.last_name }}
-                {% else %}
-                  <span style="color: #9ca3af; font-style: italic;">Not set</span>
-                {% endif %}
-              </div>
-              <div class="client-col-email">{{ relationship.client.user.email }}</div>
-              <div class="client-col-status">
-                {% if relationship.status == 'confirmed' and relationship.confirmed %}
-                  <span class="status-badge confirmed-badge">Confirmed</span>
-                {% elif relationship.status == 'active' %}
-                  <span class="status-badge active-badge">Active</span>
-                {% elif relationship.status == 'inactive' and not relationship.confirmed %}
-                  {% if relationship.client.user.is_email_verified %}
-                    <span class="status-badge waiting-badge">Waiting for Confirmation</span>
-                  {% else %}
-                    <span class="status-badge pending-badge">Pending Verification</span>
-                  {% endif %}
-                {% elif relationship.status == 'denied' %}
-                  <span class="status-badge denied-badge">Denied</span>
-                {% else %}
-                  <span class="status-badge inactive-badge">Inactive</span>
-                {% endif %}
-              </div>
-              <div class="client-col-sessions">{{ relationship.sessions_count }}</div>
-              <div class="client-col-review">
-                {% if relationship.review_provided %}
-                  <i class="fas fa-check-circle" style="color: #10b981; font-size: 1.2rem;"></i>
-                {% else %}
-                  <span style="color: #9ca3af;">—</span>
-                {% endif %}
-              </div>
-              <div class="client-col-actions">
-                <div class="client-actions-dropdown">
-                  <button class="client-actions-btn" data-relationship-id="{{ relationship.id }}">
-                    <i class="fas fa-ellipsis-v"></i>
-                  </button>
-                  <div class="client-actions-menu" id="actions-menu-{{ relationship.id }}">
-                    {% if relationship.status == 'inactive' and not relationship.confirmed %}
-                      <button class="client-action-item resend-btn" data-relationship-id="{{ relationship.id }}">
-                        <i class="fas fa-paper-plane"></i> Resend Email
-                      </button>
+        {% for relationship in relationships %}
+          <div class="client-card-wrapper" style="position: relative;">
+            <a href="{% url 'general:dashboard_mentor:client_detail' relationship.client.id %}" class="client-card-link" style="text-decoration: none; color: inherit; display: block;">
+              <div class="client-modern-row" style="display: grid; grid-template-columns: 2.5fr 2fr 1.5fr 1fr 1fr 60px; align-items: center; padding: 20px 24px; background: white; border-radius: 20px; border: 1px solid var(--dash-border); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.02);" onmouseover="this.style.borderColor='var(--dash-primary)'; this.style.boxShadow='0 10px 15px -3px rgba(0, 0, 0, 0.08)'; this.style.transform='translateY(-2px)';" onmouseout="this.style.borderColor='var(--dash-border)'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.02)'; this.style.transform='translateY(0)';" class="client-card">
+                <div style="display: flex; align-items: center; gap: 16px;">
+                  <div style="width: 48px; height: 48px; border-radius: 14px; overflow: hidden; background: #f1f5f9; flex-shrink: 0; border: 1px solid var(--dash-border);">
+                    {% if relationship.client.profile_picture %}
+                      <img src="{{ relationship.client.profile_picture.url }}" alt="{{ relationship.client.first_name }}" style="width: 100%; height: 100%; object-fit: cover;">
+                    {% else %}
+                      <div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: var(--dash-text-muted); font-size: 1.25rem;">
+                        <i class="fas fa-user"></i>
+                      </div>
                     {% endif %}
-                    <button class="client-action-item danger delete-btn" data-relationship-id="{{ relationship.id }}">
-                      <i class="fas fa-trash"></i> Remove from List
+                  </div>
+                  <div>
+                    <div style="font-weight: 700; color: var(--dash-text-main); font-size: 1.1rem; font-family: 'Outfit', sans-serif;">
+                      {% if relationship.client.first_name or relationship.client.last_name %}
+                        {{ relationship.client.first_name }} {{ relationship.client.last_name }}
+                      {% else %}
+                        <span style="color: #9ca3af; font-style: italic;">Unnamed Client</span>
+                      {% endif %}
+                    </div>
+                    <div style="font-size: 0.85rem; color: var(--dash-text-muted);">Client since {{ relationship.created_at|date:"M Y" }}</div>
+                  </div>
+                </div>
+                
+                <div style="font-size: 0.95rem; color: var(--dash-text-main); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                  <i class="far fa-envelope" style="margin-right: 8px; color: var(--dash-text-muted);"></i>{{ relationship.client.user.email }}
+                </div>
+                
+                <div>
+                  {% if relationship.status == 'confirmed' and relationship.confirmed %}
+                    <span class="status-badge" style="background: rgba(16, 185, 129, 0.1); color: #065f46; font-size: 0.75rem; font-weight: 700; padding: 4px 12px; border-radius: 20px;"><i class="fas fa-check-circle" style="margin-right: 4px;"></i>My Client</span>
+                  {% elif relationship.status == 'active' %}
+                    <span class="status-badge" style="background: rgba(59, 130, 246, 0.1); color: #1e40af; font-size: 0.75rem; font-weight: 700; padding: 4px 12px; border-radius: 20px;"><i class="fas fa-bolt" style="margin-right: 4px;"></i>Active</span>
+                  {% elif relationship.status == 'inactive' and not relationship.confirmed %}
+                    {% if relationship.client.user.is_email_verified %}
+                      <span class="status-badge" style="background: rgba(245, 158, 11, 0.1); color: #92400e; font-size: 0.75rem; font-weight: 700; padding: 4px 12px; border-radius: 20px;"><i class="fas fa-clock" style="margin-right: 4px;"></i>Waiting</span>
+                    {% else %}
+                      <span class="status-badge" style="background: #f1f5f9; color: var(--dash-text-muted); font-size: 0.75rem; font-weight: 700; padding: 4px 12px; border-radius: 20px;"><i class="fas fa-user-clock" style="margin-right: 4px;"></i>Unverified</span>
+                    {% endif %}
+                  {% else %}
+                    <span class="status-badge" style="background: rgba(107, 114, 128, 0.1); color: #374151; font-size: 0.75rem; font-weight: 700; padding: 4px 12px; border-radius: 20px;">{{ relationship.get_status_display }}</span>
+                  {% endif %}
+                </div>
+                
+                <div style="text-align: center; font-weight: 700; color: var(--dash-text-main); font-size: 1.1rem;">
+                  {{ relationship.sessions_count }}
+                </div>
+                
+                <div style="text-align: center;">
+                  {% if relationship.review_provided %}
+                    <div style="width: 32px; height: 32px; border-radius: 50%; background: rgba(16, 185, 129, 0.1); color: var(--dash-primary); display: inline-flex; align-items: center; justify-content: center; font-size: 1rem;">
+                      <i class="fas fa-star"></i>
+                    </div>
+                  {% else %}
+                    <span style="color: #e2e8f0;"><i class="fas fa-minus"></i></span>
+                  {% endif %}
+                </div>
+                
+                <div style="display: flex; justify-content: flex-end;">
+                  <div class="client-actions-dropdown" onclick="event.stopPropagation()">
+                    <button class="client-actions-btn" data-relationship-id="{{ relationship.id }}" style="width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--dash-border); background: white; color: var(--dash-text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s;">
+                      <i class="fas fa-ellipsis-h"></i>
                     </button>
+                    <div class="client-actions-menu" id="actions-menu-{{ relationship.id }}" style="position: absolute; top: calc(100% + 8px); right: 0; background: white; border: 1px solid var(--dash-border); border-radius: 14px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); min-width: 190px; text-align: left; overflow: hidden;">
+                      {% if relationship.status == 'inactive' and not relationship.confirmed %}
+                        <button class="client-action-item resend-btn" data-relationship-id="{{ relationship.id }}" style="display: flex; align-items: center; gap: 10px; padding: 12px 16px; border: none; background: transparent; width: 100%; cursor: pointer; font-size: 0.9rem; color: var(--dash-text-main);">
+                          <i class="fas fa-paper-plane" style="color: var(--dash-primary);"></i> Resend Invite
+                        </button>
+                      {% endif %}
+                      <button class="client-action-item danger delete-btn" data-relationship-id="{{ relationship.id }}" style="display: flex; align-items: center; gap: 10px; padding: 12px 16px; border: none; background: transparent; width: 100%; cursor: pointer; font-size: 0.9rem; color: #ef4444;">
+                        <i class="fas fa-trash-alt"></i> Remove Client
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
             </a>
-          {% endfor %}
-        </div>
+          </div>
+        {% endfor %}
       </div>
     {% else %}
       <div class="no-clients">
@@ -94,53 +120,52 @@
   </div>
 </div>
 
-<!-- Invite Client Modal (same as dashboard) -->
-<div id="inviteClientModal" class="modal-overlay">
-    <div class="modal-content" style="max-width: 500px;">
-        <button type="button" class="modal-close" onclick="closeInviteClientModal()">
-            <i class="fas fa-times"></i>
-        </button>
-        
-        <div class="modal-header">
-            <h3 class="modal-title">Invite Client</h3>
-            <p class="modal-subtitle">Enter the email address of the client you want to invite.</p>
+<!-- Invite Client Modal -->
+<div id="inviteClientModal" class="modal-overlay" style="backdrop-filter: blur(8px); background: rgba(15, 23, 42, 0.4);">
+    <div class="modal-content" style="max-width: 500px; border-radius: 24px; border: 1px solid rgba(255,255,255,0.2); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); padding: 0; overflow: hidden;">
+        <div style="background: linear-gradient(135deg, var(--dash-primary), #34d399); padding: 32px 32px 10px; position: relative;">
+          <h3 style="color: white; font-size: 1.5rem; font-weight: 800; margin-bottom: 8px; font-family: 'Outfit', sans-serif;">Invite Client</h3>
+          <p style="color: rgba(255,255,255,0.9); font-size: 0.95rem; margin-bottom: 24px;">Expand your network and start a new productive relationship.</p>
+          <button type="button" class="modal-close" onclick="closeInviteClientModal()" style="position: absolute; top: 20px; right: 20px; background: rgba(255,255,255,0.2); border: none; width: 32px; height: 32px; border-radius: 50%; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s;">
+              <i class="fas fa-times"></i>
+          </button>
         </div>
         
-        <div style="margin-bottom: 20px; padding: 16px; background: rgba(16, 185, 129, 0.1); border-radius: 8px; border-left: 3px solid #10b981;">
-            <p style="margin: 0; font-size: 0.9rem; color: #065f46; line-height: 1.5;">
-                <strong>What happens when you invite:</strong><br>
-                • The user will be added to your client list immediately<br>
-                • An unverified account will be created for them<br>
-                • They will receive an invitation email<br>
-                • They can complete registration via a special link
-            </p>
+        <div style="padding: 32px;">
+          <div style="margin-bottom: 24px; padding: 16px; background: #f8fafc; border-radius: 16px; border: 1px solid var(--dash-border);">
+              <p style="margin: 0; font-size: 0.85rem; color: var(--dash-text-muted); line-height: 1.6;">
+                  Enter the email address of the client you want to invitation. They will receive a link to join your circle.
+              </p>
+          </div>
+          
+          <form id="inviteClientForm">
+              {% csrf_token %}
+              <div style="margin-bottom: 24px;">
+                  <label for="clientEmailInput" style="display: block; margin-bottom: 8px; font-weight: 700; color: var(--dash-text-main); font-size: 0.9rem;">Email Address</label>
+                  <input 
+                      type="email" 
+                      id="clientEmailInput" 
+                      name="email" 
+                      required 
+                      placeholder="client@example.com"
+                      style="width: 100%; padding: 14px 16px; border: 1px solid var(--dash-border); border-radius: 14px; font-size: 1rem; box-sizing: border-box; background: #fff; transition: all 0.2s;"
+                      onfocus="this.style.borderColor='var(--dash-primary)'; this.style.boxShadow='0 0 0 4px rgba(16, 185, 129, 0.1)';"
+                      onblur="this.style.borderColor='var(--dash-border)'; this.style.boxShadow='none';"
+                  >
+              </div>
+              
+              <div id="inviteClientMessage" style="display: none; margin-bottom: 20px; border-radius: 12px;"></div>
+              
+              <div style="display: flex; gap: 12px;">
+                  <button type="button" onclick="closeInviteClientModal()" class="btn btn-secondary" style="flex: 1; border-radius: 14px; justify-content: center;">
+                      Cancel
+                  </button>
+                  <button type="submit" id="inviteClientSubmit" class="btn btn-primary" style="flex: 2; border-radius: 14px; justify-content: center; font-weight: 700;">
+                      <i class="fas fa-paper-plane" style="margin-right: 8px;"></i> Send Invite
+                  </button>
+              </div>
+          </form>
         </div>
-        
-        <form id="inviteClientForm">
-            {% csrf_token %}
-            <div style="margin-bottom: 20px;">
-                <label for="clientEmailInput" style="display: block; margin-bottom: 8px; font-weight: 500; color: var(--dash-text-main);">Email Address</label>
-                <input 
-                    type="email" 
-                    id="clientEmailInput" 
-                    name="email" 
-                    required 
-                    placeholder="client@example.com"
-                    style="width: 100%; padding: 12px; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 1rem; box-sizing: border-box;"
-                >
-            </div>
-            
-            <div id="inviteClientMessage" style="display: none; margin-bottom: 16px; padding: 12px; border-radius: 8px;"></div>
-            
-            <div style="display: flex; gap: 12px; justify-content: flex-end;">
-                <button type="button" onclick="closeInviteClientModal()" style="padding: 10px 20px; background: transparent; border: 1px solid #e5e7eb; border-radius: 8px; cursor: pointer; color: var(--dash-text-main);">
-                    Cancel
-                </button>
-                <button type="submit" id="inviteClientSubmit" style="padding: 10px 20px; background: var(--dash-primary); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500;">
-                    Send Invitation
-                </button>
-            </div>
-        </form>
     </div>
 </div>
 
@@ -363,158 +388,53 @@ function deleteClient(relationshipId) {
 </script>
 
 <style>
-.clients-page {
-  padding: 40px;
-  min-width: 600px;
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
-.clients-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 30px;
-}
-
-.clients-header h1 {
-  font-size: 2rem;
-  font-weight: 700;
-  color: var(--text-dark);
-  margin: 0;
-}
-
-.btn-invite-client {
-  background: var(--primary);
-  color: white;
-  border: none;
-  padding: 12px 24px;
-  border-radius: 8px;
-  font-size: 0.95rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background 0.2s ease;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.btn-invite-client:hover {
-  background: #059669;
-}
-
-.clients-container {
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-  overflow: visible;
-  position: relative;
-}
-
-.clients-table {
+.clients-grid {
   display: flex;
   flex-direction: column;
+  gap: 16px;
 }
 
-.clients-table-header {
+.list-header {
   display: grid;
-  grid-template-columns: 2fr 2fr 1.5fr 1fr 1fr 60px;
-  gap: 16px;
-  padding: 16px 20px;
-  background: #f9fafb;
-  border-bottom: 2px solid #e5e7eb;
-  font-weight: 600;
+  grid-template-columns: 2.5fr 2fr 1.5fr 1fr 1fr 60px;
+  padding: 0 24px 12px;
+  color: var(--dash-text-muted);
   font-size: 0.85rem;
-  color: var(--text-light);
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid var(--dash-border);
 }
 
-.clients-table-body {
-  display: flex;
-  flex-direction: column;
-  position: relative;
-}
-
-.client-row-link {
-  text-decoration: none;
-  color: inherit;
-  display: block;
-}
-
-.client-row {
+.client-modern-row {
   display: grid;
-  grid-template-columns: 2fr 2fr 1.5fr 1fr 1fr 60px;
-  gap: 16px;
-  padding: 20px;
-  border-bottom: 1px solid #e5e7eb;
-  transition: background 0.2s ease;
+  grid-template-columns: 2.5fr 2fr 1.5fr 1fr 1fr 60px;
   align-items: center;
-  position: relative;
-  cursor: pointer;
-}
-
-.client-row:last-child {
-  border-bottom: none;
-}
-
-.client-row:hover {
-  background: #f9fafb;
-}
-
-.client-row.pending {
-  background: rgba(245, 158, 11, 0.05);
-  border-left: 3px solid #f59e0b;
-}
-
-.client-col-actions {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-}
-
-.client-actions-dropdown {
-  position: relative;
-  z-index: 10;
-}
-
-.client-actions-dropdown button,
-.client-actions-menu {
-  position: relative;
-  z-index: 20;
-}
-
-.client-actions-btn {
-  background: transparent;
-  border: none;
-  color: var(--text-light);
-  cursor: pointer;
-  padding: 8px;
-  border-radius: 4px;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-}
-
-.client-actions-btn:hover {
-  background: #f1f5f9;
-  color: var(--text-dark);
-}
-
-.client-actions-menu {
-  position: absolute;
-  top: calc(100% + 4px);
-  right: 0;
+  padding: 20px 24px;
   background: white;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-  min-width: 180px;
-  z-index: 1000;
+  border-radius: 20px;
+  border: 1px solid var(--dash-border);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+}
+
+.client-modern-row:hover {
+  border-color: var(--dash-primary);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.08);
+  transform: translateY(-2px);
+}
+
+.client-actions-menu {
   display: none;
+  background: white;
+  border: 1px solid var(--dash-border);
+  border-radius: 14px;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  min-width: 190px;
+  text-align: left;
+  overflow: hidden;
+  z-index: 100;
 }
 
 .client-actions-menu.active {
@@ -522,30 +442,21 @@ function deleteClient(relationshipId) {
 }
 
 .client-action-item {
-  width: 100%;
-  padding: 12px 16px;
-  text-align: left;
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  font-size: 0.9rem;
-  color: var(--text-dark);
-  transition: background 0.2s ease;
   display: flex;
   align-items: center;
   gap: 10px;
-}
-
-.client-action-item:first-child {
-  border-radius: 8px 8px 0 0;
-}
-
-.client-action-item:last-child {
-  border-radius: 0 0 8px 8px;
+  padding: 12px 16px;
+  border: none;
+  background: transparent;
+  width: 100%;
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: var(--dash-text-main);
+  transition: background 0.2s;
 }
 
 .client-action-item:hover {
-  background: #f9fafb;
+  background: #f8fafc;
 }
 
 .client-action-item.danger {
@@ -553,107 +464,63 @@ function deleteClient(relationshipId) {
 }
 
 .client-action-item.danger:hover {
-  background: rgba(239, 68, 68, 0.1);
+  background: rgba(239, 68, 68, 0.05);
 }
 
-.client-col-name {
-  font-weight: 500;
-  color: var(--text-dark);
-}
-
-.client-col-email {
-  color: var(--text-light);
-  font-size: 0.9rem;
-}
-
-.client-col-status {
-  display: flex;
-  align-items: center;
-}
-
+/* Status Badge Overrides for consistency */
 .status-badge {
   display: inline-block;
   padding: 4px 12px;
-  border-radius: 12px;
-  font-size: 0.8rem;
-  font-weight: 500;
-}
-
-.pending-badge {
-  background: rgba(245, 158, 11, 0.1);
-  color: #92400e;
-}
-
-.waiting-badge {
-  background: rgba(59, 130, 246, 0.1);
-  color: #1e40af;
-}
-
-.confirmed-badge {
-  background: rgba(16, 185, 129, 0.1);
-  color: #065f46;
-}
-
-.active-badge {
-  background: rgba(59, 130, 246, 0.1);
-  color: #1e40af;
-}
-
-.inactive-badge {
-  background: rgba(107, 114, 128, 0.1);
-  color: #374151;
-}
-
-.denied-badge {
-  background: rgba(239, 68, 68, 0.1);
-  color: #991b1b;
-}
-
-.client-col-sessions {
-  color: var(--text-dark);
-  font-weight: 500;
-}
-
-.client-col-review {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
 }
 
 .no-clients {
   text-align: center;
-  padding: 80px 20px;
-  color: var(--text-light);
+  padding: 100px 20px;
+  background: white;
+  border-radius: 24px;
+  border: 1px dashed var(--dash-border);
 }
 
 .no-clients i {
   font-size: 4rem;
-  margin-bottom: 20px;
+  color: var(--dash-text-muted);
   opacity: 0.3;
+  margin-bottom: 24px;
 }
 
 .no-clients p {
-  font-size: 1.2rem;
-  margin: 0 0 30px 0;
+  font-size: 1.25rem;
+  color: var(--dash-text-muted);
+  font-weight: 600;
+  margin-bottom: 32px;
 }
 
-.invite-message {
-  padding: 12px 16px;
-  border-radius: 8px;
-  font-size: 0.9rem;
-  line-height: 1.5;
+/* Animations */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-.invite-message.success {
-  background: rgba(16, 185, 129, 0.1);
-  color: #065f46;
-  border-left: 3px solid #10b981;
+.client-card-wrapper {
+  animation: fadeInUp 0.4s ease-out forwards;
 }
 
-.invite-message.error {
-  background: rgba(239, 68, 68, 0.1);
-  color: #991b1b;
-  border-left: 3px solid #ef4444;
+@media (max-width: 992px) {
+  .list-header {
+    display: none;
+  }
+  .client-modern-row {
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  .client-modern-row > div:nth-child(n+3) {
+    border-top: 1px solid #f1f5f9;
+    padding-top: 12px;
+  }
 }
 </style>
 {% endblock %}

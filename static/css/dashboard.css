@@ -47,6 +47,47 @@
   gap: 16px;
 }
 
+.dashboard-nav-center {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+}
+
+.navbar-ongoing-session {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(34, 197, 94, 0.4);
+  background: rgba(34, 197, 94, 0.1);
+  color: #16a34a;
+  font-weight: 700;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.navbar-ongoing-session:hover {
+  background: rgba(34, 197, 94, 0.2);
+  border-color: #16a34a;
+}
+
+.navbar-ongoing-session-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #22c55e;
+  animation: navbar-ongoing-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes navbar-ongoing-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
 .dashboard-logo-link {
   display: flex;
   align-items: center;
@@ -1214,20 +1255,22 @@ input:checked + .toggle-slider:before {
   text-align: center;
 }
 
-/* Session Action Dropdown Button */
+/* Session Action Dropdown Button (circular) */
 .session-action-btn {
   background: transparent;
   border: 2px solid var(--dash-border);
   color: var(--dash-text-muted);
-  padding: 6px 10px;
-  border-radius: 8px;
+  padding: 0;
+  border-radius: 50%;
   font-size: 1rem;
   font-weight: 500;
   transition: all 0.2s;
   cursor: pointer;
   white-space: nowrap;
-  width: 40px;
+  width: 36px;
   height: 36px;
+  min-width: 36px;
+  min-height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1737,7 +1780,7 @@ input:checked + .toggle-slider:before {
   .session-left, .session-right { width: 100%; flex-wrap: wrap; }
   .session-right { justify-content: space-between; }
   .session-tasks { flex-wrap: wrap; }
-  .session-action-btn { width: 40px; height: 36px; }
+  .session-action-btn { width: 36px; height: 36px; min-width: 36px; min-height: 36px; }
   .session-item::before { left: -11px; top: 24px; transform: none; }
   .session-timeline-container { padding-left: 4px; }
   .session-timeline-container::before { left: 4px; }

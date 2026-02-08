@@ -912,9 +912,14 @@
   const sessionSettingsPriceInput = document.getElementById('sessionSettingsPrice');
   const sessionSettingsPriceWarningEl = document.getElementById('sessionSettingsPriceWarning');
   const sessionSettingsFirstSessionPriceNote = document.getElementById('sessionSettingsFirstSessionPriceNote');
+  const sessionSettingsPreInviteBlock = document.getElementById('sessionSettingsPreInviteBlock');
+  const sessionSettingsInviteCardTitleWrap = document.getElementById('sessionSettingsInviteCardTitleWrap');
   const sessionSettingsInviteCardTitle = document.getElementById('sessionSettingsInviteCardTitle');
   const sessionSettingsClientEmailInput = document.getElementById('sessionSettingsClientEmail');
   const sessionSettingsClientSuggestionsEl = document.getElementById('sessionSettingsClientSuggestions');
+  const sessionSettingsDraftBanner = document.getElementById('sessionSettingsDraftBanner');
+  const sessionSettingsDraftClientCard = document.getElementById('sessionSettingsDraftClientCard');
+  const sessionSettingsDraftRemoveBtn = document.getElementById('sessionSettingsDraftRemoveBtn');
   const sessionSettingsInviteBtn = document.getElementById('sessionSettingsInviteBtn');
   const sessionSettingsInviteSentState = document.getElementById('sessionSettingsInviteSentState');
   const sessionSettingsInviteSentSubtitle = document.getElementById('sessionSettingsInviteSentSubtitle');
@@ -930,6 +935,10 @@
   const sessionSettingsRefundConfirmOverlay = document.getElementById('sessionSettingsRefundConfirmOverlay');
   const sessionSettingsRefundConfirmPriceValue = document.getElementById('sessionSettingsRefundConfirmPriceValue');
   const sessionSettingsRefundConfirmBtn = document.getElementById('sessionSettingsRefundConfirmBtn');
+  const sessionSettingsConfirmedByLabel = document.getElementById('sessionSettingsConfirmedByLabel');
+  const sessionSettingsMeetingLinkWrap = document.getElementById('sessionSettingsMeetingLinkWrap');
+  const sessionSettingsMeetingLink = document.getElementById('sessionSettingsMeetingLink');
+  const sessionSettingsMeetingCopyBtn = document.getElementById('sessionSettingsMeetingCopyBtn');
   const scheduleSessionOverlay = document.getElementById('mentorScheduleSessionOverlay');
   const scheduleSessionEmailInput = document.getElementById('scheduleSessionEmailInput');
   const scheduleSessionEmailSuggestionsEl = document.getElementById('scheduleSessionEmailSuggestions');
@@ -1393,9 +1402,11 @@
       const data = await res.json();
       if (data && data.success && Array.isArray(data.clients)) {
         __clientSuggestions = data.clients.map(c => ({
+          id: c.id != null ? c.id : null,
           first_name: String(c.first_name || ''),
           last_name: String(c.last_name || ''),
-          email: String(c.email || '')
+          email: String(c.email || ''),
+          profile_picture_url: c.profile_picture_url || null
         })).filter(c => c.email);
       }
     } catch (e) {}
@@ -1411,25 +1422,66 @@
     }
     sessionSettingsClientSuggestionsEl.hidden = false;
     sessionSettingsClientSuggestionsEl.innerHTML = items.slice(0, 8).map((c) => {
-      const name = `${c.first_name} ${c.last_name}`.trim() || c.email;
+      const name = `${(c.first_name || '').trim()} ${(c.last_name || '').trim()}`.trim() || c.email;
+      const esc = (s) => { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; };
+      const avatarUrl = (c.profile_picture_url || '').replace(/"/g, '&quot;');
+      const initial = (name || c.email).charAt(0).toUpperCase();
+      const avatarHtml = avatarUrl
+        ? '<img src="' + avatarUrl + '" alt="" class="session-settings-suggestion-avatar">'
+        : '<div class="session-settings-suggestion-avatar-placeholder">' + esc(initial) + '</div>';
+      const emailAttr = (c.email || '').replace(/"/g, '&quot;');
       return `
-        <div class="session-settings-suggestion-item" data-email="${c.email}">
-          <div class="session-settings-suggestion-name">${name}</div>
-          <div class="session-settings-suggestion-email">${c.email}</div>
+        <div class="session-settings-suggestion-item" data-email="${emailAttr}">
+          ${avatarHtml}
+          <div class="session-settings-suggestion-info">
+            <div class="session-settings-suggestion-name">${esc(name)}</div>
+            <div class="session-settings-suggestion-email">${esc(c.email)}</div>
+          </div>
         </div>
       `;
     }).join('');
     sessionSettingsClientSuggestionsEl.querySelectorAll('[data-email]').forEach(el => {
-      el.addEventListener('click', (e) => {
+      el.addEventListener('click', async (e) => {
         e.preventDefault();
         e.stopPropagation();
-        const email = el.getAttribute('data-email') || '';
+        const email = (el.getAttribute('data-email') || '').trim();
         if (sessionSettingsClientEmailInput) sessionSettingsClientEmailInput.value = email;
         if (sessionSettingsInviteBtn) sessionSettingsInviteBtn.disabled = !isValidEmail(email);
         sessionSettingsClientSuggestionsEl.hidden = true;
         sessionSettingsClientSuggestionsEl.innerHTML = '';
+        if (!email || !sessionSettingsDraftBanner || !sessionSettingsDraftClientCard) return;
+        try {
+          const all = await ensureClientSuggestionsLoaded();
+          const client = all.find(c => (c.email || '').toLowerCase() === email.toLowerCase()) || null;
+          if (client && client.id != null) {
+            const name = `${(client.first_name || '').trim()} ${(client.last_name || '').trim()}`.trim() || email;
+            const clientUrl = '/dashboard/mentor/clients/' + client.id + '/';
+            const avatarUrl = (client.profile_picture_url || '').replace(/"/g, '&quot;');
+            const initial = (name || email).charAt(0).toUpperCase();
+            const esc = (s) => { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; };
+            const cardHtml = '<a href="' + clientUrl + '" class="session-settings-invite-client-card" target="_blank" rel="noopener">' +
+              (avatarUrl ? '<img src="' + avatarUrl + '" alt="" class="session-settings-invite-client-avatar">' : '<div class="session-settings-invite-client-avatar-placeholder">' + esc(initial) + '</div>') +
+              '<span class="session-settings-invite-client-info"><span class="session-settings-invite-client-name">' + esc(name) + '</span><span class="session-settings-invite-client-email">' + esc(email) + '</span></span>' +
+              '</a>';
+            sessionSettingsDraftClientCard.innerHTML = cardHtml;
+            sessionSettingsDraftBanner.hidden = false;
+            sessionSettingsDraftBanner.dataset.draftEmail = email;
+          }
+        } catch (err) {}
       });
     });
+  }
+
+  function clearSessionSettingsDraftBanner(clearInput) {
+    if (sessionSettingsDraftClientCard) sessionSettingsDraftClientCard.innerHTML = '';
+    if (sessionSettingsDraftBanner) {
+      sessionSettingsDraftBanner.hidden = true;
+      delete sessionSettingsDraftBanner.dataset.draftEmail;
+    }
+    if (clearInput !== false) {
+      if (sessionSettingsClientEmailInput) sessionSettingsClientEmailInput.value = '';
+      if (sessionSettingsInviteBtn) sessionSettingsInviteBtn.disabled = true;
+    }
   }
 
   function openSessionSettingsForEvent(fcEvent) {
@@ -1664,30 +1716,111 @@
 
       // If Apply is enabled, there are unapplied edits (disable invite/reminder until applied).
       const applyEnabled = !!(sessionSettingsApplyBtn && !sessionSettingsApplyBtn.disabled);
-      if (sessionSettingsInviteCardTitle) {
-        sessionSettingsInviteCardTitle.textContent = isConfirmed ? 'Session confirmed' : (showSent ? 'Invitation sent' : 'Invite a Client');
+      if (sessionSettingsPreInviteBlock) {
+        sessionSettingsPreInviteBlock.hidden = !!showSent;
       }
-      if (sessionSettingsInviteSentState) sessionSettingsInviteSentState.hidden = isDraft || !showSent;
-      if (sessionSettingsInviteSentSubtitle) {
-        if (isConfirmed) sessionSettingsInviteSentSubtitle.textContent = `Session confirmed by ${email}.`;
-        else sessionSettingsInviteSentSubtitle.textContent = showSent ? `Invitation sent to ${email}.` : '';
+      if (sessionSettingsInviteCardTitle) {
+        sessionSettingsInviteCardTitle.textContent = 'Invite a Client';
       }
 
-      if (sessionSettingsClientEmailInput) sessionSettingsClientEmailInput.hidden = showSent;
-      if (sessionSettingsInviteBtn) sessionSettingsInviteBtn.hidden = showSent;
+      // When confirmed: show only Session Confirmed (never show Invitation Sent). When invited: show only Invitation Sent.
+      const confirmedBanner = document.getElementById('sessionSettingsConfirmedBanner');
+      const invitedBanner = document.getElementById('sessionSettingsInvitedBanner');
+      if (confirmedBanner) {
+        confirmedBanner.hidden = !isConfirmed;
+        confirmedBanner.style.display = isConfirmed ? '' : 'none';
+      }
+      if (invitedBanner) {
+        invitedBanner.hidden = isConfirmed || !isInvited;
+        invitedBanner.style.display = isConfirmed ? 'none' : (isInvited ? '' : 'none');
+      }
+
+      // Toggle state classes for the entire right column (draft, invited, confirmed)
+      const rightCol = document.querySelector('.session-settings-col--right');
+      if (rightCol) {
+        rightCol.classList.toggle('is-draft', isDraft);
+        rightCol.classList.toggle('is-invited', isInvited);
+        rightCol.classList.toggle('is-confirmed', isConfirmed);
+      }
+      if (sessionSettingsDraftBanner) {
+        sessionSettingsDraftBanner.hidden = true;
+        if (sessionSettingsDraftClientCard) sessionSettingsDraftClientCard.innerHTML = '';
+      }
+
+      if (sessionSettingsInviteSentState) sessionSettingsInviteSentState.hidden = isDraft || !showSent;
+      if (sessionSettingsInviteSentSubtitle) {
+        if (!showSent) {
+          sessionSettingsInviteSentSubtitle.textContent = '';
+          sessionSettingsInviteSentSubtitle.innerHTML = '';
+        } else if (email) {
+          let client = null;
+          try {
+            const clients = await ensureClientSuggestionsLoaded();
+            client = clients.find(c => (c.email || '').toLowerCase() === email.toLowerCase()) || null;
+          } catch (e) {}
+          
+          if (client && client.id != null) {
+            const name = `${(client.first_name || '').trim()} ${(client.last_name || '').trim()}`.trim() || email;
+            const clientUrl = `/dashboard/mentor/clients/${client.id}/`;
+            const avatarUrl = client.profile_picture_url || '';
+            const initial = (name || email).charAt(0).toUpperCase();
+            const esc = (s) => { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; };
+            const cardHtml = '<a href="' + clientUrl + '" class="session-settings-invite-client-card" target="_blank" rel="noopener">' +
+                (avatarUrl ? '<img src="' + avatarUrl.replace(/"/g, '&quot;') + '" alt="" class="session-settings-invite-client-avatar">' : '<div class="session-settings-invite-client-avatar-placeholder">' + esc(initial) + '</div>') +
+                '<span class="session-settings-invite-client-info"><span class="session-settings-invite-client-name">' + esc(name) + '</span><span class="session-settings-invite-client-email">' + esc(email) + '</span></span>' +
+                '</a>';
+
+            const confirmedClientCard = document.getElementById('sessionSettingsConfirmedClientCard');
+            const invitedClientCard = document.getElementById('sessionSettingsInvitedClientCard');
+            
+            if (isConfirmed && confirmedClientCard) {
+              confirmedClientCard.innerHTML = cardHtml;
+              if (invitedClientCard) invitedClientCard.innerHTML = '';
+              sessionSettingsInviteSentSubtitle.innerHTML = '';
+            } else if (isInvited && invitedClientCard) {
+              invitedClientCard.innerHTML = cardHtml;
+              if (confirmedClientCard) confirmedClientCard.innerHTML = '';
+              sessionSettingsInviteSentSubtitle.innerHTML = '';
+            } else {
+              sessionSettingsInviteSentSubtitle.innerHTML = cardHtml;
+              if (confirmedClientCard) confirmedClientCard.innerHTML = '';
+              if (invitedClientCard) invitedClientCard.innerHTML = '';
+            }
+          } else {
+            sessionSettingsInviteSentSubtitle.textContent = isConfirmed ? `Session confirmed by ${email}.` : `Invitation sent to ${email}.`;
+            sessionSettingsInviteSentSubtitle.innerHTML = '';
+            const confirmedClientCard = document.getElementById('sessionSettingsConfirmedClientCard');
+            const invitedClientCard = document.getElementById('sessionSettingsInvitedClientCard');
+            if (confirmedClientCard) confirmedClientCard.innerHTML = '';
+            if (invitedClientCard) invitedClientCard.innerHTML = '';
+          }
+        } else {
+          sessionSettingsInviteSentSubtitle.textContent = '';
+          sessionSettingsInviteSentSubtitle.innerHTML = '';
+          const confirmedClientCard = document.getElementById('sessionSettingsConfirmedClientCard');
+          const invitedClientCard = document.getElementById('sessionSettingsInvitedClientCard');
+          if (confirmedClientCard) confirmedClientCard.innerHTML = '';
+          if (invitedClientCard) invitedClientCard.innerHTML = '';
+        }
+      }
+
       if (sessionSettingsClientSuggestionsEl) {
         sessionSettingsClientSuggestionsEl.hidden = true;
         sessionSettingsClientSuggestionsEl.innerHTML = '';
       }
 
+      const sessionSettingsConfirmedByRow = document.getElementById('sessionSettingsConfirmedByRow');
+      if (sessionSettingsConfirmedByRow) sessionSettingsConfirmedByRow.hidden = !(showSent && isConfirmed);
+      if (sessionSettingsConfirmedByLabel) {
+        sessionSettingsConfirmedByLabel.textContent = 'Confirmed by:';
+      }
       if (sessionSettingsReminderBtn) {
         // Reminders only make sense while invited (not confirmed)
         sessionSettingsReminderBtn.hidden = !showSent || isConfirmed;
         sessionSettingsReminderBtn.disabled = (applyEnabled || !showSent || !canRemind || isConfirmed);
       }
       if (sessionSettingsReminderHelp) {
-        if (!showSent) sessionSettingsReminderHelp.textContent = '';
-        else if (isConfirmed) sessionSettingsReminderHelp.textContent = 'This session is confirmed.';
+        if (!showSent || isConfirmed) sessionSettingsReminderHelp.textContent = '';
         else if (canRemind) sessionSettingsReminderHelp.textContent = 'You can send one reminder per day.';
         else sessionSettingsReminderHelp.textContent = lastSentAt ? 'Reminder already sent today.' : 'Invitation already sent today.';
       }
@@ -1734,12 +1867,22 @@
           else sessionSettingsSessionDetailSubtitle.textContent = 'Open the dedicated session page';
         }
       }
+
+      // Meeting link (when session is confirmed)
+      const meetingUrl = (ev?.extendedProps?.meetingUrl || '').trim();
+      if (sessionSettingsMeetingLinkWrap) {
+        sessionSettingsMeetingLinkWrap.hidden = !(showSent && isConfirmed && meetingUrl);
+      }
+      if (sessionSettingsMeetingLink && meetingUrl) {
+        sessionSettingsMeetingLink.href = meetingUrl;
+        sessionSettingsMeetingLink.textContent = meetingUrl;
+      }
     }
 
     // Initial render of invite/reminder UI state
     try { setInviteUiForEvent(fcEvent); } catch (e) {}
 
-    // Prevent clicking disabled session detail link (show message instead)
+    // Session detail link: open modal when enabled, show message when disabled
     if (sessionSettingsSessionDetailLink && !sessionSettingsSessionDetailLink.__mentorBound) {
       sessionSettingsSessionDetailLink.__mentorBound = true;
       sessionSettingsSessionDetailLink.addEventListener('click', (e) => {
@@ -1752,6 +1895,14 @@
             if (typeof showNotification === 'function') {
               showNotification('Send the invitation to a client first to open the session page.', 'error');
             }
+            return;
+          }
+          const ev = calendar && sessionSettingsEventId ? calendar.getEventById(sessionSettingsEventId) : null;
+          const sessionDbId = ev && ev.extendedProps && ev.extendedProps.sessionDbId;
+          if (sessionDbId && typeof openSessionDetailModal === 'function') {
+            e.preventDefault();
+            e.stopPropagation();
+            openSessionDetailModal(sessionDbId);
           }
         } catch (err) {}
       });
@@ -1794,7 +1945,16 @@
         const raw = String(sessionSettingsClientEmailInput.value || '');
         const q = raw.toLowerCase().trim();
         if (sessionSettingsInviteBtn) sessionSettingsInviteBtn.disabled = !isValidEmail(raw);
-        if (!q) return renderClientSuggestionsList([]);
+        if (!q) {
+          clearSessionSettingsDraftBanner();
+          return renderClientSuggestionsList([]);
+        }
+        if (sessionSettingsDraftBanner && !sessionSettingsDraftBanner.hidden) {
+          const draftEmail = (sessionSettingsDraftBanner.dataset.draftEmail || '').trim().toLowerCase();
+          if (draftEmail && q !== draftEmail) {
+            clearSessionSettingsDraftBanner(false);
+          }
+        }
         const all = await ensureClientSuggestionsLoaded();
         const filtered = all.filter(c => (`${c.first_name} ${c.last_name} ${c.email}`.toLowerCase()).includes(q));
         renderClientSuggestionsList(filtered);
@@ -1806,6 +1966,14 @@
         if (target.closest('#sessionSettingsClientEmail')) return;
         if (sessionSettingsClientSuggestionsEl) sessionSettingsClientSuggestionsEl.hidden = true;
       }, { capture: true });
+    }
+
+    if (sessionSettingsDraftRemoveBtn && !sessionSettingsDraftRemoveBtn.__bound) {
+      sessionSettingsDraftRemoveBtn.__bound = true;
+      sessionSettingsDraftRemoveBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        clearSessionSettingsDraftBanner();
+      });
     }
 
     // Invite button
@@ -3138,10 +3306,23 @@
             invitationSent: !!s.invitation_sent,
             canRemind: !!s.can_remind,
             lastInviteSentAt: s.last_invite_sent_at || null,
-            isFirstSession: !!s.is_first_session
+            isFirstSession: !!s.is_first_session,
+            meetingUrl: s.meeting_url || null
           }
         });
       });
+
+      // Open session settings modal if URL has openSessionSettings=ID (e.g. from dashboard/my-sessions list)
+      try {
+        var match = window.location.search.match(/[?&]openSessionSettings=(\d+)/);
+        if (match && calendar) {
+          var ev = calendar.getEventById('session_' + match[1]);
+          if (ev) openSessionSettingsForEvent(ev);
+          var u = new URL(window.location.href);
+          u.searchParams.delete('openSessionSettings');
+          history.replaceState({}, '', u.toString());
+        }
+      } catch (e) {}
 
       console.log('[MentorCalendar] loaded availability slots:', slots.length);
       recomputeCollisions();
@@ -3152,6 +3333,21 @@
       console.error('[MentorCalendar] error loading availability:', e);
     }
   }
+
+  window.openSessionSettingsForSessionId = function(sessionId) {
+    if (calendar) {
+      var ev = calendar.getEventById('session_' + sessionId);
+      if (ev) {
+        openSessionSettingsForEvent(ev);
+        return;
+      }
+    }
+    // Calendar not open or event not loaded yet: open calendar, then open session settings after load
+    window.__pendingOpenSessionSettingsId = sessionId;
+    if (window.MentorCalendar && typeof window.MentorCalendar.open === 'function') {
+      window.MentorCalendar.open();
+    }
+  };
 
   // --- Collision detection (availability + sessions) ---
   // IMPORTANT:
@@ -4931,13 +5127,20 @@
     if (requestedMode === 'availability') setMode(true);
 
     // Small delay to ensure transitions work and DOM is ready
-    setTimeout(() => {
+    setTimeout(async () => {
         // Re-resolve timezone from profile on each open (in case it changed)
         timezone_variable = resolveMentorTimezone();
         renderModeToggle();
         initCalendar();
         if (calendar) calendar.updateSize();
-        loadSavedAvailability();
+        await loadSavedAvailability();
+        // If session settings was requested from dashboard/my-sessions before calendar was open
+        var pendingId = window.__pendingOpenSessionSettingsId;
+        if (pendingId != null && calendar) {
+          delete window.__pendingOpenSessionSettingsId;
+          var ev = calendar.getEventById('session_' + pendingId);
+          if (ev) openSessionSettingsForEvent(ev);
+        }
     }, 50);
   }
 
@@ -5646,6 +5849,24 @@
           : 'Free';
       }
       setRefundConfirmVisible(true);
+    });
+  }
+
+  if (sessionSettingsMeetingCopyBtn && sessionSettingsMeetingLink && !sessionSettingsMeetingCopyBtn.__mentorBound) {
+    sessionSettingsMeetingCopyBtn.__mentorBound = true;
+    sessionSettingsMeetingCopyBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const url = sessionSettingsMeetingLink.href || sessionSettingsMeetingLink.textContent || '';
+      if (!url) return;
+      navigator.clipboard.writeText(url).then(() => {
+        if (typeof showNotification === 'function') {
+          showNotification('Meeting link copied to clipboard.', 'success');
+        }
+      }).catch(() => {
+        if (typeof showNotification === 'function') {
+          showNotification('Could not copy link.', 'error');
+        }
+      });
     });
   }
 

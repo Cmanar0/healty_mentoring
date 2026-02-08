@@ -20,7 +20,7 @@ A Django-based mentoring platform with:
         Delete all existing templates (custom and default)
         Delete all questionnaires and questions
         Create 4 new default templates with questionnaires and questions
-8. python [manage.py](http://manage.py) generate_guides  
+8. `python manage.py generate_guides`  
 
 
 .venv\Scripts\python.exe create_superuser.py

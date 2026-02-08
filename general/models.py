@@ -251,6 +251,12 @@ class Session(models.Model):
     client_first_name = models.CharField(max_length=150, blank=True, null=True)
     client_last_name = models.CharField(max_length=150, blank=True, null=True)
     tasks = models.JSONField(default=list, blank=True)  # Array of tasks
+    meeting_url = models.URLField(
+        max_length=512,
+        blank=True,
+        null=True,
+        help_text="Online meeting link created when the session is confirmed (client confirms or books)."
+    )
 
     # ============================================================================
     # PENDING SESSION CHANGES SUPPORT
@@ -347,6 +353,17 @@ class Session(models.Model):
 
     def __str__(self):
         return f"Session on {self.start_datetime.strftime('%Y-%m-%d %H:%M')}"
+
+    def ensure_meeting_url(self):
+        """Set meeting_url to a unique Jitsi link when session is confirmed and no link exists."""
+        if self.status != 'confirmed':
+            return
+        if self.meeting_url:
+            return
+        if not self.pk:
+            return
+        self.meeting_url = f"https://meet.jit.si/healthy-{self.id}-{get_random_string(8)}"
+        self.save(update_fields=['meeting_url'])
 
 
 class SessionInvitation(models.Model):

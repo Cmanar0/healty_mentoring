@@ -25,6 +25,14 @@
         <img src="{% static 'images/logo.png' %}" alt="logo" class="logo">
       </a>
     </div>
+    {% if user.is_authenticated and user.profile.role == 'mentor' %}
+    <div class="dashboard-nav-center" id="dashboardNavCenter" data-ongoing-api-url="{% url 'general:dashboard_mentor:ongoing_session_api' %}">
+      <button type="button" id="navbarOngoingSession" class="navbar-ongoing-session" aria-label="Session in progress - click to view details" style="display: none;" data-session-id="">
+        <span class="navbar-ongoing-session-dot"></span>
+        <span class="navbar-ongoing-session-text">Session in progress</span>
+      </button>
+    </div>
+    {% endif %}
     <div class="dashboard-top-actions">
       {% if user.is_authenticated and user.profile.first_name and user.profile.last_name %}
         {% if user.profile.role == 'mentor' %}
@@ -266,6 +274,35 @@
 
 {% include "general/modals/timezone_correction_modal.html" %}
 {% include "general/modals/timezone_mismatch_modal.html" %}
+{% include "dashboard_mentor/modals/session_detail_modal.html" %}
+{% include "dashboard_mentor/modals/cancel_session_modal.html" %}
+
+{% if user.is_authenticated and user.profile.role == 'mentor' %}
+<script>
+(function() {
+  var center = document.getElementById('dashboardNavCenter');
+  var btn = document.getElementById('navbarOngoingSession');
+  if (!center || !btn) return;
+  var apiUrl = center.getAttribute('data-ongoing-api-url');
+  if (!apiUrl) return;
+  fetch(apiUrl, { headers: { 'Accept': 'application/json' } })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (!data.success || !data.session) return;
+      var s = data.session;
+      btn.setAttribute('data-session-id', String(s.id));
+      var textEl = btn.querySelector('.navbar-ongoing-session-text');
+      if (textEl && s.client_name) textEl.textContent = 'Session with ' + s.client_name;
+      btn.style.display = 'inline-flex';
+    })
+    .catch(function() {});
+  btn.addEventListener('click', function() {
+    var id = btn.getAttribute('data-session-id');
+    if (id && window.openSessionDetailModal) window.openSessionDetailModal(parseInt(id, 10));
+  });
+})();
+</script>
+{% endif %}
 {% endblock %}
 
 {% block scripts %}
@@ -273,6 +310,22 @@
 <!-- Cropper.js JS -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
 <script src="{% static 'js/timezone-checker.js' %}"></script>
+<script>
+// Session/list dropdown toggle (used on dashboard and my-sessions)
+window.toggleDropdown = function(button) {
+  var dropdown = button && button.nextElementSibling;
+  var all = document.querySelectorAll('.dropdown-menu.show');
+  for (var i = 0; i < all.length; i++) {
+    if (all[i] !== dropdown) all[i].classList.remove('show');
+  }
+  if (dropdown) dropdown.classList.toggle('show');
+};
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.dropdown')) {
+    document.querySelectorAll('.dropdown-menu').forEach(function(menu) { menu.classList.remove('show'); });
+  }
+});
+</script>
 {{ block.super }}
 <style>
 :root {
