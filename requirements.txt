@@ -7,3 +7,4 @@ whitenoise
 django-crispy-forms
 django-widget-tweaks
 dj-database-url
+stripe

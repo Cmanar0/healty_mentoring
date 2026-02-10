@@ -34,6 +34,7 @@ INSTALLED_APPS = [
     "dashboard_user",
     "dashboard_admin",
     "web",
+    "billing",
     "crispy_forms",
     "widget_tweaks",
 ]
@@ -135,6 +136,10 @@ LOGOUT_REDIRECT_URL = "/accounts/login/"
 
 # API allowed keys
 API_ALLOWED_KEYS = os.getenv("API_ALLOWED_KEYS", "sample_api_key_12345").split(",")
+
+# Stripe (load from env; no default — missing key means Stripe is disabled)
+STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "")
+STRIPE_PUBLISHABLE_KEY = os.getenv("STRIPE_PUBLISHABLE_KEY", "")
 
 # Static files storage for whitenoise
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
