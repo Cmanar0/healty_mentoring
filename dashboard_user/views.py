@@ -1179,10 +1179,108 @@ def session_management(request):
 
 
 @require_POST
+def create_booking_payment_intent(request):
+    """
+    Create a Stripe PaymentIntent for a paid booking (no confirmation).
+    Frontend must call confirmCardPayment(client_secret) then book_session(payment_intent_id).
+    Handles 3DS / SCA.
+    """
+    try:
+        from billing.services.payment_service import (
+            create_booking_payment_intent as billing_create_pi,
+            session_price_cents,
+            BillingError,
+        )
+        data = json.loads(request.body)
+        mentor_id = data.get('mentor_id')
+        slot_key = (data.get('slot_key') or '').strip()
+        is_logged_in = data.get('is_logged_in', False)
+        email = (data.get('email') or '').strip().lower() if not is_logged_in else None
+
+        if not mentor_id:
+            return JsonResponse({
+                'success': False,
+                'error': 'Missing mentor_id.',
+            }, status=400)
+
+        try:
+            mentor_user = CustomUser.objects.get(id=mentor_id)
+            mentor_profile = mentor_user.mentor_profile
+        except (CustomUser.DoesNotExist, AttributeError):
+            return JsonResponse({'success': False, 'error': 'Mentor not found'}, status=404)
+
+        amount_cents = session_price_cents(mentor_profile)
+        if amount_cents <= 0:
+            return JsonResponse({'success': False, 'error': 'This session has no price set.'}, status=400)
+
+        if is_logged_in:
+            if not request.user.is_authenticated:
+                return JsonResponse({'success': False, 'error': 'User not authenticated'}, status=401)
+            if hasattr(request.user, 'mentor_profile'):
+                return JsonResponse({'success': False, 'error': 'Mentors cannot book sessions.'}, status=400)
+            try:
+                user_profile = request.user.profile
+            except AttributeError:
+                return JsonResponse({'success': False, 'error': 'User profile not found'}, status=400)
+            relationship = MentorClientRelationship.objects.filter(
+                mentor=mentor_profile,
+                client=user_profile
+            ).first()
+            is_first_session = relationship is None or not relationship.first_session_scheduled
+            if mentor_profile.first_session_free and is_first_session:
+                return JsonResponse({
+                    'success': False,
+                    'error': 'No payment required for your first session with this mentor.',
+                }, status=400)
+            client_email = request.user.email
+            client_id = user_profile.id
+        else:
+            if not email:
+                return JsonResponse({'success': False, 'error': 'Email is required.'}, status=400)
+            import re
+            if not re.match(r'^[^\s@]+@[^\s@]+\.[^\s@]+$', email):
+                return JsonResponse({'success': False, 'error': 'Invalid email format.'}, status=400)
+            if mentor_profile.first_session_free:
+                return JsonResponse({
+                    'success': False,
+                    'error': 'No payment required for your first session with this mentor.',
+                }, status=400)
+            client_email = email
+            client_id = None
+            is_first_session = True
+
+        try:
+            result = billing_create_pi(
+                amount_cents=amount_cents,
+                mentor_profile=mentor_profile,
+                client_email=client_email or '',
+                client_id=client_id,
+                is_first_session=is_first_session,
+                session_description=f"Session with {mentor_profile.first_name} {mentor_profile.last_name}",
+                slot_key=slot_key or None,
+            )
+        except BillingError as e:
+            return JsonResponse({'success': False, 'error': e.message}, status=400)
+
+        return JsonResponse({
+            'success': True,
+            'payment_intent_id': result['payment_intent_id'],
+            'client_secret': result['client_secret'],
+        })
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error('create_booking_payment_intent: %s', e, exc_info=True)
+        return JsonResponse({'success': False, 'error': 'An error occurred.'}, status=500)
+
+
+@require_POST
 def book_session(request):
     """
     Book a session from the booking modal.
     Handles both logged-in users and non-logged-in users (new and existing).
+    For paid sessions, pass payment_intent_id (after frontend confirmCardPayment).
     """
     try:
         from datetime import datetime
@@ -1291,10 +1389,7 @@ def book_session(request):
                 session_length_minutes = mentor_profile.first_session_length or 30
                 is_free_session = True
             else:
-                # Calculate regular price
-                price_per_hour = mentor_profile.price_per_hour or Decimal('0')
-                hours = Decimal(str(duration_minutes)) / Decimal('60')
-                price = price_per_hour * hours
+                price = mentor_profile.price_per_session or Decimal('0')
                 is_free_session = False
             
             # Use user's timezone for email
@@ -1354,9 +1449,7 @@ def book_session(request):
                     session_length_minutes = mentor_profile.first_session_length or 30
                     is_free_session = True
                 else:
-                    price_per_hour = mentor_profile.price_per_hour or Decimal('0')
-                    hours = Decimal(str(duration_minutes)) / Decimal('60')
-                    price = price_per_hour * hours
+                    price = mentor_profile.price_per_session or Decimal('0')
                     is_free_session = False
                 
                 # Create user account
@@ -1382,7 +1475,34 @@ def book_session(request):
                 is_first_session = True
                 is_new_user_account = True
         
-        # NOW handle availability slot - only after we've confirmed the booking can proceed
+        # Payment (Phase 2): require verified payment_intent_id when price > 0 (frontend confirms via confirmCardPayment)
+        payment_intent_id = None
+        if price > 0:
+            from billing.services.payment_service import (
+                verify_payment_intent_succeeded,
+                session_price_cents,
+                BillingError,
+            )
+            payment_intent_id = (data.get('payment_intent_id') or '').strip()
+            if not payment_intent_id:
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Payment is required. Please complete the payment step (card and 3D Secure if shown) then try again.',
+                }, status=400)
+            amount_cents = session_price_cents(mentor_profile)
+            if amount_cents <= 0:
+                return JsonResponse({'success': False, 'error': 'This session has no price set.'}, status=400)
+            try:
+                result = verify_payment_intent_succeeded(
+                    payment_intent_id=payment_intent_id,
+                    expected_amount_cents=amount_cents,
+                    expected_mentor_id=str(mentor_profile.user.id),
+                )
+                price = Decimal(result['amount_cents']) / 100
+            except BillingError as e:
+                return JsonResponse({'success': False, 'error': e.message}, status=400)
+        
+        # NOW handle availability slot - only after we've confirmed the booking can proceed (and payment if any)
         # This ensures slots aren't removed if the booking should fail
         try:
             if availability_slot_id:
@@ -1525,13 +1645,16 @@ def book_session(request):
         # Get email for response
         user_email = user.email if user else email
         
-        return JsonResponse({
+        response_data = {
             'success': True,
             'message': 'Session booked successfully',
             'session_id': session.id,
             'email': user_email,
-            'is_new_user': is_new_user_account
-        })
+            'is_new_user': is_new_user_account,
+        }
+        if payment_intent_id:
+            response_data['payment_intent_id'] = payment_intent_id
+        return JsonResponse(response_data)
         
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)

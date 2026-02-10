@@ -55,7 +55,11 @@
 {% if action_url %}
 <div class="btn-container">
   <a href="{{ action_url }}" class="btn">
-    Finish Registration and Check The Session Details
+    {% if is_new_user %}
+      Finish Registration and Check The Session Details
+    {% else %}
+      View Your Session Details
+    {% endif %}
   </a>
 </div>
 {% endif %}

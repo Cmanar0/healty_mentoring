@@ -287,7 +287,7 @@
 
                     <!-- Right Column: User Input -->
                     <div class="input-column">
-                        <div style="display: flex; flex-direction: column; gap: 20px;">
+                        <div id="bookingGuestFieldsWrap" style="display: flex; flex-direction: column; gap: 20px;">
                             <span class="section-label">Complete Your Booking</span>
                             
                             <!-- Email Input -->
@@ -314,8 +314,39 @@
                             </div>
                         </div>
 
+                        <!-- Payment (Phase 2): separate card elements when session is paid -->
+                        <div id="bookingPaymentCardSection" style="display: none; margin-top: 16px;">
+                            <label style="display: block; font-weight: 700; color: #1e293b; margin-bottom: 12px; font-size: 0.9rem;">
+                                Card details <span style="color: #ef4444;">*</span>
+                            </label>
+                            
+                            <!-- Card Number -->
+                            <div style="margin-bottom: 12px;">
+                                <label style="display: block; font-weight: 600; color: #475569; margin-bottom: 6px; font-size: 0.85rem;">Card number</label>
+                                <div id="stripeCardNumberContainer" style="padding: 12px 16px; border: 1px solid #e2e8f0; border-radius: 10px; background: #fff;"></div>
+                            </div>
+                            
+                            <!-- Expiry and CVC in a row -->
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+                                <div>
+                                    <label style="display: block; font-weight: 600; color: #475569; margin-bottom: 6px; font-size: 0.85rem;">Expiry</label>
+                                    <div id="stripeCardExpiryContainer" style="padding: 12px 16px; border: 1px solid #e2e8f0; border-radius: 10px; background: #fff;"></div>
+                                </div>
+                                <div>
+                                    <label style="display: block; font-weight: 600; color: #475569; margin-bottom: 6px; font-size: 0.85rem;">CVC</label>
+                                    <div id="stripeCardCvcContainer" style="padding: 12px 16px; border: 1px solid #e2e8f0; border-radius: 10px; background: #fff;"></div>
+                                </div>
+                            </div>
+                            
+                            <!-- Error display -->
+                            <div id="stripeCardError" style="display: none; margin-top: 8px; padding: 10px 12px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; color: #dc2626; font-size: 0.875rem; font-weight: 500; line-height: 1.4;">
+                                <i class="fas fa-exclamation-circle" style="margin-right: 6px;"></i>
+                                <span id="stripeCardErrorText"></span>
+                            </div>
+                        </div>
+
                         <!-- Timezone Confirmation (Relocated) -->
-                        <div class="timezone-section">
+                        <div id="bookingTimezoneSectionWrap" class="timezone-section">
                             <span class="section-label" style="margin-bottom: 4px; color: #475569; font-size: 0.85rem; text-transform: none;">
                                 Detected Timezone: <strong id="detectedTimezoneName" style="color: #1e293b; font-weight: 700;">Loading...</strong>
                                 <p style="font-size: 0.85rem; color: #64748b; margin: 0 0 0 4px; font-weight: 500;">
@@ -1277,6 +1308,7 @@
 <script id="mentor-session-length" type="application/json">{{ mentor_profile.session_length|default:60 }}</script>
 
 
+<script src="https://js.stripe.com/v3/"></script>
 <script>
     // --- Booking Logic Variables (must be declared first) ---
     // Get user authentication status from Django template
@@ -1289,6 +1321,8 @@
     const mentorPricePerHour = {{ mentor_profile.price_per_hour|default_if_none:"null" }};
     const isFirstSession = {% if user.is_authenticated %}{% if is_first_session %}true{% else %}false{% endif %}{% else %}true{% endif %}; // For non-authenticated users, always assume first session
     const firstSessionLengthDiffers = mentorFirstSessionLength !== mentorSessionLength;
+    const paymentRequired = (mentorPricePerHour > 0) && !(mentorFirstSessionFree && isFirstSession);
+    const stripePublishableKey = '{{ stripe_publishable_key|default:""|escapejs }}';
     
     // User's selected timezone from profile (if authenticated)
     const userSelectedTimezone = {% if user.is_authenticated and user.profile.selected_timezone %}'{{ user.profile.selected_timezone }}'{% else %}null{% endif %};
@@ -1312,6 +1346,13 @@
     
     // --- DOM Elements ---
     let modal, currentMonthLabel, calendarDays, slotsCol, slotsList, selectedDateLabel, prevMonthBtn, nextMonthBtn, slotsFooter, bookSlotBtn;
+    let stripeInstance = null;
+    let cardNumberElement = null;
+    let cardExpiryElement = null;
+    let cardCvcElement = null;
+    // Stripe PaymentIntent for the current booking attempt
+    let bookingPaymentIntentId = null;
+    let bookingPaymentIntentClientSecret = null;
 
     document.addEventListener('DOMContentLoaded', function() {
         // Initialize timezone from user profile if authenticated (before any other operations)
@@ -2268,14 +2309,17 @@
                 showBookingError();
                 return;
             } else if (userRole === 'user') {
-                // Logged-in user - proceed directly to booking
+                if (paymentRequired) {
+                    openEmailCollectionModal(true);
+                    return;
+                }
                 submitBooking();
                 return;
             }
         }
         
         // Not logged in - show email collection modal
-        openEmailCollectionModal();
+        openEmailCollectionModal(false);
     }
     
     // Helper functions for time formatting
@@ -2376,9 +2420,86 @@
         }
     }
     
-    function openEmailCollectionModal() {
+    function mountStripeCard() {
+        const numberContainer = document.getElementById('stripeCardNumberContainer');
+        const expiryContainer = document.getElementById('stripeCardExpiryContainer');
+        const cvcContainer = document.getElementById('stripeCardCvcContainer');
+        if (!numberContainer || !expiryContainer || !cvcContainer || !stripePublishableKey || !window.Stripe) return;
+        const errEl = document.getElementById('stripeCardError');
+        if (cardNumberElement) return; // Already mounted
+        
+        try {
+            stripeInstance = window.Stripe(stripePublishableKey);
+            const elements = stripeInstance.elements();
+            const styleOptions = { style: { base: { fontSize: '16px' } } };
+            
+            cardNumberElement = elements.create('cardNumber', styleOptions);
+            cardExpiryElement = elements.create('cardExpiry', styleOptions);
+            cardCvcElement = elements.create('cardCvc', styleOptions);
+            
+            cardNumberElement.mount('#stripeCardNumberContainer');
+            cardExpiryElement.mount('#stripeCardExpiryContainer');
+            cardCvcElement.mount('#stripeCardCvcContainer');
+            
+            // Error handling: listen to all three elements
+            function handleElementChange(e) {
+                const errorTextEl = document.getElementById('stripeCardErrorText');
+                if (errEl && errorTextEl) {
+                    if (e.error) {
+                        errorTextEl.textContent = e.error.message || '';
+                        errEl.style.display = 'block';
+                    } else {
+                        errorTextEl.textContent = '';
+                        errEl.style.display = 'none';
+                    }
+                }
+            }
+            
+            cardNumberElement.on('change', handleElementChange);
+            cardExpiryElement.on('change', handleElementChange);
+            cardCvcElement.on('change', handleElementChange);
+        } catch (e) {
+            console.error('Stripe card mount error:', e);
+            const errorTextEl = document.getElementById('stripeCardErrorText');
+            if (errEl && errorTextEl) {
+                errorTextEl.textContent = 'Could not load payment form.';
+                errEl.style.display = 'block';
+            }
+        }
+    }
+    
+    function openEmailCollectionModal(paymentOnly) {
+        if (typeof paymentOnly === 'undefined') paymentOnly = false;
         const emailModal = document.getElementById('emailCollectionModal');
         if (!emailModal) return;
+        
+        const guestWrap = document.getElementById('bookingGuestFieldsWrap');
+        const timezoneWrap = document.getElementById('bookingTimezoneSectionWrap');
+        const cardSection = document.getElementById('bookingPaymentCardSection');
+        const emailInput = document.getElementById('bookingEmailInput');
+        if (paymentOnly) {
+            if (guestWrap) guestWrap.style.display = 'none';
+            if (timezoneWrap) timezoneWrap.style.display = 'none';
+            if (cardSection) cardSection.style.display = 'block';
+            if (emailInput) emailInput.removeAttribute('required');
+            const submitBtn = document.getElementById('submitBookingBtn');
+            if (submitBtn) {
+                submitBtn.innerHTML = '<i class="fas fa-lock"></i> <span>Pay and book</span>';
+            }
+        } else {
+            if (guestWrap) guestWrap.style.display = 'flex';
+            if (timezoneWrap) timezoneWrap.style.display = 'block';
+            if (cardSection) cardSection.style.display = paymentRequired ? 'block' : 'none';
+            if (emailInput) emailInput.setAttribute('required', 'required');
+            const submitBtn = document.getElementById('submitBookingBtn');
+            if (submitBtn) {
+                submitBtn.innerHTML = '<i class="fas fa-calendar-check"></i> <span>Confirm Booking</span>';
+            }
+        }
+        
+        if (paymentRequired && stripePublishableKey && cardSection) {
+            mountStripeCard();
+        }
         
         // Check if we already have a corrected timezone from previous interaction
         const bookingTimezoneValue = document.getElementById('bookingTimezoneValue');
@@ -2471,17 +2592,31 @@
             emailModal.style.opacity = '1';
         }, 10);
         
-        // Focus email input
-        const emailInput = document.getElementById('bookingEmailInput');
-        if (emailInput) emailInput.focus();
+        // Focus email input (guest flow only)
+        const emailInputFocus = document.getElementById('bookingEmailInput');
+        if (!paymentOnly && emailInputFocus) emailInputFocus.focus();
     }
     
     function closeEmailCollectionModal() {
         const emailModal = document.getElementById('emailCollectionModal');
         if (!emailModal) return;
         
-        // Stop clocks
         stopTimezoneClocks();
+        if (cardNumberElement) {
+            try { cardNumberElement.unmount(); } catch (e) {}
+            cardNumberElement = null;
+        }
+        if (cardExpiryElement) {
+            try { cardExpiryElement.unmount(); } catch (e) {}
+            cardExpiryElement = null;
+        }
+        if (cardCvcElement) {
+            try { cardCvcElement.unmount(); } catch (e) {}
+            cardCvcElement = null;
+        }
+        // Reset PaymentIntent state for this attempt
+        bookingPaymentIntentId = null;
+        bookingPaymentIntentClientSecret = null;
         
         emailModal.style.opacity = '0';
         setTimeout(() => {
@@ -2718,45 +2853,176 @@
         const bookingTimezoneValue = document.getElementById('bookingTimezoneValue');
         const emailError = document.getElementById('emailError');
         const submitBtn = document.getElementById('submitBookingBtn');
+        const cardErrorEl = document.getElementById('stripeCardError');
         
-        if (!emailInput || !submitBtn) return;
+        if (!submitBtn) return;
         
-        const email = emailInput.value.trim();
-        
-        // Validate email
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!email || !emailRegex.test(email)) {
-            if (emailError) {
-                emailError.textContent = 'Please enter a valid email address';
-                emailError.style.display = 'block';
-            }
-            return;
-        }
-        
-        // Get timezone - use selected timezone if set, otherwise use detected
+        const isPaymentOnly = isUserAuthenticated && paymentRequired;
+        let email = '';
+        let note = '';
         let timezone = detectedTimezone || 'UTC';
-        if (bookingTimezoneValue && bookingTimezoneValue.value) {
-            timezone = bookingTimezoneValue.value;
-        } else if (selectedTimezone) {
-            timezone = selectedTimezone;
+        if (!isPaymentOnly) {
+            if (!emailInput) return;
+            email = emailInput.value.trim();
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!email || !emailRegex.test(email)) {
+                if (emailError) {
+                    emailError.textContent = 'Please enter a valid email address';
+                    emailError.style.display = 'block';
+                }
+                return;
+            }
+            if (bookingTimezoneValue && bookingTimezoneValue.value) timezone = bookingTimezoneValue.value;
+            else if (selectedTimezone) timezone = selectedTimezone;
+            note = noteInput ? noteInput.value.trim() : '';
         }
         
-        const note = noteInput ? noteInput.value.trim() : '';
+        if (emailError) emailError.style.display = 'none';
+        const cardErrorTextEl = document.getElementById('stripeCardErrorText');
+        if (cardErrorEl && cardErrorTextEl) {
+            cardErrorTextEl.textContent = '';
+            cardErrorEl.style.display = 'none';
+        }
         
-        // Disable button
         submitBtn.disabled = true;
         submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <span>Booking...</span>';
         
-        // Hide error
-        if (emailError) {
-            emailError.style.display = 'none';
+        function resetSubmitBtn() {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = isPaymentOnly ? '<i class="fas fa-lock"></i> <span>Pay and book</span>' : '<i class="fas fa-calendar-check"></i> <span>Confirm Booking</span>';
         }
         
-        // Submit booking
-        submitBooking(email, note, timezone);
+        function doSubmit(paymentIntentId) {
+            submitBooking(email || null, note || null, timezone, paymentIntentId);
+        }
+
+        function confirmWithStripe() {
+            const cardErrorTextEl = document.getElementById('stripeCardErrorText');
+            if (!bookingPaymentIntentClientSecret) {
+                if (cardErrorEl && cardErrorTextEl) {
+                    cardErrorTextEl.textContent = 'Payment could not be started. Please try again.';
+                    cardErrorEl.style.display = 'block';
+                }
+                resetSubmitBtn();
+                return;
+            }
+            if (!cardNumberElement) {
+                if (cardErrorEl && cardErrorTextEl) {
+                    cardErrorTextEl.textContent = 'Please enter your card details.';
+                    cardErrorEl.style.display = 'block';
+                }
+                resetSubmitBtn();
+                return;
+            }
+            // Provide the card Element as payment_method.card for this PaymentIntent.
+            // This is the recommended pattern for confirmCardPayment with Elements.
+            stripeInstance.confirmCardPayment(bookingPaymentIntentClientSecret, {
+                payment_method: {
+                    card: cardNumberElement,
+                },
+            }).then(function(confirmResult) {
+                const cardErrorTextElInner = document.getElementById('stripeCardErrorText');
+                if (confirmResult.error) {
+                    if (cardErrorEl && cardErrorTextElInner) {
+                        cardErrorTextElInner.textContent = confirmResult.error.message || 'Payment failed.';
+                        cardErrorEl.style.display = 'block';
+                    }
+                    resetSubmitBtn();
+                    return;
+                }
+                if (confirmResult.paymentIntent && confirmResult.paymentIntent.status === 'succeeded') {
+                    // Use cached PaymentIntent id if available, otherwise fall back
+                    const piId = bookingPaymentIntentId || confirmResult.paymentIntent.id;
+                    bookingPaymentIntentId = piId;
+                    doSubmit(piId);
+                } else {
+                    if (cardErrorEl && cardErrorTextElInner) {
+                        cardErrorTextElInner.textContent = 'Payment did not complete. Please try again.';
+                        cardErrorEl.style.display = 'block';
+                    }
+                    resetSubmitBtn();
+                }
+            }).catch(function() {
+                const cardErrorTextElInner = document.getElementById('stripeCardErrorText');
+                if (cardErrorEl && cardErrorTextElInner) {
+                    cardErrorTextElInner.textContent = 'Payment could not be completed. Please try again.';
+                    cardErrorEl.style.display = 'block';
+                }
+                resetSubmitBtn();
+            });
+        }
+        
+        if (paymentRequired && stripeInstance && cardNumberElement) {
+            // If we already have a PaymentIntent for this attempt, just retry confirmation
+            if (bookingPaymentIntentClientSecret) {
+                confirmWithStripe();
+                return;
+            }
+
+            // First time for this attempt: create PaymentIntent on the backend
+            var createIntentPayload = {
+                mentor_id: mentorId,
+                is_logged_in: isUserAuthenticated
+            };
+            // Include a stable slot_key for idempotency (mentor + slot + client)
+            var slotKey = null;
+            if (selectedSlot) {
+                if (selectedSlot.type === 'one_time' && selectedSlot.availability_slot_id) {
+                    slotKey = 'one_time:' + selectedSlot.availability_slot_id;
+                } else if (selectedSlot.type === 'recurring' && selectedSlot.recurring_id && selectedSlot.instance_date) {
+                    slotKey = 'recurring:' + selectedSlot.recurring_id + ':' + selectedSlot.instance_date;
+                } else if (selectedSlot.start) {
+                    slotKey = 'time:' + selectedSlot.start;
+                }
+            }
+            if (slotKey) {
+                createIntentPayload.slot_key = slotKey;
+            }
+            if (!isUserAuthenticated && email) createIntentPayload.email = email;
+            var csrftoken = document.cookie.split(';').reduce(function(acc, c) {
+                var parts = c.trim().split('=');
+                if (parts[0] === 'csrftoken') acc = decodeURIComponent(parts.slice(1).join('='));
+                return acc;
+            }, null);
+            fetch('{% url "general:dashboard_user:create_booking_payment_intent" %}', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrftoken },
+                body: JSON.stringify(createIntentPayload)
+            }).then(function(r) { return r.json(); }).then(function(intentData) {
+                const cardErrorTextElInner = document.getElementById('stripeCardErrorText');
+                if (!intentData.success || !intentData.client_secret || !intentData.payment_intent_id) {
+                    if (cardErrorEl && cardErrorTextElInner) {
+                        cardErrorTextElInner.textContent = intentData.error || 'Could not start payment.';
+                        cardErrorEl.style.display = 'block';
+                    }
+                    resetSubmitBtn();
+                    return;
+                }
+                // Cache PI for this booking attempt so retries reuse it
+                bookingPaymentIntentId = intentData.payment_intent_id;
+                bookingPaymentIntentClientSecret = intentData.client_secret;
+                confirmWithStripe();
+            }).catch(function() {
+                const cardErrorTextElInner = document.getElementById('stripeCardErrorText');
+                if (cardErrorEl && cardErrorTextElInner) {
+                    cardErrorTextElInner.textContent = 'Could not start payment. Please try again.';
+                    cardErrorEl.style.display = 'block';
+                }
+                resetSubmitBtn();
+            });
+        } else if (paymentRequired) {
+            const cardErrorTextEl = document.getElementById('stripeCardErrorText');
+            if (cardErrorEl && cardErrorTextEl) {
+                cardErrorTextEl.textContent = 'Please enter your card details.';
+                cardErrorEl.style.display = 'block';
+            }
+            resetSubmitBtn();
+        } else {
+            doSubmit(null);
+        }
     }
     
-    function submitBooking(email = null, note = null, timezone = null) {
+    function submitBooking(email = null, note = null, timezone = null, paymentIntentId = null) {
         if (!selectedSlot || !selectedDate) {
             return;
         }
@@ -2791,6 +3057,7 @@
             if (note) payload.note = note;
             if (timezone) payload.timezone = timezone;
         }
+        if (paymentIntentId) payload.payment_intent_id = paymentIntentId;
         
         // Get CSRF token
         function getCookie(name) {

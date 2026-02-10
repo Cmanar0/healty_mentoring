@@ -414,6 +414,8 @@ def mentor_profile_detail(request, user_id):
     else:
         average_rating = 0
     
+    from django.conf import settings
+    stripe_publishable_key = getattr(settings, "STRIPE_PUBLISHABLE_KEY", "") or ""
     return render(request, "web/mentor_profile_detail.html", {
         "mentor_user": mentor_user,
         "mentor_profile": mentor_profile,
@@ -423,6 +425,7 @@ def mentor_profile_detail(request, user_id):
         "reviews": reviews,
         "average_rating": average_rating,
         "reviews_count": reviews.count(),
+        "stripe_publishable_key": stripe_publishable_key,
     })
 
 

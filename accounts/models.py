@@ -152,8 +152,14 @@ class MentorProfile(models.Model):
     tags = models.JSONField(default=list, blank=True)  # Array of tag strings from predefined list
     languages = models.JSONField(default=list, blank=True)  # Array of language IDs from predefined list
     categories = models.JSONField(default=list, blank=True)  # Array of category IDs from predefined list
+    # Stored as price_per_hour for legacy/DB; for billing and session pricing use price_per_session.
     price_per_hour = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
     session_length = models.PositiveIntegerField(default=60, blank=True, null=True, help_text="Session length in minutes")
+
+    @property
+    def price_per_session(self):
+        """Price for one session. Use this for billing and session pricing (not price_per_hour)."""
+        return self.price_per_hour
     collisions = models.BooleanField(
         default=False,
         help_text="True when mentor has unresolved availability collisions (e.g. after increasing session length)."

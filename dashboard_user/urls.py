@@ -21,6 +21,7 @@ urlpatterns = [
     path('reviews/<int:review_id>/delete/', views.delete_review, name='delete_review'),
     path('session-invitation/<str:token>/', views.session_invitation, name='session_invitation'),
     path('session-management/', views.session_management, name='session_management'),
+    path('create-booking-payment-intent/', views.create_booking_payment_intent, name='create_booking_payment_intent'),
     path('book-session/', views.book_session, name='book_session'),
     path('notifications/', views.notification_list, name='notification_list'),
     path('notifications/<int:notification_id>/', views.notification_detail, name='notification_detail'),
