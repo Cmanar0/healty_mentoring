@@ -1528,7 +1528,14 @@ function markOngoingSessionRows(container) {
 </script>
 
 <style>
-  .session-item[data-clickable-session] .session-left { cursor: pointer; }
+  /* Make entire session row clickable */
+  .session-item[data-clickable-session] {
+    cursor: pointer;
+  }
+  
+  .session-item[data-clickable-session] .session-right {
+    cursor: default;
+  }
 
   /* Remove all padding from flex-scroll-card */
   .dashboard-card.flex-scroll-card {

@@ -3271,6 +3271,40 @@ def delete_active_backlog_task(request, task_id):
 
 
 @login_required
+@require_POST
+def deactivate_active_backlog_task(request, task_id):
+    """Deactivate a stage-linked task from user's active backlog"""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'user':
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+    
+    user_profile = request.user.user_profile
+    from dashboard_user.models import Task
+    
+    try:
+        task = get_object_or_404(Task, id=task_id, user_active_backlog=user_profile)
+        
+        # Only allow deactivation for stage-linked tasks
+        if not task.stage:
+            return JsonResponse({
+                'success': False,
+                'error': 'Cannot deactivate task created directly in active backlog'
+            }, status=400)
+        
+        # Deactivate the task
+        task.deactivate_task()
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Task deactivated successfully'
+        })
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f'Error deactivating active backlog task: {str(e)}')
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
 def get_user_active_backlog_api(request):
     """API endpoint to get user's active backlog tasks"""
     if not hasattr(request.user, 'profile') or request.user.profile.role != 'user':
@@ -3278,43 +3312,95 @@ def get_user_active_backlog_api(request):
     
     try:
         user_profile = request.user.user_profile
-        from dashboard_user.models import Task
+        from dashboard_user.models import Task, ProjectStage
         from django.utils import timezone
-        from datetime import timedelta
+        from datetime import timedelta, date as date_type
         
-        # Get all tasks in user's active backlog (no limit - display all in scrollable sidebar)
+        # Get filter parameter
+        filter_status = request.GET.get('filter', 'todo')  # todo, completed, overdue
+        
+        # Get all tasks in user's active backlog (including stage-linked tasks)
+        # Order by created_at descending (newest first), then by order
         tasks = Task.objects.filter(
-            user_active_backlog=user_profile,
-            completed=False
-        ).select_related('project').order_by('order', 'created_at')
+            user_active_backlog=user_profile
+        ).select_related('project', 'stage', 'stage__project').order_by('-created_at', 'order')
         
         # Calculate date thresholds
         today = timezone.now().date()
-        week_from_now = today + timedelta(days=7)
+        
+        # Apply filters
+        if filter_status == 'todo':
+            tasks = tasks.filter(completed=False)
+        elif filter_status == 'completed':
+            tasks = tasks.filter(completed=True)
+        elif filter_status == 'overdue':
+            tasks = tasks.filter(deadline__lt=today, completed=False)
         
         tasks_data = []
         for task in tasks:
-            is_overdue = task.deadline and task.deadline < today if task.deadline else False
-            is_due_this_week = task.deadline and task.deadline <= week_from_now if task.deadline else False
+            dl = task.deadline
+            deadline_date = None
+            if dl:
+                if hasattr(dl, 'year'):
+                    deadline_date = dl
+                elif isinstance(dl, str) and len(dl) >= 10:
+                    try:
+                        deadline_date = date_type.fromisoformat(dl[:10])
+                    except (ValueError, TypeError):
+                        pass
+            deadline_str = (deadline_date.strftime('%Y-%m-%d') if deadline_date else None) or (dl[:10] if isinstance(dl, str) and len(dl) >= 10 else None) if dl else None
+            is_overdue = deadline_date and deadline_date < today and not task.completed if deadline_date else False
+            
+            # Get completed_at date for grouping
+            completed_at_str = None
+            if task.completed and task.completed_at:
+                completed_at_str = task.completed_at.strftime('%Y-%m-%d')
+            
+            # Check if task is stage-linked
+            has_stage = task.stage is not None
+            stage_id = task.stage.id if task.stage else None
+            stage_title = task.stage.title if task.stage else None
+            project_id = None
+            project_title = None
+            
+            if task.stage and task.stage.project:
+                project_id = task.stage.project.id
+                project_title = task.stage.project.title
+            elif task.project:
+                project_id = task.project.id
+                project_title = task.project.title
             
             tasks_data.append({
                 'id': task.id,
                 'title': task.title,
                 'description': task.description or '',
                 'completed': task.completed,
-                'deadline': task.deadline.strftime('%Y-%m-%d') if task.deadline else None,
+                'deadline': deadline_str,
                 'priority': task.priority,
+                'status': task.status,
+                'created_at': task.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+                'completed_at': completed_at_str,
+                'order': float(task.order) if task.order is not None else 0.0,
                 'is_overdue': is_overdue,
-                'is_due_this_week': is_due_this_week,
-                'project_title': task.project.title if task.project else None,
+                'has_stage': has_stage,
+                'stage_id': stage_id,
+                'stage_title': stage_title,
+                'project_id': project_id,
+                'project_title': project_title,
             })
         
-        total_count = Task.objects.filter(user_active_backlog=user_profile, completed=False).count()
+        # Calculate counts for all tasks (before filtering)
+        all_tasks = Task.objects.filter(user_active_backlog=user_profile)
+        todo_count = all_tasks.filter(completed=False).count()
+        completed_count = all_tasks.filter(completed=True).count()
+        overdue_count = all_tasks.filter(deadline__lt=today, completed=False).count()
         
         return JsonResponse({
             'success': True,
             'tasks': tasks_data,
-            'total_count': total_count,
+            'todo_count': todo_count,
+            'completed_count': completed_count,
+            'overdue_count': overdue_count,
         })
     except Exception as e:
         import logging

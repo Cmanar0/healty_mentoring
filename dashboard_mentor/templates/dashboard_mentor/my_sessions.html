@@ -97,7 +97,14 @@
 {% include "dashboard_mentor/calendar_mentor/calendar.html" %}
 
 <style>
-    .session-item[data-clickable-session] .session-left { cursor: pointer; }
+    /* Make entire session row clickable */
+    .session-item[data-clickable-session] {
+        cursor: pointer;
+    }
+    
+    .session-item[data-clickable-session] .session-right {
+        cursor: default;
+    }
     .manage-availability-btn,
     .session-history-btn {
         font-size: 0.9375rem;

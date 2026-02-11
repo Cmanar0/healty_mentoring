@@ -45,6 +45,7 @@ urlpatterns = [
     path('active-backlog/tasks/<int:task_id>/edit/', views.edit_active_backlog_task, name='edit_active_backlog_task'),
     path('active-backlog/tasks/<int:task_id>/toggle-complete/', views.toggle_active_backlog_task_complete, name='toggle_active_backlog_task_complete'),
     path('active-backlog/tasks/<int:task_id>/delete/', views.delete_active_backlog_task, name='delete_active_backlog_task'),
+    path('active-backlog/tasks/<int:task_id>/deactivate/', views.deactivate_active_backlog_task, name='deactivate_active_backlog_task'),
     path('active-backlog/api/', views.get_user_active_backlog_api, name='get_user_active_backlog_api'),
     path('projects/<int:project_id>/stages/api/', views.get_stages_api, name='get_stages_api'),
     path('projects/<int:project_id>/stages/<int:stage_id>/', views.stage_detail, name='stage_detail'),

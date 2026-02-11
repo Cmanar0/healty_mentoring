@@ -25,7 +25,7 @@
             {% if initial_sessions %}
                 {% for session in initial_sessions %}
                     <div class="session-item status-{{ session.status }}" data-clickable-session data-session-id="{{ session.id }}">
-                        <div class="session-left" onclick="if (typeof openSessionDetailModal === 'function') openSessionDetailModal({{ session.id }});" style="cursor: pointer;">
+                        <div class="session-left">
                             <div class="session-date">
                                 <span class="date-day">{{ session.start_datetime|date:"d" }}</span>
                                 <span class="date-month">{{ session.start_datetime|date:"M" }}</span>
@@ -171,10 +171,34 @@
 }
 .session-detail-modal-close:hover { background: #fee2e2; color: #ef4444; }
 .session-detail-modal-body { padding: 32px; overflow-y: auto; }
+
+/* Make entire session row clickable */
+.session-item[data-clickable-session] {
+    cursor: pointer;
+}
+
+.session-item[data-clickable-session] .session-right {
+    cursor: default;
+}
 </style>
 
 <script>
 (function() {
+  // Make session rows clickable (entire row, not just text)
+  const container = document.getElementById('sessionsContainer');
+  if (container) {
+      container.addEventListener('click', function(e) {
+          const row = e.target.closest('.session-item[data-clickable-session]');
+          if (!row) return;
+          // Don't trigger if clicking on dropdown menu
+          if (e.target.closest('.session-right')) return;
+          const sessionId = row.getAttribute('data-session-id');
+          if (sessionId && typeof openSessionDetailModal === 'function') {
+              openSessionDetailModal(parseInt(sessionId, 10));
+          }
+      });
+  }
+
   // Start at page 1 since initial load is page 1
   let currentPage = 1;
   let isLoading = false;
