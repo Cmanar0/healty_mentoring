@@ -235,7 +235,7 @@
         <button class="booking-close-btn" onclick="closeEmailCollectionModal()"><i class="fas fa-times"></i></button>
         
         <div class="booking-modal-content-wrapper">
-            <form id="emailCollectionForm" style="height: 100%;">
+            <form id="emailCollectionForm" style="height: 100%;" onsubmit="return false;">
                 <div class="booking-modal-grid">
                     <!-- Left Column: Session Summary -->
                     <div class="summary-column" style="background: #f1f5f9;">
@@ -1074,9 +1074,9 @@
 .book-slot-btn {
     width: 100%;
     padding: 14px 20px;
-    background: var(--mp-primary); /* Green button */
-    color: white;
-    border: none;
+    background: #10b981 !important; /* Green button - use direct color for dashboard compatibility */
+    color: white !important;
+    border: none !important;
     border-radius: 8px;
     font-weight: 600;
     font-size: 1rem;
@@ -1087,10 +1087,12 @@
     justify-content: center;
     gap: 8px;
     box-shadow: 0 4px 6px rgba(16, 185, 129, 0.2);
+    opacity: 1 !important; /* Ensure button is visible */
 }
 .book-slot-btn:hover {
-    background: #059669;
+    background: #059669 !important;
     box-shadow: 0 6px 12px rgba(16, 185, 129, 0.3);
+    opacity: 1 !important;
 }
 .book-slot-btn:active {
     transform: scale(0.98);
@@ -1359,7 +1361,8 @@
     // Unique id for this payment attempt (one per modal open); used in Stripe idempotency key
     let bookingAttemptId = null;
 
-    document.addEventListener('DOMContentLoaded', function() {
+    // Extract initialization into a function that can be called directly
+    function initBookingModal() {
         // Initialize timezone: use same source as dashboard (selected → detected → time_zone → UTC) so times match
         if (isUserAuthenticated && userDisplayTimezone) {
             selectedTimezone = userDisplayTimezone;
@@ -1394,13 +1397,24 @@
         const recurringData = document.getElementById('recurring-slots-data');
         const sessionLengthEl = document.getElementById('mentor-session-length');
         
+        console.log('Availability data elements:', {
+            oneTimeData: oneTimeData ? 'found' : 'not found',
+            recurringData: recurringData ? 'found' : 'not found',
+            sessionLengthEl: sessionLengthEl ? 'found' : 'not found'
+        });
+        
         // Get session length
         if (sessionLengthEl) {
             try {
                 sessionLengthMinutes = parseInt(JSON.parse(sessionLengthEl.textContent)) || 60;
+                console.log('Session length:', sessionLengthMinutes);
             } catch (e) {
+                console.error('Error parsing session length:', e);
                 sessionLengthMinutes = 60;
             }
+        } else {
+            console.warn('Session length element not found, using default 60');
+            sessionLengthMinutes = 60;
         }
         
         // Parse availability data
@@ -1409,18 +1423,30 @@
         
         if (oneTimeData) {
             try {
-                oneTimeSlots = JSON.parse(oneTimeData.textContent) || [];
+                const dataText = oneTimeData.textContent;
+                console.log('One-time slots data text length:', dataText ? dataText.length : 0);
+                oneTimeSlots = JSON.parse(dataText) || [];
+                console.log('Parsed one-time slots count:', oneTimeSlots.length);
             } catch (e) {
                 console.error('Error parsing one-time slots:', e);
+                console.error('Data text:', oneTimeData.textContent);
             }
+        } else {
+            console.warn('One-time slots data element not found');
         }
         
         if (recurringData) {
             try {
-                recurringSlots = JSON.parse(recurringData.textContent) || [];
+                const dataText = recurringData.textContent;
+                console.log('Recurring slots data text length:', dataText ? dataText.length : 0);
+                recurringSlots = JSON.parse(dataText) || [];
+                console.log('Parsed recurring slots count:', recurringSlots.length);
             } catch (e) {
                 console.error('Error parsing recurring slots:', e);
+                console.error('Data text:', recurringData.textContent);
             }
+        } else {
+            console.warn('Recurring slots data element not found');
         }
         
         // Filter one-time slots to only include future, non-booked slots
@@ -1523,42 +1549,17 @@
                 // Update selected date label - use Date object for formatting
                 const dateOptions = {weekday: 'long', month: 'short', day: 'numeric'};
                 const formattedDate = dateObj.toLocaleDateString([], dateOptions);
-                if (selectedDateLabel) {
-                    selectedDateLabel.textContent = formattedDate;
-                }
+                if (selectedDateLabel) selectedDateLabel.textContent = formattedDate;
                 
-                // Show slots column and render slots (pass Date object)
-                if (slotsCol) slotsCol.style.display = 'flex';
-                renderSlots(dateObj);
+                // Show slots column and render slots for selected date
+                if (slotsCol) slotsCol.style.display = 'block';
+                if (slotsFooter) slotsFooter.style.display = 'flex';
+                renderSlots();
                 
-                // Show footer and summary since slot is selected
-                if (slotsFooter) slotsFooter.style.display = 'block';
-                if (bookingSummary) bookingSummary.style.display = 'block';
-                if (summaryDate) summaryDate.textContent = formattedDate;
-                if (summaryTimeRow) {
-                    // Format time for summary
-                    const formatTime = (dateStr) => {
-                        const d = new Date(dateStr);
-                        let hours = d.getHours();
-                        const minutes = d.getMinutes();
-                        const ampm = hours >= 12 ? 'pm' : 'am';
-                        hours = hours % 12;
-                        hours = hours ? hours : 12;
-                        const mins = minutes < 10 ? '0' + minutes : minutes;
-                        return `${hours}:${mins} ${ampm}`;
-                    };
-                    const endDt = new Date(selectedSlot.end);
-                    const timeText = `${formatTime(selectedSlot.start)} - ${formatTime(selectedSlot.end)}`;
-                    if (summaryTime) summaryTime.textContent = timeText;
-                    summaryTimeRow.style.display = 'flex';
-                }
-                
-                // Highlight the selected slot after slots are rendered
+                // Highlight the selected slot
                 setTimeout(() => {
                     const slots = getSlotsForDate(dateObj);
-                    // Find the slot that matches our selected slot
                     const matchingSlotIndex = slots.findIndex(slot => {
-                        // Compare ISO strings - normalize both to ensure comparison works
                         const slotStartISO = slot.start ? new Date(slot.start).toISOString() : null;
                         const targetStartISO = new Date(slotStart).toISOString();
                         return slotStartISO === targetStartISO;
@@ -1569,28 +1570,15 @@
                         if (slotButtons[matchingSlotIndex]) {
                             slotButtons[matchingSlotIndex].classList.add('selected');
                             slotButtons[matchingSlotIndex].scrollIntoView({ behavior: 'smooth', block: 'center' });
-                            // Update selectedSlot to match the slot from the list (preserves all slot data)
-                            selectedSlot = slots[matchingSlotIndex];
                         }
                     }
-                }, 500);
+                }, 100);
                 
-                // Clean up URL parameters
+                // Clean URL
                 const newUrl = window.location.pathname;
                 window.history.replaceState({}, '', newUrl);
-            } else {
-                // No slot specified, just open modal normally
-                openBookingModal();
+                return; // Don't continue with normal initialization
             }
-        }
-        
-        // Book slot button handler
-        if (bookSlotBtn) {
-            bookSlotBtn.addEventListener('click', function() {
-                if (selectedSlot && selectedDate) {
-                    handleBookingClick();
-                }
-            });
         }
         
         // Email collection form handler
@@ -1599,6 +1587,13 @@
             emailCollectionForm.addEventListener('submit', function(e) {
                 e.preventDefault();
                 handleEmailCollectionSubmit();
+            });
+            
+            // Prevent Enter key from submitting form (except when clicking submit button)
+            emailCollectionForm.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && e.target.tagName !== 'BUTTON' && e.target.type !== 'submit') {
+                    e.preventDefault();
+                }
             });
         }
         
@@ -1609,11 +1604,46 @@
                 openTimeCorrectionModal();
             });
         }
-    });
+        
+        // Book slot button handler
+        if (bookSlotBtn) {
+            bookSlotBtn.addEventListener('click', function() {
+                if (selectedSlot && selectedDate) {
+                    handleBookingClick();
+                }
+            });
+        }
+    }
+
+    // Make initBookingModal globally accessible
+    window.initBookingModal = initBookingModal;
+
+    // Also call on DOMContentLoaded for normal page loads (only if not loading from dashboard)
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof window.bookingModalFromDashboard === 'undefined' || !window.bookingModalFromDashboard) {
+                initBookingModal();
+            }
+        });
+    } else {
+        // DOM already loaded, but only initialize if not loading from dashboard
+        if (typeof window.bookingModalFromDashboard === 'undefined' || !window.bookingModalFromDashboard) {
+            initBookingModal();
+        }
+    }
 
     // --- Modal Logic ---
     function openBookingModal() {
         if (!modal) return; // Guard clause
+        
+        // Reset state if opened from dashboard (allows re-selection)
+        if (window.bookingModalFromDashboard) {
+            selectedDate = null;
+            selectedSlot = null;
+            preservedBookingData = null;
+            bookingPaymentIntentId = null;
+            bookingPaymentIntentClientSecret = null;
+        }
         
         // Přihlášený: stejná timezone jako dashboard (selected → detected → time_zone → UTC)
         if (isUserAuthenticated && userDisplayTimezone) {
@@ -1657,6 +1687,9 @@
         document.body.style.overflow = 'hidden'; // Prevent background scroll
         renderCalendar();
     }
+    
+    // Make openBookingModal globally accessible
+    window.openBookingModal = openBookingModal;
 
     // Handle ESC key - close only the topmost visible modal
     function handleEscapeKey() {
@@ -1860,11 +1893,7 @@
         renderCalendar(); // Redraws calendar to remove 'selected' class
     }
     
-    // Close on click outside
-    modal.addEventListener('click', (e) => {
-        if (e.target === modal) closeBookingModal();
-    });    
-        // --- Calendar Logic ---
+    // --- Calendar Logic ---
     function renderCalendar() {
         if (!calendarDays) return;
         
@@ -2444,15 +2473,84 @@
         }
     }
     
+    // Track retry attempts to prevent infinite loops
+    let stripeMountRetries = 0;
+    const MAX_STRIPE_RETRIES = 50; // Max 5 seconds (50 * 100ms)
+    let stripeElementsMounted = false; // Track if Stripe Elements are already mounted
+    
     function mountStripeCard() {
+        // Prevent duplicate mounting
+        if (stripeElementsMounted && cardNumberElement && cardExpiryElement && cardCvcElement) {
+            console.log('Stripe Elements already mounted, skipping');
+            return;
+        }
         const numberContainer = document.getElementById('stripeCardNumberContainer');
         const expiryContainer = document.getElementById('stripeCardExpiryContainer');
         const cvcContainer = document.getElementById('stripeCardCvcContainer');
-        if (!numberContainer || !expiryContainer || !cvcContainer || !stripePublishableKey || !window.Stripe) return;
+        if (!numberContainer || !expiryContainer || !cvcContainer || !stripePublishableKey) {
+            console.warn('Stripe mount: Missing containers or key', {
+                numberContainer: !!numberContainer,
+                expiryContainer: !!expiryContainer,
+                cvcContainer: !!cvcContainer,
+                stripePublishableKey: !!stripePublishableKey,
+                windowStripe: !!window.Stripe
+            });
+            stripeMountRetries = 0; // Reset on failure
+            return;
+        }
+        
+        if (!window.Stripe) {
+            stripeMountRetries++;
+            if (stripeMountRetries >= MAX_STRIPE_RETRIES) {
+                console.error('Stripe.js failed to load after', MAX_STRIPE_RETRIES, 'attempts');
+                stripeMountRetries = 0; // Reset
+                const errEl = document.getElementById('stripeCardError');
+                const errorTextEl = document.getElementById('stripeCardErrorText');
+                if (errEl && errorTextEl) {
+                    errorTextEl.textContent = 'Payment form could not be loaded. Please refresh the page.';
+                    errEl.style.display = 'block';
+                }
+                return;
+            }
+            // Wait a bit for Stripe.js to load
+            setTimeout(mountStripeCard, 100);
+            return;
+        }
+        
+        // Reset retry counter on success
+        stripeMountRetries = 0;
+        
         const errEl = document.getElementById('stripeCardError');
-        if (cardNumberElement) return; // Already mounted
+        
+        // Unmount existing elements if they exist (for dynamic reloading)
+        if (cardNumberElement) {
+            try {
+                cardNumberElement.unmount();
+            } catch(e) {
+                console.warn('Error unmounting cardNumberElement:', e);
+            }
+            cardNumberElement = null;
+        }
+        if (cardExpiryElement) {
+            try {
+                cardExpiryElement.unmount();
+            } catch(e) {
+                console.warn('Error unmounting cardExpiryElement:', e);
+            }
+            cardExpiryElement = null;
+        }
+        if (cardCvcElement) {
+            try {
+                cardCvcElement.unmount();
+            } catch(e) {
+                console.warn('Error unmounting cardCvcElement:', e);
+            }
+            cardCvcElement = null;
+        }
+        stripeElementsMounted = false; // Reset mount flag when unmounting
         
         try {
+            console.log('Mounting Stripe Elements with key:', stripePublishableKey.substring(0, 10) + '...');
             stripeInstance = window.Stripe(stripePublishableKey);
             const elements = stripeInstance.elements();
             const styleOptions = { style: { base: { fontSize: '16px' } } };
@@ -2464,6 +2562,8 @@
             cardNumberElement.mount('#stripeCardNumberContainer');
             cardExpiryElement.mount('#stripeCardExpiryContainer');
             cardCvcElement.mount('#stripeCardCvcContainer');
+            stripeElementsMounted = true; // Mark as mounted
+            console.log('Stripe Elements mounted successfully');
             
             // Error handling: listen to all three elements
             function handleElementChange(e) {
@@ -2512,6 +2612,30 @@
             if (submitBtn) {
                 submitBtn.innerHTML = '<i class="fas fa-lock"></i> <span>Pay and book</span>';
             }
+            // Mount Stripe when payment section is shown
+            if (paymentRequired && stripePublishableKey) {
+                // Stripe.js should already be loaded by now, mount immediately if available
+                if (typeof window.Stripe === 'function') {
+                    mountStripeCard();
+                } else {
+                    // Fallback: wait for Stripe.js (shouldn't happen, but just in case)
+                    const waitForStripe = setInterval(() => {
+                        if (typeof window.Stripe === 'function') {
+                            clearInterval(waitForStripe);
+                            mountStripeCard();
+                        }
+                    }, 100);
+                    // Give up after 2 seconds (reduced from 5)
+                    setTimeout(() => {
+                        clearInterval(waitForStripe);
+                        if (typeof window.Stripe === 'function') {
+                            mountStripeCard();
+                        } else {
+                            console.error('Stripe.js not available after waiting');
+                        }
+                    }, 2000);
+                }
+            }
         } else {
             if (guestWrap) guestWrap.style.display = 'flex';
             if (timezoneWrap) timezoneWrap.style.display = 'block';
@@ -2521,10 +2645,30 @@
             if (submitBtn) {
                 submitBtn.innerHTML = '<i class="fas fa-calendar-check"></i> <span>Confirm Booking</span>';
             }
-        }
-        
-        if (paymentRequired && stripePublishableKey && cardSection) {
-            mountStripeCard();
+            // Mount Stripe when payment section is shown
+            if (paymentRequired && stripePublishableKey && cardSection) {
+                // Stripe.js should already be loaded by now, mount immediately if available
+                if (typeof window.Stripe === 'function') {
+                    mountStripeCard();
+                } else {
+                    // Fallback: wait for Stripe.js (shouldn't happen, but just in case)
+                    const waitForStripe = setInterval(() => {
+                        if (typeof window.Stripe === 'function') {
+                            clearInterval(waitForStripe);
+                            mountStripeCard();
+                        }
+                    }, 100);
+                    // Give up after 2 seconds (reduced from 5)
+                    setTimeout(() => {
+                        clearInterval(waitForStripe);
+                        if (typeof window.Stripe === 'function') {
+                            mountStripeCard();
+                        } else {
+                            console.error('Stripe.js not available after waiting');
+                        }
+                    }, 2000);
+                }
+            }
         }
         
         const bookingTimezoneValue = document.getElementById('bookingTimezoneValue');

@@ -25,6 +25,7 @@ urlpatterns = [
     path('session-management/', views.session_management, name='session_management'),
     path('create-booking-payment-intent/', views.create_booking_payment_intent, name='create_booking_payment_intent'),
     path('book-session/', views.book_session, name='book_session'),
+    path('booking-modal/<int:mentor_user_id>/', views.booking_modal_partial, name='booking_modal_partial'),
     path('notifications/', views.notification_list, name='notification_list'),
     path('notifications/<int:notification_id>/', views.notification_detail, name='notification_detail'),
     path('notifications/<int:notification_id>/mark-read/', views.notification_mark_read, name='notification_mark_read'),

@@ -1,4 +1,5 @@
 from django.shortcuts import render, redirect, get_object_or_404
+from django.template.loader import render_to_string
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.contrib.auth import logout
@@ -140,6 +141,14 @@ def dashboard(request):
             project_owner=user_profile
         ).exclude(assignment_status='assigned').select_related('template', 'supervised_by', 'supervised_by__user').order_by('-created_at')[:6]  # Limit to 6 for dashboard
     
+    # Get mentor relationships for the mentor selection modal
+    mentor_relationships = []
+    if user_profile:
+        mentor_relationships = MentorClientRelationship.objects.filter(
+            client=user_profile,
+            confirmed=True
+        ).select_related('mentor', 'mentor__user').order_by('-created_at')
+    
     # Activate user timezone so template |date shows upcoming session times in user's selected timezone
     user_tzinfo_activate = None
     if user_profile:
@@ -161,6 +170,7 @@ def dashboard(request):
             'user_credit': user_credit,
             'user_coins': user_coins,
             'user_projects': user_projects,
+            'mentor_relationships': mentor_relationships,
         })
     finally:
         timezone.deactivate()
@@ -1565,6 +1575,7 @@ def book_session(request):
             status='confirmed',
             session_price=price,
             tasks=[],
+            created_by=mentor_user,  # Set created_by to mentor user
         )
         session.ensure_meeting_url()
         mentor_profile.sessions.add(session)
@@ -1674,6 +1685,60 @@ def book_session(request):
         logger = logging.getLogger(__name__)
         logger.error(f'Error booking session: {str(e)}', exc_info=True)
         return JsonResponse({'success': False, 'error': f'An error occurred: {str(e)}'}, status=500)
+
+
+@login_required
+def booking_modal_partial(request, mentor_user_id):
+    """Return booking modal HTML for a specific mentor (for dashboard use)"""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'user':
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+    
+    try:
+        mentor_user = get_object_or_404(CustomUser, id=mentor_user_id)
+        mentor_profile = mentor_user.mentor_profile
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': 'Mentor not found'}, status=404)
+    
+    # Check if it's first session
+    is_first_session = True
+    try:
+        user_profile = request.user.user_profile
+        relationship = MentorClientRelationship.objects.filter(
+            mentor=mentor_profile,
+            client=user_profile
+        ).first()
+        is_first_session = relationship is None or not relationship.first_session_scheduled
+    except Exception:
+        is_first_session = True
+    
+    # Get Stripe publishable key
+    from django.conf import settings
+    stripe_publishable_key = getattr(settings, "STRIPE_PUBLISHABLE_KEY", "") or ""
+    
+    # Debug: Check availability data
+    import logging
+    logger = logging.getLogger(__name__)
+    try:
+        one_time_slots = mentor_profile.one_time_slots or []
+        recurring_slots = mentor_profile.recurring_slots or []
+        logger.info(f'Booking modal partial - Mentor {mentor_user_id}: one_time_slots={len(one_time_slots)}, recurring_slots={len(recurring_slots)}')
+    except Exception as e:
+        logger.error(f'Error getting availability data: {e}')
+    
+    # Render booking modal partial
+    html = render_to_string('dashboard_user/popups/booking_modal.html', {
+        'request': request,
+        'user': request.user,
+        'mentor_user': mentor_user,
+        'mentor_profile': mentor_profile,
+        'is_first_session': is_first_session,
+        'stripe_publishable_key': stripe_publishable_key,
+    })
+    
+    return JsonResponse({
+        'success': True,
+        'html': html
+    })
 
 
 @login_required
