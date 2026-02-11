@@ -129,7 +129,7 @@
                 </div>
 
                 <!-- Your Backlog Card (Scrollable) -->
-                <div class="dashboard-card flex-scroll-card" id="backlogCard" style="max-height: 500px; display: flex; flex-direction: column;">
+                <div class="dashboard-card flex-scroll-card" id="backlogCard" style="max-height: 530px; display: flex; flex-direction: column;">
                     <div class="card-header">
                         <h3 class="card-title">Your backlog</h3>
                         <div style="display: flex; align-items: center; gap: 12px;">
@@ -229,6 +229,7 @@
 /* Adjust timeline line position to account for padding */
 .session-timeline-container.scrollable-content::before {
     left: 31px; /* Adjusted to align with dots */
+    bottom: 32px; /* Stop before padding-bottom */
 }
 
 /* Make entire session row clickable */
