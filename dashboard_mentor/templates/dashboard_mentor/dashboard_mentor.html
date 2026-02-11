@@ -227,7 +227,7 @@
                       }
                     </style>
                     
-                    <div class="session-timeline-container scrollable-content" id="dashboardUpcomingSessions">
+                    <div class="session-timeline-container scrollable-content" id="dashboardUpcomingSessions" data-mentor-timezone="{{ mentor_timezone|default:'UTC' }}">
                         {% if upcoming_sessions %}
                             {% for session in upcoming_sessions %}
                                 <div class="session-item status-{{ session.status }}" data-session-id="{{ session.id }}" data-clickable-session data-start="{{ session.start_datetime|date:'c' }}" data-end="{{ session.end_datetime|date:'c' }}">
@@ -993,13 +993,6 @@ a.next-step-modal-item-row:hover .next-step-modal-item-num {
 .next-step-modal-coins-total-row .next-step-modal-coins-amount {
     font-weight: 700;
 }
-@media (min-width: 1024px) {
-    .next-step-modal-overlay[aria-hidden="false"] {
-        padding-top: 56px !important;
-        align-items: flex-start;
-        padding-bottom: 24px;
-    }
-}
 @media (max-width: 640px) {
     .next-step-modal-body { grid-template-columns: 1fr; }
     .next-step-modal-right { border-left: none; padding-left: 0; padding-top: 16px; border-top: 1px solid #e5e7eb; }
@@ -1285,7 +1278,7 @@ document.addEventListener('keydown', function(e) {
 </script>
 
 <!-- Invite Client Modal -->
-<div id="inviteClientModal" class="modal-overlay">
+<div id="inviteClientModal" class="modal-overlay modal-overlay-blur">
     <div class="modal-content" style="max-width: 500px;">
         <button type="button" class="modal-close" onclick="closeInviteClientModal()">
             <i class="fas fa-times"></i>
@@ -1364,6 +1357,7 @@ document.addEventListener('keydown', function(e) {
   window.refreshDashboardUpcomingSessions = async function() {
     const container = document.getElementById('dashboardUpcomingSessions');
     if (!container) return;
+    const mentorTz = container.getAttribute('data-mentor-timezone') || 'UTC';
     
     try {
       const response = await fetch('{% url "general:dashboard_mentor:get_dashboard_upcoming_sessions" %}', {
@@ -1376,19 +1370,19 @@ document.addEventListener('keydown', function(e) {
       const data = await response.json();
       
       if (data.success) {
-        // Clear existing content
         container.innerHTML = '';
         
         if (data.sessions && data.sessions.length > 0) {
-          // Render sessions
+          const fmtDate = new Intl.DateTimeFormat('en-US', { timeZone: mentorTz, day: 'numeric', month: 'short' });
+          const fmtTime = new Intl.DateTimeFormat('en-US', { timeZone: mentorTz, hour: 'numeric', minute: '2-digit', hour12: true });
           data.sessions.forEach(session => {
             const startDate = new Date(session.start_datetime);
             const endDate = new Date(session.end_datetime);
             
-            const day = startDate.getDate();
-            const month = startDate.toLocaleDateString('en-US', { month: 'short' });
-            const startTime = startDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-            const endTime = endDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+            const day = fmtDate.formatToParts(startDate).find(p => p.type === 'day').value;
+            const month = fmtDate.formatToParts(startDate).find(p => p.type === 'month').value;
+            const startTime = fmtTime.format(startDate);
+            const endTime = fmtTime.format(endDate);
             
             const statusClass = session.status === 'confirmed' ? 'confirmed' : 'tbc';
             const statusText = session.status === 'confirmed' ? 'Confirmed' : 'Invited';

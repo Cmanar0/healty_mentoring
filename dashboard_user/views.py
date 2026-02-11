@@ -49,7 +49,7 @@ def dashboard(request):
         from datetime import timezone as dt_timezone
         
         if user_profile:
-            # Get user's timezone
+            # Display timezone: prefer selected_timezone (same as booking modal and my-sessions)
             user_timezone = user_profile.selected_timezone or user_profile.detected_timezone or user_profile.time_zone or 'UTC'
             user_tzinfo = None
             try:
@@ -63,7 +63,7 @@ def dashboard(request):
                 attendees=request.user,
                 status__in=['invited', 'confirmed'],
                 start_datetime__gte=now
-            ).order_by('start_datetime').select_related('created_by', 'created_by__mentor_profile').prefetch_related('attendees')
+            ).order_by('start_datetime').prefetch_related('attendees', 'mentors__user')
             
             # Get total count to check if there are more than 4
             total_count = all_upcoming.count()
@@ -74,15 +74,10 @@ def dashboard(request):
             
             # Format sessions for template
             for session in sessions_queryset:
-                # Get mentor name (created_by is the mentor)
-                mentor_name = None
-                if session.created_by and hasattr(session.created_by, 'mentor_profile'):
-                    mentor_profile = session.created_by.mentor_profile
-                    mentor_name = f"{mentor_profile.first_name} {mentor_profile.last_name}".strip()
-                    if not mentor_name:
-                        mentor_name = session.created_by.email.split('@')[0]
-                else:
-                    mentor_name = session.created_by.email.split('@')[0] if session.created_by else 'Mentor'
+                first_mentor = session.mentors.select_related('user').first()
+                mentor_name = 'Mentor'
+                if first_mentor:
+                    mentor_name = f"{first_mentor.first_name} {first_mentor.last_name}".strip() or (first_mentor.user.email.split('@')[0] if getattr(first_mentor, 'user', None) else 'Mentor')
                 
                 # Convert to user's timezone
                 start_datetime_local = session.start_datetime
@@ -145,14 +140,30 @@ def dashboard(request):
             project_owner=user_profile
         ).exclude(assignment_status='assigned').select_related('template', 'supervised_by', 'supervised_by__user').order_by('-created_at')[:6]  # Limit to 6 for dashboard
     
-    return render(request, 'dashboard_user/dashboard_user.html', {
-        'upcoming_sessions': upcoming_sessions,
-        'has_more_sessions': has_more_sessions,
-        'backlog_tasks': backlog_tasks,
-        'user_credit': user_credit,
-        'user_coins': user_coins,
-        'user_projects': user_projects,
-    })
+    # Activate user timezone so template |date shows upcoming session times in user's selected timezone
+    user_tzinfo_activate = None
+    if user_profile:
+        try:
+            from zoneinfo import ZoneInfo
+            from datetime import timezone as dt_timezone
+            utz = user_profile.selected_timezone or user_profile.detected_timezone or user_profile.time_zone or 'UTC'
+            user_tzinfo_activate = ZoneInfo(str(utz))
+        except Exception:
+            from datetime import timezone as dt_timezone
+            user_tzinfo_activate = dt_timezone.utc
+    if user_tzinfo_activate:
+        timezone.activate(user_tzinfo_activate)
+    try:
+        return render(request, 'dashboard_user/dashboard_user.html', {
+            'upcoming_sessions': upcoming_sessions,
+            'has_more_sessions': has_more_sessions,
+            'backlog_tasks': backlog_tasks,
+            'user_credit': user_credit,
+            'user_coins': user_coins,
+            'user_projects': user_projects,
+        })
+    finally:
+        timezone.deactivate()
 
 @login_required
 def profile(request):
@@ -552,7 +563,7 @@ def my_sessions(request):
     from zoneinfo import ZoneInfo
     from datetime import timezone as dt_timezone
     
-    # Get user's timezone
+    # Display timezone: prefer selected_timezone (same as dashboard and booking modal)
     user_profile = request.user.profile
     user_timezone = user_profile.selected_timezone or user_profile.detected_timezone or user_profile.time_zone or 'UTC'
     user_tzinfo = None
@@ -570,22 +581,17 @@ def my_sessions(request):
             attendees=request.user,
             status__in=['invited', 'confirmed'],
             start_datetime__gte=now
-        ).order_by('start_datetime').select_related('created_by', 'created_by__mentor_profile').prefetch_related('attendees')
+        ).order_by('start_datetime').prefetch_related('attendees', 'mentors__user')
         
         # Get first 10 sessions for initial load
         sessions_queryset = all_upcoming[:10]
         
         # Format sessions for template
         for session in sessions_queryset:
-            # Get mentor name (created_by is the mentor)
-            mentor_name = None
-            if session.created_by and hasattr(session.created_by, 'mentor_profile'):
-                mentor_profile = session.created_by.mentor_profile
-                mentor_name = f"{mentor_profile.first_name} {mentor_profile.last_name}".strip()
-                if not mentor_name:
-                    mentor_name = session.created_by.email.split('@')[0]
-            else:
-                mentor_name = session.created_by.email.split('@')[0] if session.created_by else 'Mentor'
+            first_mentor = session.mentors.select_related('user').first()
+            mentor_name = 'Mentor'
+            if first_mentor:
+                mentor_name = f"{first_mentor.first_name} {first_mentor.last_name}".strip() or (first_mentor.user.email.split('@')[0] if getattr(first_mentor, 'user', None) else 'Mentor')
             
             # Convert to user's timezone
             start_datetime_local = session.start_datetime
@@ -610,10 +616,19 @@ def my_sessions(request):
         logger = logging.getLogger(__name__)
         logger.error(f"Error fetching initial sessions: {str(e)}")
     
-    return render(request, 'dashboard_user/my_sessions.html', {
-        'initial_sessions': initial_sessions,
-        'user_timezone': user_timezone,
-    })
+    # Activate user timezone so template |date filter shows times in user's selected timezone
+    try:
+        if user_tzinfo:
+            timezone.activate(user_tzinfo)
+    except Exception:
+        pass
+    try:
+        return render(request, 'dashboard_user/my_sessions.html', {
+            'initial_sessions': initial_sessions,
+            'user_timezone': user_timezone,
+        })
+    finally:
+        timezone.deactivate()
 
 
 @login_required
@@ -649,7 +664,7 @@ def get_sessions_paginated(request):
             attendees=request.user,
             status__in=['invited', 'confirmed'],
             start_datetime__gte=now
-        ).order_by('start_datetime').select_related('created_by', 'created_by__mentor_profile').prefetch_related('attendees')
+        ).order_by('start_datetime').prefetch_related('attendees', 'mentors__user')
         
         # Paginate
         paginator = Paginator(all_upcoming, per_page)
@@ -658,15 +673,10 @@ def get_sessions_paginated(request):
         # Format sessions for JSON response
         sessions_data = []
         for session in page_obj:
-            # Get mentor name (created_by is the mentor)
-            mentor_name = None
-            if session.created_by and hasattr(session.created_by, 'mentor_profile'):
-                mentor_profile = session.created_by.mentor_profile
-                mentor_name = f"{mentor_profile.first_name} {mentor_profile.last_name}".strip()
-                if not mentor_name:
-                    mentor_name = session.created_by.email.split('@')[0]
-            else:
-                mentor_name = session.created_by.email.split('@')[0] if session.created_by else 'Mentor'
+            first_mentor = session.mentors.select_related('user').first()
+            mentor_name = 'Mentor'
+            if first_mentor:
+                mentor_name = f"{first_mentor.first_name} {first_mentor.last_name}".strip() or (first_mentor.user.email.split('@')[0] if getattr(first_mentor, 'user', None) else 'Mentor')
             
             # Convert to user's timezone for JSON response
             start_dt = session.start_datetime
@@ -859,7 +869,7 @@ def session_management(request):
     invitation_session_ids = set(invitations.values_list('session_id', flat=True))
     
     # Get all sessions where user is an attendee
-    attendee_sessions = Session.objects.filter(attendees=request.user).select_related('created_by')
+    attendee_sessions = Session.objects.filter(attendees=request.user).prefetch_related('mentors__user')
     attendee_session_ids = set(attendee_sessions.values_list('id', flat=True))
     
     # Combine all session IDs (needed for both GET and POST)
@@ -871,7 +881,7 @@ def session_management(request):
     # (those should only appear in the invitations list, not as changes)
     changed_sessions = []
     if all_user_session_ids:
-        all_user_sessions = Session.objects.filter(id__in=all_user_session_ids).select_related('created_by').prefetch_related('mentors', 'mentors__user')
+        all_user_sessions = Session.objects.filter(id__in=all_user_session_ids).prefetch_related('mentors', 'mentors__user')
         
         for session in all_user_sessions:
             # Skip expired sessions
@@ -1194,6 +1204,7 @@ def create_booking_payment_intent(request):
         data = json.loads(request.body)
         mentor_id = data.get('mentor_id')
         slot_key = (data.get('slot_key') or '').strip()
+        attempt_id = (data.get('attempt_id') or '').strip()
         is_logged_in = data.get('is_logged_in', False)
         email = (data.get('email') or '').strip().lower() if not is_logged_in else None
 
@@ -1258,6 +1269,7 @@ def create_booking_payment_intent(request):
                 is_first_session=is_first_session,
                 session_description=f"Session with {mentor_profile.first_name} {mentor_profile.last_name}",
                 slot_key=slot_key or None,
+                attempt_id=attempt_id or None,
             )
         except BillingError as e:
             return JsonResponse({'success': False, 'error': e.message}, status=400)
@@ -1547,7 +1559,6 @@ def book_session(request):
         session = Session.objects.create(
             start_datetime=start_dt,
             end_datetime=end_dt,
-            created_by=mentor_profile.user,
             note=session_note,
             first_lesson_user_note=first_lesson_note,
             session_type='individual',
@@ -1850,7 +1861,7 @@ def mentor_detail(request, mentor_id):
     from general.models import Session
     sessions = mentor_profile.sessions.filter(
         attendees=request.user
-    ).order_by('-start_datetime').select_related('created_by')
+    ).order_by('-start_datetime').prefetch_related('mentors__user')
     
     # Check if first session is completed
     has_completed_session = sessions.filter(status='completed').exists()
@@ -2223,19 +2234,18 @@ def session_detail(request, session_id):
     session = Session.objects.filter(
         id=session_id,
         attendees=request.user
-    ).select_related('created_by', 'created_by__mentor_profile').first()
+    ).prefetch_related('mentors__user').first()
     
     if not session:
         messages.error(request, 'Session not found.')
         return redirect('general:dashboard_user:my_sessions')
     
-    # Get mentor info
+    first_mentor = session.mentors.select_related('user').first()
     mentor_name = None
     mentor_email = None
-    if session.created_by and hasattr(session.created_by, 'mentor_profile'):
-        mentor_profile = session.created_by.mentor_profile
-        mentor_name = f"{mentor_profile.first_name} {mentor_profile.last_name}"
-        mentor_email = session.created_by.email
+    if first_mentor:
+        mentor_name = f"{first_mentor.first_name} {first_mentor.last_name}".strip()
+        mentor_email = getattr(first_mentor.user, 'email', None) if getattr(first_mentor, 'user', None) else None
     
     # Convert times to user's timezone
     user_timezone = user_profile.selected_timezone or user_profile.detected_timezone or user_profile.time_zone or 'UTC'
@@ -2267,6 +2277,238 @@ def session_detail(request, session_id):
         'end_local': end_local,
         'duration_minutes': duration_minutes,
     })
+
+
+@login_required
+def session_detail_api(request, session_id):
+    """Return session detail as JSON for the session detail modal (user as attendee)."""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'user':
+        return JsonResponse({'success': False, 'error': 'Forbidden'}, status=403)
+    from general.models import Session
+    session = Session.objects.filter(
+        id=session_id,
+        attendees=request.user,
+    ).prefetch_related('mentors__user').first()
+    if not session:
+        return JsonResponse({'success': False, 'error': 'Session not found'}, status=404)
+    user_profile = request.user.user_profile
+    user_tz_str = user_profile.selected_timezone or user_profile.detected_timezone or getattr(user_profile, 'time_zone', None) or 'UTC'
+    start_local = None
+    end_local = None
+    try:
+        from zoneinfo import ZoneInfo
+        tzinfo = ZoneInfo(str(user_tz_str))
+        start_local = session.start_datetime.astimezone(tzinfo).isoformat() if session.start_datetime else None
+        end_local = session.end_datetime.astimezone(tzinfo).isoformat() if session.end_datetime else None
+    except Exception:
+        start_local = session.start_datetime.isoformat() if session.start_datetime else None
+        end_local = session.end_datetime.isoformat() if session.end_datetime else None
+    first_mentor = session.mentors.select_related('user').first()
+    mentor_name = None
+    mentor_email = None
+    if first_mentor:
+        mentor_name = f"{first_mentor.first_name} {first_mentor.last_name}".strip() or (getattr(first_mentor.user, 'email', '') or 'Mentor').split('@')[0]
+        mentor_email = getattr(first_mentor.user, 'email', None) if getattr(first_mentor, 'user', None) else None
+    duration_minutes = 0
+    if session.start_datetime and session.end_datetime:
+        duration_minutes = int((session.end_datetime - session.start_datetime).total_seconds() / 60)
+    return JsonResponse({
+        'success': True,
+        'session': {
+            'id': session.id,
+            'status': session.status or 'draft',
+            'mentor_name': mentor_name or 'Mentor',
+            'mentor_email': mentor_email or '',
+            'user_timezone': user_tz_str,
+            'start_local': start_local,
+            'end_local': end_local,
+            'duration_minutes': duration_minutes,
+            'meeting_url': getattr(session, 'meeting_url', None) or None,
+            'note': session.note or '',
+            'session_price': str(session.session_price) if session.session_price is not None else None,
+            'session_type': getattr(session, 'session_type', None) or 'individual',
+            'first_lesson_user_note': getattr(session, 'first_lesson_user_note', None) or '',
+            'tasks': session.tasks if isinstance(getattr(session, 'tasks', None), list) else [],
+        }
+    })
+
+
+@login_required
+@require_POST
+def cancel_session(request, session_id):
+    """Client cancel: 1 attendee = cancel session and notify mentors. >1 attendees = leave_only: remove self from attendees and notify mentors + other attendees."""
+    import logging
+    import json
+    logger = logging.getLogger(__name__)
+
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'user':
+        return JsonResponse({'success': False, 'error': 'Forbidden'}, status=403)
+    from general.models import Session
+    session = Session.objects.filter(
+        id=session_id,
+        attendees=request.user,
+        status__in=['invited', 'confirmed'],
+    ).prefetch_related('mentors__user', 'attendees').first()
+    if not session:
+        return JsonResponse({'success': False, 'error': 'Session not found or cannot be cancelled'}, status=404)
+
+    attendee_count = session.attendees.count()
+    leave_only = False
+    try:
+        body = json.loads(request.body or '{}')
+        leave_only = body.get('leave_only', False)
+    except Exception:
+        pass
+
+    client_name = (getattr(request.user, 'get_full_name', lambda: '')() or '').strip()
+    if not client_name:
+        try:
+            up = getattr(request.user, 'user_profile', None)
+            if up is not None:
+                client_name = f"{getattr(up, 'first_name', '')} {getattr(up, 'last_name', '')}".strip()
+        except Exception:
+            pass
+    if not client_name:
+        client_name = (getattr(request.user, 'email', None) or 'A client').strip()
+
+    from django.utils.dateformat import DateFormat
+    session_date = ''
+    session_time = ''
+    if getattr(session, 'start_datetime', None) and getattr(session, 'end_datetime', None):
+        session_date = DateFormat(session.start_datetime).format('M d, Y')
+        session_time = DateFormat(session.start_datetime).format('g:i A') + ' - ' + DateFormat(session.end_datetime).format('g:i A')
+
+    # Multiple attendees: only "leave" is allowed (remove self); cancel whole session not supported from client
+    if attendee_count > 1:
+        if not leave_only:
+            return JsonResponse({'success': False, 'error': 'Multiple attendees: confirm leave to remove yourself from this session.', 'require_leave_confirm': True}, status=400)
+        # leave_only path
+        session.attendees.remove(request.user)
+        recipient_name_ctx = 'there'
+        for mp in session.mentors.select_related('user').all():
+            email = (getattr(mp.user, 'email', None) or '').strip()
+            if email:
+                try:
+                    rname = f"{getattr(mp, 'first_name', '')} {getattr(mp, 'last_name', '')}".strip() or recipient_name_ctx
+                    EmailService.send_email(
+                        subject='Session update: client left',
+                        recipient_email=email,
+                        template_name='session_client_left_notification',
+                        context={
+                            'recipient_name': rname,
+                            'client_name': client_name,
+                            'session_id': session.id,
+                            'session_date': session_date,
+                            'session_time': session_time,
+                        },
+                        fail_silently=True,
+                    )
+                except Exception as e:
+                    logger.exception('Session client left: email to mentor %s: %s', email, e)
+        for att in session.attendees.all():
+            email = (getattr(att, 'email', None) or '').strip()
+            if email:
+                try:
+                    EmailService.send_email(
+                        subject='Session update: participant left',
+                        recipient_email=email,
+                        template_name='session_client_left_notification',
+                        context={
+                            'recipient_name': 'there',
+                            'client_name': client_name,
+                            'session_id': session.id,
+                            'session_date': session_date,
+                            'session_time': session_time,
+                        },
+                        fail_silently=True,
+                    )
+                except Exception as e:
+                    logger.exception('Session client left: email to attendee %s: %s', email, e)
+        return JsonResponse({'success': True})
+
+    # Single attendee: cancel whole session and notify all mentors
+    session.status = 'cancelled'
+    session.previous_data = None
+    session.changes_requested_by = None
+    session.save(update_fields=['status', 'previous_data', 'changes_requested_by'])
+
+    try:
+        session_price = str(session.session_price) if getattr(session, 'session_price', None) is not None else None
+        start_date = end_date = start_time = end_time = ''
+        if getattr(session, 'start_datetime', None) and getattr(session, 'end_datetime', None):
+            try:
+                from zoneinfo import ZoneInfo
+                from django.utils.dateformat import DateFormat
+                start_local = session.start_datetime
+                end_local = session.end_datetime
+                start_date = DateFormat(start_local).format('M d, Y')
+                end_date = DateFormat(end_local).format('M d, Y')
+                start_time = DateFormat(start_local).format('g:i A')
+                end_time = DateFormat(end_local).format('g:i A')
+            except Exception:
+                start_date = str(session.start_datetime.date()) if session.start_datetime else ''
+                end_date = str(session.end_datetime.date()) if session.end_datetime else ''
+                start_time = str(session.start_datetime.time())[:5] if session.start_datetime else ''
+                end_time = str(session.end_datetime.time())[:5] if session.end_datetime else ''
+
+        recipients = []
+        try:
+            for mp in session.mentors.select_related('user').all():
+                if not mp or not getattr(mp, 'user', None):
+                    continue
+                email = (getattr(mp.user, 'email', None) or '').strip()
+                if email and not any(r[0] == email for r in recipients):
+                    recipients.append((email, mp))
+        except Exception:
+            pass
+
+        for mentor_email, mentor_profile_obj in recipients:
+            mentor_name = 'there'
+            tz_name = 'UTC'
+            if mentor_profile_obj is not None:
+                mentor_name = f"{getattr(mentor_profile_obj, 'first_name', '')} {getattr(mentor_profile_obj, 'last_name', '')}".strip() or mentor_name
+                tz_name = getattr(mentor_profile_obj, 'selected_timezone', None) or getattr(mentor_profile_obj, 'detected_timezone', None) or getattr(mentor_profile_obj, 'time_zone', None) or 'UTC'
+
+            if tz_name and getattr(session, 'start_datetime', None) and getattr(session, 'end_datetime', None):
+                try:
+                    from zoneinfo import ZoneInfo
+                    from django.utils.dateformat import DateFormat
+                    tzinfo = ZoneInfo(str(tz_name))
+                    start_local = session.start_datetime.astimezone(tzinfo)
+                    end_local = session.end_datetime.astimezone(tzinfo)
+                    start_date = DateFormat(start_local).format('M d, Y')
+                    end_date = DateFormat(end_local).format('M d, Y')
+                    start_time = DateFormat(start_local).format('g:i A')
+                    end_time = DateFormat(end_local).format('g:i A')
+                except Exception:
+                    pass
+
+            try:
+                EmailService.send_email(
+                    subject='Session Cancelled by Client',
+                    recipient_email=mentor_email,
+                    template_name='session_cancelled_by_client_notification',
+                    context={
+                        'mentor_name': mentor_name,
+                        'client_name': client_name,
+                        'session_id': session.id,
+                        'start_date': start_date,
+                        'end_date': end_date,
+                        'start_time': start_time,
+                        'end_time': end_time,
+                        'session_price': session_price,
+                    },
+                    fail_silently=True,
+                )
+            except Exception as e:
+                logger.exception('Session cancelled by client: email failed to %s: %s', mentor_email, str(e))
+
+        if not recipients:
+            logger.warning('Session cancelled by client: no mentor email for session id=%s.', session_id)
+    except Exception as e:
+        logger.exception('Session cancelled by client: notify mentors failed: %s', str(e))
+
+    return JsonResponse({'success': True})
 
 
 def accept_project_assignment_secure(request, uidb64, token):

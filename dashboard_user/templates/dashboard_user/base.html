@@ -213,10 +213,73 @@
 
 {% include "general/modals/timezone_correction_modal.html" %}
 {% include "general/modals/timezone_mismatch_modal.html" %}
+{% include "dashboard_user/modals/session_detail_modal.html" %}
+{% include "dashboard_user/modals/cancel_session_modal.html" %}
 {% endblock %}
 
 {% block scripts %}
 {{ block.super }}
+<script>
+// Session row dropdown (my-sessions): same as mentor – fixed positioning in scroll container
+function clearSessionDropdownFixed(menu) {
+  if (!menu || !menu.classList.contains('session-row-dropdown-menu--fixed')) return;
+  menu.classList.remove('session-row-dropdown-menu--fixed');
+  menu.style.left = ''; menu.style.top = ''; menu.style.right = ''; menu.style.visibility = '';
+  if (menu._scrollCloseHandler) {
+    if (menu._scrollClose) { menu._scrollClose.removeEventListener('scroll', menu._scrollCloseHandler); menu._scrollClose = null; }
+    if (menu._mainScrollReposition) { menu._mainScrollReposition.removeEventListener('scroll', menu._scrollCloseHandler, { passive: true }); menu._mainScrollReposition = null; }
+    if (menu._windowScrollReposition) { window.removeEventListener('scroll', menu._scrollCloseHandler, { passive: true }); menu._windowScrollReposition = false; }
+    menu._scrollCloseHandler = null;
+  }
+  menu._scrollTrigger = null;
+}
+function updateSessionDropdownPosition(button, dropdown) {
+  var rect = button.getBoundingClientRect();
+  var menuWidth = dropdown.offsetWidth, menuHeight = dropdown.offsetHeight, gap = 4;
+  var left = rect.right - menuWidth; if (left < 8) left = 8; if (left + menuWidth > window.innerWidth - 8) left = window.innerWidth - menuWidth - 8;
+  var top = rect.bottom + gap; if (top + menuHeight > window.innerHeight - 8) top = rect.top - menuHeight - gap; if (top < 8) top = 8;
+  dropdown.style.left = left + 'px'; dropdown.style.top = top + 'px';
+}
+function positionSessionDropdownFixed(button, dropdown) {
+  var scrollContainer = dropdown.closest('.session-timeline-container');
+  if (!scrollContainer) return;
+  dropdown._scrollTrigger = button;
+  dropdown.classList.add('session-row-dropdown-menu--fixed'); dropdown.classList.add('show');
+  dropdown.style.left = ''; dropdown.style.top = ''; dropdown.style.right = ''; dropdown.style.visibility = 'hidden';
+  var rect = button.getBoundingClientRect();
+  requestAnimationFrame(function() {
+    var menuWidth = dropdown.offsetWidth, menuHeight = dropdown.offsetHeight, gap = 4;
+    var left = rect.right - menuWidth; if (left < 8) left = 8; if (left + menuWidth > window.innerWidth - 8) left = window.innerWidth - menuWidth - 8;
+    var top = rect.bottom + gap; if (top + menuHeight > window.innerHeight - 8) top = rect.top - menuHeight - gap; if (top < 8) top = 8;
+    dropdown.style.left = left + 'px'; dropdown.style.top = top + 'px'; dropdown.style.visibility = '';
+    var handler = function() { if (!dropdown.classList.contains('show') || !dropdown._scrollTrigger) return; updateSessionDropdownPosition(dropdown._scrollTrigger, dropdown); };
+    if (!dropdown._scrollCloseHandler) {
+      dropdown._scrollCloseHandler = handler;
+      var scrollEl = scrollContainer.querySelector('.scrollable-content') || scrollContainer;
+      if (scrollEl) { dropdown._scrollClose = scrollEl; scrollEl.addEventListener('scroll', handler, { passive: true }); }
+      var main = document.getElementById('dashboardMain');
+      if (main && main !== scrollEl) { main.addEventListener('scroll', handler, { passive: true }); dropdown._mainScrollReposition = main; }
+      window.addEventListener('scroll', handler, { passive: true }); dropdown._windowScrollReposition = true;
+    }
+  });
+}
+window.toggleDropdown = function(button) {
+  var dropdown = button && button.nextElementSibling;
+  document.querySelectorAll('.dropdown-menu.show').forEach(function(menu) {
+    if (menu !== dropdown) { menu.classList.remove('show'); clearSessionDropdownFixed(menu); }
+  });
+  if (!dropdown) return;
+  if (dropdown.closest('.session-timeline-container')) {
+    if (dropdown.classList.contains('show')) { dropdown.classList.remove('show'); clearSessionDropdownFixed(dropdown); }
+    else positionSessionDropdownFixed(button, dropdown);
+  } else { dropdown.classList.toggle('show'); }
+};
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.dropdown')) {
+    document.querySelectorAll('.dropdown-menu').forEach(function(menu) { menu.classList.remove('show'); clearSessionDropdownFixed(menu); });
+  }
+});
+</script>
 <script src="{% static 'js/notifications.js' %}"></script>
 <!-- Cropper.js JS -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>

@@ -1,0 +1,221 @@
+{# Session detail modal for user (attendee) - open via openSessionDetailModal(sessionId) #}
+<div id="userSessionDetailModalOverlay" class="session-detail-modal-overlay" aria-hidden="true" style="display: none;">
+  <div class="session-detail-modal-backdrop" data-user-session-detail-close></div>
+  <div class="session-detail-modal" role="dialog" aria-modal="true" aria-labelledby="userSessionDetailModalTitle">
+    <header class="session-detail-modal-header">
+      <h2 id="userSessionDetailModalTitle" class="session-detail-modal-title">Session detail</h2>
+      <button type="button" class="session-detail-modal-close" data-user-session-detail-close aria-label="Close">
+        <i class="fas fa-times"></i>
+      </button>
+    </header>
+    <div class="session-detail-modal-body">
+      <div id="userSessionDetailModalError" class="session-detail-modal-error" style="display: none;"></div>
+      <div id="userSessionDetailModalContent" style="display: none;">
+        <div class="session-detail-top-wrapper">
+          <div class="session-detail-info-grid">
+            <div class="session-detail-block">
+              <div class="session-detail-block-title"><i class="fas fa-info-circle"></i> Status & Mentor</div>
+              <div class="session-detail-meta">
+                <span id="userSessionDetailStatus" class="session-detail-status"></span>
+                <span id="userSessionDetailMentor" class="session-detail-mentor"></span>
+              </div>
+            </div>
+            <div class="session-detail-block">
+              <div class="session-detail-block-title"><i class="fas fa-clock"></i> Time</div>
+              <div class="session-detail-value-row">
+                <div class="session-detail-value-item">
+                  <div class="session-detail-label">Start</div>
+                  <div id="userSessionDetailStart" class="session-detail-value"></div>
+                </div>
+                <div class="session-detail-value-item">
+                  <div class="session-detail-label">End</div>
+                  <div id="userSessionDetailEnd" class="session-detail-value"></div>
+                </div>
+              </div>
+              <div id="userSessionDetailDuration" class="session-detail-duration"></div>
+              <div id="userSessionDetailTimezone" class="session-detail-timezone"></div>
+            </div>
+            <div id="userSessionDetailMeetingRow" class="session-detail-full-width" style="display: none;">
+              <div id="userSessionDetailMeetingCard" class="session-settings-meeting-card" style="margin-top: 0;">
+                <div class="session-settings-meeting-icon"><i class="fas fa-video"></i></div>
+                <div class="session-settings-meeting-content">
+                  <div class="session-settings-meeting-label">Meeting link</div>
+                  <a id="userSessionDetailMeetingLink" href="#" target="_blank" rel="noopener" class="session-settings-meeting-link-url"></a>
+                </div>
+                <button type="button" class="session-settings-meeting-copy-btn" id="userSessionDetailMeetingCopyBtn" title="Copy link">
+                  <i class="fas fa-copy"></i><span>Copy</span>
+                </button>
+              </div>
+            </div>
+            <div class="session-detail-block">
+              <div class="session-detail-block-title"><i class="fas fa-sticky-note"></i> Notes</div>
+              <div id="userSessionDetailNote" class="session-detail-note-text"></div>
+            </div>
+            <div class="session-detail-block">
+              <div class="session-detail-block-title"><i class="fas fa-tasks"></i> Tasks</div>
+              <ul id="userSessionDetailTasks" class="session-detail-tasks-list"></ul>
+              <div id="userSessionDetailTasksEmpty" class="session-detail-empty">No tasks.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+(function() {
+  var apiUrlTemplate = "{% url 'general:dashboard_user:session_detail_api' 99999 %}";
+  function getApiUrl(sessionId) { return apiUrlTemplate.replace('99999', String(sessionId)); }
+  window.openSessionDetailModal = function(sessionId) {
+    var overlay = document.getElementById('userSessionDetailModalOverlay');
+    var content = document.getElementById('userSessionDetailModalContent');
+    var errorEl = document.getElementById('userSessionDetailModalError');
+    if (!overlay || !content) return;
+    errorEl.style.display = 'none';
+    content.style.display = 'none';
+    overlay.style.display = 'flex';
+    overlay.setAttribute('aria-hidden', 'false');
+    fetch(getApiUrl(sessionId), { headers: { 'Accept': 'application/json' } })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (!data.success) {
+          errorEl.textContent = data.error || 'Failed to load session.';
+          errorEl.style.display = 'block';
+          return;
+        }
+        var s = data.session;
+        var statusEl = document.getElementById('userSessionDetailStatus');
+        var mentorEl = document.getElementById('userSessionDetailMentor');
+        if (statusEl) statusEl.textContent = 'Status: ' + (s.status || '').replace(/_/g, ' ');
+        if (mentorEl) mentorEl.textContent = (s.mentor_name ? 'Mentor: ' + s.mentor_name : '') + (s.mentor_email ? ' · ' + s.mentor_email : '');
+        var startEl = document.getElementById('userSessionDetailStart');
+        var endEl = document.getElementById('userSessionDetailEnd');
+        var durEl = document.getElementById('userSessionDetailDuration');
+        var tzEl = document.getElementById('userSessionDetailTimezone');
+        if (startEl) startEl.textContent = s.start_local ? formatSessionDateTime(s.start_local) : '—';
+        if (endEl) endEl.textContent = s.end_local ? formatSessionDateTime(s.end_local) : '—';
+        if (durEl) durEl.textContent = s.duration_minutes ? 'Duration: ' + s.duration_minutes + ' min' : '';
+        if (tzEl) tzEl.textContent = 'Timezone: ' + (s.user_timezone || '');
+        var noteEl = document.getElementById('userSessionDetailNote');
+        if (noteEl) { noteEl.textContent = s.note || 'No notes.'; noteEl.classList.toggle('session-detail-muted', !s.note); }
+        var tasksList = document.getElementById('userSessionDetailTasks');
+        var tasksEmpty = document.getElementById('userSessionDetailTasksEmpty');
+        var tasks = Array.isArray(s.tasks) ? s.tasks : [];
+        if (tasksList) {
+          tasksList.innerHTML = '';
+          tasksList.style.display = tasks.length ? 'block' : 'none';
+          tasks.forEach(function(t) {
+            var li = document.createElement('li');
+            li.textContent = typeof t === 'string' ? t : (t.title || t.name || JSON.stringify(t));
+            tasksList.appendChild(li);
+          });
+        }
+        if (tasksEmpty) tasksEmpty.style.display = tasks.length ? 'none' : 'block';
+        var meetingRow = document.getElementById('userSessionDetailMeetingRow');
+        var meetingLink = document.getElementById('userSessionDetailMeetingLink');
+        var meetingCard = document.getElementById('userSessionDetailMeetingCard');
+        var copyBtn = document.getElementById('userSessionDetailMeetingCopyBtn');
+        if (meetingRow && meetingLink) {
+          if (s.meeting_url) {
+            meetingRow.style.display = 'block';
+            meetingLink.href = s.meeting_url;
+            meetingLink.textContent = s.meeting_url;
+            if (meetingCard && !meetingCard._clickBound) {
+              meetingCard._clickBound = true;
+              meetingCard.addEventListener('click', function(e) {
+                if (e.target.closest('#userSessionDetailMeetingCopyBtn')) return;
+                var url = meetingLink.href;
+                if (url && url !== '#') window.open(url, '_blank', 'noopener');
+              });
+            }
+            if (copyBtn && !copyBtn._clickBound) {
+              copyBtn._clickBound = true;
+              copyBtn.addEventListener('click', function(e) {
+                e.preventDefault(); e.stopPropagation();
+                var url = meetingLink.href;
+                if (!url || url === '#') return;
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                  navigator.clipboard.writeText(url).then(function() {
+                    if (typeof showNotification === 'function') showNotification('Link copied!', 'success');
+                  });
+                } else {
+                  var ta = document.createElement('textarea'); ta.value = url; document.body.appendChild(ta); ta.select();
+                  document.execCommand('copy'); document.body.removeChild(ta);
+                  if (typeof showNotification === 'function') showNotification('Link copied!', 'success');
+                }
+              });
+            }
+          } else {
+            meetingRow.style.display = 'none';
+          }
+        }
+        content.style.display = 'block';
+      })
+      .catch(function(err) {
+        console.error('[UserSessionDetail] Error:', err);
+        errorEl.textContent = 'Failed to load session.';
+        errorEl.style.display = 'block';
+      });
+  };
+  window.closeSessionDetailModal = function() {
+    var overlay = document.getElementById('userSessionDetailModalOverlay');
+    if (overlay) { overlay.style.display = 'none'; overlay.setAttribute('aria-hidden', 'true'); }
+  };
+  function formatSessionDateTime(iso) {
+    try {
+      var d = new Date(iso);
+      if (isNaN(d.getTime())) return iso;
+      return d.toLocaleString(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: 'numeric', hour12: true });
+    } catch (e) { return iso; }
+  }
+  document.addEventListener('DOMContentLoaded', function() {
+    var overlay = document.getElementById('userSessionDetailModalOverlay');
+    if (!overlay) return;
+    overlay.querySelectorAll('[data-user-session-detail-close]').forEach(function(el) {
+      el.addEventListener('click', window.closeSessionDetailModal);
+    });
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape' && overlay && overlay.getAttribute('aria-hidden') === 'false') window.closeSessionDetailModal();
+    });
+  });
+})();
+</script>
+<style>
+.session-detail-modal-overlay { position: fixed; inset: 0; z-index: 10000; display: flex; align-items: center; justify-content: center; padding: 40px; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(8px); }
+.session-detail-modal-backdrop { position: absolute; inset: 0; }
+.session-detail-modal { position: relative; width: 80vw; max-width: 1200px; max-height: 90vh; background: #fff; border-radius: 24px; box-shadow: 0 25px 70px rgba(0,0,0,0.3); display: flex; flex-direction: column; overflow: hidden; }
+.session-detail-modal-header { display: flex; align-items: center; justify-content: space-between; padding: 24px 32px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; }
+.session-detail-modal-title { margin: 0; font-size: 1.25rem; font-weight: 800; color: #0f172a; }
+.session-detail-modal-close { border: none; background: #f1f5f9; cursor: pointer; width: 40px; height: 40px; border-radius: 12px; color: #64748b; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; }
+.session-detail-modal-close:hover { background: #fee2e2; color: #ef4444; }
+.session-detail-modal-body { padding: 32px; overflow-y: auto; flex: 1; }
+.session-detail-top-wrapper { max-width: 1000px; margin: 0 auto; }
+.session-detail-info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+.session-detail-block { background: #fff; border: 1px solid #e2e8f0; border-radius: 20px; padding: 24px; }
+.session-detail-full-width { grid-column: 1 / -1; }
+.session-detail-block-title { font-weight: 800; color: #475569; margin-bottom: 16px; font-size: 0.85rem; text-transform: uppercase; display: flex; align-items: center; gap: 8px; }
+.session-detail-block-title i { color: #10b981; }
+.session-detail-value-row { display: flex; gap: 32px; flex-wrap: wrap; }
+.session-detail-label { color: #64748b; font-weight: 700; font-size: 0.75rem; text-transform: uppercase; margin-bottom: 4px; }
+.session-detail-value { color: #0f172a; font-weight: 800; font-size: 1.05rem; }
+.session-detail-duration { margin-top: 8px; color: #64748b; font-weight: 600; font-size: 0.9rem; }
+.session-detail-timezone { margin-top: 12px; color: #94a3b8; font-weight: 600; font-size: 0.85rem; padding-top: 12px; border-top: 1px dashed #e2e8f0; }
+.session-detail-meta { display: flex; flex-direction: column; gap: 4px; }
+.session-detail-status { text-transform: capitalize; font-weight: 800; color: #0f172a; font-size: 1.1rem; }
+.session-detail-mentor { color: #10b981; font-weight: 700; font-size: 0.95rem; }
+.session-detail-note-text { color: #334155; font-weight: 500; line-height: 1.6; }
+.session-detail-note-text.session-detail-muted { color: #94a3b8; }
+.session-detail-tasks-list { margin: 0; padding-left: 20px; color: #334155; }
+.session-detail-tasks-list li { margin: 8px 0; font-weight: 600; }
+.session-detail-empty { color: #94a3b8; font-style: italic; }
+.session-detail-modal-error { color: #dc2626; font-weight: 600; margin-bottom: 16px; }
+.session-settings-meeting-card { display: flex; align-items: center; gap: 20px; background: #10b981; padding: 24px; border-radius: 20px; cursor: pointer; border: 1px solid #10b981; }
+.session-settings-meeting-card:hover { background: #fff; border-color: #10b981; }
+.session-settings-meeting-icon { width: 56px; height: 56px; background: rgba(255,255,255,0.2); color: #fff; border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; flex-shrink: 0; }
+.session-settings-meeting-content { flex: 1; min-width: 0; }
+.session-settings-meeting-label { font-size: 0.75rem; font-weight: 800; color: rgba(255,255,255,0.9); text-transform: uppercase; margin-bottom: 4px; }
+.session-settings-meeting-link-url { font-size: 1rem; color: #fff; text-decoration: none; font-weight: 700; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.session-settings-meeting-card:hover .session-settings-meeting-link-url { color: #10b981; }
+.session-settings-meeting-copy-btn { background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3); color: #fff; padding: 12px 20px; border-radius: 12px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 10px; }
+.session-settings-meeting-card:hover .session-settings-meeting-copy-btn { background: #f1f5f9; color: #475569; border-color: #e2e8f0; }
+</style>

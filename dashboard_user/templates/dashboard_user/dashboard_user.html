@@ -53,8 +53,8 @@
                     <div class="session-timeline-container scrollable-content" id="dashboardUpcomingSessions">
                         {% if upcoming_sessions %}
                             {% for session in upcoming_sessions %}
-                                <div class="session-item status-{{ session.status }}">
-                                    <div class="session-left">
+                                <div class="session-item status-{{ session.status }}" data-clickable-session data-session-id="{{ session.id }}">
+                                    <div class="session-left" onclick="if (typeof openSessionDetailModal === 'function') openSessionDetailModal({{ session.id }});" style="cursor: pointer;">
                                         <div class="session-date">
                                             <span class="date-day">{{ session.start_datetime|date:"d" }}</span>
                                             <span class="date-month">{{ session.start_datetime|date:"M" }}</span>
@@ -71,15 +71,14 @@
                                             </div>
                                         </div>
                                     </div>
-                                    
                                     <div class="session-right">
                                         <div class="dropdown">
-                                            <button class="session-action-btn" onclick="toggleDropdown(this)">
+                                            <button class="session-action-btn" type="button" onclick="toggleDropdown(this)">
                                                 <i class="fas fa-ellipsis-h"></i>
                                             </button>
-                                            <div class="dropdown-menu">
-                                                <button class="dropdown-item">View Details</button>
-                                                <button class="dropdown-item">Edit Session</button>
+                                            <div class="dropdown-menu session-row-actions-menu" onclick="event.stopPropagation();">
+                                                <button type="button" class="dropdown-item first-item" onclick="if (typeof openSessionDetailModal === 'function') openSessionDetailModal({{ session.id }});"><i class="fas fa-info-circle"></i><span>View Details</span></button>
+                                                <button type="button" class="dropdown-item delete-item last-item" onclick="if (typeof openUserCancelSessionModal === 'function') openUserCancelSessionModal({{ session.id }});"><i class="fas fa-times-circle"></i><span>Cancel session</span></button>
                                             </div>
                                         </div>
                                     </div>

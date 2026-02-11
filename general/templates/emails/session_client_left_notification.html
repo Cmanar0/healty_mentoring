@@ -1,0 +1,22 @@
+{% extends "emails/base.html" %}
+
+{% block title %}Client Left Session{% endblock %}
+
+{% block content %}
+<h1 style="color: #f59e0b; margin-bottom: 8px;">Session Update</h1>
+<p class="content-text" style="font-size: 18px; font-weight: 600; color: #111827; margin-bottom: 24px;">
+  A client has left the session
+</p>
+
+<p class="content-text">
+  Hello {{ recipient_name }},
+</p>
+
+<p class="content-text">
+  <strong>{{ client_name }}</strong> has left the session scheduled for {{ session_date }} at {{ session_time }} (Session #{{ session_id }}). The session continues with the remaining attendee(s).
+</p>
+
+<p class="content-text">
+  If you have any questions, please log in to your dashboard.
+</p>
+{% endblock %}

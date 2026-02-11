@@ -575,14 +575,13 @@ class EmailService:
                     attendees=user,
                     status__in=['invited', 'confirmed'],
                     start_datetime__gte=now
-                ).order_by('start_datetime').select_related('created_by', 'created_by__mentor_profile').prefetch_related('attendees')
+                ).order_by('start_datetime').prefetch_related('attendees', 'mentors__user')
             elif hasattr(user, 'mentor_profile') and user.mentor_profile:
-                # Mentor - get sessions using ManyToMany relationship
                 mentor_profile = user.mentor_profile
                 sessions = mentor_profile.sessions.filter(
                     status__in=['invited', 'confirmed'],
                     start_datetime__gte=now
-                ).order_by('start_datetime').select_related('created_by').prefetch_related('attendees')
+                ).order_by('start_datetime').prefetch_related('attendees')
             else:
                 sessions = Session.objects.none()
             
@@ -591,14 +590,11 @@ class EmailService:
                 # Get mentor/client name
                 mentor_name = None
                 if hasattr(user, 'user_profile') and user.user_profile:
-                    # User viewing sessions - get mentor name
-                    if session.created_by and hasattr(session.created_by, 'mentor_profile'):
-                        mentor_profile = session.created_by.mentor_profile
-                        mentor_name = f"{mentor_profile.first_name} {mentor_profile.last_name}".strip()
-                        if not mentor_name:
-                            mentor_name = session.created_by.email.split('@')[0]
+                    first_mentor = session.mentors.select_related('user').first()
+                    if first_mentor:
+                        mentor_name = f"{first_mentor.first_name} {first_mentor.last_name}".strip() or (first_mentor.user.email.split('@')[0] if getattr(first_mentor, 'user', None) else 'Mentor')
                     else:
-                        mentor_name = session.created_by.email.split('@')[0] if session.created_by else 'Mentor'
+                        mentor_name = 'Mentor'
                 elif hasattr(user, 'mentor_profile') and user.mentor_profile:
                     # Mentor viewing sessions - get client name
                     client = session.attendees.first() if session.attendees.exists() else None

@@ -43,6 +43,7 @@ def create_booking_payment_intent(
     is_first_session: bool = False,
     session_description: str = None,
     slot_key: str | None = None,
+    attempt_id: str | None = None,
     currency: str = "usd",
 ) -> dict:
     """
@@ -80,14 +81,18 @@ def create_booking_payment_intent(
     if client_id is not None:
         metadata["client_id"] = str(client_id)
 
+    # Idempotency key must be unique per "attempt" (one open of payment UI).
+    # Using attempt_id from frontend avoids "same key, different parameters" when
+    # the same user/slot is tried again after we changed API (e.g. removed payment_method).
     idempotency_key = None
-    try:
-        # Idempotency key: booking:{mentor_id}:{slot_key}:{client_email}
-        safe_email = (client_email or "").lower()
-        safe_slot = slot_key or "no-slot"
-        idempotency_key = f"booking:{mentor_profile.user.id}:{safe_slot}:{safe_email}"
-    except Exception:
-        idempotency_key = None
+    if (attempt_id or "").strip():
+        try:
+            safe_email = (client_email or "").lower()
+            safe_slot = slot_key or "no-slot"
+            safe_attempt = (attempt_id or "").strip()[:64]
+            idempotency_key = f"booking:{mentor_profile.user.id}:{safe_slot}:{safe_email}:{safe_attempt}"
+        except Exception:
+            idempotency_key = None
 
     try:
         create_kwargs = dict(

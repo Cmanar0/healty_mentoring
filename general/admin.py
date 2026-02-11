@@ -10,7 +10,7 @@ import uuid
 class SessionAdmin(admin.ModelAdmin):
     list_display = ('id', 'start_datetime', 'end_datetime', 'created_by', 'session_type', 'status', 'session_price', 'expires_at')
     list_filter = ('session_type', 'status', 'start_datetime')
-    search_fields = ('created_by__email', 'note')
+    search_fields = ('note', 'mentors__user__email')
     filter_horizontal = ('attendees',)
     actions = ['clone_session']
     
@@ -30,11 +30,10 @@ class SessionAdmin(admin.ModelAdmin):
             else:
                 cloned_status = 'draft'
             
-            # Create a new session with copied fields
+            # Create a new session with copied fields (no created_by; use session.mentors)
             cloned_session = Session.objects.create(
                 start_datetime=session.start_datetime,
                 end_datetime=session.end_datetime,
-                created_by=session.created_by,
                 note=session.note,
                 session_type=session.session_type,
                 status=cloned_status,
@@ -43,23 +42,15 @@ class SessionAdmin(admin.ModelAdmin):
                 client_first_name=session.client_first_name,
                 client_last_name=session.client_last_name,
                 tasks=session.tasks.copy() if session.tasks else [],
-                # Reset change tracking fields
                 previous_data=None,
                 changes_requested_by=None,
                 original_data=None,
                 changed_by=None,
             )
-            
-            # Add attendees to cloned session
             if attendees:
                 cloned_session.attendees.set(attendees)
-            
-            # Add to mentor profile if the creator has a mentor profile
-            try:
-                if hasattr(session.created_by, 'mentor_profile'):
-                    session.created_by.mentor_profile.sessions.add(cloned_session)
-            except Exception:
-                pass
+            for mentor_profile in session.mentors.all():
+                mentor_profile.sessions.add(cloned_session)
             
             cloned_count += 1
         

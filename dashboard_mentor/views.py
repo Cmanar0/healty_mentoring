@@ -45,15 +45,22 @@ def dashboard(request):
     
     try:
         from general.models import Session
+        from zoneinfo import ZoneInfo
+        from datetime import timezone as dt_timezone
         mentor_profile = request.user.mentor_profile if hasattr(request.user, 'mentor_profile') else None
         
         if mentor_profile:
+            mentor_tz_str = getattr(mentor_profile, 'selected_timezone', None) or getattr(mentor_profile, 'detected_timezone', None) or getattr(mentor_profile, 'time_zone', None) or 'UTC'
+            try:
+                mentor_tzinfo = ZoneInfo(str(mentor_tz_str))
+            except Exception:
+                mentor_tzinfo = dt_timezone.utc
             now = timezone.now()
             # Get all upcoming + ongoing sessions (exclude only when session end is in the past)
             all_upcoming = mentor_profile.sessions.filter(
                 status__in=['invited', 'confirmed'],
                 end_datetime__gte=now
-            ).order_by('start_datetime').select_related('created_by').prefetch_related('attendees')
+            ).order_by('start_datetime').prefetch_related('attendees')
             
             # Get total count to check if there are more than 4
             total_count = all_upcoming.count()
@@ -62,8 +69,15 @@ def dashboard(request):
             # Get first 4 sessions
             sessions_queryset = all_upcoming[:4]
             
-            # Format sessions for template
+            # Format sessions for template (convert times to mentor's selected timezone)
             for session in sessions_queryset:
+                start_dt_local = session.start_datetime
+                end_dt_local = session.end_datetime
+                try:
+                    start_dt_local = session.start_datetime.astimezone(mentor_tzinfo)
+                    end_dt_local = session.end_datetime.astimezone(mentor_tzinfo)
+                except Exception:
+                    pass
                 # Get first attendee (client) if any
                 client = session.attendees.first() if session.attendees.exists() else None
                 client_name = None
@@ -96,8 +110,8 @@ def dashboard(request):
                 
                 upcoming_sessions.append({
                     'id': session.id,
-                    'start_datetime': session.start_datetime,
-                    'end_datetime': session.end_datetime,
+                    'start_datetime': start_dt_local,
+                    'end_datetime': end_dt_local,
                     'status': session.status,
                     'client_name': client_name or 'Client',
                     'note': session.note,
@@ -200,16 +214,35 @@ def dashboard(request):
             if current_guide_item is not None:
                 break
     
-    return render(request, 'dashboard_mentor/dashboard_mentor.html', {
-        'debug': settings.DEBUG,
-        'upcoming_sessions': upcoming_sessions,
-        'has_more_sessions': has_more_sessions,
-        'project_templates': templates,
-        'project_modules': modules,
-        'backlog_tasks': backlog_tasks,
-        'current_guide_item': current_guide_item,
-        'mentor_ai_coins': getattr(mentor_profile, 'ai_coins', 0) if mentor_profile else 0,
-    })
+    # Activate mentor timezone so template |date shows upcoming session times in mentor's selected timezone
+    mentor_tzinfo_activate = None
+    mentor_timezone_str = 'UTC'
+    if mentor_profile:
+        try:
+            from zoneinfo import ZoneInfo
+            from datetime import timezone as dt_timezone
+            mtstr = getattr(mentor_profile, 'selected_timezone', None) or getattr(mentor_profile, 'detected_timezone', None) or getattr(mentor_profile, 'time_zone', None) or 'UTC'
+            mentor_timezone_str = str(mtstr)
+            mentor_tzinfo_activate = ZoneInfo(mentor_timezone_str)
+        except Exception:
+            from datetime import timezone as dt_timezone
+            mentor_tzinfo_activate = dt_timezone.utc
+    if mentor_tzinfo_activate:
+        timezone.activate(mentor_tzinfo_activate)
+    try:
+        return render(request, 'dashboard_mentor/dashboard_mentor.html', {
+            'debug': settings.DEBUG,
+            'upcoming_sessions': upcoming_sessions,
+            'has_more_sessions': has_more_sessions,
+            'project_templates': templates,
+            'project_modules': modules,
+            'backlog_tasks': backlog_tasks,
+            'current_guide_item': current_guide_item,
+            'mentor_ai_coins': getattr(mentor_profile, 'ai_coins', 0) if mentor_profile else 0,
+            'mentor_timezone': mentor_timezone_str,
+        })
+    finally:
+        timezone.deactivate()
 
 
 @login_required
@@ -1709,25 +1742,35 @@ def my_sessions(request):
     # Get session_length from mentor profile
     session_length = mentor_profile.session_length if mentor_profile and mentor_profile.session_length else 60
     
-    # Fetch initial sessions (first page)
+    # Fetch initial sessions (first page) – convert times to mentor's selected timezone
     from general.models import Session
     from django.utils import timezone
+    from zoneinfo import ZoneInfo
+    from datetime import timezone as dt_timezone
     now = timezone.now()
+    mentor_tz_str = getattr(mentor_profile, 'selected_timezone', None) or getattr(mentor_profile, 'detected_timezone', None) or getattr(mentor_profile, 'time_zone', None) or 'UTC'
+    try:
+        mentor_tzinfo = ZoneInfo(str(mentor_tz_str))
+    except Exception:
+        mentor_tzinfo = dt_timezone.utc
     
-    # Get all upcoming + ongoing sessions (exclude only when session end is in the past)
     initial_sessions = []
     try:
         all_upcoming = mentor_profile.sessions.filter(
             status__in=['invited', 'confirmed'],
             end_datetime__gte=now
-        ).order_by('start_datetime').select_related('created_by').prefetch_related('attendees')
+        ).order_by('start_datetime').prefetch_related('attendees')
         
-        # Get first 10 sessions for initial load
         sessions_queryset = all_upcoming[:10]
         
-        # Format sessions for template
         for session in sessions_queryset:
-            # Get first attendee (client) if any
+            start_dt_local = session.start_datetime
+            end_dt_local = session.end_datetime
+            try:
+                start_dt_local = session.start_datetime.astimezone(mentor_tzinfo)
+                end_dt_local = session.end_datetime.astimezone(mentor_tzinfo)
+            except Exception:
+                pass
             client = session.attendees.first() if session.attendees.exists() else None
             client_name = None
             if client and hasattr(client, 'profile'):
@@ -1735,22 +1778,17 @@ def my_sessions(request):
                 if not client_name:
                     client_name = client.email.split('@')[0]
             
-            # Check if this is the first session with this client
             is_first_session = False
             if client:
                 try:
                     user_profile = client.user_profile if hasattr(client, 'user_profile') else None
                     if user_profile:
-                        # Get all sessions with this client (excluding cancelled/expired)
                         all_client_sessions = mentor_profile.sessions.filter(
                             attendees=client
                         ).exclude(status__in=['cancelled', 'expired']).exclude(id=session.id)
-                        
-                        # If there are no other sessions with this client, this is the first
                         if not all_client_sessions.exists():
                             is_first_session = True
                         else:
-                            # Check if this session is the earliest one
                             earliest_session = all_client_sessions.order_by('start_datetime').first()
                             if earliest_session and session.start_datetime and earliest_session.start_datetime:
                                 is_first_session = session.start_datetime <= earliest_session.start_datetime
@@ -1759,23 +1797,23 @@ def my_sessions(request):
             
             initial_sessions.append({
                 'id': session.id,
-                'start_datetime': session.start_datetime,
-                'end_datetime': session.end_datetime,
+                'start_datetime': start_dt_local,
+                'end_datetime': end_dt_local,
                 'status': session.status,
                 'client_name': client_name or 'Client',
                 'note': session.note,
                 'is_first_session': is_first_session,
             })
     except Exception as e:
-        # Log error but don't fail the request
         import logging
         logger = logging.getLogger(__name__)
         logger.error(f"Error fetching initial sessions: {str(e)}")
     
-    # Check if calendar should auto-open (e.g., after session length change with collisions)
     open_calendar = request.GET.get('open_calendar', 'false').lower() == 'true'
     
-    return render(request, 'dashboard_mentor/my_sessions.html', {
+    timezone.activate(mentor_tzinfo)
+    try:
+        return render(request, 'dashboard_mentor/my_sessions.html', {
         'debug': settings.DEBUG,
         'availability_data': availability_data,
         'recurring_slots': recurring_slots_data,
@@ -1784,6 +1822,8 @@ def my_sessions(request):
         'open_calendar': open_calendar,
         'initial_sessions': initial_sessions,
     })
+    finally:
+        timezone.deactivate()
 
 
 @login_required
@@ -1800,7 +1840,7 @@ def session_history(request):
     try:
         qs = mentor_profile.sessions.filter(
             end_datetime__lt=now
-        ).exclude(status='cancelled').order_by('-start_datetime').select_related('created_by').prefetch_related('attendees')[:50]
+        ).exclude(status='cancelled').order_by('-start_datetime').prefetch_related('attendees')[:50]
         for session in qs:
             client = session.attendees.first() if session.attendees.exists() else None
             client_name = None
@@ -1862,32 +1902,40 @@ def get_sessions_paginated(request):
         per_page = int(request.GET.get('per_page', 10))
         
         now = timezone.now()
+        from zoneinfo import ZoneInfo
+        from datetime import timezone as dt_timezone
+        mentor_tz_str = getattr(mentor_profile, 'selected_timezone', None) or getattr(mentor_profile, 'detected_timezone', None) or getattr(mentor_profile, 'time_zone', None) or 'UTC'
+        try:
+            mentor_tzinfo = ZoneInfo(str(mentor_tz_str))
+        except Exception:
+            mentor_tzinfo = dt_timezone.utc
         
-        # Get all upcoming + ongoing sessions (exclude only when session end is in the past)
         all_upcoming = mentor_profile.sessions.filter(
             status__in=['invited', 'confirmed'],
             end_datetime__gte=now
-        ).order_by('start_datetime').select_related('created_by').prefetch_related('attendees')
+        ).order_by('start_datetime').prefetch_related('attendees')
         
-        # Paginate
         paginator = Paginator(all_upcoming, per_page)
         page_obj = paginator.get_page(page)
         
-        # Format sessions for JSON response
         sessions_data = []
         for session in page_obj:
-            # Get first attendee (client) if any
             client = session.attendees.first() if session.attendees.exists() else None
             client_name = None
             if client and hasattr(client, 'profile'):
                 client_name = f"{client.profile.first_name} {client.profile.last_name}".strip()
                 if not client_name:
                     client_name = client.email.split('@')[0]
-            
+            try:
+                start_iso = session.start_datetime.astimezone(mentor_tzinfo).isoformat()
+                end_iso = session.end_datetime.astimezone(mentor_tzinfo).isoformat()
+            except Exception:
+                start_iso = session.start_datetime.isoformat()
+                end_iso = session.end_datetime.isoformat()
             sessions_data.append({
                 'id': session.id,
-                'start_datetime': session.start_datetime.isoformat(),
-                'end_datetime': session.end_datetime.isoformat(),
+                'start_datetime': start_iso,
+                'end_datetime': end_iso,
                 'status': session.status,
                 'client_name': client_name or 'Client',
                 'note': session.note or '',
@@ -1923,57 +1971,57 @@ def get_dashboard_upcoming_sessions(request):
             return JsonResponse({'success': False, 'error': 'Mentor profile not found'}, status=404)
         
         now = timezone.now()
+        from zoneinfo import ZoneInfo
+        from datetime import timezone as dt_timezone
+        mentor_tz_str = getattr(mentor_profile, 'selected_timezone', None) or getattr(mentor_profile, 'detected_timezone', None) or getattr(mentor_profile, 'time_zone', None) or 'UTC'
+        try:
+            mentor_tzinfo = ZoneInfo(str(mentor_tz_str))
+        except Exception:
+            mentor_tzinfo = dt_timezone.utc
         
-        # Get all upcoming + ongoing sessions (exclude only when session end is in the past)
         all_upcoming = mentor_profile.sessions.filter(
             status__in=['invited', 'confirmed'],
             end_datetime__gte=now
-        ).order_by('start_datetime').select_related('created_by').prefetch_related('attendees')
+        ).order_by('start_datetime').prefetch_related('attendees')
         
-        # Get total count to check if there are more than 4
         total_count = all_upcoming.count()
         has_more_sessions = total_count > 4
-        
-        # Get first 4 sessions
         sessions_queryset = all_upcoming[:4]
         
-        # Format sessions for JSON response
         sessions_data = []
         for session in sessions_queryset:
-            # Get first attendee (client) if any
             client = session.attendees.first() if session.attendees.exists() else None
             client_name = None
             if client and hasattr(client, 'profile'):
                 client_name = f"{client.profile.first_name} {client.profile.last_name}".strip()
                 if not client_name:
                     client_name = client.email.split('@')[0]
-            
-            # Check if this is the first session with this client
             is_first_session = False
             if client:
                 try:
                     user_profile = client.user_profile if hasattr(client, 'user_profile') else None
                     if user_profile:
-                        # Get all sessions with this client (excluding cancelled/expired)
                         all_client_sessions = mentor_profile.sessions.filter(
                             attendees=client
                         ).exclude(status__in=['cancelled', 'expired']).exclude(id=session.id)
-                        
-                        # If there are no other sessions with this client, this is the first
                         if not all_client_sessions.exists():
                             is_first_session = True
                         else:
-                            # Check if this session is the earliest one
                             earliest_session = all_client_sessions.order_by('start_datetime').first()
                             if earliest_session and session.start_datetime and earliest_session.start_datetime:
                                 is_first_session = session.start_datetime <= earliest_session.start_datetime
                 except Exception:
                     is_first_session = False
-            
+            try:
+                start_iso = session.start_datetime.astimezone(mentor_tzinfo).isoformat()
+                end_iso = session.end_datetime.astimezone(mentor_tzinfo).isoformat()
+            except Exception:
+                start_iso = session.start_datetime.isoformat()
+                end_iso = session.end_datetime.isoformat()
             sessions_data.append({
                 'id': session.id,
-                'start_datetime': session.start_datetime.isoformat(),
-                'end_datetime': session.end_datetime.isoformat(),
+                'start_datetime': start_iso,
+                'end_datetime': end_iso,
                 'status': session.status,
                 'client_name': client_name or 'Client',
                 'note': session.note or '',
@@ -2730,7 +2778,6 @@ def save_availability(request):
                     s = Session.objects.create(
                         start_datetime=start_dt,
                         end_datetime=end_dt,
-                        created_by=request.user,
                         note='',
                         session_type=session_type,
                         tasks=[],
@@ -3784,7 +3831,6 @@ def schedule_session(request):
     s = Session.objects.create(
         start_datetime=start_dt,
         end_datetime=end_dt,
-        created_by=request.user,
         note='',
         session_type='individual',
         status='invited',
@@ -4076,20 +4122,65 @@ def session_detail(request, session_id: int):
     return redirect(url)
 
 
+def _notify_attendees_session_cancelled(session, session_data, mentor_name, logger):
+    deleted_sessions_by_client = {}
+    for attendee in session.attendees.all():
+        client_email = (attendee.email or '').lower().strip()
+        if client_email:
+            if client_email not in deleted_sessions_by_client:
+                deleted_sessions_by_client[client_email] = []
+            deleted_sessions_by_client[client_email].append(session_data)
+    for client_email, deleted_sessions_list in deleted_sessions_by_client.items():
+        try:
+            EmailService.send_email(
+                subject='Session Cancelled',
+                recipient_email=client_email,
+                template_name='session_deleted_notification',
+                context={
+                    'mentor_name': mentor_name,
+                    'deleted_sessions': deleted_sessions_list,
+                    'client_email': client_email,
+                },
+                fail_silently=True,
+            )
+        except Exception as e:
+            if logger:
+                logger.error('Error sending session deleted email to %s: %s', client_email, str(e))
+
+
 @login_required
 @require_POST
 def cancel_session(request, session_id: int):
-    """Cancel (delete) a single session and notify the client. Reuses the same flow as save_availability deleted_sessions."""
+    """Cancel session: 1 mentor = delete and notify attendees. >1 mentors = require leave_only in body: true = remove self and notify; false = delete for all and notify."""
+    import logging
+    import json
+    logger = logging.getLogger(__name__)
     if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
         return JsonResponse({'success': False, 'error': 'Forbidden'}, status=403)
     from general.models import Session
     mentor_profile = request.user.mentor_profile
     session = mentor_profile.sessions.filter(id=session_id).exclude(
         status__in=['completed', 'refunded', 'expired']
-    ).prefetch_related('attendees').first()
+    ).prefetch_related('attendees', 'mentors').first()
     if not session:
         return JsonResponse({'success': False, 'error': 'Session not found or cannot be cancelled'}, status=404)
-    deleted_sessions_info = []
+
+    mentor_count = session.mentors.count()
+    leave_only = None  # None = not specified
+    try:
+        body = json.loads(request.body or '{}')
+        if 'leave_only' in body:
+            leave_only = bool(body['leave_only'])
+    except Exception:
+        pass
+    if mentor_count > 1 and leave_only is None:
+        return JsonResponse({
+            'success': False,
+            'error': 'Multiple mentors: choose to leave only or cancel for everyone.',
+            'need_choice': True,
+            'mentor_count': mentor_count,
+        }, status=400)
+
     session_data = {
         'id': session.id,
         'start_datetime': session.start_datetime,
@@ -4098,36 +4189,64 @@ def cancel_session(request, session_id: int):
         'session_type': getattr(session, 'session_type', 'individual'),
         'status': session.status,
     }
-    for attendee in session.attendees.all():
-        client_email = (attendee.email or '').lower().strip()
-        if client_email:
-            deleted_sessions_info.append({'session_data': session_data, 'client_email': client_email})
+    mentor_name = f"{mentor_profile.first_name} {mentor_profile.last_name}".strip() or 'your mentor'
+
+    if mentor_count == 1:
+        # Single mentor: always delete session and notify all attendees
+        _notify_attendees_session_cancelled(session, session_data, mentor_name, logger)
+        session.delete()
+        return JsonResponse({'success': True})
+
+    # Multiple mentors (leave_only is True or False at this point)
+    if leave_only is True:
+        # Remove this mentor from session; notify attendees and other mentors
+        session.mentors.remove(mentor_profile)
+        from django.utils.dateformat import DateFormat
+        session_date = DateFormat(session.start_datetime).format('M d, Y') if session.start_datetime else ''
+        session_time = DateFormat(session.start_datetime).format('g:i A') + ' - ' + DateFormat(session.end_datetime).format('g:i A') if session.start_datetime and session.end_datetime else ''
+        for attendee in session.attendees.all():
+            email = (attendee.email or '').strip()
+            if email:
+                try:
+                    EmailService.send_email(
+                        subject='Session update: mentor no longer participating',
+                        recipient_email=email,
+                        template_name='session_mentor_left_notification',
+                        context={
+                            'mentor_name': mentor_name,
+                            'session_id': session.id,
+                            'session_date': session_date,
+                            'session_time': session_time,
+                        },
+                        fail_silently=True,
+                    )
+                except Exception as e:
+                    logger.exception('Error sending mentor-left email to %s: %s', email, e)
+        for mp in session.mentors.exclude(pk=mentor_profile.pk).select_related('user'):
+            email = (getattr(mp.user, 'email', None) or '').strip()
+            if email:
+                try:
+                    EmailService.send_email(
+                        subject='Session update: mentor no longer participating',
+                        recipient_email=email,
+                        template_name='session_mentor_left_notification',
+                        context={
+                            'mentor_name': mentor_name,
+                            'session_id': session.id,
+                            'session_date': session_date,
+                            'session_time': session_time,
+                        },
+                        fail_silently=True,
+                    )
+                except Exception as e:
+                    logger.exception('Error sending mentor-left email to co-mentor %s: %s', email, e)
+        if session.mentors.count() == 0:
+            session.delete()
+        return JsonResponse({'success': True})
+
+    # cancel for all: delete session and notify attendees
+    _notify_attendees_session_cancelled(session, session_data, mentor_name, logger)
     session.delete()
-    if deleted_sessions_info:
-        deleted_sessions_by_client = {}
-        for item in deleted_sessions_info:
-            client_email = item['client_email']
-            if client_email not in deleted_sessions_by_client:
-                deleted_sessions_by_client[client_email] = []
-            deleted_sessions_by_client[client_email].append(item['session_data'])
-        for client_email, deleted_sessions_list in deleted_sessions_by_client.items():
-            try:
-                mentor_name = f"{mentor_profile.first_name} {mentor_profile.last_name}".strip() or 'your mentor'
-                EmailService.send_email(
-                    subject='Session Cancelled',
-                    recipient_email=client_email,
-                    template_name='session_deleted_notification',
-                    context={
-                        'mentor_name': mentor_name,
-                        'deleted_sessions': deleted_sessions_list,
-                        'client_email': client_email,
-                    },
-                    fail_silently=True,
-                )
-            except Exception as e:
-                import logging
-                logger = logging.getLogger(__name__)
-                logger.error('Error sending session deleted email to %s: %s', client_email, str(e))
     return JsonResponse({'success': True})
 
 
@@ -4519,7 +4638,7 @@ def client_detail(request, client_id):
     from general.models import Session
     sessions = mentor_profile.sessions.filter(
         attendees=client_profile.user
-    ).order_by('-start_datetime').select_related('created_by')
+    ).order_by('-start_datetime')
     
     # Check if first session is completed
     has_completed_session = sessions.filter(status='completed').exists()

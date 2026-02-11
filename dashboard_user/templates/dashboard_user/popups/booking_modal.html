@@ -1324,8 +1324,11 @@
     const paymentRequired = (mentorPricePerHour > 0) && !(mentorFirstSessionFree && isFirstSession);
     const stripePublishableKey = '{{ stripe_publishable_key|default:""|escapejs }}';
     
-    // User's selected timezone from profile (if authenticated)
+    // User's selected timezone from profile (if authenticated) – used for "preferred" display
     const userSelectedTimezone = {% if user.is_authenticated and user.profile.selected_timezone %}'{{ user.profile.selected_timezone }}'{% else %}null{% endif %};
+    // Same fallback as dashboard/my-sessions: selected_timezone → detected_timezone → time_zone → UTC (so modal and dashboard show same time).
+    // For NOT logged-in users this is null – guest flow uses browser-detected timezone in openEmailCollectionModal() and the timezone select there.
+    const userDisplayTimezone = {% if user.is_authenticated and user.profile %}'{% firstof user.profile.selected_timezone user.profile.detected_timezone user.profile.time_zone "UTC" %}'{% else %}null{% endif %};
     
     // Detected timezone (will be set on modal open)
     let detectedTimezone = null;
@@ -1353,19 +1356,30 @@
     // Stripe PaymentIntent for the current booking attempt
     let bookingPaymentIntentId = null;
     let bookingPaymentIntentClientSecret = null;
+    // Unique id for this payment attempt (one per modal open); used in Stripe idempotency key
+    let bookingAttemptId = null;
 
     document.addEventListener('DOMContentLoaded', function() {
-        // Initialize timezone from user profile if authenticated (before any other operations)
-        if (isUserAuthenticated && userSelectedTimezone) {
-            selectedTimezone = userSelectedTimezone;
-            // Also set detected timezone for consistency
+        // Initialize timezone: use same source as dashboard (selected → detected → time_zone → UTC) so times match
+        if (isUserAuthenticated && userDisplayTimezone) {
+            selectedTimezone = userDisplayTimezone;
             try {
                 detectedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
             } catch (e) {
                 detectedTimezone = 'UTC';
             }
+            const bookingTzInput = document.getElementById('bookingTimezoneValue');
+            if (bookingTzInput) bookingTzInput.value = userDisplayTimezone;
+        } else if (isUserAuthenticated && userSelectedTimezone) {
+            selectedTimezone = userSelectedTimezone;
+            try {
+                detectedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+            } catch (e) {
+                detectedTimezone = 'UTC';
+            }
+            const bookingTzInput = document.getElementById('bookingTimezoneValue');
+            if (bookingTzInput) bookingTzInput.value = userSelectedTimezone;
         } else {
-            // For non-authenticated users, detect timezone
             try {
                 detectedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
                 selectedTimezone = detectedTimezone;
@@ -1601,17 +1615,27 @@
     function openBookingModal() {
         if (!modal) return; // Guard clause
         
-        // Initialize timezone from user profile if authenticated
-        if (isUserAuthenticated && userSelectedTimezone) {
-            selectedTimezone = userSelectedTimezone;
-            // Also set detected timezone for consistency
+        // Přihlášený: stejná timezone jako dashboard (selected → detected → time_zone → UTC)
+        if (isUserAuthenticated && userDisplayTimezone) {
+            selectedTimezone = userDisplayTimezone;
             try {
                 detectedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
             } catch (e) {
                 detectedTimezone = 'UTC';
             }
+            const bookingTzInput = document.getElementById('bookingTimezoneValue');
+            if (bookingTzInput) bookingTzInput.value = userDisplayTimezone;
+        } else if (isUserAuthenticated && userSelectedTimezone) {
+            selectedTimezone = userSelectedTimezone;
+            try {
+                detectedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+            } catch (e) {
+                detectedTimezone = 'UTC';
+            }
+            const bookingTzInput = document.getElementById('bookingTimezoneValue');
+            if (bookingTzInput) bookingTzInput.value = userSelectedTimezone;
         } else {
-            // For non-authenticated users, detect timezone
+            // Nepřihlášený: v modalu vždy pouze detectedTimezone z prohlížeče (kalendář a sloty)
             try {
                 detectedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
                 selectedTimezone = detectedTimezone;
@@ -2472,6 +2496,8 @@
         if (typeof paymentOnly === 'undefined') paymentOnly = false;
         const emailModal = document.getElementById('emailCollectionModal');
         if (!emailModal) return;
+        // New attempt = new idempotency scope (avoids Stripe "same key, different parameters")
+        bookingAttemptId = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : 'attempt_' + Date.now() + '_' + Math.random().toString(36).slice(2, 11);
         
         const guestWrap = document.getElementById('bookingGuestFieldsWrap');
         const timezoneWrap = document.getElementById('bookingTimezoneSectionWrap');
@@ -2501,24 +2527,26 @@
             mountStripeCard();
         }
         
-        // Check if we already have a corrected timezone from previous interaction
         const bookingTimezoneValue = document.getElementById('bookingTimezoneValue');
         let timezoneToUse = null;
         
-        // Detect timezone
         try {
-            detectedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-            
-            // Use corrected timezone if available, otherwise use detected
-            if (bookingTimezoneValue && bookingTimezoneValue.value) {
-                timezoneToUse = bookingTimezoneValue.value;
-                selectedTimezone = timezoneToUse;
-            } else {
-                timezoneToUse = detectedTimezone;
+            // Nepřihlášený uživatel: vždy použijeme časovou zónu z prohlížeče (žádný profil).
+            if (!isUserAuthenticated) {
+                detectedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
                 selectedTimezone = detectedTimezone;
-                // Set hidden timezone value to detected if not already set
-                if (bookingTimezoneValue) {
-                    bookingTimezoneValue.value = detectedTimezone;
+                timezoneToUse = detectedTimezone;
+                if (bookingTimezoneValue) bookingTimezoneValue.value = detectedTimezone;
+            } else {
+                // Přihlášený: nejdřív fresh detekce, pak preferujeme hodnotu z profilu / dříve opravenou
+                detectedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+                if (bookingTimezoneValue && bookingTimezoneValue.value) {
+                    timezoneToUse = bookingTimezoneValue.value;
+                    selectedTimezone = timezoneToUse;
+                } else {
+                    timezoneToUse = detectedTimezone;
+                    selectedTimezone = detectedTimezone;
+                    if (bookingTimezoneValue) bookingTimezoneValue.value = detectedTimezone;
                 }
             }
             
@@ -2617,6 +2645,7 @@
         // Reset PaymentIntent state for this attempt
         bookingPaymentIntentId = null;
         bookingPaymentIntentClientSecret = null;
+        bookingAttemptId = null;
         
         emailModal.style.opacity = '0';
         setTimeout(() => {
@@ -2962,7 +2991,8 @@
             // First time for this attempt: create PaymentIntent on the backend
             var createIntentPayload = {
                 mentor_id: mentorId,
-                is_logged_in: isUserAuthenticated
+                is_logged_in: isUserAuthenticated,
+                attempt_id: bookingAttemptId || ''
             };
             // Include a stable slot_key for idempotency (mentor + slot + client)
             var slotKey = null;

@@ -1,0 +1,48 @@
+{% extends "emails/base.html" %}
+
+{% block title %}Session Cancelled by Client{% endblock %}
+
+{% block content %}
+<h1 style="color: #ef4444; margin-bottom: 8px;">Session Cancelled by Client</h1>
+<p class="content-text" style="font-size: 18px; font-weight: 600; color: #111827; margin-bottom: 24px;">
+  A client has cancelled a session with you
+</p>
+
+<p class="content-text">
+  Hello {{ mentor_name }},
+</p>
+
+<p class="content-text">
+  <strong>{{ client_name }}</strong> has cancelled the session scheduled for the date and time below.
+</p>
+
+<div style="margin: 24px 0; padding: 0; border-radius: 12px; overflow: hidden; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);">
+  <div style="background-color: #fef2f2; padding: 16px 20px; border-bottom: 1px solid #e5e7eb;">
+    <h3 style="margin: 0; font-size: 18px; font-weight: 700; color: #991b1b;">Session #{{ session_id }} – Cancelled</h3>
+  </div>
+  <div style="padding: 20px; background-color: #ffffff;">
+    <div style="margin-bottom: 20px;">
+      <div style="font-size: 13px; font-weight: 600; color: #64748b; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">Date & Time</div>
+      <div style="font-size: 16px; font-weight: 600; color: #111827; line-height: 1.5;">
+        {% if start_date == end_date %}
+          {{ start_date }}<br>
+          <span style="color: #6b7280; font-weight: 500;">{{ start_time }} – {{ end_time }}</span>
+        {% else %}
+          {{ start_date }} • {{ start_time }}<br>
+          {{ end_date }} • {{ end_time }}
+        {% endif %}
+      </div>
+    </div>
+    {% if session_price %}
+    <div style="margin-bottom: 0;">
+      <div style="font-size: 13px; font-weight: 600; color: #64748b; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">Price</div>
+      <div style="font-size: 16px; font-weight: 600; color: #111827;">{{ session_price }}</div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<p class="content-text">
+  If you have any questions, please log in to your dashboard or contact support.
+</p>
+{% endblock %}

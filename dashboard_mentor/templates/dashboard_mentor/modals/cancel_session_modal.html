@@ -11,9 +11,17 @@
         Are you sure you want to cancel this session? The client will be notified.
       </p>
       <div id="cancelSessionModalError" style="display: none; color: var(--dash-error, #dc2626); margin-bottom: 1rem; font-size: 0.9rem;"></div>
-      <div style="display: flex; gap: 10px; justify-content: flex-end;">
+      <div id="cancelSessionModalSingle" style="display: flex; gap: 10px; justify-content: flex-end;">
         <button type="button" class="btn btn-outline" data-cancel-session-close>Keep session</button>
         <button type="button" id="cancelSessionConfirmBtn" class="btn btn-primary" style="background: var(--dash-error, #dc2626); border-color: var(--dash-error, #dc2626);">Cancel session</button>
+      </div>
+      <div id="cancelSessionModalChoice" style="display: none; flex-direction: column; gap: 10px;">
+        <p style="margin: 0 0 0.5rem; font-size: 0.9rem; color: var(--dash-text, #64748b);">This session has multiple mentors. What do you want to do?</p>
+        <div style="display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap;">
+          <button type="button" class="btn btn-outline" data-cancel-session-close>Keep session</button>
+          <button type="button" id="cancelSessionLeaveOnlyBtn" class="btn btn-outline" style="border-color: var(--dash-error, #dc2626); color: var(--dash-error, #dc2626);">Just leave (I won't participate)</button>
+          <button type="button" id="cancelSessionCancelAllBtn" class="btn btn-primary" style="background: var(--dash-error, #dc2626); border-color: var(--dash-error, #dc2626);">Cancel session for everyone</button>
+        </div>
       </div>
     </div>
   </div>
@@ -32,6 +40,11 @@
     return match ? decodeURIComponent(match[2]) : '';
   }
 
+  var singleRow = document.getElementById('cancelSessionModalSingle');
+  var choiceRow = document.getElementById('cancelSessionModalChoice');
+  var leaveOnlyBtn = document.getElementById('cancelSessionLeaveOnlyBtn');
+  var cancelAllBtn = document.getElementById('cancelSessionCancelAllBtn');
+
   function closeModal() {
     if (overlay) {
       overlay.style.display = 'none';
@@ -40,23 +53,30 @@
     currentSessionId = null;
     onSuccess = null;
     if (errorEl) errorEl.style.display = 'none';
+    if (singleRow) singleRow.style.display = 'flex';
+    if (choiceRow) choiceRow.style.display = 'none';
   }
 
   window.openCancelSessionModal = function(sessionId, successCallback) {
     currentSessionId = sessionId;
     onSuccess = typeof successCallback === 'function' ? successCallback : null;
     if (errorEl) errorEl.style.display = 'none';
+    if (singleRow) singleRow.style.display = 'flex';
+    if (choiceRow) choiceRow.style.display = 'none';
     if (overlay) {
       overlay.style.display = 'flex';
       overlay.setAttribute('aria-hidden', 'false');
     }
   };
 
-  function doCancel() {
+  function doCancel(leaveOnly) {
     if (!currentSessionId) return;
     var url = cancelUrlTemplate.replace('/0/', '/' + currentSessionId + '/');
     if (errorEl) errorEl.style.display = 'none';
     if (confirmBtn) confirmBtn.disabled = true;
+    if (leaveOnlyBtn) leaveOnlyBtn.disabled = true;
+    if (cancelAllBtn) cancelAllBtn.disabled = true;
+    var body = leaveOnly === true ? { leave_only: true } : leaveOnly === false ? { leave_only: false } : {};
     fetch(url, {
       method: 'POST',
       headers: {
@@ -65,9 +85,15 @@
         'X-Requested-With': 'XMLHttpRequest'
       },
       credentials: 'same-origin',
-      body: JSON.stringify({})
+      body: JSON.stringify(body)
     })
-      .then(function(r) { return r.json().then(function(data) { return { ok: r.ok, data: data }; }); })
+      .then(function(r) {
+        return r.text().then(function(text) {
+          var data = {};
+          try { data = text ? JSON.parse(text) : {}; } catch (e) {}
+          return { ok: r.ok, status: r.status, data: data };
+        });
+      })
       .then(function(result) {
         if (result.ok && result.data.success) {
           closeModal();
@@ -75,6 +101,9 @@
           if (typeof refreshMySessionsPage === 'function') refreshMySessionsPage();
           if (typeof refreshDashboardUpcomingSessions === 'function') refreshDashboardUpcomingSessions();
           if (typeof window.MentorCalendarLoadAvailability === 'function') window.MentorCalendarLoadAvailability();
+        } else if (result.status === 400 && result.data.need_choice) {
+          if (singleRow) singleRow.style.display = 'none';
+          if (choiceRow) choiceRow.style.display = 'flex';
         } else {
           if (errorEl) {
             errorEl.textContent = result.data.error || 'Failed to cancel session.';
@@ -90,10 +119,14 @@
       })
       .finally(function() {
         if (confirmBtn) confirmBtn.disabled = false;
+        if (leaveOnlyBtn) leaveOnlyBtn.disabled = false;
+        if (cancelAllBtn) cancelAllBtn.disabled = false;
       });
   }
 
-  if (confirmBtn) confirmBtn.addEventListener('click', doCancel);
+  if (confirmBtn) confirmBtn.addEventListener('click', function() { doCancel(undefined); });
+  if (leaveOnlyBtn) leaveOnlyBtn.addEventListener('click', function() { doCancel(true); });
+  if (cancelAllBtn) cancelAllBtn.addEventListener('click', function() { doCancel(false); });
   [].forEach.call(document.querySelectorAll('[data-cancel-session-close]'), function(el) {
     el.addEventListener('click', closeModal);
   });

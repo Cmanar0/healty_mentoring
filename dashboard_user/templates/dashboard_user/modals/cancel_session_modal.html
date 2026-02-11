@@ -1,0 +1,99 @@
+{# Cancel session confirmation modal - open via openUserCancelSessionModal(sessionId) #}
+<div id="userCancelSessionModalOverlay" class="session-detail-modal-overlay" aria-hidden="true" style="display: none;">
+  <div class="session-detail-modal-backdrop" data-user-cancel-session-close></div>
+  <div class="session-detail-modal" role="dialog" aria-modal="true" aria-labelledby="userCancelSessionModalTitle" style="max-width: 420px;">
+    <header class="session-detail-modal-header">
+      <h2 id="userCancelSessionModalTitle" class="session-detail-modal-title">Cancel session</h2>
+      <button type="button" class="session-detail-modal-close" data-user-cancel-session-close aria-label="Close">&times;</button>
+    </header>
+    <div class="session-detail-modal-body">
+      <p id="userCancelSessionModalMessage" style="margin: 0 0 1.25rem; color: var(--dash-text, #334155);">
+        Are you sure you want to cancel this session? Your mentor will be notified.
+      </p>
+      <div id="userCancelSessionModalError" style="display: none; color: var(--dash-error, #dc2626); margin-bottom: 1rem; font-size: 0.9rem;"></div>
+      <div style="display: flex; gap: 10px; justify-content: flex-end;">
+        <button type="button" class="btn btn-outline" data-user-cancel-session-close>Keep session</button>
+        <button type="button" id="userCancelSessionConfirmBtn" class="btn btn-primary" style="background: var(--dash-error, #dc2626); border-color: var(--dash-error, #dc2626);">Cancel session</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+(function() {
+  var cancelUrlTemplate = "{% url 'general:dashboard_user:cancel_session' 99999 %}";
+  var overlay = document.getElementById('userCancelSessionModalOverlay');
+  var confirmBtn = document.getElementById('userCancelSessionConfirmBtn');
+  var errorEl = document.getElementById('userCancelSessionModalError');
+  var currentSessionId = null;
+
+  function getCookie(name) {
+    var match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+    return match ? decodeURIComponent(match[2]) : '';
+  }
+
+  function closeModal() {
+    if (overlay) { overlay.style.display = 'none'; overlay.setAttribute('aria-hidden', 'true'); }
+    currentSessionId = null;
+    if (errorEl) errorEl.style.display = 'none';
+  }
+
+  window.openUserCancelSessionModal = function(sessionId) {
+    currentSessionId = sessionId;
+    cancelMode = 'cancel';
+    if (errorEl) errorEl.style.display = 'none';
+    var msgEl = document.getElementById('userCancelSessionModalMessage');
+    var btnEl = document.getElementById('userCancelSessionConfirmBtn');
+    if (msgEl) msgEl.textContent = 'Are you sure you want to cancel this session? Your mentor will be notified.';
+    if (btnEl) btnEl.textContent = 'Cancel session';
+    if (overlay) { overlay.style.display = 'flex'; overlay.setAttribute('aria-hidden', 'false'); }
+  };
+
+  var cancelMode = 'cancel';
+  function doCancel() {
+    if (!currentSessionId) return;
+    var url = cancelUrlTemplate.replace('99999', String(currentSessionId));
+    if (errorEl) errorEl.style.display = 'none';
+    if (confirmBtn) confirmBtn.disabled = true;
+    var body = cancelMode === 'leave_only' ? { leave_only: true } : {};
+    fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken'), 'X-Requested-With': 'XMLHttpRequest' },
+      credentials: 'same-origin',
+      body: JSON.stringify(body)
+    })
+      .then(function(r) {
+        return r.text().then(function(text) {
+          var data = {};
+          try { data = text ? JSON.parse(text) : {}; } catch (e) {}
+          return { ok: r.ok, status: r.status, data: data };
+        });
+      })
+      .then(function(result) {
+        if (result.ok) {
+          closeModal();
+          if (typeof refreshMySessionsPage === 'function') refreshMySessionsPage();
+          if (typeof window.refreshDashboardUpcomingSessions === 'function') window.refreshDashboardUpcomingSessions();
+        } else if (result.status === 400 && result.data.require_leave_confirm) {
+          cancelMode = 'leave_only';
+          var msgEl = document.getElementById('userCancelSessionModalMessage');
+          var btnEl = document.getElementById('userCancelSessionConfirmBtn');
+          if (msgEl) msgEl.textContent = 'This session has multiple participants. Leave the session? Mentors and other participants will be notified.';
+          if (btnEl) btnEl.textContent = 'Leave session';
+        } else {
+          if (errorEl) { errorEl.textContent = result.data.error || 'Failed to cancel session.'; errorEl.style.display = 'block'; }
+        }
+      })
+      .catch(function() {
+        if (errorEl) { errorEl.textContent = 'Network error. Please try again.'; errorEl.style.display = 'block'; }
+      })
+      .finally(function() { if (confirmBtn) confirmBtn.disabled = false; });
+  }
+
+  if (confirmBtn) confirmBtn.addEventListener('click', doCancel);
+  document.addEventListener('DOMContentLoaded', function() {
+    [].forEach.call(document.querySelectorAll('[data-user-cancel-session-close]'), function(el) { el.addEventListener('click', closeModal); });
+    if (overlay) overlay.addEventListener('click', function(e) { if (e.target === overlay || e.target.classList.contains('session-detail-modal-backdrop')) closeModal(); });
+  });
+  document.addEventListener('keydown', function(e) { if (e.key === 'Escape' && overlay && overlay.style.display === 'flex') closeModal(); });
+})();
+</script>

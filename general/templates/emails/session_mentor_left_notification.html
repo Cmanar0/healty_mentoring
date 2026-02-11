@@ -1,0 +1,22 @@
+{% extends "emails/base.html" %}
+
+{% block title %}Mentor No Longer Participating{% endblock %}
+
+{% block content %}
+<h1 style="color: #f59e0b; margin-bottom: 8px;">Session Update</h1>
+<p class="content-text" style="font-size: 18px; font-weight: 600; color: #111827; margin-bottom: 24px;">
+  A mentor is no longer participating in your session
+</p>
+
+<p class="content-text">
+  Hello,
+</p>
+
+<p class="content-text">
+  <strong>{{ mentor_name }}</strong> will no longer be participating in the session scheduled for {{ session_date }} at {{ session_time }} (Session #{{ session_id }}). The session is still on with the remaining mentor(s).
+</p>
+
+<p class="content-text">
+  If you have any questions, please log in to your dashboard or contact support.
+</p>
+{% endblock %}

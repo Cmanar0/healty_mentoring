@@ -240,7 +240,14 @@ class Session(models.Model):
     
     start_datetime = models.DateTimeField()
     end_datetime = models.DateTimeField()
-    created_by = models.ForeignKey("accounts.CustomUser", on_delete=models.CASCADE, related_name="created_sessions")
+    # Deprecated: use session.mentors (M2M) instead. Kept nullable for migration/backfill only.
+    created_by = models.ForeignKey(
+        "accounts.CustomUser",
+        on_delete=models.CASCADE,
+        related_name="created_sessions",
+        null=True,
+        blank=True,
+    )
     attendees = models.ManyToManyField("accounts.CustomUser", related_name="attended_sessions", blank=True)
     note = models.TextField(blank=True)
     first_lesson_user_note = models.TextField(blank=True, null=True, help_text="Note from user when booking their first session")

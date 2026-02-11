@@ -24,8 +24,8 @@
         <div class="session-timeline-container scrollable-content" id="sessionsContainer" data-user-timezone="{{ user_timezone }}">
             {% if initial_sessions %}
                 {% for session in initial_sessions %}
-                    <div class="session-item status-{{ session.status }}">
-                        <div class="session-left">
+                    <div class="session-item status-{{ session.status }}" data-clickable-session data-session-id="{{ session.id }}">
+                        <div class="session-left" onclick="if (typeof openSessionDetailModal === 'function') openSessionDetailModal({{ session.id }});" style="cursor: pointer;">
                             <div class="session-date">
                                 <span class="date-day">{{ session.start_datetime|date:"d" }}</span>
                                 <span class="date-month">{{ session.start_datetime|date:"M" }}</span>
@@ -45,11 +45,12 @@
                         
                         <div class="session-right">
                             <div class="dropdown">
-                                <button class="session-action-btn" onclick="toggleDropdown(this)">
+                                <button class="session-action-btn" type="button" onclick="toggleDropdown(this)">
                                     <i class="fas fa-ellipsis-h"></i>
                                 </button>
-                                <div class="dropdown-menu">
-                                    <a href="/dashboard/user/session/{{ session.id }}/" class="dropdown-item">View Details</a>
+                                <div class="dropdown-menu session-row-actions-menu" onclick="event.stopPropagation();">
+                                    <button type="button" class="dropdown-item first-item" onclick="if (typeof openSessionDetailModal === 'function') openSessionDetailModal({{ session.id }});"><i class="fas fa-info-circle"></i><span>View Details</span></button>
+                                    <button type="button" class="dropdown-item delete-item last-item" onclick="if (typeof openUserCancelSessionModal === 'function') openUserCancelSessionModal({{ session.id }});"><i class="fas fa-times-circle"></i><span>Cancel session</span></button>
                                 </div>
                             </div>
                         </div>
@@ -126,6 +127,50 @@
         justify-content: center;
     }
 }
+
+/* Cancel session modal (same pattern as mentor) */
+.session-detail-modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(8px);
+}
+.session-detail-modal-backdrop { position: absolute; inset: 0; }
+.session-detail-modal {
+    position: relative;
+    width: 80vw;
+    max-width: 420px;
+    background: #fff;
+    border-radius: 24px;
+    box-shadow: 0 25px 70px rgba(0, 0, 0, 0.3);
+    overflow: hidden;
+}
+.session-detail-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 24px 32px;
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+}
+.session-detail-modal-title { margin: 0; font-size: 1.25rem; font-weight: 800; color: #0f172a; }
+.session-detail-modal-close {
+    border: none;
+    background: #f1f5f9;
+    cursor: pointer;
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    color: #64748b;
+    font-size: 1.1rem;
+}
+.session-detail-modal-close:hover { background: #fee2e2; color: #ef4444; }
+.session-detail-modal-body { padding: 32px; overflow-y: auto; }
 </style>
 
 <script>
@@ -218,15 +263,19 @@
     hasMore = true;
   }
   
+  // User's selected timezone from profile (used so paginated sessions match initial server-rendered times)
+  const userTimezone = sessionsContainer.getAttribute('data-user-timezone') || Intl.DateTimeFormat().resolvedOptions().timeZone;
+
   // Make formatSessionHTML accessible to refreshMySessionsPage
   function formatSessionHTML(session) {
     const startDate = new Date(session.start_datetime);
     const endDate = new Date(session.end_datetime);
-    
-    const day = startDate.getDate();
-    const month = startDate.toLocaleDateString('en-US', { month: 'short' });
-    const startTime = startDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-    const endTime = endDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+    const tzOpt = { timeZone: userTimezone };
+
+    const day = new Intl.DateTimeFormat('en-US', { ...tzOpt, day: 'numeric' }).format(startDate);
+    const month = new Intl.DateTimeFormat('en-US', { ...tzOpt, month: 'short' }).format(startDate);
+    const startTime = new Intl.DateTimeFormat('en-US', { ...tzOpt, hour: 'numeric', minute: '2-digit', hour12: true }).format(startDate);
+    const endTime = new Intl.DateTimeFormat('en-US', { ...tzOpt, hour: 'numeric', minute: '2-digit', hour12: true }).format(endDate);
     
     const statusClass = session.status === 'confirmed' ? 'confirmed' : 'tbc';
     const statusText = session.status === 'confirmed' ? 'Confirmed' : 'Invited';
@@ -235,8 +284,8 @@
       : 'background: rgba(251, 191, 36, 0.1); color: #f59e0b;';
     
     return `
-      <div class="session-item status-${session.status}">
-        <div class="session-left">
+      <div class="session-item status-${session.status}" data-clickable-session data-session-id="${session.id}">
+        <div class="session-left" onclick="if (typeof openSessionDetailModal === 'function') openSessionDetailModal(${session.id});" style="cursor: pointer;">
           <div class="session-date">
             <span class="date-day">${day}</span>
             <span class="date-month">${month}</span>
@@ -256,11 +305,12 @@
         
         <div class="session-right">
           <div class="dropdown">
-            <button class="session-action-btn" onclick="toggleDropdown(this)">
+            <button class="session-action-btn" type="button" onclick="toggleDropdown(this)">
               <i class="fas fa-ellipsis-h"></i>
             </button>
-            <div class="dropdown-menu">
-              <a href="/dashboard/user/session/${session.id}/" class="dropdown-item">View Details</a>
+            <div class="dropdown-menu session-row-actions-menu" onclick="event.stopPropagation();">
+              <button type="button" class="dropdown-item first-item" onclick="if (typeof openSessionDetailModal === 'function') openSessionDetailModal(${session.id});"><i class="fas fa-info-circle"></i><span>View Details</span></button>
+              <button type="button" class="dropdown-item delete-item last-item" onclick="if (typeof openUserCancelSessionModal === 'function') openUserCancelSessionModal(${session.id});"><i class="fas fa-times-circle"></i><span>Cancel session</span></button>
             </div>
           </div>
         </div>
