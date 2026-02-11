@@ -310,6 +310,12 @@
     transition: all 0.2s;
 }
 
+.cancel-task-btn:hover {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+    color: #334155;
+}
+
 .project-selector-header {
     display: flex;
     justify-content: space-between;
@@ -347,7 +353,7 @@
         </button>
         
         <div class="create-task-modal-header">
-            <h3 class="create-task-modal-title" id="createTaskModalTitle">Create New Active Task</h3>
+            <h3 class="create-task-modal-title" id="createTaskModalTitle">Update This Task</h3>
         </div>
         
         <div class="create-task-modal-body">
@@ -649,13 +655,22 @@
             if (deadlineInput) deadlineInput.value = deadline;
             if (priorityInput) priorityInput.value = priority;
             if (statusInput) statusInput.value = status || 'pending';
-            if (statusWrapper) statusWrapper.style.display = 'block';
+            // Hide status input for mentor active backlog tasks (when clientId is provided and no stage/project)
+            if (statusWrapper) {
+                if (clientId && !projectId && !stageId) {
+                    // This is a mentor active backlog task - hide status
+                    statusWrapper.style.display = 'none';
+                } else {
+                    // Stage task or mentor backlog task - show status
+                    statusWrapper.style.display = 'block';
+                }
+            }
         } else {
             // Create mode
             editTaskId.value = '';
             editProjectIdInput.value = '';
             editStageIdInput.value = '';
-            modalTitle.textContent = 'Create New Active Task';
+            modalTitle.textContent = 'Update This Task';
             submitBtn.innerHTML = 'Create Task';
             if (titleInput) titleInput.value = '';
             if (descInput) descInput.value = '';
@@ -725,7 +740,7 @@
             btn.innerHTML = 'Create Task';
         }
         if (modalTitle) {
-            modalTitle.textContent = 'Create New Active Task';
+            modalTitle.textContent = 'Update This Task';
         }
     }
     
@@ -798,19 +813,34 @@
             url = `/dashboard/mentor/backlog/tasks/create/`;
         }
         
+        // Build request body - exclude status for mentor active backlog tasks
+        const requestBody = {
+            title: title,
+            description: description,
+            deadline: deadline,
+            priority: priority
+        };
+        
+        // Only include status if editing a stage task (has projectId and stageId) or mentor backlog (no clientId)
+        // Don't include status for mentor active backlog tasks (has clientId but no projectId/stageId)
+        if (isEditMode && status) {
+            if (editProjectId && editStageId) {
+                // Stage task - include status
+                requestBody.status = status;
+            } else if (!clientId) {
+                // Mentor backlog task (not client active backlog) - include status
+                requestBody.status = status;
+            }
+            // If clientId exists but no projectId/stageId, it's a mentor active backlog task - don't include status
+        }
+        
         fetch(url, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'X-CSRFToken': getCookie('csrftoken')
             },
-            body: JSON.stringify({
-                title: title,
-                description: description,
-                deadline: deadline,
-                priority: priority,
-                ...(isEditMode && status ? { status: status } : {})
-            })
+            body: JSON.stringify(requestBody)
         })
         .then(response => response.json())
         .then(data => {

@@ -311,10 +311,21 @@
                 <div class="dashboard-card flex-scroll-card" id="backlogCard" style="max-height: 500px; display: flex; flex-direction: column;">
                     <div class="card-header">
                         <h3 class="card-title">Your backlog</h3>
-                        <a href="{% url 'general:dashboard_mentor:mentor_backlog' %}" class="btn-link btn-fixed-width">View All</a>
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <div class="backlog-sort-buttons" style="display: flex; align-items: center; gap: 8px;">
+                                <span style="font-size: 0.8rem; color: #6b7280; font-weight: 500;">Sort by:</span>
+                                <button class="backlog-sort-btn" data-sort="priority" onclick="toggleBacklogSort('priority')" title="Sort by priority">
+                                    <i class="fas fa-sort-amount-down"></i>
+                                </button>
+                                <button class="backlog-sort-btn" data-sort="date" onclick="toggleBacklogSort('date')" title="Sort by date">
+                                    <i class="fas fa-calendar-alt"></i>
+                                </button>
+                            </div>
+                            <a href="{% url 'general:dashboard_mentor:mentor_backlog' %}" class="btn-link btn-fixed-width">View All</a>
+                        </div>
                     </div>
 
-                    <div class="scrollable-content" id="dashboardBacklogList" style="flex: 1; min-height: 0; overflow-y: auto;">
+                    <div class="scrollable-content" id="dashboardBacklogList" style="flex: 1; min-height: 0; overflow-y: auto; padding-right: 0;">
                         <!-- Tasks will be loaded dynamically via JavaScript -->
                         <div style="text-align: center; padding: 16px; color: var(--dash-text-muted);">
                             <i class="fas fa-spinner fa-spin"></i> Loading tasks...
@@ -1518,18 +1529,263 @@ function markOngoingSessionRows(container) {
 
 <style>
   .session-item[data-clickable-session] .session-left { cursor: pointer; }
+
+  /* Remove all padding from flex-scroll-card */
+  .dashboard-card.flex-scroll-card {
+    padding: 0;
+  }
+
+  /* Add top, left, and right padding to card-header in flex-scroll-card */
+  .dashboard-card.flex-scroll-card .card-header {
+    padding-top: 24px;
+    padding-left: 24px;
+    padding-right: 24px;
+    padding-bottom: 0;
+  }
+
+  /* Add padding to sessions scrollable content */
+  .session-timeline-container.scrollable-content {
+    padding-left: 32px;
+    padding-right: 32px;
+    padding-bottom: 32px;
+  }
+
+  /* Adjust timeline line position to account for padding */
+  .session-timeline-container.scrollable-content::before {
+    left: 31px; /* Adjusted to align with dots */
+  }
+
+  /* Active Backlog Task Styles for Dashboard */
+  .active-backlog-task-item {
+    display: flex;
+    flex-direction: column;
+    background: #fafafa;
+    border-bottom: 1px solid #e5e7eb;
+    border-radius: 0;
+    margin-bottom: 0;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .active-backlog-task-item:hover {
+    background: #ffffff;
+    z-index: 1;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    border-bottom-color: #d1d5db;
+  }
+
+  .active-backlog-task-header {
+    display: flex;
+    align-items: stretch;
+    border-bottom: 1px solid #f3f4f6;
+  }
+
+  .active-backlog-task-content {
+    flex: 1;
+    padding: 16px;
+    min-width: 0;
+    cursor: pointer;
+    height: auto;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    overflow: hidden;
+  }
+
+  .active-backlog-task-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 4px;
+  }
+
+  .active-backlog-task-title-text {
+    flex: 1;
+    min-width: 0;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #111827;
+    line-height: 1.4;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+
+  .active-backlog-task-deadline {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.75rem;
+    color: #6b7280;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .active-backlog-task-deadline.overdue {
+    color: #ef4444;
+  }
+
+  .active-backlog-task-description {
+    font-size: 0.8rem;
+    color: #4b5563;
+    line-height: 1.5;
+    margin-bottom: 12px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+    -webkit-box-orient: vertical;
+    flex-shrink: 0;
+  }
+
+  .priority-tag {
+    flex: 0 0 auto;
+    padding: 6px 8px;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    border: 1px solid transparent;
+  }
+
+  .priority-tag.priority-low {
+    background-color: #f3f4f6;
+    color: #6b7280;
+    border-color: #e5e7eb;
+  }
+
+  .priority-tag.priority-medium {
+    background-color: #dbeafe;
+    color: #1e40af;
+    border-color: #bfdbfe;
+  }
+
+  .priority-tag.priority-high {
+    background-color: #fef3c7;
+    color: #92400e;
+    border-color: #fde68a;
+  }
+
+  .priority-tag.priority-urgent {
+    background-color: #fee2e2;
+    color: #991b1b;
+    border-color: #fecaca;
+  }
+
+  .active-backlog-done-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 0.875rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 1px solid #a7f3d0;
+    background: #ecfdf5;
+    color: #047857;
+    min-width: 180px;
+    width: 180px;
+    box-sizing: border-box;
+    white-space: nowrap;
+  }
+
+  .active-backlog-done-btn:hover {
+    background: #10b981;
+    border-color: #10b981;
+    color: white;
+  }
+
+  /* Scrollbar styling for dashboard backlog */
+  #dashboardBacklogList::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  #dashboardBacklogList::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  #dashboardBacklogList::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 0, 0, 0.2);
+    border-radius: 4px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+
+  #dashboardBacklogList::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(0, 0, 0, 0.3);
+  }
+
+  /* Backlog Sort Buttons */
+  .backlog-sort-buttons {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .backlog-sort-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 10px;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 1px solid #e5e7eb;
+    background: #ffffff;
+    color: #6b7280;
+    width: 32px;
+    height: 32px;
+  }
+
+  .backlog-sort-btn:hover {
+    background: #f3f4f6;
+    border-color: #d1d5db;
+    color: #374151;
+  }
+
+  .backlog-sort-btn.active {
+    background: #10b981;
+    border-color: #10b981;
+    color: white;
+  }
+
+  .backlog-sort-btn i {
+    font-size: 0.75rem;
+  }
+
+  /* Remove min-width from btn-fixed-width */
+  .btn-fixed-width {
+    min-width: 0;
+  }
 </style>
 
 <!-- Include Create Project Modal -->
 {% include "general/modals/create_project_modal.html" %}
 
+<!-- Include Create Active Backlog Task Modal -->
+{% include 'dashboard_mentor/popups/create_active_backlog_task_modal.html' %}
+
 <script>
-// Load dashboard backlog tasks
+// Dashboard backlog state
+let dashboardBacklogTasks = [];
+let dashboardBacklogSort = null; // 'priority', 'date', or null
+
+// Load dashboard backlog tasks (only todo tasks)
 function loadDashboardBacklog() {
     const container = document.getElementById('dashboardBacklogList');
     if (!container) return;
     
-    fetch('{% url "general:dashboard_mentor:get_mentor_backlog_tasks_api" %}', {
+    fetch('{% url "general:dashboard_mentor:get_mentor_backlog_tasks_api" %}?filter=todo', {
         method: 'GET',
         headers: {
             'X-Requested-With': 'XMLHttpRequest',
@@ -1539,7 +1795,11 @@ function loadDashboardBacklog() {
     .then(response => response.json())
     .then(data => {
         if (data && data.success) {
-            renderDashboardBacklog(data.tasks || []);
+            dashboardBacklogTasks = data.tasks || [];
+            // Reset sort when loading new data
+            dashboardBacklogSort = null;
+            document.querySelectorAll('.backlog-sort-btn').forEach(b => b.classList.remove('active'));
+            applyDashboardBacklogSort();
         } else {
             container.innerHTML = `
                 <div style="text-align: center; padding: 16px; color: var(--dash-text-muted);">
@@ -1560,70 +1820,135 @@ function loadDashboardBacklog() {
     });
 }
 
-// Render dashboard backlog tasks
+// Toggle backlog sort
+function toggleBacklogSort(sortType) {
+    const btn = document.querySelector(`.backlog-sort-btn[data-sort="${sortType}"]`);
+    if (!btn) return;
+    
+    // If clicking the same button, toggle it off
+    if (dashboardBacklogSort === sortType) {
+        dashboardBacklogSort = null;
+        btn.classList.remove('active');
+    } else {
+        // Remove active from all buttons
+        document.querySelectorAll('.backlog-sort-btn').forEach(b => b.classList.remove('active'));
+        // Set new sort
+        dashboardBacklogSort = sortType;
+        btn.classList.add('active');
+    }
+    
+    // Apply sort
+    applyDashboardBacklogSort();
+}
+
+// Apply sorting to dashboard backlog tasks
+function applyDashboardBacklogSort() {
+    let sortedTasks = [...dashboardBacklogTasks];
+    
+    if (dashboardBacklogSort === 'priority') {
+        // Sort by priority: urgent > high > medium > low
+        const priorityOrder = { 'urgent': 4, 'high': 3, 'medium': 2, 'low': 1 };
+        sortedTasks.sort((a, b) => {
+            const aPriority = priorityOrder[a.priority || 'medium'] || 2;
+            const bPriority = priorityOrder[b.priority || 'medium'] || 2;
+            return bPriority - aPriority; // Highest priority first
+        });
+    } else if (dashboardBacklogSort === 'date') {
+        // Sort by deadline: earliest first (null deadlines go to end)
+        sortedTasks.sort((a, b) => {
+            if (!a.deadline && !b.deadline) return 0;
+            if (!a.deadline) return 1; // No deadline goes to end
+            if (!b.deadline) return -1; // No deadline goes to end
+            const dateA = new Date(a.deadline);
+            const dateB = new Date(b.deadline);
+            return dateA - dateB; // Earliest first
+        });
+    }
+    // If dashboardBacklogSort is null, use original order
+    
+    renderDashboardBacklog(sortedTasks);
+}
+
+// Render dashboard backlog tasks using same styling as backlog page
 function renderDashboardBacklog(tasks) {
     const container = document.getElementById('dashboardBacklogList');
     if (!container) return;
     
     if (tasks.length === 0) {
         container.innerHTML = `
-            <div class="task-row" style="border-left: none; padding: 16px; text-align: center; color: var(--dash-text-muted);">
-                <p>No active tasks in your backlog</p>
+            <div style="text-align: center; padding: 32px 16px; color: #9ca3af; font-size: 0.85rem;">
+                <i class="fas fa-clipboard-list" style="font-size: 2rem; margin-bottom: 12px; opacity: 0.2;"></i>
+                <p style="margin: 0; font-weight: 500;">No tasks to do</p>
             </div>
         `;
         return;
     }
     
-    let html = '';
+    let html = '<div style="display: flex; flex-direction: column;">';
     tasks.forEach(task => {
-        // Determine status circle color
-        let statusCircleClass = 'blue';
-        if (task.priority === 'urgent' || task.priority === 'high' || task.is_overdue) {
-            statusCircleClass = 'red';
-        } else if (task.priority === 'medium') {
-            statusCircleClass = 'orange';
+        const priority = task.priority || 'medium';
+        const priorityLabel = priority.charAt(0).toUpperCase() + priority.slice(1);
+        const priorityClass = `priority-${priority}`;
+        
+        // Format deadline date and check if overdue
+        let deadlineHtml = '';
+        if (task.deadline) {
+            const deadlineDate = new Date(task.deadline);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            deadlineDate.setHours(0, 0, 0, 0);
+            const isOverdue = deadlineDate < today && !task.completed;
+            
+            const formattedDate = deadlineDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            const overdueClass = isOverdue ? 'overdue' : '';
+            
+            deadlineHtml = `
+                <div class="active-backlog-task-deadline ${overdueClass}">
+                    <i class="fas fa-calendar-alt" style="font-size: 0.7rem;"></i>
+                    <span>${formattedDate}</span>
+                </div>
+            `;
         }
         
-        // Determine status text
-        let statusText = 'Personal task';
-        if (task.is_overdue) {
-            statusText = 'Overdue';
-        } else if (task.is_due_this_week) {
-            statusText = 'Due this week';
-        } else if (task.deadline) {
-            const deadlineDate = new Date(task.deadline);
-            const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-            statusText = `Due ${monthNames[deadlineDate.getMonth()]} ${deadlineDate.getDate()}`;
-        } else if (task.project_title) {
-            statusText = task.project_title;
-        }
+        const descriptionHtml = task.description ? `
+            <div class="active-backlog-task-description" style="margin-bottom: 8px;">${escapeHtml(task.description)}</div>
+        ` : '';
+        
+        const escapedTitle = (task.title || '').replace(/'/g, "\\'").replace(/\n/g, ' ');
+        const escapedDescription = (task.description || '').replace(/'/g, "\\'").replace(/\n/g, ' ');
         
         html += `
-            <div class="task-row" data-task-id="${task.id}">
-                <div class="status-circle ${statusCircleClass}"></div>
-                <div class="task-info">
-                    <span class="task-name">${escapeHtml(task.title)}</span>
-                    <span class="task-status-text">${escapeHtml(statusText)}</span>
-                </div>
-                <div class="completion-circle" onclick="toggleDashboardTask(${task.id}, this)">
-                    <i class="fas fa-check"></i>
-                </div>
-                <div class="dropdown">
-                    <button class="action-btn ghost" onclick="toggleDropdown(this)">
-                        <i class="fas fa-ellipsis-h"></i>
-                    </button>
-                    <div class="dropdown-menu">
-                        <button class="dropdown-item" onclick="window.location.href='{% url 'general:dashboard_mentor:mentor_backlog' %}'">View Details</button>
-                        <button class="dropdown-item delete-item" onclick="deleteDashboardTask(${task.id})" style="color: var(--status-red);">
-                            Delete
-                        </button>
+            <div class="active-backlog-task-item" data-task-id="${task.id}" data-priority="${priority}">
+                <div class="active-backlog-task-header" style="border-bottom: none;">
+                    <div class="active-backlog-task-content" onclick="editDashboardTask(${task.id}, '${escapedTitle}', '${escapedDescription}', '${task.deadline || ''}', '${task.priority || 'medium'}', ${task.client_id || 'null'}, event)">
+                        <div class="active-backlog-task-title-row">
+                            <div class="active-backlog-task-title-text">${escapeHtml(task.title)}</div>
+                            ${deadlineHtml}
+                        </div>
+                        ${descriptionHtml}
+                        
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 4px;">
+                            <span class="priority-tag ${priorityClass}">${priorityLabel}</span>
+                            <div class="active-backlog-done-btn" 
+                                 onclick="toggleDashboardTask(${task.id}, ${task.client_id || 'null'}, event)">
+                                <i class="fas fa-check"></i> Mark Done
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
         `;
     });
-    
+    html += '</div>';
     container.innerHTML = html;
+}
+
+// Edit task from dashboard
+function editDashboardTask(taskId, title, description, deadline, priority, clientId, event) {
+    event.stopPropagation();
+    if (typeof window.openCreateActiveBacklogTaskModal === 'function') {
+        window.openCreateActiveBacklogTaskModal(taskId, title, description, deadline, priority, null, null, clientId);
+    }
 }
 
 // Helper function to escape HTML
@@ -1635,11 +1960,24 @@ function escapeHtml(text) {
 }
 
 // Dashboard task management functions
-function toggleDashboardTask(taskId, element) {
-    const isCompleted = element.classList.contains('completed');
-    const newCompleted = !isCompleted;
+function toggleDashboardTask(taskId, clientId, event) {
+    event.stopPropagation();
     
-    fetch(`{% url "general:dashboard_mentor:toggle_mentor_backlog_task_complete" 0 %}`.replace('0', taskId), {
+    const completeBtn = event.target.closest('.active-backlog-done-btn');
+    if (!completeBtn) return;
+    
+    const newCompleted = true; // Always mark as completed when clicking "Mark Done"
+    
+    // Determine endpoint - use client active backlog endpoint if clientId exists
+    let endpoint;
+    if (clientId && clientId !== 'null') {
+        endpoint = `/dashboard/mentor/clients/${clientId}/active-backlog/tasks/${taskId}/toggle-complete/`;
+    } else {
+        // Fallback to mentor backlog endpoint
+        endpoint = `{% url "general:dashboard_mentor:toggle_mentor_backlog_task_complete" 0 %}`.replace('0', taskId);
+    }
+    
+    fetch(endpoint, {
         method: 'POST',
         headers: {
             'X-CSRFToken': '{{ csrf_token }}',

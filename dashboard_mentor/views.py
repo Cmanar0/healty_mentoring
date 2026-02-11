@@ -7782,16 +7782,11 @@ def reorder_tasks(request, project_id, stage_id):
 
 @login_required
 def mentor_backlog(request):
-    """Display mentor's personal backlog"""
+    """Display active backlog tasks from all clients supervised by mentor"""
     if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
         return redirect('general:index')
     
     mentor_profile = request.user.mentor_profile
-    from dashboard_user.models import Task, Project, ProjectStage
-    from decimal import Decimal
-    
-    # Get all tasks in mentor's backlog
-    tasks = Task.objects.filter(mentor_backlog=mentor_profile).order_by('order', 'created_at')
     
     # Get all confirmed clients for filter
     relationships = MentorClientRelationship.objects.filter(
@@ -7801,29 +7796,8 @@ def mentor_backlog(request):
     
     clients = [rel.client for rel in relationships]
     
-    # Get all projects supervised by this mentor
-    projects = Project.objects.filter(supervised_by=mentor_profile).select_related('project_owner', 'template').order_by('-created_at')
-    
-    # Get stages for selected project (if any)
-    selected_client_id = request.GET.get('client_id', '')
-    selected_project_id = request.GET.get('project_id', '')
-    stages = []
-    
-    if selected_project_id:
-        try:
-            project = projects.filter(id=int(selected_project_id)).first()
-            if project:
-                stages = ProjectStage.objects.filter(project=project).order_by('order', 'created_at')
-        except (ValueError, TypeError):
-            pass
-    
     context = {
-        'tasks': tasks,
         'clients': clients,
-        'projects': projects,
-        'stages': stages,
-        'selected_client_id': selected_client_id,
-        'selected_project_id': selected_project_id,
     }
     
     return render(request, 'dashboard_mentor/backlog.html', context)
@@ -8228,28 +8202,56 @@ def get_mentor_projects_stages_api(request):
 
 @login_required
 def get_mentor_backlog_tasks_api(request):
-    """API endpoint to get mentor backlog tasks"""
+    """API endpoint to get active backlog tasks from all clients supervised by mentor"""
     if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
         return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
     
     mentor_profile = request.user.mentor_profile
     from dashboard_user.models import Task
+    from accounts.models import MentorClientRelationship
     
     try:
         from django.utils import timezone
-        from datetime import timedelta
+        from datetime import timedelta, date as date_type
         
+        # Get filter parameter
+        filter_status = request.GET.get('filter', 'todo')  # todo, completed, overdue
+        
+        # Get all confirmed clients for this mentor
+        relationships = MentorClientRelationship.objects.filter(
+            mentor=mentor_profile,
+            confirmed=True
+        ).select_related('client')
+        
+        client_ids = [rel.client.id for rel in relationships]
+        
+        if not client_ids:
+            return JsonResponse({
+                'success': True,
+                'tasks': [],
+                'total_count': 0
+            })
+        
+        # Get all tasks from clients' active backlogs
+        # Only get tasks created directly in active backlog (no stage-linked tasks for mentors)
         tasks = Task.objects.filter(
-            mentor_backlog=mentor_profile
-        ).select_related('project', 'stage').order_by('order', '-created_at')
+            user_active_backlog_id__in=client_ids,
+            stage__isnull=True  # Only tasks created directly in active backlog
+        ).select_related('user_active_backlog').order_by('-moved_to_active_backlog_at', 'order', 'created_at')
         
         # Calculate date thresholds
         today = timezone.now().date()
-        week_from_now = today + timedelta(days=7)
+        
+        # Apply filters
+        if filter_status == 'todo':
+            tasks = tasks.filter(completed=False)
+        elif filter_status == 'completed':
+            tasks = tasks.filter(completed=True)
+        elif filter_status == 'overdue':
+            tasks = tasks.filter(deadline__lt=today, completed=False)
         
         tasks_data = []
         for task in tasks:
-            from datetime import date as date_type
             dl = task.deadline
             deadline_date = None
             if dl:
@@ -8261,8 +8263,12 @@ def get_mentor_backlog_tasks_api(request):
                     except (ValueError, TypeError):
                         pass
             deadline_str = (deadline_date.strftime('%Y-%m-%d') if deadline_date else None) or (dl[:10] if isinstance(dl, str) and len(dl) >= 10 else None) if dl else None
-            is_overdue = deadline_date and deadline_date < today if deadline_date else False
-            is_due_this_week = deadline_date and deadline_date <= week_from_now if deadline_date else False
+            is_overdue = deadline_date and deadline_date < today and not task.completed if deadline_date else False
+            
+            # Get completed_at date for grouping
+            completed_at_str = None
+            if task.completed and task.completed_at:
+                completed_at_str = task.completed_at.strftime('%Y-%m-%d')
             
             tasks_data.append({
                 'id': task.id,
@@ -8273,17 +8279,29 @@ def get_mentor_backlog_tasks_api(request):
                 'priority': task.priority,
                 'status': task.status,
                 'created_at': task.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+                'completed_at': completed_at_str,
                 'order': float(task.order),
-                'project_id': task.project.id if task.project else None,
-                'project_title': task.project.title if task.project else None,
-                'stage_id': task.stage.id if task.stage else None,
+                'client_id': task.user_active_backlog.id if task.user_active_backlog else None,
+                'client_name': f"{task.user_active_backlog.first_name} {task.user_active_backlog.last_name}" if task.user_active_backlog else None,
                 'is_overdue': is_overdue,
-                'is_due_this_week': is_due_this_week,
+                'has_stage': False,  # No stage-linked tasks for mentors
             })
+        
+        # Calculate counts for all tasks (before filtering)
+        all_tasks = Task.objects.filter(
+            user_active_backlog_id__in=client_ids,
+            stage__isnull=True
+        )
+        todo_count = all_tasks.filter(completed=False).count()
+        completed_count = all_tasks.filter(completed=True).count()
+        overdue_count = all_tasks.filter(deadline__lt=today, completed=False).count()
         
         return JsonResponse({
             'success': True,
-            'tasks': tasks_data
+            'tasks': tasks_data,
+            'todo_count': todo_count,
+            'completed_count': completed_count,
+            'overdue_count': overdue_count,
         })
     except Exception as e:
         import logging
