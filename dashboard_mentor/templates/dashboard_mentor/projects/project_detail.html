@@ -21,48 +21,9 @@
         position: relative;
     }
     
-    /* Blur and darken overlay when stage tasks are open */
-    .roadmap-container::before {
-        content: '';
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0, 0, 0, 0.5);
-        backdrop-filter: blur(4px);
-        -webkit-backdrop-filter: blur(4px);
-        z-index: 998;
-        opacity: 0;
-        pointer-events: none;
-        transition: opacity 0.3s ease;
-    }
-    
-    .roadmap-container.has-open-tasks::before {
-        opacity: 1;
-        pointer-events: none; /* Allow scrolling through overlay */
-    }
-    
-    /* Keep stages and backlog visible above overlay */
+    /* Keep normal page appearance even when stage tasks are open */
     .roadmap-container > main {
         position: relative;
-        z-index: 999;
-    }
-    
-    .roadmap-container .project-sidebar-backlog {
-        z-index: 1000;
-    }
-    
-    /* Blur and darken other elements when tasks are open */
-    .roadmap-container.has-open-tasks .top-nav,
-    .roadmap-container.has-open-tasks .project-sidebar,
-    .roadmap-container.has-open-tasks .roadmap-header,
-    .roadmap-container.has-open-tasks .roadmap-notes-section,
-    .roadmap-container.has-open-tasks .document-card {
-        filter: blur(4px);
-        opacity: 0.5;
-        transition: filter 0.3s ease, opacity 0.3s ease;
-        pointer-events: none;
     }
     
     .roadmap-container .top-nav {
@@ -6185,45 +6146,7 @@
         }, 150); // Wait for 0.1s transition + 50ms buffer
     }
     
-    // Handle click outside roadmap stages area
-    document.addEventListener('click', function(event) {
-        const roadmapContainer = document.querySelector('.roadmap-container');
-        if (!roadmapContainer) return;
-        
-        // Don't close stages if clicking inside the modal
-        const modal = document.getElementById('createActiveBacklogTaskModal');
-        if (modal && (modal.contains(event.target) || modal.classList.contains('active'))) {
-            return;
-        }
-        
-        // Check if any tasks are open
-        const hasOpenTasks = roadmapContainer.classList.contains('has-open-tasks');
-        if (!hasOpenTasks) return;
-        
-        // Get the main stages area and backlog
-        const mainStages = roadmapContainer.querySelector('main');
-        const backlog = roadmapContainer.querySelector('.project-sidebar-backlog');
-        
-        // Check if click is inside document-card (should also close stages)
-        const documentCard = event.target.closest('.document-card');
-        const clickedInsideDocumentCard = documentCard !== null;
-        
-        // Check if click is outside both stages and backlog
-        const clickedInsideStages = mainStages && mainStages.contains(event.target);
-        const clickedInsideBacklog = backlog && backlog.contains(event.target);
-        
-        // If clicked outside both stages and backlog, OR clicked on document-card, collapse all tasks
-        if ((!clickedInsideStages && !clickedInsideBacklog) || clickedInsideDocumentCard) {
-            collapseAllStageTasks();
-        }
-    });
-    
-    // Handle ESC key press
-    document.addEventListener('keydown', function(event) {
-        if (event.key === 'Escape' || event.keyCode === 27) {
-            collapseAllStageTasks();
-        }
-    });
+    // Stages stay open until user manually collapses them.
     
     window.toggleStageTasks = function(stageId, event) {
         // Don't toggle if clicking on actions or dropdown
