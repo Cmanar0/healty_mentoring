@@ -1,0 +1,29 @@
+{% extends "emails/base.html" %}
+
+{% block title %}Refund Processed{% endblock %}
+
+{% block content %}
+<h1>Refund Processed</h1>
+
+<p class="content-text">
+  Hi{% if user_name %} {{ user_name }}{% endif %},
+</p>
+
+<p class="content-text">
+  A refund has been processed for your session{% if mentor_name %} with {{ mentor_name }}{% endif %}.
+</p>
+
+<div style="background-color: #f9fafb; border-radius: 12px; padding: 24px; margin: 24px 0; border: 1px solid #e5e7eb;">
+  <h2 style="font-size: 18px; font-weight: 600; color: #111827; margin-top: 0; margin-bottom: 16px;">Refund Details</h2>
+  <p class="content-text" style="font-size: 15px; color: #374151; margin-bottom: 8px;">
+    <strong style="color: #111827;">Amount refunded:</strong> ${{ amount_dollars|floatformat:2 }}
+  </p>
+  <p class="content-text" style="font-size: 15px; color: #374151; margin-bottom: 0;">
+    <strong style="color: #111827;">Your wallet balance now:</strong> ${{ new_balance_dollars|floatformat:2 }}
+  </p>
+</div>
+
+<p class="content-text" style="color: #6b7280; font-size: 14px;">
+  You can use your wallet balance to pay for future sessions. If you have any questions, please contact support.
+</p>
+{% endblock %}

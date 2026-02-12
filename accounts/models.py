@@ -91,6 +91,9 @@ class UserProfile(models.Model):
     sessions = models.ManyToManyField("general.Session", related_name="user_profiles", blank=True)
     manuals = models.JSONField(default=list, blank=True)  # Navigation tutorial manuals
 
+    # Client wallet for prepaid sessions (Phase 4). Modified only via billing.services.wallet_service.
+    wallet_balance_cents = models.PositiveIntegerField(default=0)
+
     class Meta:
         verbose_name = "User Profile"
         verbose_name_plural = "User Profiles"

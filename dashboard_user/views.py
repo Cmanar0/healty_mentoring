@@ -129,8 +129,9 @@ def dashboard(request):
             }
             backlog_tasks.append(task_dict)
     
-    # Get user credit and coins (placeholder values - these would come from a payment/wallet system)
-    user_credit = getattr(user_profile, 'account_balance', 0.00) if user_profile else 0.00  # USD balance
+    # Wallet balance (Phase 4: wallet_balance_cents). Fallback to legacy account_balance if present.
+    wallet_balance_cents = getattr(user_profile, 'wallet_balance_cents', 0) or 0 if user_profile else 0
+    user_credit = (wallet_balance_cents / 100.0) if wallet_balance_cents else (getattr(user_profile, 'account_balance', 0.00) or 0.00 if user_profile else 0.00)
     user_coins = getattr(user_profile, 'coins_balance', 0) if user_profile else 0  # Virtual coins
     
     # Get user's projects (owned projects only, exclude pending assignments)
@@ -163,14 +164,18 @@ def dashboard(request):
     if user_tzinfo_activate:
         timezone.activate(user_tzinfo_activate)
     try:
+        from django.conf import settings
+        stripe_publishable_key = getattr(settings, 'STRIPE_PUBLISHABLE_KEY', '') or ''
         return render(request, 'dashboard_user/dashboard_user.html', {
             'upcoming_sessions': upcoming_sessions,
             'has_more_sessions': has_more_sessions,
             'backlog_tasks': backlog_tasks,
             'user_credit': user_credit,
+            'wallet_balance_cents': wallet_balance_cents,
             'user_coins': user_coins,
             'user_projects': user_projects,
             'mentor_relationships': mentor_relationships,
+            'stripe_publishable_key': stripe_publishable_key,
         })
     finally:
         timezone.deactivate()
@@ -1110,27 +1115,134 @@ def session_management(request):
                 inv = invitations.filter(id=invitation_id).first()
                 if inv:
                     session = inv.session
-                    try:
-                        session.attendees.add(request.user)
-                    except Exception:
-                        pass
-                    session.status = 'confirmed'
-                    session.save()
-                    session.ensure_meeting_url()
-                    inv.accepted_at = timezone.now()
-                    inv.save()
-                    
-                    # Mark first session as scheduled if not already
-                    if inv.mentor and user_profile:
-                        relationship = MentorClientRelationship.objects.filter(
-                            mentor=inv.mentor,
-                            client=user_profile
-                        ).first()
-                        if relationship and not relationship.first_session_scheduled:
-                            relationship.first_session_scheduled = True
-                            relationship.save(update_fields=['first_session_scheduled'])
-                    
-                    messages.success(request, 'Session invitation confirmed.')
+                    price = session.session_price or 0
+                    amount_cents = int(round(float(price) * 100)) if price else 0
+                    use_wallet = request.POST.get('use_wallet') == '1' or request.POST.get('use_wallet') == 'true'
+                    payment_intent_id = (request.POST.get('payment_intent_id') or '').strip()
+
+                    if amount_cents <= 0:
+                        # Free session: confirm immediately
+                        try:
+                            session.attendees.add(request.user)
+                        except Exception:
+                            pass
+                        session.status = 'confirmed'
+                        session.save(update_fields=['status'])
+                        session.ensure_meeting_url()
+                        inv.accepted_at = timezone.now()
+                        inv.save(update_fields=['accepted_at'])
+                        if inv.mentor and user_profile:
+                            relationship = MentorClientRelationship.objects.filter(
+                                mentor=inv.mentor, client=user_profile
+                            ).first()
+                            if relationship and not relationship.first_session_scheduled:
+                                relationship.first_session_scheduled = True
+                                relationship.save(update_fields=['first_session_scheduled'])
+                        messages.success(request, 'Session invitation confirmed.')
+                    else:
+                        # Paid session: require wallet deduction or verified payment_intent_id
+                        from billing.services.wallet_service import deduct_credit, WalletError
+                        from billing.services.payment_service import verify_payment_intent_succeeded, BillingError
+                        from billing.models import Payment
+
+                        if use_wallet:
+                            try:
+                                deduct_credit(
+                                    user_profile,
+                                    amount_cents,
+                                    reason='session_payment',
+                                    related_session=session,
+                                )
+                                session.status = 'confirmed'
+                                session.paid_at = timezone.now()
+                                session.payment_method = 'wallet'
+                                session.save(update_fields=['status', 'paid_at', 'payment_method'])
+                                try:
+                                    session.attendees.add(request.user)
+                                except Exception:
+                                    pass
+                                session.ensure_meeting_url()
+                                inv.accepted_at = timezone.now()
+                                inv.save(update_fields=['accepted_at'])
+                                if inv.mentor and user_profile:
+                                    relationship = MentorClientRelationship.objects.filter(
+                                        mentor=inv.mentor, client=user_profile
+                                    ).first()
+                                    if relationship and not relationship.first_session_scheduled:
+                                        relationship.first_session_scheduled = True
+                                        relationship.save(update_fields=['first_session_scheduled'])
+                                # Notification and payment confirmation email
+                                try:
+                                    import uuid
+                                    amount_dollars = amount_cents / 100.0
+                                    Notification.objects.create(
+                                        user=request.user,
+                                        batch_id=uuid.uuid4(),
+                                        target_type='single',
+                                        title='Session paid',
+                                        description=f'Session invitation confirmed. ${amount_dollars:.2f} was paid from your wallet.',
+                                    )
+                                    from general.email_service import EmailService
+                                    EmailService.send_payment_confirmation_email(
+                                        request.user, amount_cents, 'session_payment', session=session, fail_silently=True
+                                    )
+                                except Exception:
+                                    pass
+                                messages.success(request, 'Session invitation confirmed (paid with wallet).')
+                            except WalletError as e:
+                                messages.error(request, str(e))
+                                return redirect('general:dashboard_user:session_management?payment_required=1&invitation_id=%s' % inv.id)
+                        elif payment_intent_id:
+                            try:
+                                verify_payment_intent_succeeded(
+                                    payment_intent_id=payment_intent_id,
+                                    expected_amount_cents=amount_cents,
+                                    expected_mentor_id=str(session.created_by_id),
+                                )
+                                payment = Payment.objects.filter(stripe_payment_intent_id=payment_intent_id).first()
+                                if payment:
+                                    session.payment = payment
+                                session.paid_at = timezone.now()
+                                session.payment_method = 'stripe'
+                                session.status = 'confirmed'
+                                session.save(update_fields=['payment', 'paid_at', 'payment_method', 'status'])
+                                try:
+                                    session.attendees.add(request.user)
+                                except Exception:
+                                    pass
+                                session.ensure_meeting_url()
+                                inv.accepted_at = timezone.now()
+                                inv.save(update_fields=['accepted_at'])
+                                if inv.mentor and user_profile:
+                                    relationship = MentorClientRelationship.objects.filter(
+                                        mentor=inv.mentor, client=user_profile
+                                    ).first()
+                                    if relationship and not relationship.first_session_scheduled:
+                                        relationship.first_session_scheduled = True
+                                        relationship.save(update_fields=['first_session_scheduled'])
+                                # Notification and payment confirmation email
+                                try:
+                                    import uuid
+                                    amount_dollars = amount_cents / 100.0
+                                    Notification.objects.create(
+                                        user=request.user,
+                                        batch_id=uuid.uuid4(),
+                                        target_type='single',
+                                        title='Session paid',
+                                        description=f'Session invitation confirmed. ${amount_dollars:.2f} was charged to your card.',
+                                    )
+                                    from general.email_service import EmailService
+                                    EmailService.send_payment_confirmation_email(
+                                        request.user, amount_cents, 'session_payment', session=session, fail_silently=True
+                                    )
+                                except Exception:
+                                    pass
+                                messages.success(request, 'Session invitation confirmed.')
+                            except BillingError as e:
+                                messages.error(request, e.message)
+                                return redirect('general:dashboard_user:session_management?payment_required=1&invitation_id=%s' % inv.id)
+                        else:
+                            return redirect('general:dashboard_user:session_management?payment_required=1&invitation_id=%s' % inv.id)
             
             elif action == 'decline_invitation' and invitation_id:
                 inv = invitations.filter(id=invitation_id).first()
@@ -1143,30 +1255,30 @@ def session_management(request):
                     messages.success(request, 'Session invitation declined.')
             
             elif action == 'confirm_all':
-                # Confirm all invitations
+                # Confirm only free invitations (paid ones require per-invitation payment modal)
                 confirmed_count = 0
                 for inv in invitations:
                     session = inv.session
+                    price = session.session_price or 0
+                    amount_cents = int(round(float(price) * 100)) if price else 0
+                    if amount_cents > 0:
+                        continue
                     try:
                         session.attendees.add(request.user)
                     except Exception:
                         pass
                     session.status = 'confirmed'
-                    session.save()
+                    session.save(update_fields=['status'])
                     session.ensure_meeting_url()
                     inv.accepted_at = timezone.now()
-                    inv.save()
-                    
-                    # Mark first session as scheduled if not already
+                    inv.save(update_fields=['accepted_at'])
                     if inv.mentor and user_profile:
                         relationship = MentorClientRelationship.objects.filter(
-                            mentor=inv.mentor,
-                            client=user_profile
+                            mentor=inv.mentor, client=user_profile
                         ).first()
                         if relationship and not relationship.first_session_scheduled:
                             relationship.first_session_scheduled = True
                             relationship.save(update_fields=['first_session_scheduled'])
-                    
                     confirmed_count += 1
                 
                 # Confirm all changes
@@ -1190,11 +1302,16 @@ def session_management(request):
             return redirect('general:dashboard_user:session_management')
     
     pending_count = len(invitations) + len(changed_sessions)
-    
+    wallet_balance_cents = getattr(user_profile, 'wallet_balance_cents', 0) or 0
+    from django.conf import settings
+    stripe_publishable_key = getattr(settings, 'STRIPE_PUBLISHABLE_KEY', '') or ''
+
     return render(request, 'dashboard_user/session_management.html', {
         'invitations': invitations,
         'changed_sessions': changed_sessions,
         'pending_count': pending_count,
+        'wallet_balance_cents': wallet_balance_cents,
+        'stripe_publishable_key': stripe_publishable_key,
     })
 
 
@@ -1294,6 +1411,103 @@ def create_booking_payment_intent(request):
     except Exception as e:
         import logging
         logging.getLogger(__name__).error('create_booking_payment_intent: %s', e, exc_info=True)
+        return JsonResponse({'success': False, 'error': 'An error occurred.'}, status=500)
+
+
+@require_POST
+@login_required
+def create_accept_session_payment_intent(request):
+    """
+    Create a Stripe PaymentIntent for paying to accept an invited session.
+    POST { invitation_id, attempt_id? }. Returns client_secret, payment_intent_id, amount_cents.
+    """
+    try:
+        from billing.services.payment_service import create_session_accept_payment_intent as billing_accept_pi, BillingError
+        from general.models import SessionInvitation
+        if not request.user.is_authenticated:
+            return JsonResponse({'success': False, 'error': 'Authentication required.'}, status=401)
+        if getattr(request.user.profile, 'role', None) != 'user':
+            return JsonResponse({'success': False, 'error': 'Not authorized.'}, status=403)
+        user_profile = request.user.profile
+        data = json.loads(request.body)
+        invitation_id = data.get('invitation_id')
+        if not invitation_id:
+            return JsonResponse({'success': False, 'error': 'Missing invitation_id.'}, status=400)
+        inv = SessionInvitation.objects.filter(
+            id=invitation_id,
+            invited_email=(request.user.email or '').strip().lower(),
+            cancelled_at__isnull=True,
+            accepted_at__isnull=True,
+        ).select_related('session', 'session__created_by').first()
+        if not inv or not inv.session:
+            return JsonResponse({'success': False, 'error': 'Invitation not found.'}, status=404)
+        session = inv.session
+        attempt_id = (data.get('attempt_id') or '').strip()
+        try:
+            result = billing_accept_pi(
+                session=session,
+                user_profile=user_profile,
+                attempt_id=attempt_id or None,
+            )
+        except BillingError as e:
+            return JsonResponse({'success': False, 'error': e.message}, status=400)
+        return JsonResponse({
+            'success': True,
+            'payment_intent_id': result['payment_intent_id'],
+            'client_secret': result['client_secret'],
+            'amount_cents': result['amount_cents'],
+        })
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error('create_accept_session_payment_intent: %s', e, exc_info=True)
+        return JsonResponse({'success': False, 'error': 'An error occurred.'}, status=500)
+
+
+@require_POST
+@login_required
+def create_wallet_topup_payment_intent(request):
+    """
+    Create a Stripe PaymentIntent for wallet top-up. User must be logged-in client.
+    Frontend confirms with confirmCardPayment; webhook creates Payment and adds credit.
+    """
+    try:
+        from billing.services.payment_service import create_wallet_topup_payment_intent as billing_topup_pi, BillingError
+        if not request.user.is_authenticated:
+            return JsonResponse({'success': False, 'error': 'Authentication required.'}, status=401)
+        if hasattr(request.user, 'mentor_profile'):
+            return JsonResponse({'success': False, 'error': 'Mentors cannot top up wallet.'}, status=400)
+        try:
+            user_profile = request.user.profile
+        except AttributeError:
+            return JsonResponse({'success': False, 'error': 'User profile not found.'}, status=400)
+        data = json.loads(request.body)
+        amount_cents = data.get('amount_cents')
+        try:
+            amount_cents = int(amount_cents)
+        except (TypeError, ValueError):
+            return JsonResponse({'success': False, 'error': 'Invalid amount_cents.'}, status=400)
+        attempt_id = (data.get('attempt_id') or '').strip()
+        try:
+            result = billing_topup_pi(
+                amount_cents=amount_cents,
+                user_profile=user_profile,
+                attempt_id=attempt_id or None,
+            )
+        except BillingError as e:
+            return JsonResponse({'success': False, 'error': e.message}, status=400)
+        return JsonResponse({
+            'success': True,
+            'payment_intent_id': result['payment_intent_id'],
+            'client_secret': result['client_secret'],
+            'amount_cents': result['amount_cents'],
+        })
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error('create_wallet_topup_payment_intent: %s', e, exc_info=True)
         return JsonResponse({'success': False, 'error': 'An error occurred.'}, status=500)
 
 
@@ -1497,32 +1711,45 @@ def book_session(request):
                 is_first_session = True
                 is_new_user_account = True
         
-        # Payment (Phase 2): require verified payment_intent_id when price > 0 (frontend confirms via confirmCardPayment)
+        # Payment (Phase 2): require verified payment_intent_id when price > 0, or use_wallet for logged-in user
         payment_intent_id = None
+        use_wallet_booking = False
+        booking_amount_cents = 0  # used when use_wallet_booking
         if price > 0:
             from billing.services.payment_service import (
                 verify_payment_intent_succeeded,
                 session_price_cents,
                 BillingError,
             )
-            payment_intent_id = (data.get('payment_intent_id') or '').strip()
-            if not payment_intent_id:
-                return JsonResponse({
-                    'success': False,
-                    'error': 'Payment is required. Please complete the payment step (card and 3D Secure if shown) then try again.',
-                }, status=400)
             amount_cents = session_price_cents(mentor_profile)
             if amount_cents <= 0:
                 return JsonResponse({'success': False, 'error': 'This session has no price set.'}, status=400)
-            try:
-                result = verify_payment_intent_succeeded(
-                    payment_intent_id=payment_intent_id,
-                    expected_amount_cents=amount_cents,
-                    expected_mentor_id=str(mentor_profile.user.id),
-                )
-                price = Decimal(result['amount_cents']) / 100
-            except BillingError as e:
-                return JsonResponse({'success': False, 'error': e.message}, status=400)
+            use_wallet = data.get('use_wallet') in (True, 'true', '1')
+            if use_wallet and is_logged_in and user_profile:
+                wallet_balance_cents = getattr(user_profile, 'wallet_balance_cents', 0) or 0
+                if wallet_balance_cents < amount_cents:
+                    return JsonResponse({
+                        'success': False,
+                        'error': f'Insufficient wallet balance. Session is ${amount_cents / 100:.2f}; your balance is ${wallet_balance_cents / 100:.2f}.',
+                    }, status=400)
+                use_wallet_booking = True
+                booking_amount_cents = amount_cents
+            else:
+                payment_intent_id = (data.get('payment_intent_id') or '').strip()
+                if not payment_intent_id:
+                    return JsonResponse({
+                        'success': False,
+                        'error': 'Payment is required. Please complete the payment step (card and 3D Secure if shown) or pay with wallet then try again.',
+                    }, status=400)
+                try:
+                    result = verify_payment_intent_succeeded(
+                        payment_intent_id=payment_intent_id,
+                        expected_amount_cents=amount_cents,
+                        expected_mentor_id=str(mentor_profile.user.id),
+                    )
+                    price = Decimal(result['amount_cents']) / 100
+                except BillingError as e:
+                    return JsonResponse({'success': False, 'error': e.message}, status=400)
         
         # NOW handle availability slot - only after we've confirmed the booking can proceed (and payment if any)
         # This ensures slots aren't removed if the booking should fail
@@ -1591,6 +1818,38 @@ def book_session(request):
                 stripe_payment_intent_id=payment_intent_id,
                 session__isnull=True,
             ).update(session=session)
+
+        # Wallet payment: deduct and mark session paid
+        if use_wallet_booking and user_profile and booking_amount_cents > 0:
+            from billing.services.wallet_service import deduct_credit, WalletError
+            try:
+                deduct_credit(
+                    user_profile,
+                    booking_amount_cents,
+                    reason='session_payment',
+                    related_session=session,
+                )
+                session.paid_at = timezone.now()
+                session.payment_method = 'wallet'
+                session.save(update_fields=['paid_at', 'payment_method'])
+                # Notification and payment confirmation email
+                try:
+                    import uuid
+                    amount_dollars = booking_amount_cents / 100.0
+                    Notification.objects.create(
+                        user=request.user,
+                        batch_id=uuid.uuid4(),
+                        target_type='single',
+                        title='Session paid',
+                        description=f'Session booked and paid from your wallet. ${amount_dollars:.2f} charged.',
+                    )
+                    EmailService.send_payment_confirmation_email(
+                        request.user, booking_amount_cents, 'session_payment', session=session, fail_silently=True
+                    )
+                except Exception:
+                    pass
+            except WalletError as e:
+                return JsonResponse({'success': False, 'error': str(e)}, status=400)
         
         # Create or update relationship - automatically confirm since user booked a session
         relationship = MentorClientRelationship.objects.filter(
@@ -1723,6 +1982,18 @@ def booking_modal_partial(request, mentor_user_id):
     # Get Stripe publishable key
     from django.conf import settings
     stripe_publishable_key = getattr(settings, "STRIPE_PUBLISHABLE_KEY", "") or ""
+
+    # Wallet and session price for authenticated user (pay with wallet in booking modal)
+    wallet_balance_cents = 0
+    session_price_cents_booking = 0
+    if hasattr(request.user, 'user_profile'):
+        user_profile = request.user.user_profile
+        wallet_balance_cents = getattr(user_profile, 'wallet_balance_cents', 0) or 0
+        if is_first_session and getattr(mentor_profile, 'first_session_free', False):
+            session_price_cents_booking = 0
+        else:
+            from billing.services.payment_service import session_price_cents as _session_price_cents
+            session_price_cents_booking = _session_price_cents(mentor_profile)
     
     # Debug: Check availability data
     import logging
@@ -1742,6 +2013,8 @@ def booking_modal_partial(request, mentor_user_id):
         'mentor_profile': mentor_profile,
         'is_first_session': is_first_session,
         'stripe_publishable_key': stripe_publishable_key,
+        'wallet_balance_cents': wallet_balance_cents,
+        'session_price_cents_booking': session_price_cents_booking,
     })
     
     return JsonResponse({

@@ -1,0 +1,38 @@
+{% extends "emails/base.html" %}
+
+{% block title %}Payment Confirmation{% endblock %}
+
+{% block content %}
+<h1>Payment Confirmation</h1>
+
+<p class="content-text">
+  Hi{% if user_name %} {{ user_name }}{% endif %},
+</p>
+
+<p class="content-text">
+  This email confirms your recent payment.
+</p>
+
+<div style="background-color: #f9fafb; border-radius: 12px; padding: 24px; margin: 24px 0; border: 1px solid #e5e7eb;">
+  <h2 style="font-size: 18px; font-weight: 600; color: #111827; margin-top: 0; margin-bottom: 16px;">Payment Details</h2>
+  <p class="content-text" style="font-size: 15px; color: #374151; margin-bottom: 0;">
+    <strong style="color: #111827;">Amount:</strong> ${{ amount_dollars|floatformat:2 }}<br>
+    {% if payment_type == 'wallet_topup' %}
+      <strong style="color: #111827;">Type:</strong> Wallet top-up<br>
+      Your wallet balance has been updated. You can use this balance to pay for sessions.
+    {% elif payment_type == 'session_payment' %}
+      <strong style="color: #111827;">Type:</strong> Session payment<br>
+      {% if mentor_name %}
+        <strong style="color: #111827;">Mentor:</strong> {{ mentor_name }}<br>
+      {% endif %}
+      Your session has been confirmed.
+    {% else %}
+      <strong style="color: #111827;">Type:</strong> Payment
+    {% endif %}
+  </p>
+</div>
+
+<p class="content-text" style="color: #6b7280; font-size: 14px;">
+  If you did not make this payment, please contact support.
+</p>
+{% endblock %}

@@ -221,7 +221,101 @@ class EmailService:
             template_name='password_changed',
             context=context,
         )
-    
+
+    @staticmethod
+    def send_payment_confirmation_email(user, amount_cents: int, payment_type: str, session=None, fail_silently: bool = True) -> bool:
+        """
+        Send payment confirmation email after successful wallet top-up or session payment.
+
+        Args:
+            user: CustomUser (recipient)
+            amount_cents: Amount paid in cents
+            payment_type: 'wallet_topup' or 'session_payment'
+            session: Optional Session for session_payment (for date/mentor in template)
+            fail_silently: If True, log and return False on error
+
+        Returns:
+            bool: True if email was sent successfully
+        """
+        user_name = "there"
+        if hasattr(user, 'profile') and user.profile:
+            if hasattr(user.profile, 'first_name') and user.profile.first_name:
+                user_name = user.profile.first_name
+        amount_dollars = amount_cents / 100.0
+        context = {
+            'user': user,
+            'user_name': user_name,
+            'amount_cents': amount_cents,
+            'amount_dollars': amount_dollars,
+            'payment_type': payment_type,
+            'session': session,
+        }
+        if session:
+            context['session'] = session
+            if hasattr(session, 'created_by') and session.created_by:
+                try:
+                    mp = getattr(session.created_by, 'mentor_profile', None)
+                    context['mentor_name'] = f"{mp.first_name} {mp.last_name}" if mp else getattr(session.created_by, 'email', 'Mentor')
+                except Exception:
+                    context['mentor_name'] = 'Mentor'
+            else:
+                context['mentor_name'] = 'Mentor'
+        subject = "Payment confirmation – Healthy Mentoring"
+        return EmailService.send_email(
+            subject=subject,
+            recipient_email=user.email,
+            template_name='payment_confirmation',
+            context=context,
+            fail_silently=fail_silently,
+        )
+
+    @staticmethod
+    def send_refund_notification_email(user, amount_cents: int, new_balance_cents: int, session=None, fail_silently: bool = True) -> bool:
+        """
+        Send email to client after a session refund (amount refunded and new wallet balance).
+
+        Args:
+            user: CustomUser (client)
+            amount_cents: Refunded amount in cents
+            new_balance_cents: Client's wallet balance after refund
+            session: Optional Session (for context)
+            fail_silently: If True, log and return False on error
+
+        Returns:
+            bool: True if email was sent successfully
+        """
+        user_name = "there"
+        if hasattr(user, 'profile') and user.profile:
+            if hasattr(user.profile, 'first_name') and user.profile.first_name:
+                user_name = user.profile.first_name
+        amount_dollars = amount_cents / 100.0
+        new_balance_dollars = new_balance_cents / 100.0
+        context = {
+            'user': user,
+            'user_name': user_name,
+            'amount_cents': amount_cents,
+            'amount_dollars': amount_dollars,
+            'new_balance_cents': new_balance_cents,
+            'new_balance_dollars': new_balance_dollars,
+            'session': session,
+        }
+        if session and hasattr(session, 'created_by') and session.created_by:
+            try:
+                mp = getattr(session.created_by, 'mentor_profile', None)
+                context['mentor_name'] = f"{mp.first_name} {mp.last_name}" if mp else getattr(session.created_by, 'email', 'Mentor')
+            except Exception:
+                context['mentor_name'] = 'Mentor'
+        else:
+            context['mentor_name'] = 'Mentor'
+        subject = "Refund processed – Healthy Mentoring"
+        return EmailService.send_email(
+            subject=subject,
+            recipient_email=user.email,
+            template_name='refund_notification',
+            context=context,
+            fail_silently=fail_silently,
+        )
+
     @staticmethod
     def send_email_change_otp(user, new_email, otp):
         """

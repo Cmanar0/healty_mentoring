@@ -126,6 +126,115 @@ def create_booking_payment_intent(
     }
 
 
+def create_wallet_topup_payment_intent(
+    *,
+    amount_cents: int,
+    user_profile,
+    attempt_id: str | None = None,
+    currency: str = "usd",
+) -> dict:
+    """
+    Create a Stripe PaymentIntent for wallet top-up. No mentor; no commission.
+    Webhook will create Payment and call add_credit. Metadata: payment_type=wallet_topup.
+    """
+    if not is_configured():
+        raise BillingError("Payment is not configured. Please try again later.")
+    if amount_cents <= 0:
+        raise BillingError("Invalid amount for wallet top-up.")
+    stripe = get_client()
+    metadata = {
+        "payment_type": "wallet_topup",
+        "client_id": str(user_profile.id),
+        "platform_commission_cents": "0",
+    }
+    idempotency_key = None
+    if (attempt_id or "").strip():
+        idempotency_key = f"wallet_topup:{user_profile.id}:{(attempt_id or '').strip()[:64]}"
+    try:
+        create_kwargs = dict(
+            amount=amount_cents,
+            currency=currency,
+            confirm=False,
+            capture_method="automatic",
+            description="Wallet top-up",
+            metadata=metadata,
+            payment_method_types=["card"],
+        )
+        if idempotency_key:
+            create_kwargs["idempotency_key"] = idempotency_key
+        intent = stripe.PaymentIntent.create(**create_kwargs)
+    except stripe.error.StripeError as e:
+        err = getattr(e, "error", e)
+        msg = getattr(err, "user_message", None) or str(e)
+        if not msg or "api" in msg.lower():
+            msg = "Could not start wallet top-up. Please try again."
+        raise BillingError(msg)
+    return {
+        "payment_intent_id": intent.id,
+        "client_secret": intent.client_secret,
+        "amount_cents": amount_cents,
+    }
+
+
+def create_session_accept_payment_intent(
+    *,
+    session,
+    user_profile,
+    attempt_id: str | None = None,
+    currency: str = "usd",
+) -> dict:
+    """
+    Create a Stripe PaymentIntent for paying to accept an invited session.
+    Metadata: payment_type=session_accept, session_id, mentor_id, client_id.
+    Webhook will create Payment and set Payment.session; accept_invitation then confirms session.
+    """
+    if not is_configured():
+        raise BillingError("Payment is not configured. Please try again later.")
+    mentor_user = getattr(session, "created_by", None)
+    if not mentor_user or not hasattr(mentor_user, "mentor_profile"):
+        raise BillingError("Session has no mentor.")
+    mentor_profile = mentor_user.mentor_profile
+    amount_cents = int(round(float(session.session_price or 0) * 100))
+    if amount_cents <= 0:
+        raise BillingError("This session has no price.")
+    stripe = get_client()
+    commission_cents = calculate_commission_cents(amount_cents)
+    metadata = {
+        "payment_type": "session_accept",
+        "session_id": str(session.id),
+        "mentor_id": str(mentor_user.id),
+        "client_id": str(user_profile.id),
+        "platform_commission_cents": str(commission_cents),
+    }
+    idempotency_key = None
+    if (attempt_id or "").strip():
+        idempotency_key = f"session_accept:{session.id}:{user_profile.id}:{(attempt_id or '').strip()[:64]}"
+    try:
+        create_kwargs = dict(
+            amount=amount_cents,
+            currency=currency,
+            confirm=False,
+            capture_method="automatic",
+            description=f"Session #{session.id}",
+            metadata=metadata,
+            payment_method_types=["card"],
+        )
+        if idempotency_key:
+            create_kwargs["idempotency_key"] = idempotency_key
+        intent = stripe.PaymentIntent.create(**create_kwargs)
+    except stripe.error.StripeError as e:
+        err = getattr(e, "error", e)
+        msg = getattr(err, "user_message", None) or str(e)
+        if not msg or "api" in msg.lower():
+            msg = "Could not start payment. Please try again."
+        raise BillingError(msg)
+    return {
+        "payment_intent_id": intent.id,
+        "client_secret": intent.client_secret,
+        "amount_cents": amount_cents,
+    }
+
+
 def verify_payment_intent_succeeded(
     payment_intent_id: str,
     expected_amount_cents: int,
@@ -166,3 +275,20 @@ def verify_payment_intent_succeeded(
         "payment_intent_id": intent.id,
         "amount_cents": intent.amount,
     }
+
+
+def get_mentor_earnings_cents(mentor_profile) -> int:
+    """
+    Mentor earnings = sum of Payment.amount_cents where status=succeeded,
+    session.status=completed, and session not refunded. Never calculate from sessions directly.
+    """
+    from django.db.models import Sum
+    from billing.models import Payment
+    result = Payment.objects.filter(
+        mentor=mentor_profile,
+        status="succeeded",
+        session__isnull=False,
+        session__status="completed",
+        session__refunded_at__isnull=True,
+    ).aggregate(total=Sum("amount_cents"))
+    return int(result.get("total") or 0)

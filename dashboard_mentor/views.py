@@ -3959,10 +3959,102 @@ def refund_session(request):
     if s.status != 'completed':
         return JsonResponse({'success': False, 'error': 'Only completed sessions can be refunded'}, status=400)
 
-    # Change status to refunded
-    s.status = 'refunded'
-    s.save()
+    from django.utils import timezone as dj_timezone
+    amount_cents = int(round(float(s.session_price or 0) * 100))
 
+    if s.payment_method == 'wallet':
+        from billing.services.wallet_service import refund_credit
+        from general.models import Notification
+        from general.email_service import EmailService
+        import uuid
+        client_user = s.attendees.first()
+        try:
+            client_profile = client_user.user_profile
+        except Exception:
+            client_profile = getattr(client_user, 'profile', None)
+        if not client_user or not client_profile:
+            return JsonResponse({'success': False, 'error': 'Cannot find client to refund'}, status=400)
+        refund_credit(
+            client_profile,
+            amount_cents,
+            reason='refund',
+            related_session=s,
+        )
+        client_profile.refresh_from_db()
+        new_balance_cents = getattr(client_profile, 'wallet_balance_cents', 0) or 0
+        s.status = 'refunded'
+        s.refunded_at = dj_timezone.now()
+        s.save(update_fields=['status', 'refunded_at'])
+        amount_dollars = amount_cents / 100.0
+        new_balance_dollars = new_balance_cents / 100.0
+        try:
+            Notification.objects.create(
+                user=request.user,
+                batch_id=uuid.uuid4(),
+                target_type='single',
+                title='Refund successful',
+                description='You successfully refunded the session. The amount has been returned to the client\'s wallet.',
+            )
+            Notification.objects.create(
+                user=client_user,
+                batch_id=uuid.uuid4(),
+                target_type='single',
+                title='Refund processed',
+                description=f'${amount_dollars:.2f} has been refunded to your wallet. Your balance is now ${new_balance_dollars:.2f}.',
+            )
+            EmailService.send_refund_notification_email(
+                client_user, amount_cents, new_balance_cents, session=s, fail_silently=True
+            )
+        except Exception:
+            pass
+        return JsonResponse({'success': True, 'message': 'Session refunded to wallet successfully'})
+
+    if s.payment_method == 'stripe' and getattr(s, 'payment', None):
+        from billing.services.stripe_service import get_client
+        from billing.services.payment_service import is_configured
+        if not is_configured():
+            return JsonResponse({'success': False, 'error': 'Payment not configured'}, status=500)
+        payment = s.payment
+        if not payment or not payment.stripe_payment_intent_id:
+            return JsonResponse({'success': False, 'error': 'No Stripe payment to refund'}, status=400)
+        try:
+            stripe = get_client()
+            stripe.Refund.create(payment_intent=payment.stripe_payment_intent_id)
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)}, status=400)
+        s.status = 'refunded'
+        s.refunded_at = dj_timezone.now()
+        s.save(update_fields=['status', 'refunded_at'])
+        try:
+            from general.models import Notification
+            import uuid
+            Notification.objects.create(
+                user=request.user,
+                batch_id=uuid.uuid4(),
+                target_type='single',
+                title='Refund successful',
+                description='You successfully refunded the session. The amount will be returned to the client\'s wallet when Stripe confirms.',
+            )
+        except Exception:
+            pass
+        return JsonResponse({'success': True, 'message': 'Refund initiated. Wallet will be credited when Stripe confirms.'})
+
+    # No payment_method or no payment: just mark refunded (e.g. free session)
+    s.status = 'refunded'
+    s.refunded_at = dj_timezone.now()
+    s.save(update_fields=['status', 'refunded_at'])
+    try:
+        from general.models import Notification
+        import uuid
+        Notification.objects.create(
+            user=request.user,
+            batch_id=uuid.uuid4(),
+            target_type='single',
+            title='Refund successful',
+            description='You successfully refunded the session.',
+        )
+    except Exception:
+        pass
     return JsonResponse({'success': True, 'message': 'Session refunded successfully'})
 
 

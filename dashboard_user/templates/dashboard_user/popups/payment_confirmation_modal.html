@@ -1,0 +1,95 @@
+{# Shared payment confirmation modal - message and optional close callback #}
+<div id="paymentConfirmationModalOverlay" class="payment-confirmation-overlay" style="display: none;">
+    <div class="payment-confirmation-container">
+        <div class="payment-confirmation-icon"><i class="fas fa-check-circle"></i></div>
+        <h3 class="payment-confirmation-title">Payment successful</h3>
+        <p id="paymentConfirmationMessage" class="payment-confirmation-message"></p>
+        <button type="button" id="paymentConfirmationCloseBtn" class="payment-confirmation-close-btn">Done</button>
+    </div>
+</div>
+<style>
+.payment-confirmation-overlay {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(4px);
+    z-index: 10001;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    box-sizing: border-box;
+}
+.payment-confirmation-container {
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);
+    max-width: 400px;
+    width: 100%;
+    padding: 32px 24px;
+    text-align: center;
+}
+.payment-confirmation-icon {
+    font-size: 48px;
+    color: #10b981;
+    margin-bottom: 16px;
+}
+.payment-confirmation-title {
+    margin: 0 0 8px;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #0f172a;
+}
+.payment-confirmation-message {
+    margin: 0 0 24px;
+    font-size: 0.95rem;
+    color: #64748b;
+    line-height: 1.5;
+}
+.payment-confirmation-close-btn {
+    display: inline-block;
+    padding: 10px 24px;
+    background: var(--dash-primary, #10b981);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-weight: 500;
+    cursor: pointer;
+}
+.payment-confirmation-close-btn:hover {
+    background: var(--dash-primary-hover, #059669);
+}
+</style>
+<script>
+(function() {
+    window.showPaymentConfirmationModal = function(message, onClose) {
+        var overlay = document.getElementById('paymentConfirmationModalOverlay');
+        var msgEl = document.getElementById('paymentConfirmationMessage');
+        if (msgEl) msgEl.textContent = message || 'Your payment was successful.';
+        if (overlay) overlay.style.display = 'flex';
+        var closeBtn = document.getElementById('paymentConfirmationCloseBtn');
+        function closeModal() {
+            if (overlay) overlay.style.display = 'none';
+            if (typeof onClose === 'function') onClose();
+        }
+        if (closeBtn) {
+            closeBtn.onclick = closeModal;
+        }
+        if (overlay) {
+            overlay.onclick = function(e) {
+                if (e.target === overlay) closeModal();
+            };
+        }
+    };
+    document.addEventListener('DOMContentLoaded', function() {
+        var overlay = document.getElementById('paymentConfirmationModalOverlay');
+        if (overlay) {
+            overlay.addEventListener('click', function(e) {
+                if (e.target === overlay && typeof showPaymentConfirmationModal !== 'undefined') {
+                    overlay.style.display = 'none';
+                }
+            });
+        }
+    });
+})();
+</script>

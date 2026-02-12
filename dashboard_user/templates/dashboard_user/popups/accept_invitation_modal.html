@@ -1,0 +1,113 @@
+{# Accept invitation modal: free confirmation or paid (wallet/card) #}
+<div id="acceptInvitationModalOverlay" class="accept-invitation-overlay" style="display: none;">
+  <div class="accept-invitation-container">
+    <button type="button" class="accept-invitation-close" onclick="closeAcceptInvitationModal();" aria-label="Close"><i class="fas fa-times"></i></button>
+    <div id="acceptInvitationFreeSection" class="accept-invitation-section" style="display: none;">
+      <h2 class="accept-invitation-title"><i class="fas fa-check-circle"></i> Accept invitation</h2>
+      <p class="accept-invitation-message">This session is free. Confirm to accept this invitation.</p>
+      <div class="accept-invitation-actions">
+        <button type="button" class="accept-invitation-btn secondary" onclick="closeAcceptInvitationModal();">Cancel</button>
+        <button type="button" id="acceptInvitationConfirmFreeBtn" class="accept-invitation-btn primary">Accept</button>
+      </div>
+    </div>
+    <div id="acceptInvitationPaidSection" class="accept-invitation-section" style="display: none;">
+      <h2 class="accept-invitation-title"><i class="fas fa-wallet"></i> Pay for session</h2>
+      <p class="accept-invitation-amount" id="acceptInvitationAmountText">$0.00</p>
+      <p class="accept-invitation-sub">Choose how to pay</p>
+      <div id="acceptInvitationPaymentMethodSection" class="accept-invitation-methods">
+        <label class="accept-invitation-method-option" id="acceptPayWithWalletOption" style="display: none;">
+          <input type="radio" name="accept_payment_method" value="wallet" id="acceptPaymentMethodWallet">
+          <span><i class="fas fa-wallet"></i> Pay with wallet</span>
+          <span id="acceptWalletAmountLabel" class="accept-method-label"></span>
+        </label>
+        <label class="accept-invitation-method-option" id="acceptPayWithCardOption">
+          <input type="radio" name="accept_payment_method" value="card" id="acceptPaymentMethodCard" checked>
+          <span><i class="fas fa-credit-card"></i> Pay with card</span>
+        </label>
+      </div>
+      <p id="acceptInvitationInsufficientNote" style="display: none; font-size: 0.85rem; color: #64748b; margin-top: 8px;">
+        Insufficient balance. <button type="button" class="accept-invitation-link" onclick="closeAcceptInvitationModal(); if (typeof openWalletTopUpModal === 'function') openWalletTopUpModal();">Top up wallet</button> or pay with card.
+      </p>
+      <div id="acceptInvitationCardSection" class="accept-invitation-card-section">
+        <div class="accept-invitation-card-row">
+          <label class="accept-invitation-field-label">Card number</label>
+          <div id="acceptInvitationCardNumberContainer" class="accept-stripe-input"></div>
+        </div>
+        <div class="accept-invitation-card-row two-cols">
+          <div>
+            <label class="accept-invitation-field-label">Expiry</label>
+            <div id="acceptInvitationCardExpiryContainer" class="accept-stripe-input"></div>
+          </div>
+          <div>
+            <label class="accept-invitation-field-label">CVC</label>
+            <div id="acceptInvitationCardCvcContainer" class="accept-stripe-input"></div>
+          </div>
+        </div>
+        <div id="acceptInvitationCardError" class="accept-invitation-error" style="display: none;">
+          <i class="fas fa-exclamation-circle"></i>
+          <span id="acceptInvitationCardErrorText"></span>
+        </div>
+      </div>
+      <div class="accept-invitation-actions">
+        <button type="button" class="accept-invitation-btn secondary" onclick="closeAcceptInvitationModal();">Cancel</button>
+        <button type="button" id="acceptInvitationPayBtn" class="accept-invitation-btn primary" disabled>
+          <span id="acceptInvitationPayBtnText">Pay <span id="acceptInvitationPayAmount">$0</span></span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+<style>
+.accept-invitation-overlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(4px);
+  z-index: 10002;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  box-sizing: border-box;
+}
+.accept-invitation-container {
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);
+  max-width: 440px;
+  width: 100%;
+  position: relative;
+  padding: 24px;
+}
+.accept-invitation-close {
+  position: absolute; top: 16px; right: 16px;
+  width: 36px; height: 36px; border: none; background: #f1f5f9; border-radius: 8px;
+  cursor: pointer; color: #64748b; display: flex; align-items: center; justify-content: center;
+}
+.accept-invitation-close:hover { background: #e2e8f0; color: #0f172a; }
+.accept-invitation-title { font-size: 1.25rem; font-weight: 700; color: #0f172a; margin: 0 0 12px; display: flex; align-items: center; gap: 8px; }
+.accept-invitation-message { color: #64748b; margin: 0 0 20px; line-height: 1.5; }
+.accept-invitation-amount { font-size: 1.75rem; font-weight: 800; color: #10b981; margin: 0 0 4px; }
+.accept-invitation-sub { font-size: 0.9rem; color: #64748b; margin: 0 0 16px; }
+.accept-invitation-methods { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
+.accept-invitation-method-option {
+  display: flex; align-items: center; gap: 10px;
+  padding: 14px 16px; border: 2px solid #e2e8f0; border-radius: 10px; cursor: pointer; background: #fff; transition: all 0.2s;
+}
+.accept-invitation-method-option input { margin: 0; }
+.accept-invitation-method-option:has(input:checked) { border-color: #10b981; background: rgba(16, 185, 129, 0.06); }
+.accept-method-label { font-weight: 600; color: #0f172a; margin-left: 4px; }
+.accept-invitation-link { background: none; border: none; color: #10b981; cursor: pointer; text-decoration: underline; font-size: inherit; padding: 0; }
+.accept-invitation-card-section { margin-top: 16px; padding-top: 16px; border-top: 1px solid #e2e8f0; }
+.accept-invitation-card-row { margin-bottom: 12px; }
+.accept-invitation-card-row.two-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.accept-invitation-field-label { display: block; font-size: 0.8rem; font-weight: 600; color: #64748b; margin-bottom: 6px; }
+.accept-stripe-input { padding: 12px 16px; border: 1px solid #e2e8f0; border-radius: 10px; background: #fff; min-height: 42px; }
+.accept-invitation-error { display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; color: #dc2626; font-size: 0.875rem; margin-top: 8px; }
+.accept-invitation-actions { display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px; }
+.accept-invitation-btn { padding: 10px 20px; border-radius: 8px; font-size: 0.95rem; font-weight: 600; cursor: pointer; border: none; }
+.accept-invitation-btn.secondary { background: #f1f5f9; color: #475569; }
+.accept-invitation-btn.secondary:hover { background: #e2e8f0; }
+.accept-invitation-btn.primary { background: #10b981; color: white; }
+.accept-invitation-btn.primary:hover { background: #059669; }
+.accept-invitation-btn.primary:disabled { opacity: 0.6; cursor: not-allowed; }
+</style>

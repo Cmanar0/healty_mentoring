@@ -11,17 +11,20 @@
             
             <!-- Left Column (2/3) -->
             <div class="dashboard-col-left">
-                <!-- Credit and Coins Cards -->
+                <!-- Wallet and Coins Cards -->
                 <div class="dashboard-stats-split">
-                    <!-- Credit Card -->
-                    <div class="dashboard-card stats-card-half">
+                    <!-- Wallet Card -->
+                    <div class="dashboard-card stats-card-half wallet-card">
                         <div class="card-header">
-                            <h3 class="card-title">Credit</h3>
+                            <h3 class="card-title">Wallet</h3>
+                            <button type="button" class="btn-wallet-topup" onclick="openWalletTopUpModal(); return false;" aria-label="Top up wallet">
+                                <i class="fas fa-plus"></i> Top up
+                            </button>
                         </div>
                         <div class="credit-coins-content">
                             <div class="credit-coins-value">
                                 <span class="currency-symbol">$</span>
-                                <span class="credit-coins-amount">{{ user_credit|floatformat:2 }}</span>
+                                <span class="credit-coins-amount" id="dashboardWalletAmount">{{ user_credit|floatformat:2 }}</span>
                             </div>
                             <p class="credit-coins-description">USD balance for sessions</p>
                         </div>
@@ -255,6 +258,31 @@
 
 .stats-card-half {
     min-height: auto;
+}
+
+.wallet-card .card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+.btn-wallet-topup {
+    padding: 6px 12px;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: #0d9488;
+    background: rgba(13, 148, 136, 0.1);
+    border: 1px solid rgba(13, 148, 136, 0.3);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+}
+.btn-wallet-topup:hover {
+    background: rgba(13, 148, 136, 0.2);
+    color: #0f766e;
+}
+.btn-wallet-topup i {
+    margin-right: 4px;
 }
 
 .credit-coins-content {
@@ -2098,6 +2126,8 @@ function loadBookingModalForMentor(mentorUserId) {
 </style>
 
 {% include 'dashboard_user/popups/create_active_backlog_task_modal.html' %}
+{% include 'dashboard_user/popups/wallet_topup_modal.html' %}
+{% include 'dashboard_user/popups/payment_confirmation_modal.html' %}
 
 <script>
 // Initialize deactivate task modal event listeners (dashboard)

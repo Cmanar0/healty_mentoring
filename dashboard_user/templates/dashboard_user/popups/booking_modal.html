@@ -314,6 +314,26 @@
                             </div>
                         </div>
 
+                        <!-- Payment method: wallet or card (authenticated user, paid session) -->
+                        <div id="bookingPaymentMethodSection" style="display: none; margin-top: 16px;">
+                            <label style="display: block; font-weight: 700; color: #1e293b; margin-bottom: 12px; font-size: 0.9rem;">
+                                Payment method
+                            </label>
+                            <div id="bookingPaymentMethodChoices" style="display: flex; flex-direction: column; gap: 10px;">
+                                <label class="booking-payment-method-option" id="bookingPayWithWalletOption" style="display: none; padding: 14px 16px; border: 2px solid #e2e8f0; border-radius: 10px; cursor: pointer; transition: all 0.2s; background: #fff;">
+                                    <input type="radio" name="booking_payment_method" value="wallet" id="bookingPaymentMethodWallet">
+                                    <span><i class="fas fa-wallet" style="margin-right: 8px; color: #10b981;"></i> Pay with wallet</span>
+                                    <span id="bookingWalletAmountLabel" style="font-weight: 600; color: #0f172a;"></span>
+                                </label>
+                                <label class="booking-payment-method-option" id="bookingPayWithCardOption" style="padding: 14px 16px; border: 2px solid #e2e8f0; border-radius: 10px; cursor: pointer; transition: all 0.2s; background: #fff;">
+                                    <input type="radio" name="booking_payment_method" value="card" id="bookingPaymentMethodCard" checked>
+                                    <span><i class="fas fa-credit-card" style="margin-right: 8px; color: #64748b;"></i> Pay with card</span>
+                                </label>
+                            </div>
+                            <p id="bookingWalletInsufficientNote" style="display: none; font-size: 0.85rem; color: #64748b; margin-top: 8px;">
+                                Insufficient wallet balance. <a href="{% url 'general:dashboard_user:dashboard' %}" target="_blank" style="color: #10b981;">Top up from dashboard</a> or pay with card below.
+                            </p>
+                        </div>
                         <!-- Payment (Phase 2): separate card elements when session is paid -->
                         <div id="bookingPaymentCardSection" style="display: none; margin-top: 16px;">
                             <label style="display: block; font-weight: 700; color: #1e293b; margin-bottom: 12px; font-size: 0.9rem;">
@@ -399,6 +419,16 @@
 .booking-modal-overlay.open {
     display: flex;
     opacity: 1;
+}
+.booking-payment-method-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.booking-payment-method-option input { margin: 0; }
+.booking-payment-method-option:has(input:checked) {
+    border-color: #10b981 !important;
+    background: rgba(16, 185, 129, 0.06) !important;
 }
 
 /* Timezone Section Styles */
@@ -1325,6 +1355,9 @@
     const firstSessionLengthDiffers = mentorFirstSessionLength !== mentorSessionLength;
     const paymentRequired = (mentorPricePerHour > 0) && !(mentorFirstSessionFree && isFirstSession);
     const stripePublishableKey = '{{ stripe_publishable_key|default:""|escapejs }}';
+    const walletBalanceCents = {{ wallet_balance_cents|default:0 }};
+    const sessionPriceCents = {{ session_price_cents_booking|default:0 }};
+    const canPayWithWallet = paymentRequired && isUserAuthenticated && (walletBalanceCents >= sessionPriceCents) && (sessionPriceCents > 0);
     
     // User's selected timezone from profile (if authenticated) – used for "preferred" display
     const userSelectedTimezone = {% if user.is_authenticated and user.profile.selected_timezone %}'{{ user.profile.selected_timezone }}'{% else %}null{% endif %};
@@ -1360,6 +1393,8 @@
     let bookingPaymentIntentClientSecret = null;
     // Unique id for this payment attempt (one per modal open); used in Stripe idempotency key
     let bookingAttemptId = null;
+    // Payment method for authenticated user: 'wallet' | 'card'
+    let selectedPaymentMethod = 'card';
 
     // Extract initialization into a function that can be called directly
     function initBookingModal() {
@@ -2592,81 +2627,100 @@
         }
     }
     
+    function updateBookingPaymentMethodUI() {
+        const methodSection = document.getElementById('bookingPaymentMethodSection');
+        const walletOption = document.getElementById('bookingPayWithWalletOption');
+        const cardOption = document.getElementById('bookingPayWithCardOption');
+        const cardSection = document.getElementById('bookingPaymentCardSection');
+        const insufficientNote = document.getElementById('bookingWalletInsufficientNote');
+        const walletLabel = document.getElementById('bookingWalletAmountLabel');
+        if (!methodSection) return;
+        if (paymentRequired && isUserAuthenticated) {
+            methodSection.style.display = 'block';
+            if (canPayWithWallet) {
+                if (walletOption) {
+                    walletOption.style.display = 'flex';
+                    if (walletLabel) walletLabel.textContent = ' ($' + (sessionPriceCents / 100).toFixed(2) + ' from balance)';
+                }
+                if (insufficientNote) insufficientNote.style.display = 'none';
+                if (selectedPaymentMethod === 'wallet') {
+                    if (cardSection) cardSection.style.display = 'none';
+                } else {
+                    if (cardSection) cardSection.style.display = 'block';
+                }
+            } else {
+                if (walletOption) walletOption.style.display = 'none';
+                if (insufficientNote) insufficientNote.style.display = 'block';
+                if (cardSection) cardSection.style.display = 'block';
+                selectedPaymentMethod = 'card';
+            }
+        } else {
+            methodSection.style.display = 'none';
+            if (cardSection) cardSection.style.display = paymentRequired ? 'block' : 'none';
+        }
+    }
+
     function openEmailCollectionModal(paymentOnly) {
         if (typeof paymentOnly === 'undefined') paymentOnly = false;
         const emailModal = document.getElementById('emailCollectionModal');
         if (!emailModal) return;
         // New attempt = new idempotency scope (avoids Stripe "same key, different parameters")
         bookingAttemptId = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : 'attempt_' + Date.now() + '_' + Math.random().toString(36).slice(2, 11);
+        selectedPaymentMethod = canPayWithWallet ? 'wallet' : 'card';
+        const walletRadio = document.getElementById('bookingPaymentMethodWallet');
+        const cardRadio = document.getElementById('bookingPaymentMethodCard');
+        if (walletRadio) walletRadio.checked = canPayWithWallet;
+        if (cardRadio) cardRadio.checked = !canPayWithWallet;
+        if (!window._bookingPaymentMethodListenersAttached) {
+            window._bookingPaymentMethodListenersAttached = true;
+            if (walletRadio) walletRadio.addEventListener('change', function() {
+                selectedPaymentMethod = 'wallet';
+                updateBookingPaymentMethodUI();
+            });
+            if (cardRadio) cardRadio.addEventListener('change', function() {
+                selectedPaymentMethod = 'card';
+                updateBookingPaymentMethodUI();
+                if (paymentRequired && stripePublishableKey && typeof window.Stripe === 'function') mountStripeCard();
+            });
+        }
         
         const guestWrap = document.getElementById('bookingGuestFieldsWrap');
         const timezoneWrap = document.getElementById('bookingTimezoneSectionWrap');
         const cardSection = document.getElementById('bookingPaymentCardSection');
         const emailInput = document.getElementById('bookingEmailInput');
+        updateBookingPaymentMethodUI();
         if (paymentOnly) {
             if (guestWrap) guestWrap.style.display = 'none';
             if (timezoneWrap) timezoneWrap.style.display = 'none';
-            if (cardSection) cardSection.style.display = 'block';
             if (emailInput) emailInput.removeAttribute('required');
             const submitBtn = document.getElementById('submitBookingBtn');
             if (submitBtn) {
                 submitBtn.innerHTML = '<i class="fas fa-lock"></i> <span>Pay and book</span>';
             }
-            // Mount Stripe when payment section is shown
-            if (paymentRequired && stripePublishableKey) {
-                // Stripe.js should already be loaded by now, mount immediately if available
-                if (typeof window.Stripe === 'function') {
-                    mountStripeCard();
-                } else {
-                    // Fallback: wait for Stripe.js (shouldn't happen, but just in case)
+            if (paymentRequired && selectedPaymentMethod === 'card' && stripePublishableKey) {
+                if (typeof window.Stripe === 'function') mountStripeCard();
+                else {
                     const waitForStripe = setInterval(() => {
-                        if (typeof window.Stripe === 'function') {
-                            clearInterval(waitForStripe);
-                            mountStripeCard();
-                        }
+                        if (typeof window.Stripe === 'function') { clearInterval(waitForStripe); mountStripeCard(); }
                     }, 100);
-                    // Give up after 2 seconds (reduced from 5)
-                    setTimeout(() => {
-                        clearInterval(waitForStripe);
-                        if (typeof window.Stripe === 'function') {
-                            mountStripeCard();
-                        } else {
-                            console.error('Stripe.js not available after waiting');
-                        }
-                    }, 2000);
+                    setTimeout(() => { clearInterval(waitForStripe); if (typeof window.Stripe === 'function') mountStripeCard(); }, 2000);
                 }
             }
         } else {
             if (guestWrap) guestWrap.style.display = 'flex';
             if (timezoneWrap) timezoneWrap.style.display = 'block';
-            if (cardSection) cardSection.style.display = paymentRequired ? 'block' : 'none';
             if (emailInput) emailInput.setAttribute('required', 'required');
             const submitBtn = document.getElementById('submitBookingBtn');
             if (submitBtn) {
                 submitBtn.innerHTML = '<i class="fas fa-calendar-check"></i> <span>Confirm Booking</span>';
             }
-            // Mount Stripe when payment section is shown
-            if (paymentRequired && stripePublishableKey && cardSection) {
-                // Stripe.js should already be loaded by now, mount immediately if available
-                if (typeof window.Stripe === 'function') {
-                    mountStripeCard();
-                } else {
-                    // Fallback: wait for Stripe.js (shouldn't happen, but just in case)
+            if (paymentRequired && selectedPaymentMethod === 'card' && stripePublishableKey && cardSection) {
+                if (typeof window.Stripe === 'function') mountStripeCard();
+                else {
                     const waitForStripe = setInterval(() => {
-                        if (typeof window.Stripe === 'function') {
-                            clearInterval(waitForStripe);
-                            mountStripeCard();
-                        }
+                        if (typeof window.Stripe === 'function') { clearInterval(waitForStripe); mountStripeCard(); }
                     }, 100);
-                    // Give up after 2 seconds (reduced from 5)
-                    setTimeout(() => {
-                        clearInterval(waitForStripe);
-                        if (typeof window.Stripe === 'function') {
-                            mountStripeCard();
-                        } else {
-                            console.error('Stripe.js not available after waiting');
-                        }
-                    }, 2000);
+                    setTimeout(() => { clearInterval(waitForStripe); if (typeof window.Stripe === 'function') mountStripeCard(); }, 2000);
                 }
             }
         }
@@ -3065,8 +3119,8 @@
             submitBtn.innerHTML = isPaymentOnly ? '<i class="fas fa-lock"></i> <span>Pay and book</span>' : '<i class="fas fa-calendar-check"></i> <span>Confirm Booking</span>';
         }
         
-        function doSubmit(paymentIntentId) {
-            submitBooking(email || null, note || null, timezone, paymentIntentId);
+        function doSubmit(paymentIntentId, useWallet) {
+            submitBooking(email || null, note || null, timezone, paymentIntentId, useWallet || false);
         }
 
         function confirmWithStripe() {
@@ -3104,10 +3158,9 @@
                     return;
                 }
                 if (confirmResult.paymentIntent && confirmResult.paymentIntent.status === 'succeeded') {
-                    // Use cached PaymentIntent id if available, otherwise fall back
                     const piId = bookingPaymentIntentId || confirmResult.paymentIntent.id;
                     bookingPaymentIntentId = piId;
-                    doSubmit(piId);
+                    doSubmit(piId, false);
                 } else {
                     if (cardErrorEl && cardErrorTextElInner) {
                         cardErrorTextElInner.textContent = 'Payment did not complete. Please try again.';
@@ -3125,6 +3178,10 @@
             });
         }
         
+        if (paymentRequired && selectedPaymentMethod === 'wallet') {
+            doSubmit(null, true);
+            return;
+        }
         if (paymentRequired && stripeInstance && cardNumberElement) {
             // If we already have a PaymentIntent for this attempt, just retry confirmation
             if (bookingPaymentIntentClientSecret) {
@@ -3187,16 +3244,16 @@
         } else if (paymentRequired) {
             const cardErrorTextEl = document.getElementById('stripeCardErrorText');
             if (cardErrorEl && cardErrorTextEl) {
-                cardErrorTextEl.textContent = 'Please enter your card details.';
+                cardErrorTextEl.textContent = 'Please enter your card details or choose Pay with wallet.';
                 cardErrorEl.style.display = 'block';
             }
             resetSubmitBtn();
         } else {
-            doSubmit(null);
+            doSubmit(null, false);
         }
     }
     
-    function submitBooking(email = null, note = null, timezone = null, paymentIntentId = null) {
+    function submitBooking(email = null, note = null, timezone = null, paymentIntentId = null, useWallet = false) {
         if (!selectedSlot || !selectedDate) {
             return;
         }
@@ -3232,6 +3289,7 @@
             if (timezone) payload.timezone = timezone;
         }
         if (paymentIntentId) payload.payment_intent_id = paymentIntentId;
+        if (useWallet) payload.use_wallet = true;
         
         // Get CSRF token
         function getCookie(name) {

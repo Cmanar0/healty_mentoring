@@ -321,6 +321,26 @@ class Session(models.Model):
         help_text="Indicates who initiated the changes: mentor or client. Set to 'mentor' when mentor saves changes, cleared when client confirms or declines."
     )
 
+    # Phase 4: prepaid enforcement. Session is confirmed only after payment (wallet or Stripe).
+    payment = models.ForeignKey(
+        "billing.Payment",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="paid_session",
+    )
+    paid_at = models.DateTimeField(null=True, blank=True)
+    refunded_at = models.DateTimeField(null=True, blank=True)
+    payment_method = models.CharField(
+        max_length=20,
+        choices=[
+            ("wallet", "Wallet"),
+            ("stripe", "Stripe"),
+        ],
+        blank=True,
+        null=True,
+    )
+
     class Meta:
         verbose_name = "Session"
         verbose_name_plural = "Sessions"

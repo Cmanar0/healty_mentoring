@@ -1,0 +1,448 @@
+{# Wallet Top-Up Modal - standalone, used from dashboard and session management #}
+<div id="walletTopUpModalOverlay" class="wallet-topup-overlay" style="display: none;">
+    <div class="wallet-topup-container">
+        <button type="button" class="wallet-topup-close" onclick="closeWalletTopUpModal();" aria-label="Close"><i class="fas fa-times"></i></button>
+        <div class="wallet-topup-header">
+            <h2 class="wallet-topup-title"><i class="fas fa-wallet"></i> Top up wallet</h2>
+            <p class="wallet-topup-subtitle">Add funds to pay for sessions with your balance.</p>
+        </div>
+        <div class="wallet-topup-body">
+            <div class="wallet-topup-amount-section">
+                <label class="wallet-topup-label">Amount</label>
+                <div class="wallet-topup-presets">
+                    <button type="button" class="wallet-preset-btn" data-cents="2500">$25</button>
+                    <button type="button" class="wallet-preset-btn" data-cents="5000">$50</button>
+                    <button type="button" class="wallet-preset-btn" data-cents="10000">$100</button>
+                    <button type="button" class="wallet-preset-btn" data-cents="20000">$200</button>
+                </div>
+                <div class="wallet-topup-custom">
+                    <span class="wallet-currency-symbol">$</span>
+                    <input type="number" id="walletTopUpCustomAmount" class="wallet-topup-input" min="5" max="9999" step="1" placeholder="Custom amount">
+                </div>
+            </div>
+            <div id="walletTopUpCardSection" class="wallet-topup-card-section" style="display: none;">
+                <label class="wallet-topup-label">Card details</label>
+                <div class="wallet-topup-card-row">
+                    <div class="wallet-topup-card-field">
+                        <label class="wallet-topup-field-label">Card number</label>
+                        <div id="walletTopUpCardNumberContainer" class="wallet-stripe-input"></div>
+                    </div>
+                </div>
+                <div class="wallet-topup-card-row two-cols">
+                    <div class="wallet-topup-card-field">
+                        <label class="wallet-topup-field-label">Expiry</label>
+                        <div id="walletTopUpCardExpiryContainer" class="wallet-stripe-input"></div>
+                    </div>
+                    <div class="wallet-topup-card-field">
+                        <label class="wallet-topup-field-label">CVC</label>
+                        <div id="walletTopUpCardCvcContainer" class="wallet-stripe-input"></div>
+                    </div>
+                </div>
+                <div id="walletTopUpCardError" class="wallet-topup-error" style="display: none;">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <span id="walletTopUpCardErrorText"></span>
+                </div>
+            </div>
+        </div>
+        <div class="wallet-topup-footer">
+            <button type="button" class="wallet-topup-cancel" onclick="closeWalletTopUpModal();">Cancel</button>
+            <button type="button" id="walletTopUpSubmitBtn" class="wallet-topup-submit" disabled>
+                <i class="fas fa-lock"></i> Pay <span id="walletTopUpSubmitAmount">$0</span>
+            </button>
+        </div>
+    </div>
+</div>
+<style>
+.wallet-topup-overlay {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(4px);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    box-sizing: border-box;
+}
+.wallet-topup-container {
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);
+    max-width: 440px;
+    width: 100%;
+    position: relative;
+    padding: 24px;
+}
+.wallet-topup-close {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    width: 36px;
+    height: 36px;
+    border: none;
+    background: #f1f5f9;
+    border-radius: 10px;
+    color: #64748b;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s, color 0.2s;
+}
+.wallet-topup-close:hover {
+    background: #e2e8f0;
+    color: #334155;
+}
+.wallet-topup-header {
+    margin-bottom: 24px;
+    padding-right: 32px;
+}
+.wallet-topup-title {
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 0 0 6px 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.wallet-topup-title i { color: #0d9488; }
+.wallet-topup-subtitle {
+    font-size: 0.9rem;
+    color: #64748b;
+    margin: 0;
+}
+.wallet-topup-label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #475569;
+    margin-bottom: 10px;
+}
+.wallet-topup-presets {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-bottom: 14px;
+}
+.wallet-preset-btn {
+    padding: 12px;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #0f766e;
+    background: rgba(13, 148, 136, 0.08);
+    border: 1px solid rgba(13, 148, 136, 0.25);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s;
+}
+.wallet-preset-btn:hover, .wallet-preset-btn.selected {
+    background: rgba(13, 148, 136, 0.15);
+    border-color: #0d9488;
+}
+.wallet-topup-custom {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 14px;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    background: #f8fafc;
+}
+.wallet-currency-symbol {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #64748b;
+}
+.wallet-topup-input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #0f172a;
+    outline: none;
+}
+.wallet-topup-input::placeholder { color: #94a3b8; }
+.wallet-topup-card-section {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid #e2e8f0;
+}
+.wallet-topup-card-row { margin-bottom: 12px; }
+.wallet-topup-card-row.two-cols {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+.wallet-topup-field-label {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #64748b;
+    margin-bottom: 6px;
+}
+.wallet-stripe-input {
+    padding: 12px 14px;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    background: #fff;
+    min-height: 44px;
+}
+.wallet-topup-error {
+    margin-top: 10px;
+    padding: 10px 12px;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 8px;
+    color: #dc2626;
+    font-size: 0.875rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.wallet-topup-footer {
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px solid #e2e8f0;
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+.wallet-topup-cancel {
+    padding: 10px 20px;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: #64748b;
+    background: #f1f5f9;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+}
+.wallet-topup-cancel:hover { background: #e2e8f0; }
+.wallet-topup-submit {
+    padding: 12px 24px;
+    font-size: 0.9375rem;
+    font-weight: 700;
+    color: #fff;
+    background: #0d9488;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.wallet-topup-submit:hover:not(:disabled) { background: #0f766e; }
+.wallet-topup-submit:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+</style>
+<script src="https://js.stripe.com/v3/"></script>
+<script>
+(function() {
+    var stripePk = '{{ stripe_publishable_key|default:""|escapejs }}';
+    var walletTopUpAmountCents = 0;
+    var walletTopUpStripeInstance = null;
+    var walletTopUpCardNumber = null;
+    var walletTopUpCardExpiry = null;
+    var walletTopUpCardCvc = null;
+
+    function getWalletTopUpAmountCents() {
+        var custom = document.getElementById('walletTopUpCustomAmount');
+        var val = custom && custom.value ? parseFloat(custom.value) : 0;
+        if (val > 0) return Math.round(val * 100);
+        return walletTopUpAmountCents;
+    }
+
+    function updateWalletTopUpSubmitButton() {
+        var cents = getWalletTopUpAmountCents();
+        var btn = document.getElementById('walletTopUpSubmitBtn');
+        var span = document.getElementById('walletTopUpSubmitAmount');
+        if (span) span.textContent = '$' + (cents / 100).toFixed(2);
+        if (btn) {
+            btn.disabled = cents < 500;
+        }
+        var cardSection = document.getElementById('walletTopUpCardSection');
+        if (cardSection && stripePk) {
+            if (cents >= 500) {
+                cardSection.style.display = 'block';
+                if (!walletTopUpCardNumber) mountWalletTopUpCard();
+            } else {
+                cardSection.style.display = 'none';
+            }
+        }
+    }
+
+    function mountWalletTopUpCard() {
+        if (!stripePk || !window.Stripe) return;
+        var numEl = document.getElementById('walletTopUpCardNumberContainer');
+        var expEl = document.getElementById('walletTopUpCardExpiryContainer');
+        var cvcEl = document.getElementById('walletTopUpCardCvcContainer');
+        if (!numEl || !expEl || !cvcEl || walletTopUpCardNumber) return;
+        try {
+            walletTopUpStripeInstance = window.Stripe(stripePk);
+            var elements = walletTopUpStripeInstance.elements();
+            var style = { style: { base: { fontSize: '16px' } } };
+            walletTopUpCardNumber = elements.create('cardNumber', style);
+            walletTopUpCardExpiry = elements.create('cardExpiry', style);
+            walletTopUpCardCvc = elements.create('cardCvc', style);
+            walletTopUpCardNumber.mount('#walletTopUpCardNumberContainer');
+            walletTopUpCardExpiry.mount('#walletTopUpCardExpiryContainer');
+            walletTopUpCardCvc.mount('#walletTopUpCardCvcContainer');
+            var errEl = document.getElementById('walletTopUpCardError');
+            var errText = document.getElementById('walletTopUpCardErrorText');
+            function onChange(e) {
+                if (errEl && errText) {
+                    if (e.error) {
+                        errText.textContent = e.error.message || '';
+                        errEl.style.display = 'flex';
+                    } else {
+                        errText.textContent = '';
+                        errEl.style.display = 'none';
+                    }
+                }
+            }
+            walletTopUpCardNumber.on('change', onChange);
+            walletTopUpCardExpiry.on('change', onChange);
+            walletTopUpCardCvc.on('change', onChange);
+        } catch (e) {
+            console.error('Wallet top-up Stripe mount error', e);
+        }
+    }
+
+    function unmountWalletTopUpCard() {
+        if (walletTopUpCardNumber) {
+            try { walletTopUpCardNumber.unmount(); } catch (x) {}
+            walletTopUpCardNumber = null;
+        }
+        if (walletTopUpCardExpiry) {
+            try { walletTopUpCardExpiry.unmount(); } catch (x) {}
+            walletTopUpCardExpiry = null;
+        }
+        if (walletTopUpCardCvc) {
+            try { walletTopUpCardCvc.unmount(); } catch (x) {}
+            walletTopUpCardCvc = null;
+        }
+    }
+
+    window.openWalletTopUpModal = function() {
+        walletTopUpAmountCents = 0;
+        var overlay = document.getElementById('walletTopUpModalOverlay');
+        var custom = document.getElementById('walletTopUpCustomAmount');
+        var cardSection = document.getElementById('walletTopUpCardSection');
+        if (custom) custom.value = '';
+        document.querySelectorAll('.wallet-preset-btn').forEach(function(btn) {
+            btn.classList.remove('selected');
+        });
+        if (cardSection) cardSection.style.display = 'none';
+        unmountWalletTopUpCard();
+        updateWalletTopUpSubmitButton();
+        if (overlay) overlay.style.display = 'flex';
+    };
+
+    window.closeWalletTopUpModal = function() {
+        var overlay = document.getElementById('walletTopUpModalOverlay');
+        if (overlay) overlay.style.display = 'none';
+        unmountWalletTopUpCard();
+    };
+
+    document.addEventListener('DOMContentLoaded', function() {
+        var overlay = document.getElementById('walletTopUpModalOverlay');
+        if (overlay) {
+            overlay.addEventListener('click', function(e) {
+                if (e.target === overlay) closeWalletTopUpModal();
+            });
+        }
+        document.querySelectorAll('.wallet-preset-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.wallet-preset-btn').forEach(function(b) { b.classList.remove('selected'); });
+                btn.classList.add('selected');
+                walletTopUpAmountCents = parseInt(btn.getAttribute('data-cents') || '0', 10);
+                var custom = document.getElementById('walletTopUpCustomAmount');
+                if (custom) custom.value = '';
+                updateWalletTopUpSubmitButton();
+            });
+        });
+        var customInput = document.getElementById('walletTopUpCustomAmount');
+        if (customInput) {
+            customInput.addEventListener('input', function() {
+                document.querySelectorAll('.wallet-preset-btn').forEach(function(b) { b.classList.remove('selected'); });
+                walletTopUpAmountCents = 0;
+                updateWalletTopUpSubmitButton();
+            });
+        }
+        var submitBtn = document.getElementById('walletTopUpSubmitBtn');
+        if (submitBtn) {
+            submitBtn.addEventListener('click', function() {
+                var cents = getWalletTopUpAmountCents();
+                if (cents < 500) return;
+                var errEl = document.getElementById('walletTopUpCardError');
+                var errText = document.getElementById('walletTopUpCardErrorText');
+                if (errText) errText.textContent = '';
+                if (errEl) errEl.style.display = 'none';
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+                var attemptId = (window.crypto && window.crypto.randomUUID) ? window.crypto.randomUUID() : ('w' + Date.now() + Math.random().toString(36).slice(2, 9));
+                var csrf = document.querySelector('[name=csrfmiddlewaretoken]');
+                var csrfToken = csrf ? csrf.value : (document.cookie.split(';').reduce(function(acc, c) {
+                    var parts = c.trim().split('=');
+                    if (parts[0] === 'csrftoken') acc = decodeURIComponent(parts.slice(1).join('='));
+                    return acc;
+                }, ''));
+                fetch('{% url "general:dashboard_user:create_wallet_topup_payment_intent" %}', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+                    body: JSON.stringify({ amount_cents: cents, attempt_id: attemptId })
+                }).then(function(r) { return r.json(); }).then(function(data) {
+                    if (!data.success || !data.client_secret) {
+                        if (errText) errText.textContent = data.error || 'Could not start payment.';
+                        if (errEl) errEl.style.display = 'flex';
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = '<i class="fas fa-lock"></i> Pay <span id="walletTopUpSubmitAmount">$' + (cents/100).toFixed(2) + '</span>';
+                        return;
+                    }
+                    if (!walletTopUpStripeInstance || !walletTopUpCardNumber) {
+                        if (errText) errText.textContent = 'Card form not ready.';
+                        if (errEl) errEl.style.display = 'flex';
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = '<i class="fas fa-lock"></i> Pay <span id="walletTopUpSubmitAmount">$' + (cents/100).toFixed(2) + '</span>';
+                        return;
+                    }
+                    walletTopUpStripeInstance.confirmCardPayment(data.client_secret, {
+                        payment_method: { card: walletTopUpCardNumber }
+                    }).then(function(result) {
+                        if (result.error) {
+                            if (errText) errText.textContent = result.error.message || 'Payment failed.';
+                            if (errEl) errEl.style.display = 'flex';
+                            submitBtn.disabled = false;
+                            submitBtn.innerHTML = '<i class="fas fa-lock"></i> Pay <span id="walletTopUpSubmitAmount">$' + (cents/100).toFixed(2) + '</span>';
+                            return;
+                        }
+                        if (result.paymentIntent && result.paymentIntent.status === 'succeeded') {
+                            closeWalletTopUpModal();
+                            if (typeof showPaymentConfirmationModal === 'function') {
+                                showPaymentConfirmationModal('Wallet topped up successfully. $' + (cents/100).toFixed(2) + ' has been added to your balance.');
+                            } else {
+                                alert('Wallet topped up successfully. $' + (cents/100).toFixed(2) + ' has been added to your balance.');
+                            }
+                            window.location.reload();
+                        }
+                    }).catch(function() {
+                        if (errText) errText.textContent = 'Payment could not be completed.';
+                        if (errEl) errEl.style.display = 'flex';
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = '<i class="fas fa-lock"></i> Pay <span id="walletTopUpSubmitAmount">$' + (cents/100).toFixed(2) + '</span>';
+                    });
+                }).catch(function() {
+                    if (errText) errText.textContent = 'Could not start payment. Try again.';
+                    if (errEl) errEl.style.display = 'flex';
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '<i class="fas fa-lock"></i> Pay <span id="walletTopUpSubmitAmount">$' + (cents/100).toFixed(2) + '</span>';
+                });
+            });
+        }
+    });
+})();
+</script>
