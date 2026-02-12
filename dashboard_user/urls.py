@@ -42,6 +42,7 @@ urlpatterns = [
     path('projects/<int:project_id>/reject/', views.reject_project_assignment, name='reject_project_assignment'),
     path('projects/<int:project_id>/questionnaire/', views.submit_questionnaire, name='submit_questionnaire'),
     path('projects/<int:project_id>/modules/<int:module_id>/', views.module_detail, name='module_detail'),
+    path('projects/<int:project_id>/notes/create/', views.create_project_note, name='create_project_note'),
     path('active-backlog/', views.active_backlog, name='active_backlog'),
     path('active-backlog/tasks/create/', views.create_active_backlog_task, name='create_active_backlog_task'),
     path('active-backlog/tasks/<int:task_id>/edit/', views.edit_active_backlog_task, name='edit_active_backlog_task'),
@@ -50,6 +51,11 @@ urlpatterns = [
     path('active-backlog/tasks/<int:task_id>/deactivate/', views.deactivate_active_backlog_task, name='deactivate_active_backlog_task'),
     path('active-backlog/api/', views.get_user_active_backlog_api, name='get_user_active_backlog_api'),
     path('projects/<int:project_id>/stages/api/', views.get_stages_api, name='get_stages_api'),
+    path('projects/<int:project_id>/stages/create/', views.create_stage, name='create_stage'),
+    path('projects/<int:project_id>/stages/generate-ai/', views.generate_stages_ai, name='generate_stages_ai'),
+    path('projects/<int:project_id>/stages/reorder/', views.reorder_stages, name='reorder_stages'),
     path('projects/<int:project_id>/stages/<int:stage_id>/', views.stage_detail, name='stage_detail'),
+    path('projects/<int:project_id>/stages/<int:stage_id>/tasks/api/', views.get_tasks_api, name='get_tasks_api'),
+    path('projects/<int:project_id>/stages/<int:stage_id>/tasks/generate-ai/', views.generate_tasks_ai, name='generate_tasks_ai'),
 ]
 

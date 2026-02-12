@@ -3174,6 +3174,10 @@ def project_detail(request, project_id):
         ).select_related('mentor', 'mentor__user').order_by('mentor__first_name', 'mentor__last_name')
         available_mentors = [rel.mentor for rel in relationships]
     
+    # Get project notes
+    from dashboard_user.models import ProjectNote
+    project_notes = ProjectNote.objects.filter(project=project).select_related('author').order_by('-created_at')[:50]
+    
     # Calculate project progress for sidebar
     total_tasks = 0
     completed_tasks = 0
@@ -3201,9 +3205,89 @@ def project_detail(request, project_id):
         'is_supervisor': is_supervisor,
         'project_progress': project_progress,
         'available_mentors': available_mentors,
+        'project_notes': project_notes,
     }
     
     return render(request, 'dashboard_user/projects/project_detail.html', context)
+
+
+@login_required
+@require_POST
+def create_project_note(request, project_id):
+    """Create a project-level note"""
+    if not hasattr(request.user, 'profile'):
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+    
+    project = get_object_or_404(
+        Project.objects.select_related('project_owner', 'supervised_by'),
+        id=project_id
+    )
+    
+    # Check if user is owner or supervisor
+    is_owner = False
+    is_supervisor = False
+    
+    if request.user.profile.role == 'user':
+        user_profile = request.user.user_profile
+        is_owner = (project.project_owner == user_profile)
+    elif request.user.profile.role == 'mentor':
+        mentor_profile = request.user.mentor_profile
+        is_supervisor = (project.supervised_by == mentor_profile)
+    
+    if not (is_owner or is_supervisor):
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+    
+    from dashboard_user.models import ProjectNote
+    
+    try:
+        import json
+        if request.content_type == 'application/json':
+            data = json.loads(request.body)
+            note_text = data.get('note_text', '').strip()
+        else:
+            note_text = request.POST.get('note_text', '').strip()
+        
+        if not note_text:
+            return JsonResponse({'success': False, 'error': 'Note text is required'}, status=400)
+        
+        # Determine author role
+        author_role = 'client' if is_owner else 'mentor'
+        
+        note = ProjectNote.objects.create(
+            project=project,
+            author=request.user,
+            text=note_text,
+            author_role=author_role
+        )
+        
+        # Return note data for AJAX rendering
+        if request.content_type == 'application/json':
+            return JsonResponse({
+                'success': True,
+                'message': 'Note added successfully',
+                'note': {
+                    'id': note.id,
+                    'text': note.text,
+                    'author_name': note.author_name,
+                    'author_role': note.author_role,
+                    'created_at': note.created_at.strftime('%b %d, %H:%M'),
+                }
+            })
+        else:
+            from django.contrib import messages
+            messages.success(request, "Note added.")
+            return redirect('general:dashboard_user:project_detail', project_id=project.id)
+    
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f'Error creating project note: {str(e)}', exc_info=True)
+        if request.content_type == 'application/json':
+            return JsonResponse({'success': False, 'error': str(e)}, status=500)
+        else:
+            from django.contrib import messages
+            messages.error(request, f"Error adding note: {str(e)}")
+            return redirect('general:dashboard_user:project_detail', project_id=project.id)
 
 
 @login_required
@@ -3778,6 +3862,452 @@ def get_stages_api(request, project_id):
             'success': False,
             'error': f'Server error: {str(e)}'
         }, status=500)
+
+
+@login_required
+@require_POST
+def generate_stages_ai(request, project_id):
+    """Generate stages using AI mockup (creates 3 sample stages). Requires subscription."""
+    if not hasattr(request.user, 'profile'):
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+    
+    project = get_object_or_404(
+        Project.objects.select_related('project_owner', 'supervised_by'),
+        id=project_id
+    )
+    
+    # Check if user is owner or supervisor
+    is_owner = False
+    is_supervisor = False
+    
+    if request.user.profile.role == 'user':
+        user_profile = request.user.user_profile
+        is_owner = (project.project_owner == user_profile)
+        # Check subscription for users
+        subscription = getattr(user_profile, 'subscription', 'FREE')
+        if subscription == 'FREE':
+            return JsonResponse({
+                'success': False,
+                'error': 'AI tools are not available in free subscription'
+            }, status=403)
+    elif request.user.profile.role == 'mentor':
+        mentor_profile = request.user.mentor_profile
+        is_supervisor = (project.supervised_by == mentor_profile)
+    
+    # Only allow access if user is owner or supervisor
+    if not (is_owner or is_supervisor):
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+    
+    if not project.questionnaire_completed:
+        return JsonResponse({'success': False, 'error': 'Questionnaire must be completed before generating stages'}, status=400)
+    
+    try:
+        from dashboard_user.models import ProjectStage
+        from datetime import timedelta
+        from django.utils import timezone
+        from decimal import Decimal
+        
+        # Get questionnaire answers for context (for future AI integration)
+        from dashboard_user.models import QuestionnaireResponse
+        answers = {}
+        if project.template and hasattr(project.template, 'questionnaire'):
+            try:
+                response = QuestionnaireResponse.objects.get(
+                    project=project,
+                    questionnaire=project.template.questionnaire
+                )
+                answers = response.answers
+            except QuestionnaireResponse.DoesNotExist:
+                pass
+        
+        # Get the next order value using project_id * 1000 as base
+        base_order = project.id * 1000
+        last_stage = project.stages.order_by('-order').first()
+        if last_stage and last_stage.order >= Decimal(base_order):
+            relative_order = int(last_stage.order) % 1000
+            next_order = base_order + relative_order + 1
+        else:
+            next_order = base_order + 1
+        
+        # AI Mockup: Generate 3 stages based on project context
+        base_date = project.created_at.date() if hasattr(project.created_at, 'date') else timezone.now().date()
+        
+        mock_stages = [
+            {
+                'title': 'Initial Planning & Research',
+                'description': 'Conduct thorough research and create a comprehensive plan based on your project goals and current situation.',
+                'start_date_offset': 0,
+                'end_date_offset': 14,
+                'target_date_offset': 14,
+            },
+            {
+                'title': 'Implementation & Execution',
+                'description': 'Begin implementing your plan with focused action steps and regular progress tracking.',
+                'start_date_offset': 14,
+                'end_date_offset': 45,
+                'target_date_offset': 45,
+            },
+            {
+                'title': 'Review & Optimization',
+                'description': 'Review progress, identify areas for improvement, and optimize your approach for better results.',
+                'start_date_offset': 45,
+                'end_date_offset': 75,
+                'target_date_offset': 75,
+            },
+        ]
+        
+        created_stages = []
+        for i, stage_data in enumerate(mock_stages):
+            start_date = base_date + timedelta(days=stage_data['start_date_offset']) if stage_data.get('start_date_offset') is not None else None
+            end_date = base_date + timedelta(days=stage_data['end_date_offset']) if stage_data.get('end_date_offset') is not None else None
+            target_date = base_date + timedelta(days=stage_data['target_date_offset']) if stage_data.get('target_date_offset') else None
+            
+            stage_order = next_order + i
+            
+            stage = ProjectStage.objects.create(
+                project=project,
+                title=stage_data['title'],
+                description=stage_data['description'],
+                start_date=start_date,
+                end_date=end_date,
+                target_date=target_date,
+                order=Decimal(stage_order),
+                is_ai_generated=True,
+                is_pending_confirmation=False,
+            )
+            created_stages.append(stage.id)
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'{len(created_stages)} stages generated successfully.',
+            'stages_count': len(created_stages),
+            'stage_ids': created_stages,
+        })
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f'Error generating AI stages: {str(e)}', exc_info=True)
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+@require_POST
+def generate_tasks_ai(request, project_id, stage_id):
+    """Generate tasks using AI mockup (creates 3 sample tasks). Requires subscription."""
+    if not hasattr(request.user, 'profile'):
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+    
+    project = get_object_or_404(
+        Project.objects.select_related('project_owner', 'supervised_by'),
+        id=project_id
+    )
+    
+    # Check if user is owner or supervisor
+    is_owner = False
+    is_supervisor = False
+    
+    if request.user.profile.role == 'user':
+        user_profile = request.user.user_profile
+        is_owner = (project.project_owner == user_profile)
+        # Check subscription for users
+        subscription = getattr(user_profile, 'subscription', 'FREE')
+        if subscription == 'FREE':
+            return JsonResponse({
+                'success': False,
+                'error': 'AI tools are not available in free subscription'
+            }, status=403)
+    elif request.user.profile.role == 'mentor':
+        mentor_profile = request.user.mentor_profile
+        is_supervisor = (project.supervised_by == mentor_profile)
+    
+    # Only allow access if user is owner or supervisor
+    if not (is_owner or is_supervisor):
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+    
+    from dashboard_user.models import ProjectStage, Task
+    from decimal import Decimal
+    
+    stage = get_object_or_404(ProjectStage, id=stage_id, project=project)
+    
+    try:
+        # AI Mockup: Generate 3 tasks based on stage context
+        mock_tasks = [
+            {
+                'title': 'Research and gather information',
+                'description': 'Conduct thorough research on the topic and gather all necessary information and resources.',
+            },
+            {
+                'title': 'Create initial draft',
+                'description': 'Develop a first draft based on the research findings and stage requirements.',
+            },
+            {
+                'title': 'Review and refine',
+                'description': 'Review the draft, identify areas for improvement, and refine the work.',
+            },
+        ]
+        
+        # Get the last task order to continue from there
+        last_task = stage.backlog_tasks.order_by('-order').first()
+        if last_task:
+            base_order = last_task.order
+        else:
+            # Use stage order as base, then add task order
+            base_order = stage.order + Decimal('0.01')
+        
+        created_tasks = []
+        for i, task_data in enumerate(mock_tasks):
+            # Calculate order - increment by 1 for each new task
+            task_order = base_order + Decimal(str(i + 1))
+            
+            # Determine author info based on user role
+            if request.user.profile.role == 'user':
+                author_name = f"{user_profile.first_name} {user_profile.last_name}".strip() or request.user.email
+                author_role = 'client'
+            else:
+                author_name = f"{request.user.profile.first_name} {request.user.profile.last_name}".strip() or request.user.email
+                author_role = 'mentor'
+            
+            task = Task.objects.create(
+                stage=stage,
+                title=task_data['title'],
+                description=task_data.get('description', ''),
+                priority=task_data.get('priority', 'medium'),
+                status=task_data.get('status', 'pending'),
+                order=task_order,
+                created_by=request.user,
+                author_name=author_name,
+                author_email=request.user.email,
+                author_role=author_role,
+                is_ai_generated=True,
+            )
+            created_tasks.append(task.id)
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'{len(created_tasks)} tasks generated successfully.',
+            'tasks_count': len(created_tasks),
+            'task_ids': created_tasks,
+        })
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f'Error generating AI tasks: {str(e)}', exc_info=True)
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+@require_POST
+def reorder_stages(request, project_id):
+    """Reorder stages via drag and drop"""
+    if not hasattr(request.user, 'profile'):
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+    
+    project = get_object_or_404(
+        Project.objects.select_related('project_owner', 'supervised_by'),
+        id=project_id
+    )
+    
+    # Check if user is owner or supervisor
+    is_owner = False
+    is_supervisor = False
+    
+    if request.user.profile.role == 'user':
+        user_profile = request.user.user_profile
+        is_owner = (project.project_owner == user_profile)
+    elif request.user.profile.role == 'mentor':
+        mentor_profile = request.user.mentor_profile
+        is_supervisor = (project.supervised_by == mentor_profile)
+    
+    # Only allow access if user is owner or supervisor
+    if not (is_owner or is_supervisor):
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+    
+    try:
+        import json
+        data = json.loads(request.body)
+        orders = data.get('orders', [])  # List of {stage_id: int, order: int}
+        
+        from dashboard_user.models import ProjectStage
+        from decimal import Decimal
+        
+        for item in orders:
+            stage_id = item.get('stage_id')
+            new_order = item.get('order')
+            if stage_id and new_order:
+                ProjectStage.objects.filter(
+                    id=stage_id,
+                    project=project
+                ).update(order=Decimal(new_order))
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Stages reordered successfully'
+        })
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f'Error reordering stages: {str(e)}', exc_info=True)
+        return JsonResponse({
+            'success': False,
+            'error': f'Server error: {str(e)}'
+        }, status=500)
+
+
+@login_required
+@require_POST
+def create_stage(request, project_id):
+    """Create a new stage for a project (for users)"""
+    if not hasattr(request.user, 'profile'):
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+    
+    project = get_object_or_404(
+        Project.objects.select_related('project_owner', 'supervised_by'),
+        id=project_id
+    )
+    
+    # Check if user is owner or supervisor
+    is_owner = False
+    is_supervisor = False
+    
+    if request.user.profile.role == 'user':
+        user_profile = request.user.user_profile
+        is_owner = (project.project_owner == user_profile)
+    elif request.user.profile.role == 'mentor':
+        mentor_profile = request.user.mentor_profile
+        is_supervisor = (project.supervised_by == mentor_profile)
+    
+    # Only allow access if user is owner or supervisor
+    if not (is_owner or is_supervisor):
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+    
+    if not project.questionnaire_completed:
+        return JsonResponse({'success': False, 'error': 'Questionnaire must be completed before creating stages'}, status=400)
+    
+    try:
+        data = json.loads(request.body)
+        title = data.get('title', '').strip()
+        if not title:
+            return JsonResponse({'success': False, 'error': 'Stage title is required'}, status=400)
+        
+        description = data.get('description', '').strip()
+        start_date = data.get('start_date') or None
+        end_date = data.get('end_date') or None
+        target_date = data.get('target_date') or None
+        
+        # Validate dates: end_date should be after start_date if both are provided
+        if start_date and end_date:
+            from datetime import datetime
+            start = datetime.strptime(start_date, '%Y-%m-%d').date()
+            end = datetime.strptime(end_date, '%Y-%m-%d').date()
+            if end < start:
+                return JsonResponse({'success': False, 'error': 'End date must be after start date'}, status=400)
+        
+        # Get the next order value using project_id * 1000 as base
+        # This ensures orders don't mix between different projects
+        from dashboard_user.models import ProjectStage
+        from decimal import Decimal
+        base_order = project.id * 1000
+        last_stage = project.stages.order_by('-order').first()
+        if last_stage and last_stage.order >= base_order:
+            # Get the relative order within this project
+            relative_order = int(last_stage.order) % 1000
+            next_order = base_order + relative_order + 1
+        else:
+            # First stage for this project
+            next_order = base_order + 1
+        
+        stage = ProjectStage.objects.create(
+            project=project,
+            title=title,
+            description=description,
+            start_date=start_date,
+            end_date=end_date,
+            target_date=target_date,
+            order=Decimal(next_order),
+            is_ai_generated=False,
+            is_pending_confirmation=False,
+        )
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Stage created successfully',
+            'stage_id': stage.id
+        })
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f'Error creating stage: {str(e)}', exc_info=True)
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+def get_tasks_api(request, project_id, stage_id):
+    """API endpoint to fetch tasks for a stage (for users)"""
+    try:
+        if not hasattr(request.user, 'profile'):
+            return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+        
+        project = get_object_or_404(
+            Project.objects.select_related('project_owner', 'supervised_by'),
+            id=project_id
+        )
+        
+        # Check if user is owner or supervisor
+        is_owner = False
+        is_supervisor = False
+        
+        if request.user.profile.role == 'user':
+            user_profile = request.user.user_profile
+            is_owner = (project.project_owner == user_profile)
+        elif request.user.profile.role == 'mentor':
+            mentor_profile = request.user.mentor_profile
+            is_supervisor = (project.supervised_by == mentor_profile)
+        
+        # Only allow access if user is owner or supervisor
+        if not (is_owner or is_supervisor):
+            return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+        
+        from dashboard_user.models import ProjectStage
+        stage = get_object_or_404(ProjectStage, id=stage_id, project=project)
+        
+        tasks = stage.backlog_tasks.all().order_by('order', 'created_at')
+        
+        # Calculate active and completed task counts
+        active_count = tasks.filter(completed=False).count()
+        completed_count = tasks.filter(completed=True).count()
+        
+        tasks_data = []
+        for task in tasks:
+            dl = task.deadline
+            deadline_str = (dl.strftime('%Y-%m-%d') if hasattr(dl, 'strftime') else (dl[:10] if isinstance(dl, str) and len(dl) >= 10 else None)) if dl else None
+            tasks_data.append({
+                'id': task.id,
+                'title': task.title,
+                'description': task.description or '',
+                'completed': task.completed,
+                'priority': task.priority,
+                'status': task.status,
+                'deadline': deadline_str,
+                'user_active_backlog': task.user_active_backlog_id if task.user_active_backlog else None,
+                'created_at': task.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+                'order': float(task.order),
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'tasks': tasks_data,
+            'active_count': active_count,
+            'completed_count': completed_count
+        })
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f'Error in get_tasks_api: {str(e)}', exc_info=True)
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 
 @login_required

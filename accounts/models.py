@@ -93,6 +93,13 @@ class UserProfile(models.Model):
 
     # Client wallet for prepaid sessions (Phase 4). Modified only via billing.services.wallet_service.
     wallet_balance_cents = models.PositiveIntegerField(default=0)
+    
+    # Subscription field for AI features
+    subscription = models.CharField(
+        max_length=50,
+        default='FREE',
+        help_text="User subscription tier. FREE means AI tools are not available."
+    )
 
     class Meta:
         verbose_name = "User Profile"
