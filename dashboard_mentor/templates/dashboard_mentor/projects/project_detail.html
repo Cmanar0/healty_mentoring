@@ -732,6 +732,33 @@
         cursor: not-allowed;
     }
 
+    .target-date-modal-footer .btn-danger {
+        background: #ef4444;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        font-size: 0.9rem;
+    }
+
+    .target-date-modal-footer .btn-danger:hover {
+        background: #dc2626;
+    }
+
+    .target-date-modal-footer .btn-danger:disabled {
+        opacity: 0.7;
+        cursor: not-allowed;
+    }
+
+    .delete-confirm-message {
+        margin: 0;
+        color: #334155;
+        line-height: 1.5;
+    }
+
     /* Supervisor Modal Styles */
     .supervisor-modal-content {
         padding: 24px;
@@ -3280,6 +3307,24 @@
                 <button type="submit" class="btn-confirm" id="targetDateSubmitBtn">Save</button>
             </div>
         </form>
+    </div>
+</div>
+
+<div id="deleteConfirmModal" class="target-date-modal-overlay" onclick="if(event.target === this) closeDeleteConfirmModal()" style="display: none;">
+    <div class="target-date-modal-container" style="max-width: 460px; min-width: 420px; min-height: auto;">
+        <div class="target-date-modal-header">
+            <h3 id="deleteConfirmModalTitle">Confirm Delete</h3>
+        </div>
+        <button class="target-date-modal-close" onclick="closeDeleteConfirmModal()">
+            <i class="fas fa-times"></i>
+        </button>
+        <div class="target-date-modal-body">
+            <p id="deleteConfirmModalMessage" class="delete-confirm-message">Are you sure you want to delete this item?</p>
+        </div>
+        <div class="target-date-modal-footer">
+            <button type="button" class="btn-cancel" onclick="closeDeleteConfirmModal()">Cancel</button>
+            <button type="button" class="btn-danger" id="deleteConfirmModalBtn" onclick="confirmDeleteConfirmModal()">Delete</button>
+        </div>
     </div>
 </div>
 
@@ -5973,13 +6018,65 @@
         });
     };
     
-    window.deleteStage = function(id) {
-        if(confirm('Delete stage?')) {
-            fetch(`/dashboard/mentor/projects/${PROJECT_ID}/stages/${id}/delete/`, {
-                method: 'POST',
-                headers: {'X-CSRFToken': '{{ csrf_token }}'}
-            }).then(() => loadStages());
+    let pendingDeleteAction = null;
+
+    window.openDeleteConfirmModal = function(opts) {
+        const overlay = document.getElementById('deleteConfirmModal');
+        const titleEl = document.getElementById('deleteConfirmModalTitle');
+        const messageEl = document.getElementById('deleteConfirmModalMessage');
+        const confirmBtn = document.getElementById('deleteConfirmModalBtn');
+        if (!overlay || !titleEl || !messageEl || !confirmBtn) return;
+
+        const cfg = opts || {};
+        pendingDeleteAction = typeof cfg.onConfirm === 'function' ? cfg.onConfirm : null;
+        titleEl.textContent = cfg.title || 'Confirm Delete';
+        messageEl.textContent = cfg.message || 'Are you sure you want to delete this item?';
+        confirmBtn.textContent = cfg.confirmText || 'Delete';
+        confirmBtn.disabled = false;
+
+        overlay.style.display = 'flex';
+        requestAnimationFrame(() => overlay.classList.add('active'));
+    };
+
+    window.closeDeleteConfirmModal = function() {
+        const overlay = document.getElementById('deleteConfirmModal');
+        if (!overlay) return;
+        overlay.classList.remove('active');
+        setTimeout(() => {
+            overlay.style.display = 'none';
+            pendingDeleteAction = null;
+        }, 250);
+    };
+
+    window.confirmDeleteConfirmModal = function() {
+        const confirmBtn = document.getElementById('deleteConfirmModalBtn');
+        if (confirmBtn) confirmBtn.disabled = true;
+        if (pendingDeleteAction) {
+            pendingDeleteAction();
+        } else {
+            closeDeleteConfirmModal();
         }
+    };
+
+    window.deleteStage = function(id) {
+        openDeleteConfirmModal({
+            title: 'Delete Stage',
+            message: 'Are you sure you want to delete this stage?',
+            confirmText: 'Delete Stage',
+            onConfirm: function() {
+                fetch(`/dashboard/mentor/projects/${PROJECT_ID}/stages/${id}/delete/`, {
+                    method: 'POST',
+                    headers: {'X-CSRFToken': '{{ csrf_token }}'}
+                })
+                .then(() => {
+                    closeDeleteConfirmModal();
+                    loadStages();
+                })
+                .catch(() => {
+                    closeDeleteConfirmModal();
+                });
+            }
+        });
     };
     
     // Toggle stage tasks section
@@ -6774,7 +6871,11 @@
         
         if (taskIds.length === 0) return;
         
-        if (!confirm(`Delete ${taskIds.length} task(s)?`)) return;
+        openDeleteConfirmModal({
+            title: 'Delete Tasks',
+            message: `Are you sure you want to delete ${taskIds.length} task(s)?`,
+            confirmText: 'Delete Tasks',
+            onConfirm: function() {
         
         // Close dropdown
         const selectContainer = document.getElementById(`actionsSelect_${stageId}`);
@@ -6875,10 +6976,14 @@
             if (typeof showNotification !== 'undefined') {
                 showNotification(`${taskIds.length} task(s) deleted successfully`, 'success');
             }
+            closeDeleteConfirmModal();
         }).catch(error => {
             console.error('Error deleting tasks:', error);
             if (typeof showNotification !== 'undefined') {
                 showNotification('An error occurred while deleting tasks', 'error');
+            }
+            closeDeleteConfirmModal();
+        });
             }
         });
     }
@@ -8006,41 +8111,48 @@
             event.stopPropagation();
         }
         
-        if (!confirm('Delete this task?')) return;
-        
-        fetch(`/dashboard/mentor/projects/${PROJECT_ID}/stages/${stageId}/tasks/${taskId}/delete/`, {
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': '{{ csrf_token }}',
-                'Content-Type': 'application/json'
-            }
-        })
-        .then(response => {
-            if (response.ok) {
-                // Find and remove the task element with fade-out animation
-                const taskItem = document.querySelector(`[data-task-id="${taskId}"]`);
-                if (taskItem) {
-                    taskItem.classList.add('fade-out');
-                    setTimeout(() => {
-                        taskItem.remove();
-                        // Reload stage tasks to update counts
-                        loadStageTasks(stageId);
-                    }, 300);
-                }
-                
-                if (typeof showNotification !== 'undefined') {
-                    showNotification('Task deleted successfully', 'success');
-                }
-            } else {
-                throw new Error('Failed to delete task');
-            }
-        })
-        .catch(error => {
-            console.error('Error deleting task:', error);
-            if (typeof showNotification !== 'undefined') {
-                showNotification('An error occurred while deleting the task', 'error');
-            } else {
-                alert('An error occurred while deleting the task');
+        openDeleteConfirmModal({
+            title: 'Delete Task',
+            message: 'Are you sure you want to delete this task?',
+            confirmText: 'Delete Task',
+            onConfirm: function() {
+                fetch(`/dashboard/mentor/projects/${PROJECT_ID}/stages/${stageId}/tasks/${taskId}/delete/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': '{{ csrf_token }}',
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => {
+                    if (response.ok) {
+                        // Find and remove the task element with fade-out animation
+                        const taskItem = document.querySelector(`[data-task-id="${taskId}"]`);
+                        if (taskItem) {
+                            taskItem.classList.add('fade-out');
+                            setTimeout(() => {
+                                taskItem.remove();
+                                // Reload stage tasks to update counts
+                                loadStageTasks(stageId);
+                            }, 300);
+                        }
+                        
+                        if (typeof showNotification !== 'undefined') {
+                            showNotification('Task deleted successfully', 'success');
+                        }
+                        closeDeleteConfirmModal();
+                    } else {
+                        throw new Error('Failed to delete task');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error deleting task:', error);
+                    if (typeof showNotification !== 'undefined') {
+                        showNotification('An error occurred while deleting the task', 'error');
+                    } else {
+                        alert('An error occurred while deleting the task');
+                    }
+                    closeDeleteConfirmModal();
+                });
             }
         });
     };
