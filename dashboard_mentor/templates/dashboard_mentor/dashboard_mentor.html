@@ -151,13 +151,13 @@
                     </div>
                     {% endif %}
 
-                    <!-- Stats Card -->
+                    <!-- Earnings Card -->
                     <div class="dashboard-card stats-card-half" id="statsCard">
                         <div class="card-header">
-                            <h3 class="card-title">Stats</h3>
+                            <h3 class="card-title">Earnings</h3>
                             <div style="display: flex; gap: 12px; align-items: center;">
-                                <a href="{% url 'general:dashboard_mentor:statistics' %}" class="btn-all-stats">
-                                    All stats
+                                <a href="{% url 'general:dashboard_mentor:earnings' %}" class="btn-all-stats">
+                                    View earnings
                                 </a>
                                 <div class="stats-period-dropdown">
                                     <button class="stats-period-trigger" id="statsPeriodTrigger">
@@ -176,7 +176,7 @@
                         </div>
 
                         <div class="stats-grid-compact">
-                            <div class="stat-card-compact primary">
+                            <div class="stat-card-compact primary" data-earnings-link role="button" tabindex="0" title="Open earnings page">
                                 <div class="stat-card-compact-icon">
                                     <i class="fas fa-hourglass-half"></i>
                                 </div>
@@ -187,7 +187,7 @@
                                 </div>
                             </div>
 
-                            <div class="stat-mini" style="background: #f0f9ff; border-color: #bae6fd;">
+                            <div class="stat-mini" style="background: #f0f9ff; border-color: #bae6fd;" data-earnings-link role="button" tabindex="0" title="Open earnings page">
                                 <div class="stat-mini-icon" style="background: rgba(14, 165, 233, 0.12); color: #0284c7;">
                                     <i class="fas fa-wallet"></i>
                                 </div>
@@ -197,7 +197,7 @@
                                 </div>
                             </div>
 
-                            <div class="stat-mini" style="background: #ecfeff; border-color: #99f6e4;">
+                            <div class="stat-mini" style="background: #ecfeff; border-color: #99f6e4;" data-earnings-link role="button" tabindex="0" title="Open earnings page">
                                 <div class="stat-mini-icon" style="background: rgba(13, 148, 136, 0.12); color: #0f766e;">
                                     <i class="fas fa-check-circle"></i>
                                 </div>
@@ -419,6 +419,10 @@
 .stats-card-half .stat-mini {
     width: 100%;
     margin: 0;
+}
+
+[data-earnings-link] {
+    cursor: pointer;
 }
 
 .btn-all-stats {
@@ -1155,6 +1159,20 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
     }
+
+    // Earnings card click-through
+    const earningsUrl = '{% url "general:dashboard_mentor:earnings" %}';
+    document.querySelectorAll('[data-earnings-link]').forEach(function(el) {
+        el.addEventListener('click', function() {
+            window.location.href = earningsUrl;
+        });
+        el.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                window.location.href = earningsUrl;
+            }
+        });
+    });
 
     // Stats Period Dropdown + financial buckets
     const statsPeriodTrigger = document.getElementById('statsPeriodTrigger');

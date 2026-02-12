@@ -72,6 +72,14 @@ Restart Django after updating `.env`.
 
 **Production:** Do **not** run Stripe CLI in production. In production, add the webhook endpoint in the Stripe Dashboard (`https://yourdomain.com/api/billing/stripe-webhook/`), select `payment_intent.succeeded` and `payment_intent.payment_failed`, and set the signing secret in production `.env`.
 
+### Financial Integrity Tests (Phase 5.1)
+
+Run the deterministic hardening tests for refund/payout lifecycle:
+
+```powershell
+python manage.py test billing.tests.SessionFinanceServiceHardeningTests -v 2
+```
+
 ## Production
 
 The project is designed to be run with Docker Compose behind a host-level reverse proxy (e.g., Caddy).

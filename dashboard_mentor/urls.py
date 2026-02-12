@@ -110,5 +110,6 @@ urlpatterns = [
     path('backlog/tasks/<int:task_id>/delete/', views.delete_mentor_backlog_task, name='delete_mentor_backlog_task'),
     path('backlog/tasks/reorder/', views.reorder_mentor_backlog_tasks, name='reorder_mentor_backlog_tasks'),
     path('statistics/', views.statistics, name='statistics'),
+    path('earnings/', views.earnings, name='earnings'),
 ]
 

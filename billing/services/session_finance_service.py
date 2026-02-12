@@ -9,6 +9,7 @@ from django.utils import timezone
 from billing import config
 from billing.services.wallet_service import add_credit
 from billing.services.mentor_wallet_service import credit_mentor, deduct_mentor, MentorWalletError
+from general.models import Session
 
 
 class CancellationError(Exception):
@@ -38,6 +39,7 @@ def _get_client_profile(session):
 @transaction.atomic()
 def cancel_session_with_refund(session, now=None):
     now = now or timezone.now()
+    session = Session.objects.select_for_update().select_related("payment", "created_by").get(id=session.id)
     if session.status not in ("invited", "confirmed"):
         raise CancellationError("Only invited/confirmed sessions can be cancelled.")
     deadline = session.start_datetime - timedelta(hours=config.SESSION_CANCELLATION_WINDOW_HOURS)
@@ -59,8 +61,7 @@ def cancel_session_with_refund(session, now=None):
         )
         if payment:
             payment.status = "refunded"
-            payment.platform_commission_cents = 0
-            payment.save(update_fields=["status", "platform_commission_cents"])
+            payment.save(update_fields=["status"])
         session.refunded_at = now
 
     session.status = "cancelled"
@@ -71,10 +72,11 @@ def cancel_session_with_refund(session, now=None):
 @transaction.atomic()
 def refund_completed_session(session, now=None):
     now = now or timezone.now()
+    session = Session.objects.select_for_update().select_related("payment", "created_by").get(id=session.id)
+    if session.status in ("payout_available", "paid_out", "refunded"):
+        raise RefundError("Cannot refund a payout-available or paid-out session.")
     if session.status != "completed":
         raise RefundError("Only completed sessions can be refunded.")
-    if getattr(session, "status", None) in ("payout_available", "paid_out"):
-        raise RefundError("Cannot refund a payout-available or paid-out session.")
     refund_deadline = session.end_datetime + timedelta(days=config.SESSION_REFUND_WINDOW_DAYS)
     if now > refund_deadline:
         raise RefundError("Refund window has passed.")
@@ -94,8 +96,7 @@ def refund_completed_session(session, now=None):
         )
         if payment:
             payment.status = "refunded"
-            payment.platform_commission_cents = 0
-            payment.save(update_fields=["status", "platform_commission_cents"])
+            payment.save(update_fields=["status"])
 
     session.status = "refunded"
     session.refunded_at = now
@@ -106,6 +107,7 @@ def refund_completed_session(session, now=None):
 @transaction.atomic()
 def mark_session_payout_available(session, now=None):
     now = now or timezone.now()
+    session = Session.objects.select_for_update().select_related("payment", "created_by").get(id=session.id)
     if session.status != "completed":
         return 0
     eligible_at = session.end_datetime + timedelta(days=config.SESSION_REFUND_WINDOW_DAYS)
@@ -116,6 +118,10 @@ def mark_session_payout_available(session, now=None):
     mentor_profile = getattr(mentor_user, "mentor_profile", None) if mentor_user else None
 
     mentor_amount = 0
+    # Critical ordering: status transition before wallet credit.
+    session.status = "payout_available"
+    session.save(update_fields=["status"])
+
     if payment and mentor_profile:
         # Idempotency: avoid double-crediting if cleanup runs multiple times.
         from billing.models import MentorWalletTransaction
@@ -134,14 +140,13 @@ def mark_session_payout_available(session, now=None):
                 related_payment=payment,
                 related_session=session,
             )
-    session.status = "payout_available"
-    session.save(update_fields=["status"])
     return mentor_amount
 
 
 @transaction.atomic()
 def withdraw_session_payout(session, mentor_profile, now=None):
     now = now or timezone.now()
+    session = Session.objects.select_for_update().select_related("payment", "created_by").get(id=session.id)
     if session.status != "payout_available":
         raise PayoutError("Only payout_available sessions can be withdrawn.")
     if not mentor_profile or session.created_by_id != mentor_profile.user_id:

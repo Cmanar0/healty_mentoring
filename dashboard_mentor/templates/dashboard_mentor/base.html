@@ -202,7 +202,7 @@
           </a>
         </li>
         <li>
-          <a href="#" class="sidebar-link sidebar-link-your" title="Your Earnings">
+          <a href="{% url 'general:dashboard_mentor:earnings' %}" class="sidebar-link sidebar-link-your {% if request.resolver_match.url_name == 'earnings' %}active{% endif %}" title="Your Earnings">
             <i class="fas fa-euro-sign"></i>
             <span class="sidebar-text">Your Earnings</span>
           </a>

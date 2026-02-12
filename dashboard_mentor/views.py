@@ -112,6 +112,12 @@ def dashboard(request):
     
     if request.user.profile.role != 'mentor':
         return redirect('general:index')
+
+    # Keep lifecycle statuses fresh when mentor opens dashboard
+    try:
+        _run_calendar_status_cleanup()
+    except Exception:
+        pass
     
     # Fetch upcoming sessions (invited and confirmed only, future dates, max 4)
     upcoming_sessions = []
@@ -8658,6 +8664,12 @@ def statistics(request):
     """Mentor statistics page"""
     if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
         return redirect('general:index')
+
+    # Keep lifecycle statuses fresh when mentor opens statistics
+    try:
+        _run_calendar_status_cleanup()
+    except Exception:
+        pass
     
     mentor_profile = request.user.mentor_profile if hasattr(request.user, 'mentor_profile') else None
     
@@ -8707,10 +8719,37 @@ def statistics(request):
 
 
 @login_required
+def earnings(request):
+    """Mentor earnings page."""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        return redirect('general:index')
+
+    # Keep lifecycle statuses fresh when mentor opens earnings page
+    try:
+        _run_calendar_status_cleanup()
+    except Exception:
+        pass
+
+    mentor_profile = request.user.mentor_profile if hasattr(request.user, 'mentor_profile') else None
+    financial_stats = {"completed_pending_cents": 0, "payout_available_cents": 0, "paid_out_cents": 0}
+    if mentor_profile:
+        financial_stats = _mentor_financial_stats(mentor_profile, "this_week")
+
+    return render(request, 'dashboard_mentor/earnings.html', {
+        'financial_stats': financial_stats,
+        'mentor_profile': mentor_profile,
+    })
+
+
+@login_required
 def dashboard_financial_stats(request):
     """JSON stats for mentor dashboard money card period dropdown."""
     if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
         return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+    try:
+        _run_calendar_status_cleanup()
+    except Exception:
+        pass
     mentor_profile = getattr(request.user, 'mentor_profile', None)
     if not mentor_profile:
         return JsonResponse({'success': False, 'error': 'Mentor profile not found'}, status=404)

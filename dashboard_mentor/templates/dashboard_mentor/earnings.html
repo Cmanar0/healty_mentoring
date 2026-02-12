@@ -1,0 +1,127 @@
+{% extends "dashboard_mentor/base.html" %}
+
+{% block page_title %}Your Earnings{% endblock %}
+
+{% block dashboard_content %}
+<div class="dashboard-content-container">
+    <div class="dashboard-part">
+        <div class="dashboard-card" style="max-width: 900px;">
+            <div class="card-header">
+                <h3 class="card-title">Earnings</h3>
+                <div class="stats-period-dropdown">
+                    <button class="stats-period-trigger" id="earningsPeriodTrigger">
+                        <span class="period-label">This Week</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                    <div class="stats-period-menu" id="earningsPeriodMenu">
+                        <button class="stats-period-item" data-period="today">Today</button>
+                        <button class="stats-period-item active" data-period="this_week">This Week</button>
+                        <button class="stats-period-item" data-period="this_month">This Month</button>
+                        <button class="stats-period-item" data-period="last_month">Last Month</button>
+                        <button class="stats-period-item" data-period="all">All Time</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="stats-grid-compact">
+                <div class="stat-card-compact primary">
+                    <div class="stat-card-compact-icon">
+                        <i class="fas fa-hourglass-half"></i>
+                    </div>
+                    <div class="stat-card-compact-content">
+                        <span class="stat-card-compact-label">Completed (Pending)</span>
+                        <span class="stat-card-compact-value" id="earningsCompletedPendingValue" data-cents="{{ financial_stats.completed_pending_cents|default:0 }}"></span>
+                        <span class="stat-card-compact-change">Waiting refund window</span>
+                    </div>
+                </div>
+
+                <div class="stat-mini" style="background: #f0f9ff; border-color: #bae6fd;">
+                    <div class="stat-mini-icon" style="background: rgba(14, 165, 233, 0.12); color: #0284c7;">
+                        <i class="fas fa-wallet"></i>
+                    </div>
+                    <div class="stat-mini-content">
+                        <span class="stat-mini-value" id="earningsPayoutAvailableValue" data-cents="{{ financial_stats.payout_available_cents|default:0 }}"></span>
+                        <span class="stat-mini-label">Available for Payout</span>
+                    </div>
+                </div>
+
+                <div class="stat-mini" style="background: #ecfeff; border-color: #99f6e4;">
+                    <div class="stat-mini-icon" style="background: rgba(13, 148, 136, 0.12); color: #0f766e;">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <div class="stat-mini-content">
+                        <span class="stat-mini-value" id="earningsPaidOutValue" data-cents="{{ financial_stats.paid_out_cents|default:0 }}"></span>
+                        <span class="stat-mini-label">Paid Out</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const trigger = document.getElementById('earningsPeriodTrigger');
+    const menu = document.getElementById('earningsPeriodMenu');
+    const dropdown = document.querySelector('.stats-period-dropdown');
+    const completedEl = document.getElementById('earningsCompletedPendingValue');
+    const payoutEl = document.getElementById('earningsPayoutAvailableValue');
+    const paidOutEl = document.getElementById('earningsPaidOutValue');
+    const STATS_URL = '{% url "general:dashboard_mentor:dashboard_financial_stats" %}';
+
+    function formatMoneyFromCents(cents) {
+        const dollars = Number(cents || 0) / 100;
+        return '$' + dollars.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function setValues(completedPending, payoutAvailable, paidOut) {
+        if (completedEl) completedEl.textContent = formatMoneyFromCents(completedPending);
+        if (payoutEl) payoutEl.textContent = formatMoneyFromCents(payoutAvailable);
+        if (paidOutEl) paidOutEl.textContent = formatMoneyFromCents(paidOut);
+    }
+
+    setValues(
+        completedEl ? completedEl.getAttribute('data-cents') : 0,
+        payoutEl ? payoutEl.getAttribute('data-cents') : 0,
+        paidOutEl ? paidOutEl.getAttribute('data-cents') : 0
+    );
+
+    if (!trigger || !menu || !dropdown) return;
+
+    trigger.addEventListener('click', function(e) {
+        e.stopPropagation();
+        dropdown.classList.toggle('active');
+    });
+
+    document.addEventListener('click', function(event) {
+        if (!dropdown.contains(event.target)) {
+            dropdown.classList.remove('active');
+        }
+    });
+
+    const periodItems = menu.querySelectorAll('.stats-period-item');
+    periodItems.forEach(function(item) {
+        item.addEventListener('click', async function() {
+            periodItems.forEach(function(i) { i.classList.remove('active'); });
+            this.classList.add('active');
+            const periodLabel = trigger.querySelector('.period-label');
+            if (periodLabel) periodLabel.textContent = this.textContent;
+            dropdown.classList.remove('active');
+
+            const period = this.getAttribute('data-period') || 'this_week';
+            try {
+                const response = await fetch(STATS_URL + '?period=' + encodeURIComponent(period), {
+                    headers: { 'Accept': 'application/json' }
+                });
+                const data = await response.json();
+                if (data && data.success) {
+                    setValues(data.completed_pending_cents || 0, data.payout_available_cents || 0, data.paid_out_cents || 0);
+                }
+            } catch (e) {
+                // Keep current values on fetch failure.
+            }
+        });
+    });
+});
+</script>
+{% endblock %}
