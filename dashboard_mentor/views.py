@@ -36,7 +36,7 @@ def _run_calendar_status_cleanup():
     from general.cleanup.session_slots import cleanup_draft_sessions
     cleanup_expired_availability_slots()
     cleanup_draft_sessions()
-def _mentor_financial_stats(mentor_profile, period="this_week"):
+def _mentor_financial_stats(mentor_profile, period="all"):
     """
     Financial buckets for dashboard stats card.
     Buckets are based on session status:
@@ -48,7 +48,7 @@ def _mentor_financial_stats(mentor_profile, period="this_week"):
     from general.models import Session
     now = timezone.now()
     start = end = None
-    p = (period or "this_week").strip().lower()
+    p = (period or "all").strip().lower()
     if p == "today":
         start = now.replace(hour=0, minute=0, second=0, microsecond=0)
         end = start + timedelta(days=1)
@@ -255,7 +255,7 @@ def dashboard(request):
                 'is_due_this_week': task.deadline and task.deadline <= week_from_now if task.deadline else False,
             }
             backlog_tasks.append(task_dict)
-        financial_stats = _mentor_financial_stats(mentor_profile, "this_week")
+        financial_stats = _mentor_financial_stats(mentor_profile, "all")
     else:
         financial_stats = {
             "completed_pending_cents": 0,
@@ -8745,7 +8745,7 @@ def earnings(request):
         "paid_out_cents": 0,
     }
     if mentor_profile:
-        financial_stats = _mentor_financial_stats(mentor_profile, "this_week")
+        financial_stats = _mentor_financial_stats(mentor_profile, "all")
 
     return render(request, 'dashboard_mentor/earnings.html', {
         'financial_stats': financial_stats,
@@ -8765,7 +8765,7 @@ def dashboard_financial_stats(request):
     mentor_profile = getattr(request.user, 'mentor_profile', None)
     if not mentor_profile:
         return JsonResponse({'success': False, 'error': 'Mentor profile not found'}, status=404)
-    period = request.GET.get('period', 'this_week')
+    period = request.GET.get('period', 'all')
     data = _mentor_financial_stats(mentor_profile, period)
     return JsonResponse({
         'success': True,
