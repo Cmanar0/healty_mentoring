@@ -40,6 +40,7 @@ def _mentor_financial_stats(mentor_profile, period="this_week"):
     """
     Financial buckets for dashboard stats card.
     Buckets are based on session status:
+      - confirmed: prepaid sessions expected to become earnings after completion
       - completed: funds pending refund-window settlement
       - payout_available: available to withdraw
       - paid_out: already withdrawn
@@ -68,7 +69,9 @@ def _mentor_financial_stats(mentor_profile, period="this_week"):
         else:
             start = this_month_start.replace(month=this_month_start.month - 1)
 
-    qs = mentor_profile.sessions.filter(status__in=["completed", "payout_available", "paid_out"]).select_related("payment")
+    qs = mentor_profile.sessions.filter(
+        status__in=["confirmed", "completed", "payout_available", "paid_out"]
+    ).select_related("payment")
     if start and end:
         qs = qs.filter(end_datetime__gte=start, end_datetime__lt=end)
 
@@ -78,12 +81,15 @@ def _mentor_financial_stats(mentor_profile, period="this_week"):
             return int((payment.amount_cents or 0) - (payment.platform_commission_cents or 0))
         return int(round(float(getattr(session, "session_price", 0) or 0) * 100))
 
+    confirmed_cents = 0
     completed_pending_cents = 0
     payout_available_cents = 0
     paid_out_cents = 0
     for s in qs:
         amount = max(mentor_amount_cents(s), 0)
-        if s.status == "completed":
+        if s.status == "confirmed":
+            confirmed_cents += amount
+        elif s.status == "completed":
             completed_pending_cents += amount
         elif s.status == "payout_available":
             payout_available_cents += amount
@@ -91,6 +97,7 @@ def _mentor_financial_stats(mentor_profile, period="this_week"):
             paid_out_cents += amount
 
     return {
+        "confirmed_cents": confirmed_cents,
         "completed_pending_cents": completed_pending_cents,
         "payout_available_cents": payout_available_cents,
         "paid_out_cents": paid_out_cents,
@@ -8731,7 +8738,12 @@ def earnings(request):
         pass
 
     mentor_profile = request.user.mentor_profile if hasattr(request.user, 'mentor_profile') else None
-    financial_stats = {"completed_pending_cents": 0, "payout_available_cents": 0, "paid_out_cents": 0}
+    financial_stats = {
+        "confirmed_cents": 0,
+        "completed_pending_cents": 0,
+        "payout_available_cents": 0,
+        "paid_out_cents": 0,
+    }
     if mentor_profile:
         financial_stats = _mentor_financial_stats(mentor_profile, "this_week")
 

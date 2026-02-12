@@ -35,6 +35,7 @@ INSTALLED_APPS = [
     "dashboard_admin",
     "web",
     "billing",
+    "testing",
     "crispy_forms",
     "widget_tweaks",
 ]
@@ -142,6 +143,7 @@ STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "")
 STRIPE_PUBLISHABLE_KEY = os.getenv("STRIPE_PUBLISHABLE_KEY", "")
 # Webhook signing secret (from Stripe Dashboard or Stripe CLI when using stripe listen)
 STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")
+ALLOW_TEST_SCENARIOS = os.getenv("ALLOW_TEST_SCENARIOS", "False") == "True"
 
 # Static files storage for whitenoise
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"

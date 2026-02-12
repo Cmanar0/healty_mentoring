@@ -5,7 +5,7 @@
 {% block dashboard_content %}
 <div class="dashboard-content-container">
     <div class="dashboard-part">
-        <div class="dashboard-card" style="max-width: 900px;">
+        <div class="dashboard-card" style="max-width: 1200px;">
             <div class="card-header">
                 <h3 class="card-title">Earnings</h3>
                 <div class="stats-period-dropdown">
@@ -23,15 +23,24 @@
                 </div>
             </div>
 
-            <div class="stats-grid-compact">
-                <div class="stat-card-compact primary">
-                    <div class="stat-card-compact-icon">
+            <div class="stats-grid-compact earnings-grid-one-row">
+                <div class="stat-mini" style="background: #f0fdf4; border-color: #bbf7d0;">
+                    <div class="stat-mini-icon" style="background: rgba(34, 197, 94, 0.12); color: #15803d;">
+                        <i class="fas fa-calendar-check"></i>
+                    </div>
+                    <div class="stat-mini-content">
+                        <span class="stat-mini-value" id="earningsConfirmedValue" data-cents="{{ financial_stats.confirmed_cents|default:0 }}"></span>
+                        <span class="stat-mini-label">Confirmed Sessions</span>
+                    </div>
+                </div>
+
+                <div class="stat-mini" style="background: #fff7ed; border-color: #fed7aa;">
+                    <div class="stat-mini-icon" style="background: rgba(249, 115, 22, 0.12); color: #c2410c;">
                         <i class="fas fa-hourglass-half"></i>
                     </div>
-                    <div class="stat-card-compact-content">
-                        <span class="stat-card-compact-label">Completed (Pending)</span>
-                        <span class="stat-card-compact-value" id="earningsCompletedPendingValue" data-cents="{{ financial_stats.completed_pending_cents|default:0 }}"></span>
-                        <span class="stat-card-compact-change">Waiting refund window</span>
+                    <div class="stat-mini-content">
+                        <span class="stat-mini-value" id="earningsCompletedPendingValue" data-cents="{{ financial_stats.completed_pending_cents|default:0 }}"></span>
+                        <span class="stat-mini-label">Completed (Pending)</span>
                     </div>
                 </div>
 
@@ -59,11 +68,25 @@
     </div>
 </div>
 
+<style>
+.earnings-grid-one-row {
+    display: grid !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+}
+@media (max-width: 1024px) {
+    .earnings-grid-one-row {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+</style>
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const trigger = document.getElementById('earningsPeriodTrigger');
     const menu = document.getElementById('earningsPeriodMenu');
     const dropdown = document.querySelector('.stats-period-dropdown');
+    const confirmedEl = document.getElementById('earningsConfirmedValue');
     const completedEl = document.getElementById('earningsCompletedPendingValue');
     const payoutEl = document.getElementById('earningsPayoutAvailableValue');
     const paidOutEl = document.getElementById('earningsPaidOutValue');
@@ -74,13 +97,15 @@ document.addEventListener('DOMContentLoaded', function() {
         return '$' + dollars.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
 
-    function setValues(completedPending, payoutAvailable, paidOut) {
+    function setValues(confirmed, completedPending, payoutAvailable, paidOut) {
+        if (confirmedEl) confirmedEl.textContent = formatMoneyFromCents(confirmed);
         if (completedEl) completedEl.textContent = formatMoneyFromCents(completedPending);
         if (payoutEl) payoutEl.textContent = formatMoneyFromCents(payoutAvailable);
         if (paidOutEl) paidOutEl.textContent = formatMoneyFromCents(paidOut);
     }
 
     setValues(
+        confirmedEl ? confirmedEl.getAttribute('data-cents') : 0,
         completedEl ? completedEl.getAttribute('data-cents') : 0,
         payoutEl ? payoutEl.getAttribute('data-cents') : 0,
         paidOutEl ? paidOutEl.getAttribute('data-cents') : 0
@@ -115,7 +140,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
                 const data = await response.json();
                 if (data && data.success) {
-                    setValues(data.completed_pending_cents || 0, data.payout_available_cents || 0, data.paid_out_cents || 0);
+                    setValues(
+                        data.confirmed_cents || 0,
+                        data.completed_pending_cents || 0,
+                        data.payout_available_cents || 0,
+                        data.paid_out_cents || 0
+                    );
                 }
             } catch (e) {
                 // Keep current values on fetch failure.
