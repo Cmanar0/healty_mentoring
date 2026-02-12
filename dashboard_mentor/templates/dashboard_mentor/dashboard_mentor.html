@@ -165,37 +165,45 @@
                                         <i class="fas fa-chevron-down"></i>
                                     </button>
                                     <div class="stats-period-menu" id="statsPeriodMenu">
-                                        <button class="stats-period-item">Today</button>
-                                        <button class="stats-period-item active">This Week</button>
-                                        <button class="stats-period-item">This Month</button>
-                                        <button class="stats-period-item">Last Month</button>
-                                        <button class="stats-period-item">All Time</button>
+                                        <button class="stats-period-item" data-period="today">Today</button>
+                                        <button class="stats-period-item active" data-period="this_week">This Week</button>
+                                        <button class="stats-period-item" data-period="this_month">This Month</button>
+                                        <button class="stats-period-item" data-period="last_month">Last Month</button>
+                                        <button class="stats-period-item" data-period="all">All Time</button>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
                         <div class="stats-grid-compact">
-                            <!-- Earned -->
                             <div class="stat-card-compact primary">
                                 <div class="stat-card-compact-icon">
-                                    <i class="fas fa-euro-sign"></i>
+                                    <i class="fas fa-hourglass-half"></i>
                                 </div>
                                 <div class="stat-card-compact-content">
-                                    <span class="stat-card-compact-label">Earned</span>
-                                    <span class="stat-card-compact-value">€1,250</span>
-                                    <span class="stat-card-compact-change positive">+12%</span>
+                                    <span class="stat-card-compact-label">Completed (Pending)</span>
+                                    <span class="stat-card-compact-value" id="statsCompletedPendingValue" data-cents="{{ financial_stats.completed_pending_cents|default:0 }}"></span>
+                                    <span class="stat-card-compact-change">Waiting refund window</span>
                                 </div>
                             </div>
 
-                            <!-- New Clients -->
-                            <div class="stat-mini">
-                                <div class="stat-mini-icon green">
-                                    <i class="fas fa-user-plus"></i>
+                            <div class="stat-mini" style="background: #f0f9ff; border-color: #bae6fd;">
+                                <div class="stat-mini-icon" style="background: rgba(14, 165, 233, 0.12); color: #0284c7;">
+                                    <i class="fas fa-wallet"></i>
                                 </div>
                                 <div class="stat-mini-content">
-                                    <span class="stat-mini-value">3</span>
-                                    <span class="stat-mini-label">New Clients</span>
+                                    <span class="stat-mini-value" id="statsPayoutAvailableValue" data-cents="{{ financial_stats.payout_available_cents|default:0 }}"></span>
+                                    <span class="stat-mini-label">Available for Payout</span>
+                                </div>
+                            </div>
+
+                            <div class="stat-mini" style="background: #ecfeff; border-color: #99f6e4;">
+                                <div class="stat-mini-icon" style="background: rgba(13, 148, 136, 0.12); color: #0f766e;">
+                                    <i class="fas fa-check-circle"></i>
+                                </div>
+                                <div class="stat-mini-content">
+                                    <span class="stat-mini-value" id="statsPaidOutValue" data-cents="{{ financial_stats.paid_out_cents|default:0 }}"></span>
+                                    <span class="stat-mini-label">Paid Out</span>
                                 </div>
                             </div>
                         </div>
@@ -1148,10 +1156,30 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Stats Period Dropdown
+    // Stats Period Dropdown + financial buckets
     const statsPeriodTrigger = document.getElementById('statsPeriodTrigger');
     const statsPeriodMenu = document.getElementById('statsPeriodMenu');
     const statsPeriodDropdown = document.querySelector('.stats-period-dropdown');
+    const statsCompletedPendingValue = document.getElementById('statsCompletedPendingValue');
+    const statsPayoutAvailableValue = document.getElementById('statsPayoutAvailableValue');
+    const statsPaidOutValue = document.getElementById('statsPaidOutValue');
+    const DASHBOARD_FINANCIAL_STATS_URL = '{% url "general:dashboard_mentor:dashboard_financial_stats" %}';
+
+    function formatMoneyFromCents(cents) {
+        const dollars = (Number(cents || 0) / 100);
+        return '$' + dollars.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+    function setStatsValues(cPending, pAvailable, pOut) {
+        if (statsCompletedPendingValue) statsCompletedPendingValue.textContent = formatMoneyFromCents(cPending);
+        if (statsPayoutAvailableValue) statsPayoutAvailableValue.textContent = formatMoneyFromCents(pAvailable);
+        if (statsPaidOutValue) statsPaidOutValue.textContent = formatMoneyFromCents(pOut);
+    }
+    // Initial values from server-rendered data attributes
+    setStatsValues(
+        statsCompletedPendingValue ? statsCompletedPendingValue.getAttribute('data-cents') : 0,
+        statsPayoutAvailableValue ? statsPayoutAvailableValue.getAttribute('data-cents') : 0,
+        statsPaidOutValue ? statsPaidOutValue.getAttribute('data-cents') : 0
+    );
 
     if (statsPeriodTrigger && statsPeriodMenu) {
         statsPeriodTrigger.addEventListener('click', function(e) {
@@ -1169,7 +1197,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Handle period selection
         const periodItems = statsPeriodMenu.querySelectorAll('.stats-period-item');
         periodItems.forEach(item => {
-            item.addEventListener('click', function() {
+            item.addEventListener('click', async function() {
                 // Remove active from all
                 periodItems.forEach(i => i.classList.remove('active'));
                 // Add active to clicked
@@ -1179,6 +1207,22 @@ document.addEventListener('DOMContentLoaded', function() {
                 label.textContent = this.textContent;
                 // Close dropdown
                 statsPeriodDropdown.classList.remove('active');
+                const period = this.getAttribute('data-period') || 'this_week';
+                try {
+                    const response = await fetch(`${DASHBOARD_FINANCIAL_STATS_URL}?period=${encodeURIComponent(period)}`, {
+                        headers: { 'Accept': 'application/json' }
+                    });
+                    const data = await response.json();
+                    if (data && data.success) {
+                        setStatsValues(
+                            data.completed_pending_cents || 0,
+                            data.payout_available_cents || 0,
+                            data.paid_out_cents || 0
+                        );
+                    }
+                } catch (e) {
+                    // keep existing displayed values on fetch failure
+                }
             });
         });
     }

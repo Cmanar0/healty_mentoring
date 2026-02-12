@@ -206,15 +206,18 @@
         <!-- Refund section (shown only for completed sessions) -->
         <section class="session-settings-section session-settings-section--refund" aria-label="Refund session" id="sessionSettingsRefundSection" hidden>
           <div class="session-settings-refund-content">
-            <div class="session-settings-refund-label">Refund Session</div>
+            <div class="session-settings-refund-label" id="sessionSettingsFinanceSectionTitle">Refund Session</div>
             <div class="session-settings-refund-price">
-              <span class="session-settings-refund-price-label">Session Price:</span>
+              <span class="session-settings-refund-price-label" id="sessionSettingsFinancePriceLabel">Session Price:</span>
               <span class="session-settings-refund-price-value" id="sessionSettingsRefundPriceValue">$0</span>
             </div>
             <button type="button" class="session-settings-btn session-settings-btn--warning session-settings-refund-btn-full" id="sessionSettingsRefundBtn">
               Refund Session
             </button>
-            <div class="session-settings-refund-help">
+            <button type="button" class="session-settings-btn session-settings-btn--success session-settings-refund-btn-full" id="sessionSettingsWithdrawBtn" hidden>
+              Withdraw Payout
+            </button>
+            <div class="session-settings-refund-help" id="sessionSettingsFinanceHelp">
               This will mark the session as refunded and cannot be undone.
             </div>
           </div>

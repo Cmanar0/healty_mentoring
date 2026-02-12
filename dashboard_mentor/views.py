@@ -23,6 +23,80 @@ import json
 import os
 from datetime import datetime, timedelta, timezone as dt_timezone
 
+
+def _run_calendar_status_cleanup():
+    """
+    Synchronous status cleanup used before mentor calendar/billing pages.
+    Includes:
+    - invited -> expired
+    - confirmed -> completed
+    - completed -> payout_available (after refund window)
+    """
+    from general.cleanup.availability_slots import cleanup_expired_availability_slots
+    from general.cleanup.session_slots import cleanup_draft_sessions
+    cleanup_expired_availability_slots()
+    cleanup_draft_sessions()
+def _mentor_financial_stats(mentor_profile, period="this_week"):
+    """
+    Financial buckets for dashboard stats card.
+    Buckets are based on session status:
+      - completed: funds pending refund-window settlement
+      - payout_available: available to withdraw
+      - paid_out: already withdrawn
+    """
+    from general.models import Session
+    now = timezone.now()
+    start = end = None
+    p = (period or "this_week").strip().lower()
+    if p == "today":
+        start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        end = start + timedelta(days=1)
+    elif p == "this_week":
+        start = (now - timedelta(days=now.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)
+        end = start + timedelta(days=7)
+    elif p == "this_month":
+        start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        if start.month == 12:
+            end = start.replace(year=start.year + 1, month=1)
+        else:
+            end = start.replace(month=start.month + 1)
+    elif p == "last_month":
+        this_month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        end = this_month_start
+        if this_month_start.month == 1:
+            start = this_month_start.replace(year=this_month_start.year - 1, month=12)
+        else:
+            start = this_month_start.replace(month=this_month_start.month - 1)
+
+    qs = mentor_profile.sessions.filter(status__in=["completed", "payout_available", "paid_out"]).select_related("payment")
+    if start and end:
+        qs = qs.filter(end_datetime__gte=start, end_datetime__lt=end)
+
+    def mentor_amount_cents(session):
+        payment = getattr(session, "payment", None)
+        if payment is not None:
+            return int((payment.amount_cents or 0) - (payment.platform_commission_cents or 0))
+        return int(round(float(getattr(session, "session_price", 0) or 0) * 100))
+
+    completed_pending_cents = 0
+    payout_available_cents = 0
+    paid_out_cents = 0
+    for s in qs:
+        amount = max(mentor_amount_cents(s), 0)
+        if s.status == "completed":
+            completed_pending_cents += amount
+        elif s.status == "payout_available":
+            payout_available_cents += amount
+        elif s.status == "paid_out":
+            paid_out_cents += amount
+
+    return {
+        "completed_pending_cents": completed_pending_cents,
+        "payout_available_cents": payout_available_cents,
+        "paid_out_cents": paid_out_cents,
+    }
+
+
 @login_required
 def dashboard(request):
     # Ensure only mentors can access
@@ -168,6 +242,13 @@ def dashboard(request):
                 'is_due_this_week': task.deadline and task.deadline <= week_from_now if task.deadline else False,
             }
             backlog_tasks.append(task_dict)
+        financial_stats = _mentor_financial_stats(mentor_profile, "this_week")
+    else:
+        financial_stats = {
+            "completed_pending_cents": 0,
+            "payout_available_cents": 0,
+            "paid_out_cents": 0,
+        }
     
     # Mentor guide (Next step): show first incomplete guide; card opens modal with subtasks
     current_guide_item = None
@@ -240,6 +321,7 @@ def dashboard(request):
             'current_guide_item': current_guide_item,
             'mentor_ai_coins': getattr(mentor_profile, 'ai_coins', 0) if mentor_profile else 0,
             'mentor_timezone': mentor_timezone_str,
+            'financial_stats': financial_stats,
         })
     finally:
         timezone.deactivate()
@@ -1623,6 +1705,12 @@ def billing(request):
     
     if request.user.profile.role != 'mentor':
         return redirect('general:index')
+
+    # Keep financial session statuses fresh on billing open
+    try:
+        _run_calendar_status_cleanup()
+    except Exception:
+        pass
     
     profile = request.user.profile
     
@@ -1662,6 +1750,12 @@ def my_sessions(request):
     
     if request.user.profile.role != 'mentor':
         return redirect('general:index')
+
+    # Keep calendar/session statuses fresh when opening my-sessions
+    try:
+        _run_calendar_status_cleanup()
+    except Exception:
+        pass
     
     # Get existing availability for the mentor from JSON fields
     mentor_profile = request.user.mentor_profile if hasattr(request.user, 'mentor_profile') else None
@@ -2534,13 +2628,13 @@ def save_availability(request):
                 sessions_to_delete = mentor_profile.sessions.filter(
                     id__in=to_delete_ids
                 ).exclude(
-                    status__in=['completed', 'refunded', 'expired']
+                    status__in=['completed', 'payout_available', 'paid_out', 'refunded', 'expired']
                 ).prefetch_related('attendees')
                 
                 # Log if any terminal state sessions were requested for deletion (for debugging)
                 terminal_sessions = mentor_profile.sessions.filter(
                     id__in=to_delete_ids,
-                    status__in=['completed', 'refunded', 'expired']
+                    status__in=['completed', 'payout_available', 'paid_out', 'refunded', 'expired']
                 )
                 if terminal_sessions.exists():
                     import logging
@@ -2596,7 +2690,7 @@ def save_availability(request):
                         continue
 
             # Create or update sessions from payload
-            allowed_statuses = {'draft', 'invited', 'confirmed', 'cancelled', 'completed', 'refunded', 'expired'}
+            allowed_statuses = {'draft', 'invited', 'confirmed', 'cancelled', 'completed', 'payout_available', 'paid_out', 'refunded', 'expired'}
             for item in sessions_payload:
                 try:
                     start_iso = item.get('start_iso') or item.get('start')
@@ -2654,7 +2748,7 @@ def save_availability(request):
                                 # IMPORTANT: Never update terminal state sessions (completed, refunded, expired)
                                 # unless they're explicitly being changed (in changed_sessions_map)
                                 # Terminal state sessions should be preserved as-is
-                                terminal_statuses = {'completed', 'refunded', 'expired'}
+                                terminal_statuses = {'completed', 'payout_available', 'paid_out', 'refunded', 'expired'}
                                 is_terminal = existing.status in terminal_statuses
                                 is_changed = db_id_int in changed_sessions_map
                                 
@@ -3061,10 +3155,7 @@ def get_availability(request):
     
     try:
         # Run cleanup synchronously before fetching calendar data
-        from general.cleanup.availability_slots import cleanup_expired_availability_slots
-        from general.cleanup.session_slots import cleanup_draft_sessions
-        cleanup_expired_availability_slots()
-        cleanup_draft_sessions()
+        _run_calendar_status_cleanup()
         
         mentor_profile = request.user.mentor_profile
         
@@ -3933,7 +4024,7 @@ def schedule_session(request):
 @login_required
 @require_POST
 def refund_session(request):
-    """Refund a completed session by changing its status to 'refunded'."""
+    """Refund a completed session inside refund window (Phase 5)."""
     if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
         return JsonResponse({'success': False, 'error': 'Only mentors can refund sessions'}, status=403)
 
@@ -3955,97 +4046,18 @@ def refund_session(request):
     if not s:
         return JsonResponse({'success': False, 'error': 'Session not found'}, status=404)
 
-    # Only allow refunding completed sessions
-    if s.status != 'completed':
-        return JsonResponse({'success': False, 'error': 'Only completed sessions can be refunded'}, status=400)
+    from billing.services.session_finance_service import refund_completed_session, RefundError
+    from general.models import Notification
+    from general.email_service import EmailService
+    import uuid
 
-    from django.utils import timezone as dj_timezone
-    amount_cents = int(round(float(s.session_price or 0) * 100))
-
-    if s.payment_method == 'wallet':
-        from billing.services.wallet_service import refund_credit
-        from general.models import Notification
-        from general.email_service import EmailService
-        import uuid
-        client_user = s.attendees.first()
-        try:
-            client_profile = client_user.user_profile
-        except Exception:
-            client_profile = getattr(client_user, 'profile', None)
-        if not client_user or not client_profile:
-            return JsonResponse({'success': False, 'error': 'Cannot find client to refund'}, status=400)
-        refund_credit(
-            client_profile,
-            amount_cents,
-            reason='refund',
-            related_session=s,
-        )
-        client_profile.refresh_from_db()
-        new_balance_cents = getattr(client_profile, 'wallet_balance_cents', 0) or 0
-        s.status = 'refunded'
-        s.refunded_at = dj_timezone.now()
-        s.save(update_fields=['status', 'refunded_at'])
-        amount_dollars = amount_cents / 100.0
-        new_balance_dollars = new_balance_cents / 100.0
-        try:
-            Notification.objects.create(
-                user=request.user,
-                batch_id=uuid.uuid4(),
-                target_type='single',
-                title='Refund successful',
-                description='You successfully refunded the session. The amount has been returned to the client\'s wallet.',
-            )
-            Notification.objects.create(
-                user=client_user,
-                batch_id=uuid.uuid4(),
-                target_type='single',
-                title='Refund processed',
-                description=f'${amount_dollars:.2f} has been refunded to your wallet. Your balance is now ${new_balance_dollars:.2f}.',
-            )
-            EmailService.send_refund_notification_email(
-                client_user, amount_cents, new_balance_cents, session=s, fail_silently=True
-            )
-        except Exception:
-            pass
-        return JsonResponse({'success': True, 'message': 'Session refunded to wallet successfully'})
-
-    if s.payment_method == 'stripe' and getattr(s, 'payment', None):
-        from billing.services.stripe_service import get_client
-        from billing.services.payment_service import is_configured
-        if not is_configured():
-            return JsonResponse({'success': False, 'error': 'Payment not configured'}, status=500)
-        payment = s.payment
-        if not payment or not payment.stripe_payment_intent_id:
-            return JsonResponse({'success': False, 'error': 'No Stripe payment to refund'}, status=400)
-        try:
-            stripe = get_client()
-            stripe.Refund.create(payment_intent=payment.stripe_payment_intent_id)
-        except Exception as e:
-            return JsonResponse({'success': False, 'error': str(e)}, status=400)
-        s.status = 'refunded'
-        s.refunded_at = dj_timezone.now()
-        s.save(update_fields=['status', 'refunded_at'])
-        try:
-            from general.models import Notification
-            import uuid
-            Notification.objects.create(
-                user=request.user,
-                batch_id=uuid.uuid4(),
-                target_type='single',
-                title='Refund successful',
-                description='You successfully refunded the session. The amount will be returned to the client\'s wallet when Stripe confirms.',
-            )
-        except Exception:
-            pass
-        return JsonResponse({'success': True, 'message': 'Refund initiated. Wallet will be credited when Stripe confirms.'})
-
-    # No payment_method or no payment: just mark refunded (e.g. free session)
-    s.status = 'refunded'
-    s.refunded_at = dj_timezone.now()
-    s.save(update_fields=['status', 'refunded_at'])
     try:
-        from general.models import Notification
-        import uuid
+        amount_cents = refund_completed_session(s)
+    except RefundError as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=400)
+
+    # Mentor notification
+    try:
         Notification.objects.create(
             user=request.user,
             batch_id=uuid.uuid4(),
@@ -4055,7 +4067,69 @@ def refund_session(request):
         )
     except Exception:
         pass
+
+    # Client notification/email with updated balance
+    if amount_cents > 0:
+        client_user = s.attendees.first()
+        if client_user:
+            client_profile = getattr(client_user, 'user_profile', None) or getattr(client_user, 'profile', None)
+            new_balance_cents = 0
+            if client_profile:
+                client_profile.refresh_from_db()
+                new_balance_cents = getattr(client_profile, 'wallet_balance_cents', 0) or 0
+            amount_dollars = amount_cents / 100.0
+            new_balance_dollars = new_balance_cents / 100.0
+            try:
+                Notification.objects.create(
+                    user=client_user,
+                    batch_id=uuid.uuid4(),
+                    target_type='single',
+                    title='Refund processed',
+                    description=f'${amount_dollars:.2f} has been refunded to your wallet. Your balance is now ${new_balance_dollars:.2f}.',
+                )
+                EmailService.send_refund_notification_email(
+                    client_user, amount_cents, new_balance_cents, session=s, fail_silently=True
+                )
+            except Exception:
+                pass
+
     return JsonResponse({'success': True, 'message': 'Session refunded successfully'})
+
+
+@login_required
+@require_POST
+def withdraw_session_payout(request):
+    """Withdraw payout for a session in payout_available state."""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        return JsonResponse({'success': False, 'error': 'Only mentors can withdraw payouts'}, status=403)
+
+    mentor_profile = request.user.mentor_profile
+    try:
+        import json as _json
+        payload = _json.loads((request.body or b'{}').decode('utf-8') or '{}')
+    except Exception:
+        payload = {}
+    session_id = payload.get('session_id') or request.POST.get('session_id')
+    try:
+        session_id = int(session_id)
+    except Exception:
+        return JsonResponse({'success': False, 'error': 'Session id is required'}, status=400)
+
+    from general.models import Session
+    s = mentor_profile.sessions.filter(id=session_id).first()
+    if not s:
+        return JsonResponse({'success': False, 'error': 'Session not found'}, status=404)
+
+    from billing.services.session_finance_service import withdraw_session_payout, PayoutError
+    try:
+        amount_cents = withdraw_session_payout(s, mentor_profile)
+    except PayoutError as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=400)
+    return JsonResponse({
+        'success': True,
+        'message': 'Payout withdrawn successfully.',
+        'amount_cents': amount_cents,
+    })
 
 
 @login_required
@@ -4252,7 +4326,7 @@ def cancel_session(request, session_id: int):
     from general.models import Session
     mentor_profile = request.user.mentor_profile
     session = mentor_profile.sessions.filter(id=session_id).exclude(
-        status__in=['completed', 'refunded', 'expired']
+        status__in=['completed', 'payout_available', 'paid_out', 'refunded', 'expired']
     ).prefetch_related('attendees', 'mentors').first()
     if not session:
         return JsonResponse({'success': False, 'error': 'Session not found or cannot be cancelled'}, status=404)
@@ -8629,4 +8703,21 @@ def statistics(request):
     return render(request, 'dashboard_mentor/statistics.html', {
         'stats': stats,
         'mentor_profile': mentor_profile,
+    })
+
+
+@login_required
+def dashboard_financial_stats(request):
+    """JSON stats for mentor dashboard money card period dropdown."""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'mentor':
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+    mentor_profile = getattr(request.user, 'mentor_profile', None)
+    if not mentor_profile:
+        return JsonResponse({'success': False, 'error': 'Mentor profile not found'}, status=404)
+    period = request.GET.get('period', 'this_week')
+    data = _mentor_financial_stats(mentor_profile, period)
+    return JsonResponse({
+        'success': True,
+        'period': period,
+        **data,
     })

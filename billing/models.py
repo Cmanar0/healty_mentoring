@@ -83,3 +83,36 @@ class WalletTransaction(models.Model):
 
     def __str__(self):
         return f"WalletTransaction user={self.user_id} {self.amount_cents}¢ {self.reason}"
+
+
+class MentorWalletTransaction(models.Model):
+    """Ledger entry for mentor wallet balance changes."""
+
+    mentor = models.ForeignKey(
+        "accounts.MentorProfile",
+        on_delete=models.CASCADE,
+        related_name="wallet_transactions",
+    )
+    amount_cents = models.IntegerField()  # positive = credit, negative = debit
+    reason = models.CharField(max_length=100)
+    related_payment = models.ForeignKey(
+        "billing.Payment",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="mentor_wallet_transactions",
+    )
+    related_session = models.ForeignKey(
+        "general.Session",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="mentor_wallet_transactions",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"MentorWalletTransaction mentor={self.mentor_id} {self.amount_cents}¢ {self.reason}"

@@ -163,6 +163,8 @@ window.MentorCalendarSlotComponents.SessionSlot = {
         'cancelled': 'Cancelled',
         'expired': 'Expired',
         'completed': 'Completed',
+        'payout_available': 'Payout Available',
+        'paid_out': 'Paid Out',
         'refunded': 'Refunded'
       };
       statusEl.textContent = statusLabels[status] || status;
@@ -193,11 +195,9 @@ window.MentorCalendarSlotComponents.SessionSlot = {
     const deleteBtn = el.querySelector('[data-slot-delete]');
     if (deleteBtn) {
       // Handle delete button based on session status
-      // For expired sessions, show button but prevent deletion with notification
-      // For completed sessions, show button with refund notification (no deletion, no popup)
-      // For refunded sessions, hide button (cannot be deleted)
+      // For terminal financial sessions, hide delete button (cannot be deleted)
       const status = props?.status || 'draft';
-      if (status === 'refunded') {
+      if (status === 'refunded' || status === 'payout_available' || status === 'paid_out') {
         deleteBtn.style.display = 'none';
       } else if (status === 'expired') {
         // Keep button visible but prevent deletion

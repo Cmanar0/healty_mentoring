@@ -4,6 +4,7 @@ from django.conf import settings
 from django.utils.crypto import get_random_string
 from django.utils.text import slugify
 from django.core.validators import FileExtensionValidator, MinValueValidator, MaxValueValidator
+from django.core.exceptions import ValidationError
 import uuid
 import os
 from datetime import timedelta
@@ -235,6 +236,8 @@ class Session(models.Model):
         ('cancelled', 'Cancelled'),
         ('expired', 'Expired'),
         ('completed', 'Completed'),
+        ('payout_available', 'Payout Available'),
+        ('paid_out', 'Paid Out'),
         ('refunded', 'Refunded'),
     ]
     
@@ -330,6 +333,7 @@ class Session(models.Model):
         related_name="paid_session",
     )
     paid_at = models.DateTimeField(null=True, blank=True)
+    paid_out_at = models.DateTimeField(null=True, blank=True)
     refunded_at = models.DateTimeField(null=True, blank=True)
     payment_method = models.CharField(
         max_length=20,
@@ -346,7 +350,37 @@ class Session(models.Model):
         verbose_name_plural = "Sessions"
         ordering = ['-start_datetime']
 
+    def clean(self):
+        """
+        Enforce strict financial/state transitions (Phase 5).
+        """
+        if not self.pk:
+            return
+        try:
+            old = type(self).objects.get(pk=self.pk)
+        except type(self).DoesNotExist:
+            return
+        if old.status == self.status:
+            return
+        allowed = {
+            ('draft', 'invited'),
+            ('invited', 'confirmed'),
+            ('invited', 'cancelled'),
+            ('invited', 'expired'),
+            ('confirmed', 'invited'),
+            ('confirmed', 'cancelled'),
+            ('confirmed', 'completed'),
+            ('completed', 'refunded'),
+            ('completed', 'payout_available'),
+            ('payout_available', 'paid_out'),
+        }
+        if (old.status, self.status) not in allowed:
+            raise ValidationError(
+                f"Invalid session status transition: {old.status} -> {self.status}"
+            )
+
     def save(self, *args, **kwargs):
+        self.clean()
         # Track if end_datetime is changing
         end_datetime_changed = False
         old_end_datetime = None

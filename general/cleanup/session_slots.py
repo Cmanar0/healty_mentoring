@@ -13,6 +13,7 @@ CLEANUP RULES:
 from django.utils import timezone
 from general.models import Session
 from datetime import timezone as dt_timezone
+from billing.services.session_finance_service import mark_session_payout_available
 
 
 def cleanup_draft_sessions():
@@ -46,13 +47,13 @@ def cleanup_draft_sessions():
     logger.info(f'[cleanup_draft_sessions] Starting cleanup at {now_utc}')
     
     # Delete expired draft sessions ONLY
-    # IMPORTANT: Never delete terminal state sessions (completed, refunded, expired)
+    # IMPORTANT: Never delete terminal state sessions (completed, payout_available, paid_out, refunded, expired)
     # These are historical records that must be preserved
     draft_sessions = Session.objects.filter(
         status='draft',
         end_datetime__lt=now_utc
     ).exclude(
-        status__in=['completed', 'refunded', 'expired']  # Extra protection (shouldn't be needed, but safety first)
+        status__in=['completed', 'payout_available', 'paid_out', 'refunded', 'expired']  # Extra protection
     )
     sessions_deleted = draft_sessions.count()
     if sessions_deleted > 0:
@@ -91,9 +92,21 @@ def cleanup_draft_sessions():
             examples = Session.objects.filter(status='confirmed').values_list('id', 'end_datetime')[:5]
             logger.info(f'[cleanup_draft_sessions] Example confirmed sessions: {examples}')
     
+    # Completed -> payout_available when refund window expires
+    sessions_payout_available = 0
+    completed_sessions = Session.objects.filter(status='completed')
+    for s in completed_sessions:
+        try:
+            credited = mark_session_payout_available(s, now=now_utc)
+            if s.status == 'payout_available':
+                sessions_payout_available += 1
+        except Exception as e:
+            logger.warning(f'[cleanup_draft_sessions] payout transition failed session={s.id}: {e}')
+
     return {
         'sessions_deleted': sessions_deleted,
         'sessions_expired': sessions_expired,
-        'sessions_completed': sessions_completed
+        'sessions_completed': sessions_completed,
+        'sessions_payout_available': sessions_payout_available,
     }
 

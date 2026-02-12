@@ -323,6 +323,9 @@ def _handle_charge_refunded(charge_obj):
     payment.save(update_fields=["status"])
     session = getattr(payment, "session", None)
     if session:
+        if session.status in ("payout_available", "paid_out"):
+            logger.warning("stripe_webhook: charge.refunded ignored for payouted session id=%s", session.id)
+            return
         session.status = "refunded"
         session.refunded_at = dj_timezone.now()
         session.save(update_fields=["status", "refunded_at"])

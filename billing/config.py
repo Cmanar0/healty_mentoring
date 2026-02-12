@@ -8,6 +8,12 @@ Safe to import from views, services, and (read-only) expose to templates when ne
 # Platform commission taken from each paid session (0.15 = 15%)
 PLATFORM_COMMISSION_PERCENT = 0.1
 
+# Financial lifecycle windows (Phase 5)
+# Cancellation is allowed until this many hours before session start.
+SESSION_CANCELLATION_WINDOW_HOURS = 24
+# Refund is allowed until this many days after session end.
+SESSION_REFUND_WINDOW_DAYS = 14
+
 # AI credits packages: slug -> price in cents, optional "credits" for display
 # Adjust keys to match dashboard_mentor package names (e.g. "small", "medium", "large") if needed
 AI_CREDITS_PACKAGES = {

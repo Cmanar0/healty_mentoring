@@ -707,6 +707,15 @@
     opacity: 0.95;
   }
 
+  .mentor-calendar-root .fc-event[data-session-status="payout_available"],
+  .mentor-calendar-root .fc-timegrid-event[data-session-status="payout_available"],
+  .mentor-calendar-root .fc-daygrid-event[data-session-status="payout_available"],
+  .mentor-calendar-root .fc-event[data-session-status="paid_out"],
+  .mentor-calendar-root .fc-timegrid-event[data-session-status="paid_out"],
+  .mentor-calendar-root .fc-daygrid-event[data-session-status="paid_out"] {
+    opacity: 0.9 !important;
+  }
+
   /* Sessions mode: availability hover is light + clickable */
   .mentor-calendar-root:not(.is-mode-availability) .fc-event.event-type-availability {
     cursor: pointer;
@@ -858,6 +867,18 @@
   .mentor-calendar-root .mentor-month-square.status-refunded:hover {
     background-color: rgba(99, 102, 241, 1);
   }
+  .mentor-calendar-root .mentor-month-square.status-payout-available {
+    background-color: rgba(14, 165, 233, 0.5);
+  }
+  .mentor-calendar-root .mentor-month-square.status-payout-available:hover {
+    background-color: rgba(14, 165, 233, 1);
+  }
+  .mentor-calendar-root .mentor-month-square.status-paid-out {
+    background-color: rgba(15, 118, 110, 0.5);
+  }
+  .mentor-calendar-root .mentor-month-square.status-paid-out:hover {
+    background-color: rgba(15, 118, 110, 1);
+  }
 
   /* Global Collision */
   .mentor-calendar-root .mentor-month-square.status-collision {
@@ -934,6 +955,10 @@
   const sessionSettingsRefundSection = document.getElementById('sessionSettingsRefundSection');
   const sessionSettingsRefundPriceValue = document.getElementById('sessionSettingsRefundPriceValue');
   const sessionSettingsRefundBtn = document.getElementById('sessionSettingsRefundBtn');
+  const sessionSettingsWithdrawBtn = document.getElementById('sessionSettingsWithdrawBtn');
+  const sessionSettingsFinanceSectionTitle = document.getElementById('sessionSettingsFinanceSectionTitle');
+  const sessionSettingsFinancePriceLabel = document.getElementById('sessionSettingsFinancePriceLabel');
+  const sessionSettingsFinanceHelp = document.getElementById('sessionSettingsFinanceHelp');
   const sessionSettingsRefundConfirmOverlay = document.getElementById('sessionSettingsRefundConfirmOverlay');
   const sessionSettingsRefundConfirmPriceValue = document.getElementById('sessionSettingsRefundConfirmPriceValue');
   const sessionSettingsRefundConfirmBtn = document.getElementById('sessionSettingsRefundConfirmBtn');
@@ -1608,6 +1633,8 @@
       const isInvited = status === 'invited';
       const isConfirmed = status === 'confirmed';
       const isCompleted = status === 'completed';
+      const isPayoutAvailable = status === 'payout_available';
+      const isPaidOut = status === 'paid_out';
       const isRefunded = status === 'refunded';
       const isDraft = status === 'draft' || !status;
       // Never show "sent" UI for draft sessions
@@ -1617,8 +1644,8 @@
       const showSessionDetail = !!sessionDbId;
       const enableSessionDetail = !!sessionDbId && (isInvited || isConfirmed);
       
-      // For completed sessions, show refund UI instead of normal settings
-      if (isCompleted) {
+      // For financial terminal states, show read-only details and finance actions
+      if (isCompleted || isPayoutAvailable || isPaidOut) {
         // Hide normal session settings section
         const normalSection = document.getElementById('sessionSettingsNormalSection');
         if (normalSection) normalSection.hidden = true;
@@ -1726,15 +1753,39 @@
           }
         }
         
-        // Show refund section in right column
+        // Show finance section in right column (refund/withdraw/read-only)
         if (sessionSettingsRefundSection) {
           sessionSettingsRefundSection.hidden = false;
-          // Show refund price
           const price = ev?.extendedProps?.sessionPrice;
           if (sessionSettingsRefundPriceValue) {
             sessionSettingsRefundPriceValue.textContent = price !== null && price !== undefined 
               ? `$${String(price)}` 
               : 'Free';
+          }
+          if (sessionSettingsFinanceSectionTitle) {
+            sessionSettingsFinanceSectionTitle.textContent = isCompleted
+              ? 'Refund Session'
+              : (isPayoutAvailable ? 'Payout Available' : 'Payout Paid Out');
+          }
+          if (sessionSettingsFinancePriceLabel) {
+            sessionSettingsFinancePriceLabel.textContent = isCompleted
+              ? 'Session Price:'
+              : 'Payout Amount:';
+          }
+          if (sessionSettingsRefundBtn) {
+            sessionSettingsRefundBtn.hidden = !isCompleted;
+          }
+          if (sessionSettingsWithdrawBtn) {
+            sessionSettingsWithdrawBtn.hidden = !isPayoutAvailable;
+          }
+          if (sessionSettingsFinanceHelp) {
+            if (isCompleted) {
+              sessionSettingsFinanceHelp.textContent = 'This will mark the session as refunded and cannot be undone.';
+            } else if (isPayoutAvailable) {
+              sessionSettingsFinanceHelp.textContent = 'This payout is available now. Withdraw to move this session to paid out.';
+            } else {
+              sessionSettingsFinanceHelp.textContent = 'This payout was already withdrawn.';
+            }
           }
         }
         
@@ -1744,7 +1795,7 @@
           const inviteSection = rightCol.querySelector('.session-settings-section--assign');
           if (inviteSection) inviteSection.hidden = true;
         }
-        return; // Early return for completed sessions
+        return; // Early return for financial terminal states
       } else {
         // Hide completed section, completed session detail section, and refund section for non-completed sessions
         const completedSection = document.getElementById('sessionSettingsCompletedSection');
@@ -1760,6 +1811,8 @@
         if (sessionSettingsRefundSection) {
           sessionSettingsRefundSection.hidden = true;
         }
+        if (sessionSettingsRefundBtn) sessionSettingsRefundBtn.hidden = false;
+        if (sessionSettingsWithdrawBtn) sessionSettingsWithdrawBtn.hidden = true;
         
         // Show right column sections
         const rightCol = document.querySelector('.session-settings-col--right');
@@ -3034,7 +3087,9 @@
       if (hasCollision) return 'status-collision';
       if (!hasSession) return null;
       
-      // Priority order: refunded > completed > confirmed > invited > expired > draft
+      // Priority order: paid_out > payout_available > refunded > completed > confirmed > invited > expired > draft
+      if (sessionStatuses.has('paid_out')) return 'status-paid-out';
+      if (sessionStatuses.has('payout_available')) return 'status-payout-available';
       if (sessionStatuses.has('refunded')) return 'status-refunded';
       if (sessionStatuses.has('completed')) return 'status-completed';
       if (sessionStatuses.has('confirmed')) return 'status-confirmed';
@@ -3176,6 +3231,7 @@
   const SCHEDULE_SESSION_URL = "{% url 'general:dashboard_mentor:schedule_session' %}";
   const REMIND_SESSION_URL = "{% url 'general:dashboard_mentor:remind_session' %}";
   const REFUND_SESSION_URL = "{% url 'general:dashboard_mentor:refund_session' %}";
+  const WITHDRAW_SESSION_PAYOUT_URL = "{% url 'general:dashboard_mentor:withdraw_session_payout' %}";
   const SESSION_DETAIL_URL_TEMPLATE = "{% url 'general:dashboard_mentor:session_detail' 0 %}";
 
   // Save button enablement:
@@ -3218,7 +3274,7 @@
 
   function normalizeSessionStatus(value) {
     const s = String(value || 'draft').toLowerCase().trim();
-    if (s === 'draft' || s === 'invited' || s === 'confirmed' || s === 'cancelled' || s === 'expired' || s === 'completed' || s === 'refunded') return s;
+    if (s === 'draft' || s === 'invited' || s === 'confirmed' || s === 'cancelled' || s === 'expired' || s === 'completed' || s === 'payout_available' || s === 'paid_out' || s === 'refunded') return s;
     return 'draft';
   }
 
@@ -3229,6 +3285,8 @@
     if (s === 'confirmed') return { bg: '#22c55e', border: '#16a34a', text: '#ffffff' }; // green
     if (s === 'expired') return { bg: '#94a3b8', border: '#64748b', text: '#ffffff' };   // slate/grey
     if (s === 'completed') return { bg: '#15803d', border: '#166534', text: '#ffffff' }; // dark green
+    if (s === 'payout_available') return { bg: '#0ea5e9', border: '#0284c7', text: '#ffffff' }; // sky
+    if (s === 'paid_out') return { bg: '#0f766e', border: '#115e59', text: '#ffffff' }; // teal
     if (s === 'refunded') return { bg: '#6366f1', border: '#4f46e5', text: '#ffffff' };   // indigo/purple
     // cancelled
     return { bg: '#ffffff', border: '#e2e8f0', text: '#0f172a' };
@@ -4028,7 +4086,7 @@
       }
 
       // Filter out terminal state sessions from deleted_sessions array
-      // Terminal state sessions (completed, refunded, expired) should NEVER be deleted
+      // Terminal state sessions (completed, payout_available, paid_out, refunded, expired) should NEVER be deleted
       const deletedSessionsArray = Array.from(deletedSessionDbIds || []);
       const filteredDeletedSessions = [];
       for (const sessionId of deletedSessionsArray) {
@@ -4037,7 +4095,7 @@
         if (originalSession) {
           const status = normalizeSessionStatus(originalSession.status || 'draft');
           // Only include in deletion if it's NOT a terminal state
-          if (status !== 'completed' && status !== 'refunded' && status !== 'expired') {
+          if (status !== 'completed' && status !== 'payout_available' && status !== 'paid_out' && status !== 'refunded' && status !== 'expired') {
             filteredDeletedSessions.push(sessionId);
           } else {
             console.warn('[MentorCalendar] Attempted to delete terminal state session:', sessionId, 'status:', status, '- This deletion was blocked.');
@@ -5965,6 +6023,50 @@
           : 'Free';
       }
       setRefundConfirmVisible(true);
+    });
+  }
+
+  if (sessionSettingsWithdrawBtn) {
+    sessionSettingsWithdrawBtn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      const ev = calendar && sessionSettingsEventId ? calendar.getEventById(sessionSettingsEventId) : null;
+      if (!ev) return;
+      const sessionId = ev?.extendedProps?.sessionDbId;
+      if (!sessionId) {
+        if (typeof showNotification === 'function') showNotification('Session not found.', 'error');
+        return;
+      }
+      sessionSettingsWithdrawBtn.disabled = true;
+      const originalText = sessionSettingsWithdrawBtn.textContent;
+      sessionSettingsWithdrawBtn.textContent = 'Processing...';
+      const csrf = getCookie('csrftoken');
+      try {
+        const res = await fetch(WITHDRAW_SESSION_PAYOUT_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf || '' },
+          body: JSON.stringify({ session_id: sessionId })
+        });
+        const data = await res.json();
+        if (data && data.success) {
+          if (typeof showNotification === 'function') {
+            showNotification('Payout withdrawn successfully.', 'success');
+          }
+          closeSessionSettings();
+          await loadSavedAvailability();
+        } else {
+          if (typeof showNotification === 'function') {
+            showNotification(data?.error || 'Could not withdraw payout.', 'error');
+          }
+          sessionSettingsWithdrawBtn.disabled = false;
+          sessionSettingsWithdrawBtn.textContent = originalText;
+        }
+      } catch (err) {
+        if (typeof showNotification === 'function') {
+          showNotification('Could not withdraw payout.', 'error');
+        }
+        sessionSettingsWithdrawBtn.disabled = false;
+        sessionSettingsWithdrawBtn.textContent = originalText;
+      }
     });
   }
 

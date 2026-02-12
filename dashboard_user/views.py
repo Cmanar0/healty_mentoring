@@ -1103,9 +1103,13 @@ def session_management(request):
                         session.changes_requested_by = None
                         session.original_data = None
                         session.changed_by = None
-                        session.status = 'cancelled'
-                        session.save()
-                        messages.success(request, f'Session #{session_id} changes declined.')
+                        from billing.services.session_finance_service import cancel_session_with_refund, CancellationError
+                        try:
+                            cancel_session_with_refund(session)
+                            session.save(update_fields=['previous_data', 'changes_requested_by', 'original_data', 'changed_by'])
+                            messages.success(request, f'Session #{session_id} changes declined.')
+                        except CancellationError as e:
+                            messages.error(request, str(e))
                     except Session.DoesNotExist:
                         messages.error(request, 'Session not found.')
                 else:
@@ -1250,9 +1254,12 @@ def session_management(request):
                     inv.cancelled_at = timezone.now()
                     inv.save()
                     if inv.session:
-                        inv.session.status = 'cancelled'
-                        inv.session.save()
-                    messages.success(request, 'Session invitation declined.')
+                        from billing.services.session_finance_service import cancel_session_with_refund, CancellationError
+                        try:
+                            cancel_session_with_refund(inv.session)
+                            messages.success(request, 'Session invitation declined.')
+                        except CancellationError as e:
+                            messages.error(request, str(e))
             
             elif action == 'confirm_all':
                 # Confirm only free invitations (paid ones require per-invitation payment modal)
@@ -2773,11 +2780,15 @@ def cancel_session(request, session_id):
                     logger.exception('Session client left: email to attendee %s: %s', email, e)
         return JsonResponse({'success': True})
 
-    # Single attendee: cancel whole session and notify all mentors
-    session.status = 'cancelled'
+    # Single attendee: cancel whole session (window + refund handled by finance service)
+    from billing.services.session_finance_service import cancel_session_with_refund, CancellationError
+    try:
+        cancel_session_with_refund(session)
+    except CancellationError as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=400)
     session.previous_data = None
     session.changes_requested_by = None
-    session.save(update_fields=['status', 'previous_data', 'changes_requested_by'])
+    session.save(update_fields=['previous_data', 'changes_requested_by'])
 
     try:
         session_price = str(session.session_price) if getattr(session, 'session_price', None) is not None else None

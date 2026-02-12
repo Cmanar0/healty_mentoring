@@ -36,7 +36,8 @@ class Command(BaseCommand):
                     f'{availability_result["slots_removed"]} availability slots removed, '
                     f'{sessions_result["sessions_deleted"]} draft sessions deleted, '
                     f'{sessions_result["sessions_expired"]} sessions expired, '
-                    f'{sessions_result["sessions_completed"]} sessions completed'
+                    f'{sessions_result["sessions_completed"]} sessions completed, '
+                    f'{sessions_result.get("sessions_payout_available", 0)} sessions payout_available'
                 )
             )
         except Exception as e:

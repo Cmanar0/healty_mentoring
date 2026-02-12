@@ -279,16 +279,18 @@ def verify_payment_intent_succeeded(
 
 def get_mentor_earnings_cents(mentor_profile) -> int:
     """
-    Mentor earnings = sum of Payment.amount_cents where status=succeeded,
-    session.status=completed, and session not refunded. Never calculate from sessions directly.
+    Mentor earnings = sum of (amount - commission) for sessions that are
+    payout_available or paid_out. Never use completed.
     """
     from django.db.models import Sum
     from billing.models import Payment
-    result = Payment.objects.filter(
+    payouts = Payment.objects.filter(
         mentor=mentor_profile,
         status="succeeded",
         session__isnull=False,
-        session__status="completed",
-        session__refunded_at__isnull=True,
-    ).aggregate(total=Sum("amount_cents"))
-    return int(result.get("total") or 0)
+        session__status__in=["payout_available", "paid_out"],
+    )
+    total = 0
+    for p in payouts.only("amount_cents", "platform_commission_cents"):
+        total += int((p.amount_cents or 0) - (p.platform_commission_cents or 0))
+    return int(total)
