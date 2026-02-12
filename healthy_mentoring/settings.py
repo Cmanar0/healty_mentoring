@@ -140,6 +140,8 @@ API_ALLOWED_KEYS = os.getenv("API_ALLOWED_KEYS", "sample_api_key_12345").split("
 # Stripe (load from env; no default — missing key means Stripe is disabled)
 STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "")
 STRIPE_PUBLISHABLE_KEY = os.getenv("STRIPE_PUBLISHABLE_KEY", "")
+# Webhook signing secret (from Stripe Dashboard or Stripe CLI when using stripe listen)
+STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")
 
 # Static files storage for whitenoise
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"

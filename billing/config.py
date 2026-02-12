@@ -6,7 +6,7 @@ Safe to import from views, services, and (read-only) expose to templates when ne
 """
 
 # Platform commission taken from each paid session (0.15 = 15%)
-PLATFORM_COMMISSION_PERCENT = 0.15
+PLATFORM_COMMISSION_PERCENT = 0.3
 
 # AI credits packages: slug -> price in cents, optional "credits" for display
 # Adjust keys to match dashboard_mentor package names (e.g. "small", "medium", "large") if needed

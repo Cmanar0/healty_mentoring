@@ -1583,6 +1583,15 @@ def book_session(request):
         if user:
             session.attendees.add(user)
         
+        # Link Payment to Session (Phase 3.1): webhook creates Payment; we only attach session.
+        # Only update when session is not yet set (idempotent: retries do not overwrite).
+        if payment_intent_id:
+            from billing.models import Payment
+            Payment.objects.filter(
+                stripe_payment_intent_id=payment_intent_id,
+                session__isnull=True,
+            ).update(session=session)
+        
         # Create or update relationship - automatically confirm since user booked a session
         relationship = MentorClientRelationship.objects.filter(
             mentor=mentor_profile,

@@ -72,11 +72,13 @@ def create_booking_payment_intent(
         raise BillingError("Invalid amount for payment.")
 
     stripe = get_client()
+    commission_cents = calculate_commission_cents(amount_cents)
     metadata = {
         "mentor_id": str(mentor_profile.user.id),
         "client_email": (client_email or "")[:500],
         "session_type": "mentoring",
         "is_first_session": "true" if is_first_session else "false",
+        "platform_commission_cents": str(commission_cents),
     }
     if client_id is not None:
         metadata["client_id"] = str(client_id)
