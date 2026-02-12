@@ -327,7 +327,7 @@
                         <h3 class="card-title">Your backlog</h3>
                         <div style="display: flex; align-items: center; gap: 12px;">
                             <div class="backlog-sort-buttons" style="display: flex; align-items: center; gap: 8px;">
-                                <span style="font-size: 0.8rem; color: #6b7280; font-weight: 500;">Sort by:</span>
+                                <span class="backlog-sort-label" style="font-size: 0.8rem; color: #6b7280; font-weight: 500;">Sort by:</span>
                                 <button class="backlog-sort-btn" data-sort="priority" onclick="toggleBacklogSort('priority')" title="Sort by priority">
                                     <i class="fas fa-sort-amount-down"></i>
                                 </button>
@@ -430,6 +430,7 @@
     display: grid !important;
     grid-template-columns: 1fr 1fr;
     gap: 12px;
+    height: 100%;
 }
 
 [data-earnings-link] {
@@ -1846,6 +1847,11 @@ function markOngoingSessionRows(container) {
 
   .backlog-sort-btn i {
     font-size: 0.75rem;
+  }
+
+  /* Hide sort label when sidebar is expanded */
+  .dashboard-sidebar:not(.collapsed) ~ .dashboard-main .backlog-sort-label {
+    display: none;
   }
 
   /* Remove min-width from btn-fixed-width */
