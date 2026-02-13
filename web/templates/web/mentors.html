@@ -2,6 +2,22 @@
 {% block title %}Find Your Mentor — Healthy Mentoring{% endblock %}
 {% load static %}
 
+{% block extra_head %}
+<meta name="description" content="Browse our directory of expert mentors to find the perfect guide for your personal and professional growth. Connect with world-class coaches and advisors.">
+<meta name="keywords" content="mentors, coaching, life coach, career coach, business coach, mentorship, find mentor">
+<!-- Open Graph / Facebook -->
+<meta property="og:type" content="website">
+<meta property="og:url" content="{{ request.build_absolute_uri }}">
+<meta property="og:title" content="Find Your Mentor — Healthy Mentoring">
+<meta property="og:description" content="Browse our directory of expert mentors to find the perfect guide for your personal and professional growth.">
+<meta property="og:site_name" content="Healthy Mentoring">
+<!-- Twitter -->
+<meta name="twitter:card" content="summary">
+<meta name="twitter:url" content="{{ request.build_absolute_uri }}">
+<meta name="twitter:title" content="Find Your Mentor — Healthy Mentoring">
+<meta name="twitter:description" content="Browse our directory of expert mentors to find the perfect guide for your personal and professional growth.">
+{% endblock %}
+
 {% block extra_css %}
 {{ block.super }}
 <link rel="stylesheet" href="{% static 'css/landing.css' %}">

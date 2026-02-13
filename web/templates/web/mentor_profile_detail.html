@@ -5,6 +5,25 @@
 
 {% block extra_head %}
 <meta name="referrer" content="strict-origin-when-cross-origin">
+<meta name="description" content="{% if mentor_profile.bio %}{{ mentor_profile.bio|striptags|truncatewords:30 }}{% else %}Meet {{ mentor_profile.first_name }} {{ mentor_profile.last_name }}, an expert {{ mentor_profile.mentor_type|default:'mentor' }} ready to help you achieve your goals.{% endif %}">
+<meta name="keywords" content="{{ mentor_profile.first_name }} {{ mentor_profile.last_name }}, {{ mentor_profile.mentor_type|default:'mentor' }}, mentor, coaching{% if mentor_profile.tags %}{% for tag in mentor_profile.tags|slice:':5' %}, {{ tag }}{% endfor %}{% endif %}">
+<!-- Open Graph / Facebook -->
+<meta property="og:type" content="profile">
+<meta property="og:url" content="{{ request.build_absolute_uri }}">
+<meta property="og:title" content="{{ mentor_profile.first_name }} {{ mentor_profile.last_name }} — Mentor Profile">
+<meta property="og:description" content="{% if mentor_profile.bio %}{{ mentor_profile.bio|striptags|truncatewords:30 }}{% else %}Meet {{ mentor_profile.first_name }} {{ mentor_profile.last_name }}, an expert {{ mentor_profile.mentor_type|default:'mentor' }} ready to help you achieve your goals.{% endif %}">
+{% if mentor_profile.profile_picture %}
+<meta property="og:image" content="{{ request.build_absolute_uri }}{{ mentor_profile.profile_picture.url }}">
+{% endif %}
+<meta property="og:site_name" content="Healthy Mentoring">
+<!-- Twitter -->
+<meta name="twitter:card" content="summary">
+<meta name="twitter:url" content="{{ request.build_absolute_uri }}">
+<meta name="twitter:title" content="{{ mentor_profile.first_name }} {{ mentor_profile.last_name }} — Mentor Profile">
+<meta name="twitter:description" content="{% if mentor_profile.bio %}{{ mentor_profile.bio|striptags|truncatewords:30 }}{% else %}Meet {{ mentor_profile.first_name }} {{ mentor_profile.last_name }}, an expert {{ mentor_profile.mentor_type|default:'mentor' }} ready to help you achieve your goals.{% endif %}">
+{% if mentor_profile.profile_picture %}
+<meta name="twitter:image" content="{{ request.build_absolute_uri }}{{ mentor_profile.profile_picture.url }}">
+{% endif %}
 {% endblock %}
 
 {% block extra_css %}
@@ -51,7 +70,7 @@
     .mp-container {
         max-width: 1280px;
         margin: 0 auto;
-        padding: 0 24px 80px;
+        padding: 0 24px 0;
     }
 
     /* --- Hero / Cover Section --- */
@@ -836,7 +855,7 @@
         
         /* Add padding to body so content isn't hidden behind bottom bar */
         .mp-container {
-            padding-bottom: 100px;
+            padding-bottom: 40px;
         }
     }
 </style>
