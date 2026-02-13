@@ -334,27 +334,47 @@
       day: 'numeric' 
     });
     
-    // Format times
-    const time1 = date1.toLocaleTimeString('en-US', { 
+    // Format start times
+    const time1Start = date1.toLocaleTimeString('en-US', { 
       hour: '2-digit', 
       minute: '2-digit',
       hour12: true 
     });
-    const time2 = date2.toLocaleTimeString('en-US', { 
+    const time2Start = date2.toLocaleTimeString('en-US', { 
       hour: '2-digit', 
       minute: '2-digit',
       hour12: true 
     });
     
+    // Format end times
+    const date1End = new Date(slot1.end);
+    const date2End = new Date(slot2.end);
+    const time1End = date1End.toLocaleTimeString('en-US', { 
+      hour: '2-digit', 
+      minute: '2-digit',
+      hour12: true 
+    });
+    const time2End = date2End.toLocaleTimeString('en-US', { 
+      hour: '2-digit', 
+      minute: '2-digit',
+      hour12: true 
+    });
+    
+    // Format full time range (start - end)
+    const slot1Time = `${time1Start} - ${time1End}`;
+    const slot2Time = `${time2Start} - ${time2End}`;
+    
     return {
       index: index + 1,
       date: dateStr,
-      slot1Time: time1,
-      slot2Time: time2,
+      slot1Time: slot1Time,
+      slot2Time: slot2Time,
       slot1Start: slot1.start,
       slot2Start: slot2.start,
       slot1Id: slot1.id,
-      slot2Id: slot2.id
+      slot2Id: slot2.id,
+      slot1Kind: slot1.kind || 'unknown',
+      slot2Kind: slot2.kind || 'unknown'
     };
   }
   

@@ -74,6 +74,7 @@ def dashboard(request):
             sessions_queryset = all_upcoming[:4]
             
             # Format sessions for template
+            from general.models import SessionInvitation
             for session in sessions_queryset:
                 first_mentor = session.mentors.select_related('user').first()
                 mentor_name = 'Mentor'
@@ -89,6 +90,18 @@ def dashboard(request):
                 except Exception:
                     pass
                 
+                # Get invitation data for invited sessions
+                invitation_id = None
+                if session.status == 'invited':
+                    invitation = SessionInvitation.objects.filter(
+                        session=session,
+                        invited_email=(request.user.email or '').strip().lower(),
+                        cancelled_at__isnull=True,
+                        accepted_at__isnull=True
+                    ).first()
+                    if invitation:
+                        invitation_id = invitation.id
+                
                 upcoming_sessions.append({
                     'id': session.id,
                     'start_datetime': start_datetime_local,
@@ -96,6 +109,8 @@ def dashboard(request):
                     'status': session.status,
                     'mentor_name': mentor_name,
                     'note': session.note,
+                    'invitation_id': invitation_id,
+                    'session_price': float(session.session_price) if session.session_price else 0.0,
                 })
     except Exception as e:
         # Log error but don't fail the request
@@ -602,6 +617,7 @@ def my_sessions(request):
         sessions_queryset = all_upcoming[:10]
         
         # Format sessions for template
+        from general.models import SessionInvitation
         for session in sessions_queryset:
             first_mentor = session.mentors.select_related('user').first()
             mentor_name = 'Mentor'
@@ -617,6 +633,18 @@ def my_sessions(request):
             except Exception:
                 pass
             
+            # Get invitation data for invited sessions
+            invitation_id = None
+            if session.status == 'invited':
+                invitation = SessionInvitation.objects.filter(
+                    session=session,
+                    invited_email=(request.user.email or '').strip().lower(),
+                    cancelled_at__isnull=True,
+                    accepted_at__isnull=True
+                ).first()
+                if invitation:
+                    invitation_id = invitation.id
+            
             initial_sessions.append({
                 'id': session.id,
                 'start_datetime': start_datetime_local,
@@ -624,6 +652,8 @@ def my_sessions(request):
                 'status': session.status,
                 'mentor_name': mentor_name,
                 'note': session.note,
+                'invitation_id': invitation_id,
+                'session_price': float(session.session_price) if session.session_price else 0.0,
             })
     except Exception as e:
         # Log error but don't fail the request
@@ -637,10 +667,17 @@ def my_sessions(request):
             timezone.activate(user_tzinfo)
     except Exception:
         pass
+    # Wallet balance and Stripe key for payment modal
+    wallet_balance_cents = getattr(user_profile, 'wallet_balance_cents', 0) or 0 if user_profile else 0
+    from django.conf import settings
+    stripe_publishable_key = getattr(settings, 'STRIPE_PUBLISHABLE_KEY', '') or ''
+    
     try:
         return render(request, 'dashboard_user/my_sessions.html', {
             'initial_sessions': initial_sessions,
             'user_timezone': user_timezone,
+            'wallet_balance_cents': wallet_balance_cents,
+            'stripe_publishable_key': stripe_publishable_key,
         })
     finally:
         timezone.deactivate()
@@ -686,6 +723,7 @@ def get_sessions_paginated(request):
         page_obj = paginator.get_page(page)
         
         # Format sessions for JSON response
+        from general.models import SessionInvitation
         sessions_data = []
         for session in page_obj:
             first_mentor = session.mentors.select_related('user').first()
@@ -702,6 +740,18 @@ def get_sessions_paginated(request):
             except Exception:
                 pass
             
+            # Get invitation data for invited sessions
+            invitation_id = None
+            if session.status == 'invited':
+                invitation = SessionInvitation.objects.filter(
+                    session=session,
+                    invited_email=(request.user.email or '').strip().lower(),
+                    cancelled_at__isnull=True,
+                    accepted_at__isnull=True
+                ).first()
+                if invitation:
+                    invitation_id = invitation.id
+            
             sessions_data.append({
                 'id': session.id,
                 'start_datetime': start_dt.isoformat(),
@@ -709,6 +759,8 @@ def get_sessions_paginated(request):
                 'status': session.status,
                 'mentor_name': mentor_name,
                 'note': session.note or '',
+                'invitation_id': invitation_id,
+                'session_price': float(session.session_price) if session.session_price else 0.0,
             })
         
         return JsonResponse({

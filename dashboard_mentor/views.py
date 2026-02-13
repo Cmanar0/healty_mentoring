@@ -2735,8 +2735,9 @@ def save_availability(request):
                             price_val = None
                     if price_val is None:
                         try:
-                            if mentor_profile.price_per_hour and mentor_profile.session_length:
-                                price_val = (Decimal(str(mentor_profile.price_per_hour)) * Decimal(str(mentor_profile.session_length))) / Decimal('60')
+                            # Use price_per_session directly (same as booking flow), not calculated based on duration
+                            if mentor_profile.price_per_session:
+                                price_val = Decimal(str(mentor_profile.price_per_session))
                                 # Whole USD for now (no decimals in UI)
                                 price_val = price_val.quantize(Decimal('1'))
                         except Exception:
@@ -3859,10 +3860,11 @@ def schedule_session(request):
     from general.models import Session, SessionInvitation
     from decimal import Decimal
     duration_minutes = int((end_dt - start_dt).total_seconds() / 60)
+    # Use price_per_session directly (same as booking flow), not calculated based on duration
     price_val = None
     try:
-        if mentor_profile.price_per_hour:
-            price_val = (Decimal(str(mentor_profile.price_per_hour)) * Decimal(str(duration_minutes))) / Decimal('60')
+        if mentor_profile.price_per_session:
+            price_val = Decimal(str(mentor_profile.price_per_session))
             price_val = price_val.quantize(Decimal('1'))
     except Exception:
         price_val = None

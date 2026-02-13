@@ -241,7 +241,7 @@ function updateSessionDropdownPosition(button, dropdown) {
   dropdown.style.left = left + 'px'; dropdown.style.top = top + 'px';
 }
 function positionSessionDropdownFixed(button, dropdown) {
-  var scrollContainer = dropdown.closest('.session-timeline-container');
+  var scrollContainer = dropdown.closest('.session-timeline-container') || dropdown.closest('#stagesList');
   if (!scrollContainer) return;
   dropdown._scrollTrigger = button;
   dropdown.classList.add('session-row-dropdown-menu--fixed'); dropdown.classList.add('show');
@@ -255,10 +255,23 @@ function positionSessionDropdownFixed(button, dropdown) {
     var handler = function() { if (!dropdown.classList.contains('show') || !dropdown._scrollTrigger) return; updateSessionDropdownPosition(dropdown._scrollTrigger, dropdown); };
     if (!dropdown._scrollCloseHandler) {
       dropdown._scrollCloseHandler = handler;
-      var scrollEl = scrollContainer.querySelector('.scrollable-content') || scrollContainer;
-      if (scrollEl) { dropdown._scrollClose = scrollEl; scrollEl.addEventListener('scroll', handler, { passive: true }); }
-      var main = document.getElementById('dashboardMain');
-      if (main && main !== scrollEl) { main.addEventListener('scroll', handler, { passive: true }); dropdown._mainScrollReposition = main; }
+      if (scrollContainer.id === 'stagesList') {
+        var scrollTargets = [];
+        var el = scrollContainer;
+        while (el && el !== document.body) {
+          if (el.scrollHeight > el.clientHeight || el.scrollWidth > el.clientWidth) {
+            scrollTargets.push(el);
+          }
+          el = el.parentElement;
+        }
+        scrollTargets.forEach(function(el) { el.addEventListener('scroll', handler, { passive: true }); });
+        dropdown._scrollTargets = scrollTargets;
+      } else {
+        var scrollEl = scrollContainer.querySelector('.scrollable-content') || scrollContainer;
+        if (scrollEl) { dropdown._scrollClose = scrollEl; scrollEl.addEventListener('scroll', handler, { passive: true }); }
+        var main = document.getElementById('dashboardMain');
+        if (main && main !== scrollEl) { main.addEventListener('scroll', handler, { passive: true }); dropdown._mainScrollReposition = main; }
+      }
       window.addEventListener('scroll', handler, { passive: true }); dropdown._windowScrollReposition = true;
     }
   });
@@ -269,7 +282,8 @@ window.toggleDropdown = function(button) {
     if (menu !== dropdown) { menu.classList.remove('show'); clearSessionDropdownFixed(menu); }
   });
   if (!dropdown) return;
-  if (dropdown.closest('.session-timeline-container')) {
+  var isFixedContext = dropdown.closest('.session-timeline-container') || dropdown.closest('#stagesList');
+  if (isFixedContext) {
     if (dropdown.classList.contains('show')) { dropdown.classList.remove('show'); clearSessionDropdownFixed(dropdown); }
     else positionSessionDropdownFixed(button, dropdown);
   } else { dropdown.classList.toggle('show'); }

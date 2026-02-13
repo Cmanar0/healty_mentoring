@@ -2443,7 +2443,16 @@
         animation: none;
     }
     
-    .task-filter-select {
+    /* Task Filter Custom Dropdown */
+    .task-filter-dropdown-container {
+        position: relative;
+        display: inline-block;
+    }
+    
+    .task-filter-dropdown-trigger {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
         padding: 6px 28px 6px 12px;
         border: 1px solid #e5e7eb;
         border-radius: 6px;
@@ -2454,34 +2463,117 @@
         cursor: pointer;
         outline: none;
         transition: all 0.2s;
-        appearance: none;
-        -webkit-appearance: none;
-        -moz-appearance: none;
-        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
-        background-repeat: no-repeat;
-        background-position: right 10px center;
-        background-size: 12px;
         min-width: 120px;
         max-width: 110px;
         height: 32px;
         margin-bottom: 0;
     }
     
-    .task-filter-select:hover {
-        background-color: #f9fafb;
-        border-color: #d1d5db;
-        color: #374151;
+    .task-filter-dropdown-trigger:hover {
+        border-color: #10b981;
     }
     
-    .task-filter-select:focus {
-        border-color: #3b82f6;
-        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-        background-color: white;
+    .task-filter-dropdown-trigger i {
+        color: #6b7280;
+        font-size: 0.75rem;
+        transition: transform 0.2s ease;
+        margin-left: 8px;
     }
     
-    .task-filter-select option {
-        padding: 8px 12px;
-        font-size: 0.875rem;
+    .task-filter-dropdown-container.active .task-filter-dropdown-trigger i {
+        transform: rotate(180deg);
+    }
+    
+    .task-filter-dropdown-menu {
+        position: absolute;
+        top: calc(100% + 8px);
+        left: 0;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        padding: 0;
+        opacity: 0;
+        visibility: hidden;
+        transform: translateY(-10px);
+        transition: all 0.2s ease;
+        z-index: 10005;
+        min-width: 100%;
+    }
+    
+    .task-filter-dropdown-container.active .task-filter-dropdown-menu:not(.session-row-dropdown-menu--fixed) {
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(0);
+    }
+    
+    .task-filter-dropdown-menu .dropdown-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 20px;
+        color: #1e293b;
+        text-decoration: none;
+        transition: background 0.2s ease;
+        border: none;
+        background: transparent;
+        width: 100%;
+        cursor: pointer;
+        font-size: 0.95rem;
+        font-weight: 400;
+        text-align: left;
+    }
+    
+    .task-filter-dropdown-menu .dropdown-item.first-item {
+        border-radius: 12px 12px 0 0;
+    }
+    
+    .task-filter-dropdown-menu .dropdown-item.last-item {
+        border-radius: 0 0 12px 12px;
+    }
+    
+    .task-filter-dropdown-menu .dropdown-item:hover {
+        background: rgba(16, 185, 129, 0.1);
+        color: #10b981;
+    }
+    
+    .task-filter-dropdown-menu .dropdown-item.first-item:hover {
+        border-radius: 12px 12px 0 0;
+    }
+    
+    .task-filter-dropdown-menu .dropdown-item.last-item:hover {
+        border-radius: 0 0 12px 12px;
+    }
+    
+    .task-filter-dropdown-menu .dropdown-item.active {
+        background: rgba(16, 185, 129, 0.1);
+        color: #10b981;
+        font-weight: 500;
+    }
+    
+    /* When task filter dropdown is shown and fixed (for scrollable containers) */
+    .task-filter-dropdown-menu.show.session-row-dropdown-menu--fixed {
+        position: fixed !important;
+        z-index: 1050 !important;
+        top: 0;
+        left: 0;
+        width: max-content;
+        max-width: 280px;
+        min-width: 100%;
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+        background: white;
+    }
+    
+    /* When task filter dropdown is shown but not fixed (normal positioning) */
+    .task-filter-dropdown-menu.show:not(.session-row-dropdown-menu--fixed) {
+        position: absolute;
+        top: calc(100% + 8px);
+        left: 0;
+        z-index: 1000;
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(0);
+        display: block;
     }
     
     .review-completed-badge {
@@ -7365,8 +7457,8 @@
                 const tasks = data.tasks || [];
                 
                 // Check if this is the first load and if there are completed tasks
-                const filterSelect = document.getElementById(`taskFilter_${stageId}`);
-                const isFirstLoad = !filterSelect;
+                const selectedText = document.getElementById(`taskFilterSelectedText_${stageId}`);
+                const isFirstLoad = !selectedText;
                 
                 if (isFirstLoad) {
                     // Check if there are any completed tasks
@@ -7441,12 +7533,20 @@
             }
         }
         
-        // Get current filter value
-        const filterSelect = document.getElementById(`taskFilter_${stageId}`);
-        let currentFilter = filterSelect ? filterSelect.value : 'all';
+        // Get current filter value from dropdown
+        const selectedText = document.getElementById(`taskFilterSelectedText_${stageId}`);
+        let currentFilter = 'all';
+        if (selectedText) {
+            const text = selectedText.textContent.trim();
+            if (text === 'Active') currentFilter = 'active';
+            else if (text === 'Not Active') currentFilter = 'not_active';
+            else if (text === 'Completed') currentFilter = 'completed';
+            else if (text === 'History') currentFilter = 'history';
+            else currentFilter = 'all';
+        }
         
         // If this is the first load and there are completed tasks, use 'completed' as default
-        if (!filterSelect && tasksSection && tasksSection.dataset.defaultFilter === 'completed') {
+        if (!selectedText && tasksSection && tasksSection.dataset.defaultFilter === 'completed') {
             currentFilter = 'completed';
         }
         
@@ -7485,13 +7585,29 @@
                     <div class="stage-tasks-select-all-checkbox" id="selectAllTasks_${stageId}" onclick="toggleSelectAllTasks(${stageId}, event)"></div>
                     Tasks (${filteredCount}${currentFilter !== 'all' ? ` / ${tasks.length}` : ''})
                     <div class="stage-tasks-filter" style="margin-left: 12px; display: inline-flex; align-items: center; gap: 8px;">
-                        <select class="task-filter-select" id="taskFilter_${stageId}" onchange="filterStageTasks(${stageId}, this.value)">
-                            <option value="all" ${currentFilter === 'all' ? 'selected' : ''}>All</option>
-                            <option value="active" ${currentFilter === 'active' ? 'selected' : ''}>Active</option>
-                            <option value="not_active" ${currentFilter === 'not_active' && (!filterSelect || tasksSection.dataset.defaultFilter !== 'completed') ? 'selected' : ''}>Not Active</option>
-                            <option value="completed" ${currentFilter === 'completed' ? 'selected' : ''}>Completed</option>
-                            <option value="history" ${currentFilter === 'history' ? 'selected' : ''}>History</option>
-                        </select>
+                        <div class="task-filter-dropdown-container" id="taskFilterContainer_${stageId}">
+                            <button type="button" class="task-filter-dropdown-trigger" id="taskFilterTrigger_${stageId}" onclick="toggleTaskFilterDropdown(${stageId}, event)">
+                                <span class="task-filter-selected-text" id="taskFilterSelectedText_${stageId}">${currentFilter === 'all' ? 'All' : currentFilter === 'active' ? 'Active' : currentFilter === 'not_active' ? 'Not Active' : currentFilter === 'completed' ? 'Completed' : 'History'}</span>
+                                <i class="fas fa-chevron-down"></i>
+                            </button>
+                            <div class="task-filter-dropdown-menu" id="taskFilterMenu_${stageId}" onclick="event.stopPropagation();">
+                                <button type="button" class="dropdown-item first-item ${currentFilter === 'all' ? 'active' : ''}" data-value="all" onclick="selectTaskFilter(${stageId}, 'all', event)">
+                                    <span>All</span>
+                                </button>
+                                <button type="button" class="dropdown-item ${currentFilter === 'active' ? 'active' : ''}" data-value="active" onclick="selectTaskFilter(${stageId}, 'active', event)">
+                                    <span>Active</span>
+                                </button>
+                                <button type="button" class="dropdown-item ${currentFilter === 'not_active' ? 'active' : ''}" data-value="not_active" onclick="selectTaskFilter(${stageId}, 'not_active', event)">
+                                    <span>Not Active</span>
+                                </button>
+                                <button type="button" class="dropdown-item ${currentFilter === 'completed' ? 'active' : ''}" data-value="completed" onclick="selectTaskFilter(${stageId}, 'completed', event)">
+                                    <span>Completed</span>
+                                </button>
+                                <button type="button" class="dropdown-item last-item ${currentFilter === 'history' ? 'active' : ''}" data-value="history" onclick="selectTaskFilter(${stageId}, 'history', event)">
+                                    <span>History</span>
+                                </button>
+                            </div>
+                        </div>
                         ${completedCount > 0 ? `
                             <div class="review-completed-badge" onclick="filterStageTasksToCompleted(${stageId})" style="cursor: pointer;" title="Review Completed Tasks">
                                 Review Completed Tasks
@@ -8832,8 +8948,16 @@
         const newState = !isActive;
         
         // Get current filter
-        const filterSelect = document.getElementById(`taskFilter_${stageId}`);
-        const currentFilter = filterSelect ? filterSelect.value : 'all';
+        const selectedText = document.getElementById(`taskFilterSelectedText_${stageId}`);
+        let currentFilter = 'all';
+        if (selectedText) {
+            const text = selectedText.textContent.trim();
+            if (text === 'Active') currentFilter = 'active';
+            else if (text === 'Not Active') currentFilter = 'not_active';
+            else if (text === 'Completed') currentFilter = 'completed';
+            else if (text === 'History') currentFilter = 'history';
+            else currentFilter = 'all';
+        }
         
         // Disable button during request
         button.disabled = true;
@@ -8908,8 +9032,16 @@
                         const allTasks = tasksList.querySelectorAll('.stage-task-item:not(.fade-out)').length;
                         const tasksHeader = document.querySelector(`#stageTasks_${stageId} .stage-tasks-title`);
                         if (tasksHeader) {
-                            const filterSelect = document.getElementById(`taskFilter_${stageId}`);
-                            const currentFilter = filterSelect ? filterSelect.value : 'not_active';
+                            const selectedText = document.getElementById(`taskFilterSelectedText_${stageId}`);
+                            let currentFilter = 'all';
+                            if (selectedText) {
+                                const text = selectedText.textContent.trim();
+                                if (text === 'Active') currentFilter = 'active';
+                                else if (text === 'Not Active') currentFilter = 'not_active';
+                                else if (text === 'Completed') currentFilter = 'completed';
+                                else if (text === 'History') currentFilter = 'history';
+                                else currentFilter = 'all';
+                            }
                             let filteredCount = allTasks;
                             if (currentFilter === 'active') {
                                 filteredCount = Array.from(tasksList.querySelectorAll('.stage-task-item:not(.fade-out)')).filter(item => item.querySelector('.stage-task-activate-btn')?.dataset.isActive === 'true').length;
@@ -8980,11 +9112,7 @@
                             
                             // Set filter to completed
                             setTimeout(() => {
-                                const filterSelect = document.getElementById(`taskFilter_${foundStage}`);
-                                if (filterSelect) {
-                                    filterSelect.value = 'completed';
-                                    filterStageTasks(foundStage, 'completed');
-                                }
+                                selectTaskFilter(foundStage, 'completed', { stopPropagation: () => {} });
                             }, 300);
                         }
                     }
@@ -9009,6 +9137,122 @@
     };
     
     // Filter stage tasks to completed view
+    // Toggle task filter dropdown
+    window.toggleTaskFilterDropdown = function(stageId, event) {
+        event.stopPropagation();
+        const container = document.getElementById(`taskFilterContainer_${stageId}`);
+        const menu = document.getElementById(`taskFilterMenu_${stageId}`);
+        const trigger = document.getElementById(`taskFilterTrigger_${stageId}`);
+        if (!container || !menu || !trigger) return;
+        
+        // Close all other task filter dropdowns
+        document.querySelectorAll('.task-filter-dropdown-container.active').forEach(c => {
+            if (c.id !== `taskFilterContainer_${stageId}`) {
+                c.classList.remove('active');
+                const otherMenu = c.querySelector('.task-filter-dropdown-menu');
+                if (otherMenu && typeof clearSessionDropdownFixed === 'function') {
+                    clearSessionDropdownFixed(otherMenu);
+                }
+            }
+        });
+        
+        // Close all stage action dropdowns
+        document.querySelectorAll('.dropdown-menu.show').forEach(m => {
+            if (m.classList.contains('stage-actions-menu')) {
+                m.classList.remove('show');
+                if (typeof clearSessionDropdownFixed === 'function') {
+                    clearSessionDropdownFixed(m);
+                }
+            }
+        });
+        
+        // Check if dropdown is inside #stagesList (scrollable container)
+        const isFixedContext = menu.closest('#stagesList');
+        
+        if (container.classList.contains('active')) {
+            // Close dropdown
+            container.classList.remove('active');
+            menu.classList.remove('show');
+            if (typeof clearSessionDropdownFixed === 'function') {
+                clearSessionDropdownFixed(menu);
+            }
+        } else {
+            // Open dropdown
+            container.classList.add('active');
+            if (isFixedContext) {
+                // Use fixed positioning for scrollable containers
+                if (typeof positionSessionDropdownFixed === 'function') {
+                    positionSessionDropdownFixed(trigger, menu);
+                } else {
+                    menu.classList.add('show');
+                }
+            } else {
+                // Normal positioning
+                menu.classList.add('show');
+            }
+        }
+    };
+    
+    // Select task filter option
+    window.selectTaskFilter = function(stageId, filterValue, event) {
+        event.stopPropagation();
+        
+        // Update selected text
+        const selectedText = document.getElementById(`taskFilterSelectedText_${stageId}`);
+        const filterLabels = {
+            'all': 'All',
+            'active': 'Active',
+            'not_active': 'Not Active',
+            'completed': 'Completed',
+            'history': 'History'
+        };
+        if (selectedText) {
+            selectedText.textContent = filterLabels[filterValue] || 'All';
+        }
+        
+        // Update active state
+        const menu = document.getElementById(`taskFilterMenu_${stageId}`);
+        if (menu) {
+            menu.querySelectorAll('.dropdown-item').forEach(item => {
+                item.classList.remove('active');
+                if (item.getAttribute('data-value') === filterValue) {
+                    item.classList.add('active');
+                }
+            });
+        }
+        
+        // Close dropdown
+        const container = document.getElementById(`taskFilterContainer_${stageId}`);
+        if (container) {
+            container.classList.remove('active');
+        }
+        if (menu) {
+            menu.classList.remove('show');
+            if (typeof clearSessionDropdownFixed === 'function') {
+                clearSessionDropdownFixed(menu);
+            }
+        }
+        
+        // Apply filter
+        filterStageTasks(stageId, filterValue);
+    };
+    
+    // Close task filter dropdowns when clicking outside
+    document.addEventListener('click', function(event) {
+        if (!event.target.closest('.task-filter-dropdown-container')) {
+            document.querySelectorAll('.task-filter-dropdown-container.active').forEach(container => {
+                container.classList.remove('active');
+                const menu = container.querySelector('.task-filter-dropdown-menu');
+                if (menu) {
+                    menu.classList.remove('show');
+                    if (typeof clearSessionDropdownFixed === 'function') {
+                        clearSessionDropdownFixed(menu);
+                    }
+                }
+            });
+        }
+    });
+    
     window.filterStageTasksToCompleted = function(stageId) {
         // Expand the stage if not expanded
         const tasksSection = document.getElementById(`stageTasks_${stageId}`);
@@ -9016,19 +9260,11 @@
             toggleStageTasks(stageId, { stopPropagation: () => {} });
             // Wait for expansion, then set filter
             setTimeout(() => {
-                const filterSelect = document.getElementById(`taskFilter_${stageId}`);
-                if (filterSelect) {
-                    filterSelect.value = 'completed';
-                    filterStageTasks(stageId, 'completed');
-                }
+                selectTaskFilter(stageId, 'completed', { stopPropagation: () => {} });
             }, 300);
         } else {
             // Stage already expanded, just set filter
-            const filterSelect = document.getElementById(`taskFilter_${stageId}`);
-            if (filterSelect) {
-                filterSelect.value = 'completed';
-                filterStageTasks(stageId, 'completed');
-            }
+            selectTaskFilter(stageId, 'completed', { stopPropagation: () => {} });
         }
     };
     

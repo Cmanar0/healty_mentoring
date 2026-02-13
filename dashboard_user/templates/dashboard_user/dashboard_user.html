@@ -56,7 +56,7 @@
                     <div class="session-timeline-container scrollable-content" id="dashboardUpcomingSessions">
                         {% if upcoming_sessions %}
                             {% for session in upcoming_sessions %}
-                                <div class="session-item status-{{ session.status }}" data-clickable-session data-session-id="{{ session.id }}">
+                                <div class="session-item status-{{ session.status }}" data-clickable-session data-session-id="{{ session.id }}" {% if session.status == 'invited' %}data-invitation-id="{{ session.invitation_id|default:'' }}" data-session-price="{{ session.session_price|default:0 }}"{% endif %}>
                                     <div class="session-left">
                                         <div class="session-date">
                                             <span class="date-day">{{ session.start_datetime|date:"d" }}</span>
@@ -2128,7 +2128,9 @@ function loadBookingModalForMentor(mentorUserId) {
 {% include 'dashboard_user/popups/create_active_backlog_task_modal.html' %}
 {% include 'dashboard_user/popups/wallet_topup_modal.html' %}
 {% include 'dashboard_user/popups/payment_confirmation_modal.html' %}
+{% include 'dashboard_user/popups/accept_invitation_modal.html' %}
 
+<script src="https://js.stripe.com/v3/"></script>
 <script>
 // Initialize deactivate task modal event listeners (dashboard)
 document.addEventListener('DOMContentLoaded', function() {
@@ -2161,5 +2163,355 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 });
+
+// Accept/Decline invitation modal functionality for invited sessions
+(function() {
+  var walletBalanceCents = {{ wallet_balance_cents|default:0 }};
+  var stripePk = '{{ stripe_publishable_key|default:""|escapejs }}';
+  var createAcceptPiUrl = '{% url "general:dashboard_user:create_accept_session_payment_intent" %}';
+  var acceptInvitationUrl = '{% url "general:dashboard_user:session_management" %}';
+  var declineInvitationUrl = '{% url "general:dashboard_user:session_management" %}';
+  var acceptModalOverlay = null;
+  var acceptFormRef = null;
+  var acceptPriceCents = 0;
+  var acceptInvitationId = null;
+  var acceptStripeInstance = null;
+  var acceptCardNumber = null;
+  var acceptCardExpiry = null;
+  var acceptCardCvc = null;
+  var acceptSelectedMethod = 'card';
+
+  function getCsrfToken() {
+    var input = document.querySelector('[name=csrfmiddlewaretoken]');
+    if (input) return input.value;
+    var cookies = document.cookie.split(';');
+    for (var i = 0; i < cookies.length; i++) {
+      var c = cookies[i].trim();
+      if (c.indexOf('csrftoken=') === 0) return decodeURIComponent(c.substring('csrftoken='.length));
+    }
+    return '';
+  }
+
+  function openAcceptInvitationModal(invitationId, sessionPriceDollars) {
+    acceptInvitationId = invitationId;
+    acceptPriceCents = Math.round(parseFloat(sessionPriceDollars) * 100) || 0;
+    acceptModalOverlay = document.getElementById('acceptInvitationModalOverlay');
+    var freeSection = document.getElementById('acceptInvitationFreeSection');
+    var paidSection = document.getElementById('acceptInvitationPaidSection');
+    if (!acceptModalOverlay) return;
+    if (acceptPriceCents <= 0) {
+      freeSection.style.display = 'block';
+      paidSection.style.display = 'none';
+      acceptModalOverlay.style.display = 'flex';
+      return;
+    }
+    freeSection.style.display = 'none';
+    paidSection.style.display = 'block';
+    document.getElementById('acceptInvitationAmountText').textContent = '$' + (acceptPriceCents / 100).toFixed(2);
+    document.getElementById('acceptInvitationPayAmount').textContent = '$' + (acceptPriceCents / 100).toFixed(2);
+    var walletOption = document.getElementById('acceptPayWithWalletOption');
+    var cardOption = document.getElementById('acceptPayWithCardOption');
+    var cardSection = document.getElementById('acceptInvitationCardSection');
+    var insufficientNote = document.getElementById('acceptInvitationInsufficientNote');
+    var walletLabel = document.getElementById('acceptWalletAmountLabel');
+    var canWallet = walletBalanceCents >= acceptPriceCents;
+    
+    // Always show wallet option if user is authenticated
+    if (walletOption) {
+      walletOption.style.display = 'flex';
+      // Always show current wallet balance (similar to booking modal)
+      if (walletLabel) {
+        const walletBalance = (walletBalanceCents / 100).toFixed(2);
+        walletLabel.textContent = ' ($' + walletBalance + ' available)';
+      }
+    }
+    
+    // Show insufficient note only when wallet is selected AND funds are insufficient
+    if (insufficientNote) {
+      insufficientNote.style.display = 'none'; // Hidden by default, shown only when wallet selected and insufficient
+    }
+    
+    // Default to card if insufficient wallet balance, otherwise default to wallet
+    if (canWallet) {
+      acceptSelectedMethod = 'wallet';
+      document.getElementById('acceptPaymentMethodWallet').checked = true;
+      document.getElementById('acceptPaymentMethodCard').checked = false;
+      cardSection.style.display = 'none';
+      unmountAcceptCard();
+    } else {
+      acceptSelectedMethod = 'card';
+      document.getElementById('acceptPaymentMethodCard').checked = true;
+      document.getElementById('acceptPaymentMethodWallet').checked = false;
+      cardSection.style.display = 'block';
+      if (stripePk && typeof window.Stripe === 'function') mountAcceptCard();
+    }
+    var payBtn = document.getElementById('acceptInvitationPayBtn');
+    if (payBtn) payBtn.disabled = false;
+    acceptModalOverlay.style.display = 'flex';
+  }
+
+  window.closeAcceptInvitationModal = function() {
+    var overlay = document.getElementById('acceptInvitationModalOverlay');
+    if (overlay) overlay.style.display = 'none';
+    unmountAcceptCard();
+    acceptFormRef = null;
+  };
+
+  function mountAcceptCard() {
+    if (!stripePk || !window.Stripe || acceptCardNumber) return;
+    var numEl = document.getElementById('acceptInvitationCardNumberContainer');
+    var expEl = document.getElementById('acceptInvitationCardExpiryContainer');
+    var cvcEl = document.getElementById('acceptInvitationCardCvcContainer');
+    if (!numEl || !expEl || !cvcEl) return;
+    try {
+      acceptStripeInstance = window.Stripe(stripePk);
+      var elements = acceptStripeInstance.elements();
+      var style = { style: { base: { fontSize: '16px' } } };
+      acceptCardNumber = elements.create('cardNumber', style);
+      acceptCardExpiry = elements.create('cardExpiry', style);
+      acceptCardCvc = elements.create('cardCvc', style);
+      acceptCardNumber.mount('#acceptInvitationCardNumberContainer');
+      acceptCardExpiry.mount('#acceptInvitationCardExpiryContainer');
+      acceptCardCvc.mount('#acceptInvitationCardCvcContainer');
+      var errEl = document.getElementById('acceptInvitationCardError');
+      var errText = document.getElementById('acceptInvitationCardErrorText');
+      function onChange(e) {
+        if (errEl && errText) {
+          errText.textContent = e.error ? (e.error.message || '') : '';
+          errEl.style.display = e.error ? 'flex' : 'none';
+        }
+      }
+      acceptCardNumber.on('change', onChange);
+      acceptCardExpiry.on('change', onChange);
+      acceptCardCvc.on('change', onChange);
+    } catch (e) { console.error('Accept modal Stripe mount error', e); }
+  }
+
+  function unmountAcceptCard() {
+    if (acceptCardNumber) { try { acceptCardNumber.unmount(); } catch (x) {} acceptCardNumber = null; }
+    if (acceptCardExpiry) { try { acceptCardExpiry.unmount(); } catch (x) {} acceptCardExpiry = null; }
+    if (acceptCardCvc) { try { acceptCardCvc.unmount(); } catch (x) {} acceptCardCvc = null; }
+  }
+
+  function submitAcceptInvitation(extraData) {
+    var form = document.createElement('form');
+    form.method = 'POST';
+    form.action = acceptInvitationUrl;
+    var csrfInput = document.createElement('input');
+    csrfInput.type = 'hidden';
+    csrfInput.name = 'csrfmiddlewaretoken';
+    csrfInput.value = getCsrfToken();
+    form.appendChild(csrfInput);
+    var actionInput = document.createElement('input');
+    actionInput.type = 'hidden';
+    actionInput.name = 'action';
+    actionInput.value = 'confirm_invitation';
+    form.appendChild(actionInput);
+    var invIdInput = document.createElement('input');
+    invIdInput.type = 'hidden';
+    invIdInput.name = 'invitation_id';
+    invIdInput.value = acceptInvitationId;
+    form.appendChild(invIdInput);
+    if (extraData) {
+      for (var k in extraData) {
+        var input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = k;
+        input.value = extraData[k];
+        form.appendChild(input);
+      }
+    }
+    document.body.appendChild(form);
+    form.submit();
+  }
+
+  function submitDeclineInvitation() {
+    var form = document.createElement('form');
+    form.method = 'POST';
+    form.action = declineInvitationUrl;
+    var csrfInput = document.createElement('input');
+    csrfInput.type = 'hidden';
+    csrfInput.name = 'csrfmiddlewaretoken';
+    csrfInput.value = getCsrfToken();
+    form.appendChild(csrfInput);
+    var actionInput = document.createElement('input');
+    actionInput.type = 'hidden';
+    actionInput.name = 'action';
+    actionInput.value = 'decline_invitation';
+    form.appendChild(actionInput);
+    var invIdInput = document.createElement('input');
+    invIdInput.type = 'hidden';
+    invIdInput.name = 'invitation_id';
+    invIdInput.value = acceptInvitationId;
+    form.appendChild(invIdInput);
+    document.body.appendChild(form);
+    form.submit();
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    acceptModalOverlay = document.getElementById('acceptInvitationModalOverlay');
+    if (acceptModalOverlay) {
+      acceptModalOverlay.addEventListener('click', function(e) {
+        if (e.target === acceptModalOverlay) closeAcceptInvitationModal();
+      });
+    }
+
+    // Handle clicks on invited sessions
+    var container = document.getElementById('dashboardUpcomingSessions');
+    if (container) {
+      container.addEventListener('click', function(e) {
+        var row = e.target.closest('.session-item[data-clickable-session]');
+        if (!row) return;
+        // Don't trigger if clicking on dropdown menu
+        if (e.target.closest('.session-right')) return;
+        var status = row.classList.contains('status-invited') ? 'invited' : 'confirmed';
+        if (status === 'invited') {
+          e.preventDefault();
+          e.stopPropagation();
+          var invitationId = row.getAttribute('data-invitation-id');
+          var sessionPrice = row.getAttribute('data-session-price') || '0';
+          if (invitationId) {
+            openAcceptInvitationModal(invitationId, sessionPrice);
+          }
+        } else {
+          // For confirmed sessions, open detail modal if available
+          var sessionId = row.getAttribute('data-session-id');
+          if (sessionId && typeof openSessionDetailModal === 'function') {
+            openSessionDetailModal(parseInt(sessionId, 10));
+          }
+        }
+      });
+    }
+
+    // Modal button handlers
+    var confirmFreeBtn = document.getElementById('acceptInvitationConfirmFreeBtn');
+    if (confirmFreeBtn) {
+      confirmFreeBtn.addEventListener('click', function() {
+        submitAcceptInvitation(null);
+        closeAcceptInvitationModal();
+        setTimeout(function() {
+          window.location.reload();
+        }, 500);
+      });
+    }
+
+    var declineBtn = document.getElementById('acceptInvitationDeclineBtn');
+    if (declineBtn) {
+      declineBtn.addEventListener('click', function() {
+        if (confirm('Are you sure you want to decline this invitation?')) {
+          submitDeclineInvitation();
+          closeAcceptInvitationModal();
+          setTimeout(function() {
+            window.location.reload();
+          }, 500);
+        }
+      });
+    }
+
+    var declineBtnPaid = document.getElementById('acceptInvitationDeclineBtnPaid');
+    if (declineBtnPaid) {
+      declineBtnPaid.addEventListener('click', function() {
+        if (confirm('Are you sure you want to decline this invitation?')) {
+          submitDeclineInvitation();
+          closeAcceptInvitationModal();
+          setTimeout(function() {
+            window.location.reload();
+          }, 500);
+        }
+      });
+    }
+
+    var payBtn = document.getElementById('acceptInvitationPayBtn');
+    if (payBtn) {
+      payBtn.addEventListener('click', function() {
+        if (acceptSelectedMethod === 'wallet') {
+          submitAcceptInvitation({ use_wallet: '1' });
+          closeAcceptInvitationModal();
+          return;
+        }
+        payBtn.disabled = true;
+        payBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+        var errEl = document.getElementById('acceptInvitationCardError');
+        var errText = document.getElementById('acceptInvitationCardErrorText');
+        if (errText) errText.textContent = '';
+        if (errEl) errEl.style.display = 'none';
+        fetch(createAcceptPiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
+          body: JSON.stringify({ invitation_id: acceptInvitationId, attempt_id: (window.crypto && window.crypto.randomUUID) ? window.crypto.randomUUID() : 'a' + Date.now() })
+        }).then(function(r) { return r.json(); }).then(function(data) {
+          if (!data.success || !data.client_secret) {
+            if (errText) errText.textContent = data.error || 'Could not start payment.';
+            if (errEl) errEl.style.display = 'flex';
+            payBtn.disabled = false;
+            payBtn.innerHTML = '<span id="acceptInvitationPayBtnText">Pay <span id="acceptInvitationPayAmount">$' + (acceptPriceCents/100).toFixed(2) + '</span></span>';
+            return;
+          }
+          if (!acceptStripeInstance || !acceptCardNumber) {
+            if (errText) errText.textContent = 'Card form not ready.';
+            if (errEl) errEl.style.display = 'flex';
+            payBtn.disabled = false;
+            payBtn.innerHTML = '<span id="acceptInvitationPayBtnText">Pay <span id="acceptInvitationPayAmount">$' + (acceptPriceCents/100).toFixed(2) + '</span></span>';
+            return;
+          }
+          acceptStripeInstance.confirmCardPayment(data.client_secret, {
+            payment_method: { card: acceptCardNumber }
+          }).then(function(result) {
+            if (result.error) {
+              if (errText) errText.textContent = result.error.message || 'Payment failed.';
+              if (errEl) errEl.style.display = 'flex';
+              payBtn.disabled = false;
+              payBtn.innerHTML = '<span id="acceptInvitationPayBtnText">Pay <span id="acceptInvitationPayAmount">$' + (acceptPriceCents/100).toFixed(2) + '</span></span>';
+              return;
+            }
+            if (result.paymentIntent && result.paymentIntent.status === 'succeeded') {
+              closeAcceptInvitationModal();
+              submitAcceptInvitation({ payment_intent_id: result.paymentIntent.id });
+              if (typeof showPaymentConfirmationModal === 'function') {
+                showPaymentConfirmationModal('Session paid successfully. Your invitation has been accepted.');
+              }
+              // Reload page after successful payment
+              setTimeout(function() {
+                window.location.reload();
+              }, 1500);
+            }
+          }).catch(function() {
+            if (errText) errText.textContent = 'Payment could not be completed.';
+            if (errEl) errEl.style.display = 'flex';
+            payBtn.disabled = false;
+            payBtn.innerHTML = '<span id="acceptInvitationPayBtnText">Pay <span id="acceptInvitationPayAmount">$' + (acceptPriceCents/100).toFixed(2) + '</span></span>';
+          });
+        }).catch(function() {
+          if (errText) errText.textContent = 'Could not start payment. Try again.';
+          if (errEl) errEl.style.display = 'flex';
+          payBtn.disabled = false;
+          payBtn.innerHTML = '<span id="acceptInvitationPayBtnText">Pay <span id="acceptInvitationPayAmount">$' + (acceptPriceCents/100).toFixed(2) + '</span></span>';
+        });
+      });
+    }
+
+    document.querySelectorAll('input[name="accept_payment_method"]').forEach(function(radio) {
+      radio.addEventListener('change', function() {
+        acceptSelectedMethod = this.value;
+        var cardSection = document.getElementById('acceptInvitationCardSection');
+        var insufficientNote = document.getElementById('acceptInvitationInsufficientNote');
+        var canWallet = walletBalanceCents >= acceptPriceCents;
+        
+        if (acceptSelectedMethod === 'wallet') {
+          cardSection.style.display = 'none';
+          unmountAcceptCard();
+          // Show insufficient note only if wallet is selected AND insufficient
+          if (insufficientNote) {
+            insufficientNote.style.display = canWallet ? 'none' : 'block';
+          }
+        } else {
+          cardSection.style.display = 'block';
+          if (insufficientNote) insufficientNote.style.display = 'none';
+          if (stripePk && typeof window.Stripe === 'function') mountAcceptCard();
+        }
+      });
+    });
+  });
+})();
 </script>
 {% endblock %}

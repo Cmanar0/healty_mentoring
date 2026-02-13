@@ -322,16 +322,22 @@
                             <div id="bookingPaymentMethodChoices" style="display: flex; flex-direction: column; gap: 10px;">
                                 <label class="booking-payment-method-option" id="bookingPayWithWalletOption" style="display: none; padding: 14px 16px; border: 2px solid #e2e8f0; border-radius: 10px; cursor: pointer; transition: all 0.2s; background: #fff;">
                                     <input type="radio" name="booking_payment_method" value="wallet" id="bookingPaymentMethodWallet">
-                                    <span><i class="fas fa-wallet" style="margin-right: 8px; color: #10b981;"></i> Pay with wallet</span>
-                                    <span id="bookingWalletAmountLabel" style="font-weight: 600; color: #0f172a;"></span>
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <i class="fas fa-wallet" style="color: #10b981;"></i>
+                                        <span>Pay with wallet</span>
+                                    </div>
+                                    <span id="bookingWalletAmountLabel" style="font-weight: 600; color: #0f172a; margin-left: auto;"></span>
                                 </label>
                                 <label class="booking-payment-method-option" id="bookingPayWithCardOption" style="padding: 14px 16px; border: 2px solid #e2e8f0; border-radius: 10px; cursor: pointer; transition: all 0.2s; background: #fff;">
                                     <input type="radio" name="booking_payment_method" value="card" id="bookingPaymentMethodCard" checked>
-                                    <span><i class="fas fa-credit-card" style="margin-right: 8px; color: #64748b;"></i> Pay with card</span>
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <i class="fas fa-credit-card" style="color: #64748b;"></i>
+                                        <span>Pay with card</span>
+                                    </div>
                                 </label>
                             </div>
                             <p id="bookingWalletInsufficientNote" style="display: none; font-size: 0.85rem; color: #64748b; margin-top: 8px;">
-                                Insufficient wallet balance. <a href="{% url 'general:dashboard_user:dashboard' %}" target="_blank" style="color: #10b981;">Top up from dashboard</a> or pay with card below.
+                                Insufficient wallet balance. <button type="button" class="booking-link-btn" onclick="if (typeof openWalletTopUpModal === 'function') openWalletTopUpModal();" style="background: none; border: none; color: #10b981; cursor: pointer; text-decoration: underline; font-size: inherit; padding: 0;">Top up wallet</button> or pay with card below.
                             </p>
                         </div>
                         <!-- Payment (Phase 2): separate card elements when session is paid -->
@@ -424,8 +430,16 @@
     display: flex;
     align-items: center;
     gap: 10px;
+    width: auto; /* Not 100% */
 }
-.booking-payment-method-option input { margin: 0; }
+.booking-payment-method-option#bookingPayWithWalletOption {
+    justify-content: space-between; /* Only wallet option has space-between */
+}
+.booking-payment-method-option input { 
+    margin: 0; 
+    width: auto;
+    flex-shrink: 0;
+}
 .booking-payment-method-option:has(input:checked) {
     border-color: #10b981 !important;
     background: rgba(16, 185, 129, 0.06) !important;
@@ -804,6 +818,7 @@
     background: white;
     width: 90%;
     max-width: 1000px;
+    min-height: 600px; /* Prevent modal from changing size */
     height: 600px;
     border-radius: 20px;
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
@@ -2637,22 +2652,30 @@
         if (!methodSection) return;
         if (paymentRequired && isUserAuthenticated) {
             methodSection.style.display = 'block';
-            if (canPayWithWallet) {
-                if (walletOption) {
-                    walletOption.style.display = 'flex';
-                    if (walletLabel) walletLabel.textContent = ' ($' + (sessionPriceCents / 100).toFixed(2) + ' from balance)';
+            // Always show wallet option
+            if (walletOption) {
+                walletOption.style.display = 'flex';
+                // Always show current wallet balance
+                if (walletLabel && isUserAuthenticated) {
+                    const walletBalance = (walletBalanceCents / 100).toFixed(2);
+                    walletLabel.textContent = ' ($' + walletBalance + ' available)';
                 }
-                if (insufficientNote) insufficientNote.style.display = 'none';
-                if (selectedPaymentMethod === 'wallet') {
-                    if (cardSection) cardSection.style.display = 'none';
+            }
+            // Show insufficient note only when wallet is selected AND funds are insufficient
+            if (insufficientNote) {
+                if (selectedPaymentMethod === 'wallet' && !canPayWithWallet) {
+                    insufficientNote.style.display = 'block';
                 } else {
-                    if (cardSection) cardSection.style.display = 'block';
+                    insufficientNote.style.display = 'none';
                 }
-            } else {
-                if (walletOption) walletOption.style.display = 'none';
-                if (insufficientNote) insufficientNote.style.display = 'block';
-                if (cardSection) cardSection.style.display = 'block';
-                selectedPaymentMethod = 'card';
+            }
+            // Show card section only when card is selected
+            if (cardSection) {
+                if (selectedPaymentMethod === 'card') {
+                    cardSection.style.display = 'block';
+                } else {
+                    cardSection.style.display = 'none';
+                }
             }
         } else {
             methodSection.style.display = 'none';
@@ -2666,6 +2689,7 @@
         if (!emailModal) return;
         // New attempt = new idempotency scope (avoids Stripe "same key, different parameters")
         bookingAttemptId = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : 'attempt_' + Date.now() + '_' + Math.random().toString(36).slice(2, 11);
+        // Default to wallet if sufficient funds, otherwise default to card but keep wallet option visible
         selectedPaymentMethod = canPayWithWallet ? 'wallet' : 'card';
         const walletRadio = document.getElementById('bookingPaymentMethodWallet');
         const cardRadio = document.getElementById('bookingPaymentMethodCard');

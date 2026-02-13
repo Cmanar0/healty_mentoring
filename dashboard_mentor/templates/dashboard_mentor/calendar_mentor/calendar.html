@@ -3604,6 +3604,8 @@
       if (!ruleObj || !ruleObj.type) return false;
       if (ruleObj.start_date && dateStr < ruleObj.start_date) return false;
       if (Array.isArray(ruleObj.skip_dates) && ruleObj.skip_dates.includes(dateStr)) return false;
+      // IMPORTANT: Exclude booked_dates to prevent false collisions with sessions booked from recurring slots
+      if (Array.isArray(ruleObj.booked_dates) && ruleObj.booked_dates.includes(dateStr)) return false;
 
       if (ruleObj.type === 'daily') return true;
       if (ruleObj.type === 'weekly') {
@@ -3669,6 +3671,13 @@
     const sessRec = [];
     const recRecMap = new Map(); // pairKey -> collision
 
+    // Debug logging for collision detection (can be enabled via window.enableCollisionDebug())
+    const DEBUG_COLLISIONS = window.DEBUG_COLLISION_DETECTION === true;
+    if (DEBUG_COLLISIONS) {
+      console.log('[CollisionDebug] Starting collision detection...');
+      console.log('[CollisionDebug] Recurring rules:', recurringAvailabilityRules);
+    }
+
     occurrencesByDate.forEach((list, dateStr) => {
       if (!Array.isArray(list) || list.length < 2) return;
       
@@ -3690,6 +3699,14 @@
           const a = sorted[i];
           const b = sorted[j];
           if (!overlaps(a, b)) continue;
+          
+          // Debug logging
+          if (DEBUG_COLLISIONS) {
+            console.log(`[CollisionDebug] Collision detected on ${dateStr}:`, {
+              slot1: { kind: a.kind, id: a.id, start: a.startDt.toISO(), end: a.endDt.toISO() },
+              slot2: { kind: b.kind, id: b.id, start: b.startDt.toISO(), end: b.endDt.toISO() }
+            });
+          }
 
           // session vs session
           if (a.kind === 'session' && b.kind === 'session') {
@@ -3799,6 +3816,18 @@
 
   window.getCalendarCollisions = function() {
     return computeCalendarCollisionsInHorizon();
+  };
+  
+  // Debug helper: Enable collision debugging
+  window.enableCollisionDebug = function() {
+    window.DEBUG_COLLISION_DETECTION = true;
+    console.log('[CollisionDebug] Collision debugging enabled. Collisions will be logged to console.');
+    console.log('[CollisionDebug] Current collisions:', computeCalendarCollisionsInHorizon());
+  };
+  
+  window.disableCollisionDebug = function() {
+    window.DEBUG_COLLISION_DETECTION = false;
+    console.log('[CollisionDebug] Collision debugging disabled.');
   };
 
   window.navigateToCollisionInCalendarByCollision = function(collision) {
