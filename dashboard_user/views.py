@@ -3922,6 +3922,8 @@ def get_stages_api(request, project_id):
             from dashboard_user.models import Task
             total_tasks = Task.objects.filter(stage=stage).count()
             completed_tasks = Task.objects.filter(stage=stage, completed=True).count()
+            # Count tasks with status='completed' (excluding archived) for "To be Reviewed" badge
+            completed_status_tasks = Task.objects.filter(stage=stage, status='completed', completed=True).exclude(status='archived').count()
             
             stages_data.append({
                 'id': stage.id,
@@ -3937,6 +3939,7 @@ def get_stages_api(request, project_id):
                 'is_disabled': stage.is_disabled,
                 'tasks_total': total_tasks,
                 'tasks_completed': completed_tasks,
+                'tasks_completed_status': completed_status_tasks,
             })
         
         return JsonResponse({
@@ -4351,6 +4354,114 @@ def create_stage(request, project_id):
         import logging
         logger = logging.getLogger(__name__)
         logger.error(f'Error creating stage: {str(e)}', exc_info=True)
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+@require_POST
+def update_stage_dates(request, project_id, stage_id):
+    """Update stage start and end dates (for users)"""
+    if not hasattr(request.user, 'profile'):
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+    
+    project = get_object_or_404(
+        Project.objects.select_related('project_owner', 'supervised_by'),
+        id=project_id
+    )
+    
+    # Check if user is owner or supervisor
+    is_owner = False
+    is_supervisor = False
+    
+    if request.user.profile.role == 'user':
+        user_profile = request.user.user_profile
+        is_owner = (project.project_owner == user_profile)
+    elif request.user.profile.role == 'mentor':
+        mentor_profile = request.user.mentor_profile
+        is_supervisor = (project.supervised_by == mentor_profile)
+    
+    # Only allow access if user is owner or supervisor
+    if not (is_owner or is_supervisor):
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+    
+    from dashboard_user.models import ProjectStage
+    stage = get_object_or_404(ProjectStage, id=stage_id, project=project)
+    
+    try:
+        data = json.loads(request.body)
+        start_date = data.get('start_date')
+        end_date = data.get('end_date')
+        
+        if not start_date or not end_date:
+            return JsonResponse({'success': False, 'error': 'Both start_date and end_date are required'}, status=400)
+        
+        from datetime import datetime
+        start = datetime.strptime(start_date, '%Y-%m-%d').date()
+        end = datetime.strptime(end_date, '%Y-%m-%d').date()
+        
+        if end < start:
+            return JsonResponse({'success': False, 'error': 'End date must be after start date'}, status=400)
+        
+        stage.start_date = start
+        stage.end_date = end
+        stage.save()
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Stage dates updated successfully'
+        })
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+    except ValueError as e:
+        return JsonResponse({'success': False, 'error': f'Invalid date format: {str(e)}'}, status=400)
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f'Error updating stage dates: {str(e)}', exc_info=True)
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+@require_POST
+def delete_stage(request, project_id, stage_id):
+    """Delete a stage (for users)"""
+    if not hasattr(request.user, 'profile'):
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+    
+    project = get_object_or_404(
+        Project.objects.select_related('project_owner', 'supervised_by'),
+        id=project_id
+    )
+    
+    # Check if user is owner or supervisor
+    is_owner = False
+    is_supervisor = False
+    
+    if request.user.profile.role == 'user':
+        user_profile = request.user.user_profile
+        is_owner = (project.project_owner == user_profile)
+    elif request.user.profile.role == 'mentor':
+        mentor_profile = request.user.mentor_profile
+        is_supervisor = (project.supervised_by == mentor_profile)
+    
+    # Only allow access if user is owner or supervisor
+    if not (is_owner or is_supervisor):
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+    
+    from dashboard_user.models import ProjectStage
+    stage = get_object_or_404(ProjectStage, id=stage_id, project=project)
+    
+    try:
+        stage.delete()
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Stage deleted successfully'
+        })
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f'Error deleting stage: {str(e)}', exc_info=True)
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 
@@ -4848,6 +4959,53 @@ def toggle_task_activate(request, project_id, stage_id, task_id):
         logger = logging.getLogger(__name__)
         logger.error(f'Error toggling task activation: {str(e)}', exc_info=True)
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+@require_POST
+def archive_task(request, project_id, stage_id, task_id):
+    """Archive a completed task (moves to history) for users"""
+    if not hasattr(request.user, 'profile'):
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+    
+    project = get_object_or_404(
+        Project.objects.select_related('project_owner', 'supervised_by'),
+        id=project_id
+    )
+    
+    # Check if user is owner or supervisor
+    is_owner = False
+    is_supervisor = False
+    
+    if request.user.profile.role == 'user':
+        user_profile = request.user.user_profile
+        is_owner = (project.project_owner == user_profile)
+    elif request.user.profile.role == 'mentor':
+        mentor_profile = request.user.mentor_profile
+        is_supervisor = (project.supervised_by == mentor_profile)
+    
+    # Only allow access if user is owner or supervisor
+    if not (is_owner or is_supervisor):
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+    
+    from dashboard_user.models import ProjectStage, Task
+    from dashboard_mentor.views import update_stage_completion_status
+    
+    stage = get_object_or_404(ProjectStage, id=stage_id, project=project)
+    task = get_object_or_404(Task, id=task_id, stage=stage)
+    
+    try:
+        task.archive_task()
+        update_stage_completion_status(stage)
+        return JsonResponse({
+            'success': True,
+            'message': 'Task archived successfully',
+        })
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f'Error archiving task: {str(e)}', exc_info=True)
+        return JsonResponse({'success': False, 'error': str(e)}, status=400)
 
 
 @login_required

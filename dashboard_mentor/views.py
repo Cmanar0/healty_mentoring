@@ -8613,15 +8613,33 @@ def get_client_active_backlog_api(request, client_id):
     client_profile = get_object_or_404(UserProfile, id=client_id)
     
     try:
+        from dashboard_user.models import Project
+        
         # Get all tasks in client's active backlog (no limit - display all in scrollable sidebar)
         # Exclude completed tasks (they remain in DB but shouldn't show in active backlog)
         # Order by moved_to_active_backlog_at descending (newest first), then by order
-        tasks = Task.objects.filter(
+        all_tasks = Task.objects.filter(
             user_active_backlog=client_profile
         ).exclude(
             completed=True,
             status='completed'
-        ).order_by('-moved_to_active_backlog_at', 'order', 'created_at')
+        ).select_related('stage', 'stage__project').order_by('-moved_to_active_backlog_at', 'order', 'created_at')
+        
+        # Get all project IDs that the mentor is supervising
+        supervised_project_ids = set(
+            Project.objects.filter(supervised_by=mentor_profile).values_list('id', flat=True)
+        )
+        
+        # Filter tasks: only include tasks linked to supervised projects or general tasks (no project)
+        tasks = []
+        for task in all_tasks:
+            # If task has a stage and project, only include if mentor supervises that project
+            if task.stage and task.stage.project:
+                if task.stage.project.id in supervised_project_ids:
+                    tasks.append(task)
+            else:
+                # General tasks (no stage/project) are always included
+                tasks.append(task)
         
         tasks_data = []
         for task in tasks:
@@ -8642,13 +8660,22 @@ def get_client_active_backlog_api(request, client_id):
                 'has_stage': task.stage is not None,  # True if task was created from stage
             })
         
-        # Get total count for "more tasks" display (excluding completed tasks)
-        total_count = Task.objects.filter(
+        # Get total count for "more tasks" display (excluding completed tasks and filtered by supervision)
+        # Reuse the same filtering logic
+        all_tasks_for_count = Task.objects.filter(
             user_active_backlog=client_profile
         ).exclude(
             completed=True,
             status='completed'
-        ).count()
+        ).select_related('stage', 'stage__project')
+        
+        total_count = 0
+        for task in all_tasks_for_count:
+            if task.stage and task.stage.project:
+                if task.stage.project.id in supervised_project_ids:
+                    total_count += 1
+            else:
+                total_count += 1
         
         return JsonResponse({
             'success': True,

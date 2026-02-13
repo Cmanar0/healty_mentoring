@@ -54,6 +54,8 @@ urlpatterns = [
     path('projects/<int:project_id>/stages/api/', views.get_stages_api, name='get_stages_api'),
     path('projects/<int:project_id>/stages/create/', views.create_stage, name='create_stage'),
     path('projects/<int:project_id>/stages/<int:stage_id>/edit/', views.edit_stage, name='edit_stage'),
+    path('projects/<int:project_id>/stages/<int:stage_id>/delete/', views.delete_stage, name='delete_stage'),
+    path('projects/<int:project_id>/stages/<int:stage_id>/update-dates/', views.update_stage_dates, name='update_stage_dates'),
     path('projects/<int:project_id>/stages/generate-ai/', views.generate_stages_ai, name='generate_stages_ai'),
     path('projects/<int:project_id>/stages/reorder/', views.reorder_stages, name='reorder_stages'),
     path('projects/<int:project_id>/update-target-date/', views.update_project_target_date, name='update_project_target_date'),
@@ -62,6 +64,7 @@ urlpatterns = [
     path('projects/<int:project_id>/stages/<int:stage_id>/tasks/create/', views.create_task, name='create_task'),
     path('projects/<int:project_id>/stages/<int:stage_id>/tasks/<int:task_id>/edit/', views.edit_task, name='edit_task'),
     path('projects/<int:project_id>/stages/<int:stage_id>/tasks/<int:task_id>/toggle-activate/', views.toggle_task_activate, name='toggle_task_activate'),
+    path('projects/<int:project_id>/stages/<int:stage_id>/tasks/<int:task_id>/archive/', views.archive_task, name='archive_task'),
     path('projects/<int:project_id>/stages/<int:stage_id>/tasks/<int:task_id>/delete/', views.delete_task, name='delete_task'),
     path('projects/<int:project_id>/stages/<int:stage_id>/tasks/generate-ai/', views.generate_tasks_ai, name='generate_tasks_ai'),
 ]

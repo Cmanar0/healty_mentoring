@@ -946,8 +946,8 @@
         transition: all 0.2s;
         font-size: 0.9rem;
         display: flex;
-        align-items: center;
-        gap: 8px;
+  align-items: center;
+  gap: 8px;
         width: auto;
     }
 
@@ -988,8 +988,8 @@
     
     .doc-header-left {
         flex: 1;
-        display: flex;
-        flex-direction: column;
+  display: flex;
+  flex-direction: column;
         gap: 40px;
     }
     
@@ -1001,7 +1001,7 @@
     }
     
     .project-info-row {
-        display: flex;
+  display: flex;
         gap: 20px;
         flex-wrap: wrap;
         align-items: flex-start;
@@ -1032,7 +1032,7 @@
         padding: 8px 16px;
         border-radius: 12px;
         font-size: 0.9rem;
-        font-weight: 600;
+  font-weight: 600;
         color: #111827;
         transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         cursor: pointer;
@@ -1061,7 +1061,7 @@
         height: 24px;
         border-radius: 50%;
         background: #f1f5f9;
-        display: flex;
+  display: flex;
         align-items: center;
         justify-content: center;
         font-size: 0.75rem;
@@ -1189,7 +1189,7 @@
     
     .project-settings-dropdown-item {
         display: flex;
-        align-items: center;
+  align-items: center;
         gap: 12px;
         padding: 12px 20px;
         color: #1e293b;
@@ -1290,7 +1290,7 @@
         border-radius: 50%;
         background: #e5e7eb;
         display: flex;
-        align-items: center;
+  align-items: center;
         justify-content: center;
         font-size: 1.25rem;
         font-weight: 600;
@@ -1318,7 +1318,7 @@
         padding: 0 12px;
         font-size: 0.95rem;
         color: #0f172a;
-        background: #ffffff;
+  background: #ffffff;
         width: 100%;
     }
 
@@ -1346,7 +1346,7 @@
     .schedule-session-suggestion-item {
         padding: 10px 12px;
         cursor: pointer;
-        display: flex;
+  display: flex;
         flex-direction: column;
         gap: 2px;
     }
@@ -1369,7 +1369,7 @@
 
     .schedule-session-label {
         font-size: 0.9rem;
-        font-weight: 600;
+  font-weight: 600;
         color: #334155;
         margin-bottom: 8px;
         display: block;
@@ -1383,8 +1383,8 @@
     }
     
     .doc-body p {
-        margin: 0;
-    }
+  margin: 0;
+}
 
     /* Primary Content Area */
     .roadmap-list-section {
@@ -1430,7 +1430,7 @@
         flex-direction: column;
         gap: 16px;
     }
-    
+
     /* List Items (High Density) */
     .stage-row {
         display: flex;
@@ -1806,7 +1806,7 @@
         align-items: center;
         gap: 16px;
         padding: 16px 24px;
-        cursor: pointer;
+  cursor: pointer;
         transition: background 0.15s ease;
         min-width: 0; /* Allows text truncation */
         border-radius: 0;
@@ -1837,7 +1837,7 @@
     .sortable-drag {
         opacity: 0.8;
     }
-
+    
     /* Stage Info */
     .stage-main {
         flex: 1;
@@ -1855,8 +1855,8 @@
         font-weight: 500;
         color: #1f2937;
         display: flex;
-        align-items: center;
-        gap: 8px;
+  align-items: center;
+  gap: 8px;
     }
 
     .stage-meta {
@@ -1931,16 +1931,16 @@
     /* Status Tags */
     .status-tag {
         display: inline-flex;
-        align-items: center;
+  align-items: center;
         padding: 4px 10px;
         border-radius: 12px;
         font-size: 0.75rem;
-        font-weight: 600;
+  font-weight: 600;
         text-transform: uppercase;
         letter-spacing: 0.025em;
         margin-right: 8px;
-        flex-shrink: 0;
-    }
+  flex-shrink: 0;
+}
     .status-tag.completed { background-color: #10b981; color: white; }
     .status-tag.pending { background-color: #3b82f6; color: white; }
     .status-tag.created { background-color: #fbbf24; color: white; }
@@ -1963,7 +1963,7 @@
     .stage-tasks-section.expanded {
         max-height: 2000px;
         padding: 0;
-        margin: 0;
+  margin: 0;
         border-radius: 0 0 12px 12px;
     }
     
@@ -1977,11 +1977,11 @@
     }
     
     .stage-tasks-title {
-        font-size: 0.875rem;
+  font-size: 0.875rem;
         font-weight: 600;
         color: #1e293b;
-        display: flex;
-        align-items: center;
+  display: flex;
+  align-items: center;
         gap: 8px;
     }
     
@@ -2180,7 +2180,7 @@
         width: 16px;
         color: inherit;
     }
-    
+
     .stage-tasks-list {
         display: flex;
         flex-direction: column;
@@ -2262,7 +2262,7 @@
         background: white;
         position: relative;
     }
-    
+
     .stage-task-checkbox.checked {
         background: #10b981;
         border-color: #10b981;
@@ -2365,7 +2365,7 @@
         gap: 4px;
         position: relative;
     }
-    
+
     .stage-task-activate-btn:hover {
         background: #f3f4f6;
         color: #374151;
@@ -2634,7 +2634,7 @@
         justify-content: center;
         margin-top: 16px;
     }
-    
+
     .btn-create-task, .btn-ai-generate {
         border: none;
         border-radius: 8px;
@@ -2796,6 +2796,41 @@
 
     .stage-actions-menu .dropdown-item.delete-item:hover i {
         color: #ef4444;
+    }
+
+    /* Stage dropdown menu styling - ensure it appears on top of stage */
+    .stage-actions-menu {
+        border-radius: 12px;
+        min-width: 200px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+        padding: 0;
+        background: white;
+    }
+
+    /* When dropdown is shown and fixed (for scrollable containers) */
+    .stage-actions-menu.show.session-row-dropdown-menu--fixed {
+        position: fixed !important;
+        z-index: 1050 !important;
+        top: 0;
+        left: 0;
+        width: max-content;
+        max-width: 280px;
+        min-width: 200px;
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+        background: white;
+    }
+
+    /* When dropdown is shown but not fixed (normal positioning) */
+    .stage-actions-menu.show:not(.session-row-dropdown-menu--fixed) {
+        position: absolute;
+        top: calc(100% + 8px);
+        right: 0;
+        z-index: 1000;
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(0);
+        display: block;
     }
 
     /* Sidebar */
@@ -3033,7 +3068,7 @@
 
 .modal-body {
     padding: 24px;
-}
+    }
 </style>
 
 <script>
@@ -3633,16 +3668,16 @@
     <div class="roadmap-container">
         <!-- Doc Header Section (Top Left) -->
         <div class="doc-header-section">
-            <!-- Top Nav -->
-            <div class="top-nav" style="margin-bottom: 24px;">
-                <div style="display: flex; align-items: center;">
-                    <a href="{% url 'general:dashboard_user:projects_list' %}" class="nav-btn-back">
-                        Projects
-                    </a>
-                    <span style="margin: 0 8px; color: #cbd5e1;">/</span>
-                    <span style="color: #1e293b; font-weight: 600;">{{ project.title }}</span>
-                </div>
+        <!-- Top Nav -->
+        <div class="top-nav" style="margin-bottom: 24px;">
+            <div style="display: flex; align-items: center;">
+                <a href="{% url 'general:dashboard_user:projects_list' %}" class="nav-btn-back">
+                    Projects
+                </a>
+                <span style="margin: 0 8px; color: #cbd5e1;">/</span>
+                <span style="color: #1e293b; font-weight: 600;">{{ project.title }}</span>
             </div>
+        </div>
             <!-- Project Name, Description -->
             <div class="document-card">
                 <div class="doc-header">
@@ -3669,30 +3704,30 @@
                             <!-- Project Supervisor -->
                             <div class="project-info-item">
                                 <div class="project-info-label">Project Supervisor</div>
-                                {% if project.supervised_by %}
+                                    {% if project.supervised_by %}
                                     {% if is_owner %}
                                         <button type="button" onclick="window.openSupervisorModal()" class="project-info-btn">
-                                            {% if project.supervised_by.profile_picture %}
+                                        {% if project.supervised_by.profile_picture %}
                                                 <img src="{{ project.supervised_by.profile_picture.url }}" alt="{{ project.supervised_by.first_name }}" class="project-info-avatar" style="width: 24px; height: 24px;">
-                                            {% else %}
-                                                <div class="project-info-avatar" style="background: #dbeafe; color: #1e40af;">
-                                                    {{ project.supervised_by.first_name|make_list|first|default:"M" }}
-                                                </div>
-                                            {% endif %}
-                                            <span>{{ project.supervised_by.first_name }} {{ project.supervised_by.last_name }}</span>
-                                            <i class="fas fa-edit"></i>
-                                        </button>
+                                        {% else %}
+                                            <div class="project-info-avatar" style="background: #dbeafe; color: #1e40af;">
+                                                {{ project.supervised_by.first_name|make_list|first|default:"M" }}
+                                            </div>
+                                        {% endif %}
+                                        <span>{{ project.supervised_by.first_name }} {{ project.supervised_by.last_name }}</span>
+                                        <i class="fas fa-edit"></i>
+                                    </button>
                                     {% else %}
                                         <div class="project-info-btn" style="cursor: default; background: transparent; border: none; padding: 0;">
-                                            {% if project.supervised_by.profile_picture %}
+                                        {% if project.supervised_by.profile_picture %}
                                                 <img src="{{ project.supervised_by.profile_picture.url }}" alt="{{ project.supervised_by.first_name }}" class="project-info-avatar" style="width: 24px; height: 24px;">
-                                            {% else %}
-                                                <div class="project-info-avatar" style="background: #dbeafe; color: #1e40af;">
-                                                    {{ project.supervised_by.first_name|make_list|first|default:"M" }}
-                                                </div>
-                                            {% endif %}
-                                            <span>{{ project.supervised_by.first_name }} {{ project.supervised_by.last_name }}</span>
-                                        </div>
+                                        {% else %}
+                                            <div class="project-info-avatar" style="background: #dbeafe; color: #1e40af;">
+                                                {{ project.supervised_by.first_name|make_list|first|default:"M" }}
+                                            </div>
+                                        {% endif %}
+                                        <span>{{ project.supervised_by.first_name }} {{ project.supervised_by.last_name }}</span>
+                                    </div>
                                     {% endif %}
                                 {% else %}
                                     {% if is_owner %}
@@ -3701,9 +3736,9 @@
                                             <span>Assign Supervisor</span>
                                         </button>
                                     {% else %}
-                                        <div class="project-info-btn" style="cursor: default;">
-                                            <span style="color: #94a3b8; font-style: italic;">Not assigned</span>
-                                        </div>
+                                    <div class="project-info-btn" style="cursor: default;">
+                                        <span style="color: #94a3b8; font-style: italic;">Not assigned</span>
+                                    </div>
                                     {% endif %}
                                 {% endif %}
                             </div>
@@ -3755,10 +3790,10 @@
                                 </button>
                                 {% if not project.supervised_by %}
                                     <!-- Only show delete if project is not supervised -->
-                                    <button class="project-settings-dropdown-item delete-item last-item" onclick="deleteProject(); event.stopPropagation();">
-                                        <i class="fas fa-trash"></i>
-                                        <span>Delete Project</span>
-                                    </button>
+                                <button class="project-settings-dropdown-item delete-item last-item" onclick="deleteProject(); event.stopPropagation();">
+                                    <i class="fas fa-trash"></i>
+                                    <span>Delete Project</span>
+                                </button>
                                 {% endif %}
                             </div>
                         </div>
@@ -3770,17 +3805,17 @@
                     {% else %}
                         <div style="text-align: center; padding: 32px; display: flex; flex-direction: column; align-items: center; gap: 16px;">
                             <div style="color: #9ca3af; font-style: italic; margin-bottom: 8px;">
-                                No description provided.
-                            </div>
+                            No description provided.
+                        </div>
                             {% if not project.project_owner %}
                                 <button type="button" onclick="openProjectSettingsModal()" style="display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color: white; border: none; border-radius: 10px; font-weight: 600; font-size: 0.875rem; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 2px 4px 0 rgba(99, 102, 241, 0.2); width: auto; margin: 0 auto;" onmouseover="this.style.background='linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)'; this.style.boxShadow='0 4px 12px 0 rgba(99, 102, 241, 0.3)'; this.style.transform='translateY(-1px)';" onmouseout="this.style.background='linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)'; this.style.boxShadow='0 2px 4px 0 rgba(99, 102, 241, 0.2)'; this.style.transform='translateY(0)';">
                                     <i class="fas fa-edit"></i>
                                     <span>Add Description</span>
                                 </button>
-                            {% endif %}
-                        </div>
                     {% endif %}
                 </div>
+                    {% endif %}
+            </div>
             </div>
             {% if not project.questionnaire_completed %}
                 <!-- Modern Setup Required Card -->
@@ -4233,12 +4268,12 @@
                                     <span style="font-size: 0.9rem; font-weight: 500; line-height: 1.4;">{{ module_instance.module.name }}</span>
                                 </a>
                             {% endfor %}
-                        </div>
-                        {% else %}
+                    </div>
+                    {% else %}
                         <div style="color: rgba(255,255,255,0.6); font-size: 0.85rem; font-style: italic; padding: 12px 0;">
                             No modules added yet
-                        </div>
-                        {% endif %}
+                    </div>
+                    {% endif %}
                     </div>
                 </div>
             </div>
@@ -4261,7 +4296,7 @@
                             <button class="backlog-sort-btn" data-sort="date" onclick="toggleProjectBacklogSort('date')" title="Sort by Date">
                                 <i class="fas fa-calendar-alt"></i>
                             </button>
-                        </div>
+                </div>
                         <button onclick="openCreateActiveBacklogTaskModal()" class="active-backlog-create-btn" style="font-size: 1.2rem; color: #ffffff; background: #111827; border: none; cursor: pointer; font-weight: 700; padding: 8px 16px; border-radius: 6px; display: flex; align-items: center; justify-content: center; transition: all 0.2s; width: 40px; height: 40px;">
                             +
                         </button>
@@ -4275,15 +4310,15 @@
                 </div>
             </div>
         </aside>
-    </div>
-    
+</div>
+
     <!-- Project Notes Section - Full Width (Outside Grid) -->
     <div class="roadmap-notes-section">
             <div class="document-card" style="min-height: auto;">
                 <div class="notes-section">
                     <div class="section-heading-minimal">
                         <i class="far fa-comments"></i> Project Notes & Updates
-                    </div>
+        </div>
                     
                     <form method="POST" action="{% url 'general:dashboard_user:create_project_note' project.id %}" class="note-composer" id="projectNoteForm">
                         {% csrf_token %}
@@ -4291,9 +4326,9 @@
                         <div style="display: flex; justify-content: flex-end;">
                             <button type="submit" class="btn btn-primary" id="projectNoteSubmitBtn" style="padding: 12px 24px; font-size: 1rem;">
                                 Post Update
-                            </button>
-                        </div>
-                    </form>
+        </button>
+            </div>
+        </form>
 
                     <div class="notes-feed" id="projectNotesFeed">
                         {% for note in project_notes %}
@@ -4301,28 +4336,28 @@
                                 <div class="note-avatar">
                                     {% if note.author %}
                                         {{ note.author.first_name|first|default:"U" }}
-                                    {% else %}
+                        {% else %}
                                         {{ note.author_name|first|default:"U" }}
-                                    {% endif %}
-                                </div>
+                        {% endif %}
+                    </div>
                                 <div class="note-box">
                                     <div class="note-header">
                                         <span class="note-author">{{ note.author_name|default:"Unknown" }}</span>
                                         {% if note.author_role %}
                                             <span class="note-role-badge">{{ note.author_role }}</span>
-                                        {% endif %}
+                        {% endif %}
                                         <span class="note-time">{{ note.created_at|date:"M d, H:i" }}</span>
-                                    </div>
+                    </div>
                                     <div style="color: #4b5563; line-height: 1.6;">{{ note.text|linebreaksbr }}</div>
-                                </div>
-                            </div>
+                </div>
+                </div>
                         {% empty %}
                             <div style="text-align: center; padding: 32px; color: #cbd5e1; border: 2px dashed #f1f5f9; border-radius: 12px;">
                                 <i class="far fa-comment-dots" style="font-size: 2rem; margin-bottom: 12px;"></i>
                                 <p>No updates yet.</p>
-                            </div>
-                        {% endfor %}
-                    </div>
+            </div>
+                    {% endfor %}
+                </div>
                 </div>
             </div>
         </div>
@@ -4464,14 +4499,14 @@
         document.addEventListener('DOMContentLoaded', () => {
             setRoadmapContainerMaxHeight();
         });
-    } else {
+        } else {
         setRoadmapContainerMaxHeight();
     }
     
     window.addEventListener('resize', setRoadmapContainerMaxHeight);
     
     // MutationObserver for content changes is set up later in the script to handle both max-height and offset recalculation
-    
+
     // Render waterfall chart
     function renderWaterfallChart(stages) {
         const container = document.getElementById('waterfallChartContainer');
@@ -5365,7 +5400,7 @@
             progressCircle.style.strokeDashoffset = offset;
         }, 100);
     }
-    
+
     // Render stages from API data
     function renderStages(stages) {
         console.log('=== renderStages() called ===');
@@ -5525,15 +5560,15 @@
             // Build the main content wrapper
             const mainContentHtml = `
                 <div class="stage-content-wrapper progress-${isDisabled ? 'disabled' : progressStatus}">
-                        <div class="stage-drag-section">
-                            <div class="drag-grip">
-                                <i class="fas fa-grip-vertical"></i>
-                            </div>
+                    <div class="stage-drag-section">
+                        <div class="drag-grip">
+                            <i class="fas fa-grip-vertical"></i>
                         </div>
+                    </div>
                         <div class="stage-main-wrapper" onclick="toggleStageTasks(${stage.id}, event);">
-                            <div class="stage-main">
-                                <div class="stage-title-meta">
-                                    <div class="stage-title">
+                        <div class="stage-main">
+                            <div class="stage-title-meta">
+                                <div class="stage-title">
                                         ${statusTag}
                                         <span ${titleClass}>${titleText}</span>
                                         ${completedStatusTasks > 0 ? `
@@ -5542,27 +5577,27 @@
                                                 <span class="to-be-reviewed-count">${completedStatusTasks}</span>
                                             </div>
                                         ` : ''}
-                                    </div>
-                                    ${dateRangeHtml}
                                 </div>
+                                ${dateRangeHtml}
                             </div>
-                            <div class="stage-progress-section">
-                                <div class="stage-progress-bar-container">
-                                    <div class="stage-progress-label">
-                                        <span>Progress</span>
+                        </div>
+                        <div class="stage-progress-section">
+                            <div class="stage-progress-bar-container">
+                                <div class="stage-progress-label">
+                                    <span>Progress</span>
                                         <span style="font-weight: 500; color: #6b7280;">${progress}%</span>
-                                    </div>
-                                    <div class="stage-progress-bar">
-                                        <div class="stage-progress-fill" style="width: ${progress}%; background: ${progressColor};"></div>
-                                    </div>
                                 </div>
-                                <div class="stage-tasks-count ${totalTasks === 0 ? 'no-tasks' : ''}">
-                                    ${totalTasks === 0 
-                                        ? '<span style="color: #6b7280;">no tasks yet</span>'
-                                        : `<i class="fas fa-tasks"></i><span>${completedTasks}/${totalTasks}</span>`
-                                    }
+                                <div class="stage-progress-bar">
+                                    <div class="stage-progress-fill" style="width: ${progress}%; background: ${progressColor};"></div>
                                 </div>
                             </div>
+                            <div class="stage-tasks-count ${totalTasks === 0 ? 'no-tasks' : ''}">
+                                ${totalTasks === 0 
+                                        ? '<span style="color: #6b7280;">no tasks yet</span>'
+                                    : `<i class="fas fa-tasks"></i><span>${completedTasks}/${totalTasks}</span>`
+                                }
+                            </div>
+                        </div>
                         </div>
                         <div class="row-actions-section" onclick="event.stopPropagation();">
                             <div class="row-actions" id="rowActions_${stage.id}">
@@ -5744,7 +5779,7 @@
     }
     
     // Load stages from API
-    function loadStages() {
+    function loadStages(preserveExpandedStages = null) {
         console.log('=== loadStages() called ===');
         const apiUrl = '{% url "general:dashboard_user:get_stages_api" project.id %}';
         console.log('API URL:', apiUrl);
@@ -5778,13 +5813,16 @@
         }
         
         // Save which stages have expanded task sections before reloading
-        const expandedStages = [];
-        document.querySelectorAll('.stage-tasks-section.expanded').forEach(section => {
-            const stageId = section.id.replace('stageTasks_', '');
-            if (stageId) {
-                expandedStages.push(stageId);
-            }
-        });
+        // Use provided list or detect from DOM
+        const expandedStages = preserveExpandedStages || [];
+        if (expandedStages.length === 0) {
+            document.querySelectorAll('.stage-tasks-section.expanded').forEach(section => {
+                const stageId = section.id.replace('stageTasks_', '');
+                if (stageId) {
+                    expandedStages.push(stageId);
+                }
+            });
+        }
         
         // Add timeout to fetch
         const timeoutPromise = new Promise((_, reject) => {
@@ -5847,26 +5885,25 @@
                         setTimeout(() => {
                             expandedStages.forEach(stageId => {
                                 const tasksSection = document.getElementById(`stageTasks_${stageId}`);
-                                if (tasksSection && !tasksSection.classList.contains('expanded')) {
-                                    // Expand the section
+                                if (tasksSection) {
+                                    // Force expand the section
                                     tasksSection.classList.add('expanded');
                                     
-                                    // Load tasks if not already loaded
-                                    if (!tasksSection.dataset.loaded) {
-                                        loadStageTasks(stageId);
-                                    } else {
-                                        // Just show the input section if tasks are already loaded
-                                        const buttonsSection = document.getElementById(`stageButtons_${stageId}`);
-                                        if (buttonsSection) {
-                                            buttonsSection.style.display = 'block';
-                                        }
+                                    // Show buttons section
+                                    const buttonsSection = document.getElementById(`stageButtons_${stageId}`);
+                                    if (buttonsSection) {
+                                        buttonsSection.style.display = 'block';
                                     }
+                                    
+                                    // Load tasks (always reload to get updated data)
+                                    tasksSection.dataset.loaded = 'false';
+                                    loadStageTasks(stageId);
                                     
                                     // Update overlay state
                                     updateTasksOverlay();
                                 }
                             });
-                        }, 50);
+                        }, 100); // Increased timeout to ensure DOM is ready
                     }
                     
                     // Check header layout after rendering
@@ -6211,6 +6248,13 @@
                         taskItem.remove();
                         // Reload backlog to update count
                         loadUserActiveBacklog();
+                        // Reload stage tasks only if the stage is currently open/expanded
+                        if (stageId && projectId) {
+                            const tasksSection = document.getElementById(`stageTasks_${stageId}`);
+                            if (tasksSection && tasksSection.classList.contains('expanded')) {
+                                loadStageTasks(stageId);
+                            }
+                        }
                     }, 400);
                 }
                 
@@ -6274,9 +6318,88 @@
         })
         .then(data => {
             if (data.success) {
+                const taskItem = event.target.closest('.active-backlog-task-item');
+                if (taskItem) {
+                    // Update UI immediately
+                    if (newCompleted) {
+                        taskItem.classList.add('completed');
+                        const completeBtn = taskItem.querySelector('.active-backlog-done-btn');
+                        if (completeBtn) {
+                            completeBtn.classList.add('checked');
+                        }
+                    } else {
+                        taskItem.classList.remove('completed');
+                        const completeBtn = taskItem.querySelector('.active-backlog-done-btn');
+                        if (completeBtn) {
+                            completeBtn.classList.remove('checked');
+                        }
+                    }
+                }
+                
                 // Reload backlog to update UI
                 loadUserActiveBacklog();
+                
+                // Reload stage tasks if the stage belongs to a project (only for stage-linked tasks)
+                if (hasStage && stageId && projectId) {
+                    // Save all currently expanded stages before reloading
+                    const expandedStages = [];
+                    document.querySelectorAll('.stage-tasks-section.expanded').forEach(section => {
+                        const sid = section.id.replace('stageTasks_', '');
+                        if (sid) {
+                            expandedStages.push(sid);
+                        }
+                    });
+                    
+                    // Ensure current stage is in the list if it was expanded
+                    const tasksSection = document.getElementById(`stageTasks_${stageId}`);
+                    const isExpanded = tasksSection && tasksSection.classList.contains('expanded');
+                    if (isExpanded && !expandedStages.includes(stageId.toString())) {
+                        expandedStages.push(stageId.toString());
+                    }
+                    
+                    // If task was just completed and stage is closed, add it to expanded list
+                    if (newCompleted && !isExpanded) {
+                        if (!expandedStages.includes(stageId.toString())) {
+                            expandedStages.push(stageId.toString());
+                        }
+                    }
+                    
+                    // Reload stages to update stage completion status, progress, and "To be Reviewed" badge
+                    // Pass expanded stages to preserve them
+                    if (typeof loadStages === 'function') {
+                        loadStages(expandedStages);
+                    }
+                    
+                    // Set default filter for completed view if task was just completed
+                    if (newCompleted) {
+                        setTimeout(() => {
+                            const updatedTasksSection = document.getElementById(`stageTasks_${stageId}`);
+                            if (updatedTasksSection) {
+                                updatedTasksSection.dataset.defaultFilter = 'completed';
+                                loadStageTasks(parseInt(stageId));
+                            }
+                        }, 150);
+                    }
+                }
             } else {
+                // Revert UI changes on error
+                const taskItem = event.target.closest('.active-backlog-task-item');
+                if (taskItem) {
+                    if (newCompleted) {
+                        taskItem.classList.remove('completed');
+                        const completeBtn = taskItem.querySelector('.active-backlog-done-btn');
+                        if (completeBtn) {
+                            completeBtn.classList.remove('checked');
+                        }
+                    } else {
+                        taskItem.classList.add('completed');
+                        const completeBtn = taskItem.querySelector('.active-backlog-done-btn');
+                        if (completeBtn) {
+                            completeBtn.classList.add('checked');
+                        }
+                    }
+                }
+                
                 if (typeof showNotification !== 'undefined') {
                     showNotification(data.error || 'Failed to update task', 'error');
                 } else {
@@ -6286,6 +6409,25 @@
         })
         .catch(error => {
             console.error('Error toggling task:', error);
+            
+            // Revert UI changes on error
+            const taskItem = event.target.closest('.active-backlog-task-item');
+            if (taskItem) {
+                if (newCompleted) {
+                    taskItem.classList.remove('completed');
+                    const completeBtn = taskItem.querySelector('.active-backlog-done-btn');
+                    if (completeBtn) {
+                        completeBtn.classList.remove('checked');
+                    }
+                } else {
+                    taskItem.classList.add('completed');
+                    const completeBtn = taskItem.querySelector('.active-backlog-done-btn');
+                    if (completeBtn) {
+                        completeBtn.classList.add('checked');
+                    }
+                }
+            }
+            
             if (typeof showNotification !== 'undefined') {
                 showNotification('An error occurred while updating the task.', 'error');
             } else {
@@ -6498,6 +6640,31 @@
         const isCompleted = completeBtn.classList.contains('checked');
         const newCompleted = !isCompleted;
         
+        // Save all currently expanded stages BEFORE any async operations
+        const expandedStages = [];
+        if (hasStage && stageId && projectId) {
+            document.querySelectorAll('.stage-tasks-section.expanded').forEach(section => {
+                const sid = section.id.replace('stageTasks_', '');
+                if (sid) {
+                    expandedStages.push(sid);
+                }
+            });
+            
+            // Ensure current stage is in the list if it was expanded
+            const tasksSection = document.getElementById(`stageTasks_${stageId}`);
+            const isExpanded = tasksSection && tasksSection.classList.contains('expanded');
+            if (isExpanded && !expandedStages.includes(stageId.toString())) {
+                expandedStages.push(stageId.toString());
+            }
+            
+            // If task was just completed and stage is closed, add it to expanded list
+            if (newCompleted && !isExpanded) {
+                if (!expandedStages.includes(stageId.toString())) {
+                    expandedStages.push(stageId.toString());
+                }
+            }
+        }
+        
         // Update UI immediately
         if (newCompleted) {
             completeBtn.classList.add('checked');
@@ -6520,7 +6687,7 @@
                 showNotification('Cannot complete task: no client assigned', 'error');
             }
             return;
-            {% endif %}
+    {% endif %}
         }
         
         fetch(endpoint, {
@@ -6552,14 +6719,23 @@
                         setTimeout(() => {
                             taskItem.remove();
                             loadUserActiveBacklog();
-                            // Reload stage and its tasks if the stage is currently open/expanded (only for stage-linked tasks)
+                            // Reload stage and its tasks if the stage belongs to a project (only for stage-linked tasks)
                             if (hasStage && stageId && projectId) {
-                                const tasksSection = document.getElementById(`stageTasks_${stageId}`);
-                                if (tasksSection && tasksSection.classList.contains('expanded')) {
-                                    // Reload the entire stage to get updated data
-                                    loadStageTasks(stageId);
-                                    // Also reload stages to update stage completion status and progress
-                                    loadStages();
+                                // Reload stages to update stage completion status, progress, and "To be Reviewed" badge
+                                // Pass expanded stages to preserve them
+                                if (typeof loadStages === 'function') {
+                                    loadStages(expandedStages);
+                                }
+                                
+                                // Set default filter for completed view if task was just completed
+                                if (newCompleted) {
+                                    setTimeout(() => {
+                                        const updatedTasksSection = document.getElementById(`stageTasks_${stageId}`);
+                                        if (updatedTasksSection) {
+                                            updatedTasksSection.dataset.defaultFilter = 'completed';
+                                            loadStageTasks(parseInt(stageId));
+                                        }
+                                    }, 150);
                                 }
                             }
                         }, 400);
@@ -6878,11 +7054,32 @@
                     method: 'POST',
                     headers: {'X-CSRFToken': '{{ csrf_token }}'}
                 })
-                .then(() => {
-                    closeDeleteConfirmModal();
-                    loadStages();
+                .then(response => {
+                    if (!response.ok) {
+                        return response.json().then(data => {
+                            throw new Error(data.error || 'Failed to delete stage');
+                        });
+                    }
+                    return response.json();
                 })
-                .catch(() => {
+                .then(data => {
+                    if (data.success) {
+                        if (typeof showNotification !== 'undefined') {
+                            showNotification('Stage deleted successfully', 'success');
+                        }
+                        closeDeleteConfirmModal();
+                        loadStages();
+                    } else {
+                        throw new Error(data.error || 'Failed to delete stage');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error deleting stage:', error);
+                    if (typeof showNotification !== 'undefined') {
+                        showNotification(error.message || 'An error occurred while deleting the stage', 'error');
+                    } else {
+                        alert(error.message || 'An error occurred while deleting the stage');
+                    }
                     closeDeleteConfirmModal();
                 });
             }
@@ -7320,8 +7517,8 @@
                             </button>
                             <button class="custom-select-item-actions last-item" onclick="deleteSelectedTasks(${stageId})">
                                 <i class="fas fa-trash"></i> <span>Delete</span>
-                    </button>
-                </div>
+            </button>
+        </div>
             </div>
                 </div>
             </div>
@@ -7342,7 +7539,7 @@
             html += `
                 <div class="stage-tasks-empty" style="padding: 20px; text-align: center; color: #9ca3af;">
                     <p style="margin: 0; font-size: 0.875rem;">${emptyMessage}</p>
-                </div>
+                    </div>
             `;
         }
         
@@ -7407,10 +7604,10 @@
                 <div class="stage-task-item fade-in ${completedClass} ${isArchived ? 'archived' : ''}" data-task-id="${task.id}" data-priority="${task.priority || 'medium'}" data-status="${task.status || 'pending'}">
                     <div class="stage-task-drag-handle">
                         <i class="fas fa-grip-vertical"></i>
-                    </div>
+                </div>
                     <div class="stage-task-checkbox-container">
                         <div class="stage-task-checkbox" onclick="toggleTaskSelection(${task.id}, ${stageId}, event)"></div>
-                    </div>
+        </div>
                     <div class="stage-task-content" onclick="openCreateActiveBacklogTaskModal(${task.id}, '${(task.title || '').replace(/'/g, "\\'").replace(/\n/g, ' ')}', '${(task.description || '').replace(/'/g, "\\'").replace(/\n/g, '\\n')}', '${task.deadline || ''}', '${task.priority || 'medium'}', PROJECT_ID, ${stageId}, CLIENT_ID, '${task.status || 'pending'}')">
                         <div class="stage-task-title-row">
                             <div class="stage-task-title">${escapeHtml(task.title)}</div>
@@ -8263,7 +8460,7 @@
                             <div class="stage-tasks-header-actions">
                                 <button class="btn-sort-tasks" id="btnSortHigh_${stageId}" onclick="togglePrioritySort(${stageId}, 'high')" title="Sort Priority High to Low">
                                     <i class="fas fa-sort-amount-down"></i>
-                                </button>
+            </button>
                                 <button class="btn-sort-tasks" id="btnSortLow_${stageId}" onclick="togglePrioritySort(${stageId}, 'low')" title="Sort Priority Low to High">
                                     <i class="fas fa-sort-amount-up"></i>
                                 </button>
@@ -8277,10 +8474,10 @@
                                         </button>
                                         <button class="custom-select-item-actions last-item" onclick="deleteSelectedTasks(${stageId})">
                                             <i class="fas fa-trash"></i> <span>Delete</span>
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
+            </button>
+        </div>
+    </div>
+</div>
                         </div>
                         <div class="stage-tasks-list" id="stageTasksList_${stageId}" data-filter="all"></div>
                     `;
@@ -8871,6 +9068,20 @@
         button.disabled = true;
         const originalText = button.textContent;
         
+        // Save all currently expanded stages BEFORE any reloading happens
+        const expandedStages = [];
+        document.querySelectorAll('.stage-tasks-section.expanded').forEach(section => {
+            const sid = section.id.replace('stageTasks_', '');
+            if (sid) {
+                expandedStages.push(sid);
+            }
+        });
+        
+        // Ensure the current stage is in the expanded list if it's not already
+        if (!expandedStages.includes(stageId.toString())) {
+            expandedStages.push(stageId.toString());
+        }
+        
         fetch(`/dashboard/user/projects/${PROJECT_ID}/stages/${stageId}/tasks/${taskId}/archive/`, {
             method: 'POST',
             headers: {
@@ -8894,35 +9105,14 @@
                 if (taskItem) {
                     taskItem.classList.add('fade-out');
                     setTimeout(() => {
-                        // Reload tasks to reflect archive status
-                        const tasksSection = document.getElementById(`stageTasks_${stageId}`);
-                        if (tasksSection && tasksSection.dataset.loaded === 'true') {
-                            fetch(`/dashboard/user/projects/${PROJECT_ID}/stages/${stageId}/tasks/api/`)
-                                .then(response => response.json())
-                                .then(data => {
-                                    if (data.success) {
-                                        renderStageTasks(stageId, data.tasks || []);
-                                    }
-                                });
-                        }
+                        // Task will be removed from DOM, but stage stays open
                     }, 400);
-                } else {
-                    // Fallback if task item not found
-                    const tasksSection = document.getElementById(`stageTasks_${stageId}`);
-                    if (tasksSection && tasksSection.dataset.loaded === 'true') {
-                        fetch(`/dashboard/user/projects/${PROJECT_ID}/stages/${stageId}/tasks/api/`)
-                            .then(response => response.json())
-                            .then(data => {
-                                if (data.success) {
-                                    renderStageTasks(stageId, data.tasks || []);
-                                }
-                            });
-                    }
                 }
                 
                 // Reload stages to update "To be Reviewed" badge count
+                // Pass expanded stages list to preserve them
                 if (typeof loadStages === 'function') {
-                    loadStages();
+                    loadStages(expandedStages);
                 }
                 
                 if (typeof showNotification !== 'undefined') {
@@ -9285,8 +9475,8 @@
                     window.location.href = '{% url "general:dashboard_user:projects_list" %}';
                 }, 1000);
                 return;
-                {% endif %}
-                
+{% endif %}
+
                 // Reload page for owners
                 setTimeout(() => {
                     window.location.reload();

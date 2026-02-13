@@ -5322,18 +5322,21 @@
     }
     
     // Load stages from API
-    function loadStages() {
+    function loadStages(preserveExpandedStages = null) {
         const apiUrl = '{% url "general:dashboard_mentor:get_stages_api" project.id %}';
         console.log('Fetching stages from:', apiUrl);
         
         // Save which stages have expanded task sections before reloading
-        const expandedStages = [];
-        document.querySelectorAll('.stage-tasks-section.expanded').forEach(section => {
-            const stageId = section.id.replace('stageTasks_', '');
-            if (stageId) {
-                expandedStages.push(stageId);
-            }
-        });
+        // Use provided list or detect from DOM
+        const expandedStages = preserveExpandedStages || [];
+        if (expandedStages.length === 0) {
+            document.querySelectorAll('.stage-tasks-section.expanded').forEach(section => {
+                const stageId = section.id.replace('stageTasks_', '');
+                if (stageId) {
+                    expandedStages.push(stageId);
+                }
+            });
+        }
         
         fetch(apiUrl, {
             method: 'GET',
@@ -5361,26 +5364,25 @@
                         setTimeout(() => {
                             expandedStages.forEach(stageId => {
                                 const tasksSection = document.getElementById(`stageTasks_${stageId}`);
-                                if (tasksSection && !tasksSection.classList.contains('expanded')) {
-                                    // Expand the section
+                                if (tasksSection) {
+                                    // Force expand the section
                                     tasksSection.classList.add('expanded');
                                     
-                                    // Load tasks if not already loaded
-                                    if (!tasksSection.dataset.loaded) {
-                                        loadStageTasks(stageId);
-                                    } else {
-                                        // Just show the input section if tasks are already loaded
-                                        const buttonsSection = document.getElementById(`stageButtons_${stageId}`);
-                                        if (buttonsSection) {
-                                            buttonsSection.style.display = 'block';
-                                        }
+                                    // Show buttons section
+                                    const buttonsSection = document.getElementById(`stageButtons_${stageId}`);
+                                    if (buttonsSection) {
+                                        buttonsSection.style.display = 'block';
                                     }
+                                    
+                                    // Load tasks (always reload to get updated data)
+                                    tasksSection.dataset.loaded = 'false';
+                                    loadStageTasks(stageId);
                                     
                                     // Update overlay state
                                     updateTasksOverlay();
                                 }
                             });
-                        }, 50);
+                        }, 100); // Increased timeout to ensure DOM is ready
                     }
                     
                     // Check header layout after rendering
@@ -5819,15 +5821,20 @@
                         setTimeout(() => {
                             taskItem.remove();
                             loadActiveBacklog();
-                            // Reload stage and its tasks if the stage is currently open/expanded (only for stage-linked tasks)
+                            // Reload stage and its tasks if the task is linked to a project (only for stage-linked tasks)
                             if (hasStage && stageId && projectId) {
-                                const tasksSection = document.getElementById(`stageTasks_${stageId}`);
-                                if (tasksSection && tasksSection.classList.contains('expanded')) {
-                                    // Reload the entire stage to get updated data
-                                    loadStageTasks(stageId);
-                                    // Also reload stages to update stage completion status and progress
-                                    loadStages();
-                                }
+                                // Save all currently expanded stages before reloading
+                                const expandedStages = [];
+                                document.querySelectorAll('.stage-tasks-section.expanded').forEach(section => {
+                                    const sid = section.id.replace('stageTasks_', '');
+                                    if (sid) {
+                                        expandedStages.push(sid);
+                                    }
+                                });
+                                
+                                // Reload stages to update stage completion status and progress
+                                // Pass expanded stages to preserve them
+                                loadStages(expandedStages);
                             }
                         }, 400);
                     } else {
@@ -8047,40 +8054,33 @@
         .then(data => {
             button.disabled = false;
             if (data.success) {
+                // Save all currently expanded stages BEFORE any reloading happens
+                const expandedStages = [];
+                document.querySelectorAll('.stage-tasks-section.expanded').forEach(section => {
+                    const sid = section.id.replace('stageTasks_', '');
+                    if (sid) {
+                        expandedStages.push(sid);
+                    }
+                });
+                
+                // Ensure the current stage is in the expanded list if it's not already
+                if (!expandedStages.includes(stageId.toString())) {
+                    expandedStages.push(stageId.toString());
+                }
+                
                 // Fade out the task before reloading
                 const taskItem = button.closest('.stage-task-item');
                 if (taskItem) {
                     taskItem.classList.add('fade-out');
                     setTimeout(() => {
-                        // Reload tasks to reflect archive status
-                        const tasksSection = document.getElementById(`stageTasks_${stageId}`);
-                        if (tasksSection && tasksSection.dataset.loaded === 'true') {
-                            fetch(`/dashboard/mentor/projects/${PROJECT_ID}/stages/${stageId}/tasks/api/`)
-                                .then(response => response.json())
-                                .then(data => {
-                                    if (data.success) {
-                                        renderStageTasks(stageId, data.tasks || []);
-                                    }
-                                });
-                        }
+                        // Task will be removed from DOM, but stage stays open
                     }, 400);
-                } else {
-                    // Fallback if task item not found
-                    const tasksSection = document.getElementById(`stageTasks_${stageId}`);
-                    if (tasksSection && tasksSection.dataset.loaded === 'true') {
-                        fetch(`/dashboard/mentor/projects/${PROJECT_ID}/stages/${stageId}/tasks/api/`)
-                            .then(response => response.json())
-                            .then(data => {
-                                if (data.success) {
-                                    renderStageTasks(stageId, data.tasks || []);
-                                }
-                            });
-                    }
                 }
                 
                 // Reload stages to update "To be Reviewed" badge count
+                // Pass expanded stages list to preserve them
                 if (typeof loadStages === 'function') {
-                    loadStages();
+                    loadStages(expandedStages);
                 }
                 
                 if (typeof showNotification !== 'undefined') {
