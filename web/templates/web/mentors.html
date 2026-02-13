@@ -91,13 +91,18 @@
   <div class="mentors-container list-view" id="mentorsContainer">
     {% if mentors %}
       {% for mentor in mentors %}
-      <div class="mentor-card" data-aos="fade-up" data-mentor-id="{{ mentor.user.id }}">
+      <div class="mentor-card" data-aos="fade-up" data-mentor-id="{{ mentor.user.id }}" onclick="handleMentorCardClick(event, '{% url 'web:mentor_profile_detail' mentor.user.id %}')" onauxclick="handleMentorCardClick(event, '{% url 'web:mentor_profile_detail' mentor.user.id %}')" style="cursor: pointer;">
         <div class="mentor-header-content">
-          <div class="mentor-avatar">
+          <div class="mentor-avatar {% if mentor.video_introduction_url %}video-trigger{% endif %}" {% if mentor.video_introduction_url %}onclick="event.stopPropagation(); openVideoModal('{{ mentor.video_introduction_url }}')"{% endif %}>
             {% if mentor.profile_picture %}
               <img src="{{ mentor.profile_picture.url }}" alt="{{ mentor.first_name }} {{ mentor.last_name }}">
             {% else %}
               <img src="https://i.pravatar.cc/150?img={{ mentor.user.id }}" alt="{{ mentor.first_name }} {{ mentor.last_name }}">
+            {% endif %}
+            {% if mentor.video_introduction_url %}
+            <div class="mentor-avatar-overlay">
+              <i class="fas fa-play"></i>
+            </div>
             {% endif %}
           </div>
           <div class="mentor-title">
@@ -111,7 +116,7 @@
             <p class="mentor-motto">"{{ mentor.quote }}"</p>
           {% endif %}
           {% if mentor.bio %}
-            <p class="mentor-bio">{{ mentor.bio|truncatewords:30 }}</p>
+            <div class="mentor-bio">{{ mentor.bio|safe|linebreaks|truncatewords:30 }}</div>
           {% endif %}
           {% if mentor.tags %}
             <div class="mentor-tags">
@@ -123,12 +128,38 @@
         </div>
         
         <div class="mentor-footer">
-          {% if mentor.price_per_hour %}
-            <p class="mentor-price">${{ mentor.price_per_hour|floatformat:0 }}<span>/session</span></p>
-          {% else %}
-            <p class="mentor-price">Contact<span> for pricing</span></p>
-          {% endif %}
-          <a href="{% url 'web:mentor_profile_detail' mentor.user.id %}" class="btn-mentor">View Profile</a>
+          <div class="mentor-pricing-info">
+            <p class="mentor-standard-session-label">Standard session</p>
+            {% if mentor.price_per_hour %}
+              <p class="mentor-price-length">
+                ${{ mentor.price_per_hour|floatformat:0 }}
+                {% if mentor.session_length %}
+                  <span class="mentor-price-separator">/</span>
+                  <span class="mentor-length-value">{{ mentor.session_length }} min</span>
+                {% endif %}
+              </p>
+            {% else %}
+              <p class="mentor-price-length">
+                Contact<span> for pricing</span>
+                {% if mentor.session_length %}
+                  <span class="mentor-price-separator"> • </span>
+                  <span class="mentor-length-value">{{ mentor.session_length }} min</span>
+                {% endif %}
+              </p>
+            {% endif %}
+          </div>
+          <a href="{% url 'web:mentor_profile_detail' mentor.user.id %}" class="btn-mentor" onclick="event.stopPropagation()">
+            {% if mentor.first_session_free %}
+              {% if mentor.first_session_length %}
+                <span class="btn-mentor-badge">{{ mentor.first_session_length }} min</span>
+              {% endif %}
+            {% endif %}
+            {% if mentor.first_session_free %}
+              First One Free
+            {% else %}
+              View Profile
+            {% endif %}
+          </a>
         </div>
       </div>
       {% endfor %}
@@ -204,5 +235,97 @@
 <script src="{% static 'js/mentors-search.js' %}"></script>
 <script data-search-url="{% url 'web:mentor_search_suggestions' %}" data-load-more-url="{% url 'web:mentors_load_more' %}">
   // URLs are set via data attributes on this script tag
+</script>
+
+<!-- Video Modal Include -->
+{% include 'dashboard_user/popups/video_modal.html' %}
+
+<script>
+// Handle mentor card clicks - support middle mouse button for new tab
+function handleMentorCardClick(event, url) {
+    // Middle mouse button (button === 1) or auxclick event opens in new tab
+    if (event.button === 1 || event.type === 'auxclick') {
+        event.preventDefault();
+        event.stopPropagation();
+        window.open(url, '_blank');
+        return false;
+    }
+    // Ctrl+Click or Cmd+Click opens in new tab
+    if (event.ctrlKey || event.metaKey) {
+        event.preventDefault();
+        event.stopPropagation();
+        window.open(url, '_blank');
+        return false;
+    }
+    // Left click - normal navigation
+    if (event.button === 0 || event.type === 'click') {
+        window.location.href = url;
+    }
+}
+
+// Video modal functions (if not already defined)
+if (typeof openVideoModal === 'undefined') {
+    function extractVideoID(url) {
+        if (!url) return null;
+        // YouTube
+        const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+        const match = url.match(regExp);
+        if (match && match[2].length === 11) {
+            return { type: 'youtube', id: match[2] };
+        }
+        // Vimeo
+        const vimeoReg = /vimeo\.com\/(?:channels\/(?:\w+\/)?|groups\/(?:[^\/]*)\/videos\/|album\/(?:\d+)\/video\/|video\/|)(\d+)(?:$|\/|\?)/;
+        const vimeoMatch = url.match(vimeoReg);
+        if (vimeoMatch) {
+             return { type: 'vimeo', id: vimeoMatch[1] };
+        }
+        return null;
+    }
+
+    function openVideoModal(videoUrl) {
+        const videoModal = document.getElementById('videoModal');
+        const videoIframe = document.getElementById('videoIframe');
+        
+        if (!videoModal || !videoIframe) return;
+        
+        const videoData = extractVideoID(videoUrl);
+        if (videoData) {
+            if (videoData.type === 'youtube') {
+                videoIframe.src = `https://www.youtube-nocookie.com/embed/${videoData.id}?autoplay=1&rel=0`;
+            } else if (videoData.type === 'vimeo') {
+                videoIframe.src = `https://player.vimeo.com/video/${videoData.id}?autoplay=1`;
+            }
+            videoModal.classList.add('open');
+            document.body.style.overflow = 'hidden';
+        } else {
+            alert('Invalid video URL');
+        }
+    }
+
+    function closeVideoModal() {
+        const videoModal = document.getElementById('videoModal');
+        const videoIframe = document.getElementById('videoIframe');
+        if (!videoModal) return;
+        videoModal.classList.remove('open');
+        document.body.style.overflow = '';
+        setTimeout(() => {
+            if (videoIframe) videoIframe.src = '';
+        }, 300);
+    }
+
+    // Close on click outside
+    document.addEventListener('click', (e) => {
+        const videoModal = document.getElementById('videoModal');
+        if (videoModal && e.target === videoModal) closeVideoModal();
+    });
+    
+    // Close on ESC
+    document.addEventListener('keydown', function(event) {
+        const videoModal = document.getElementById('videoModal');
+        if (event.key === "Escape" && videoModal && videoModal.classList.contains('open')) {
+             closeVideoModal();
+        }
+    });
+}
 </script>
 {% endblock %}

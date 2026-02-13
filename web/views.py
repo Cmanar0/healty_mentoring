@@ -414,6 +414,12 @@ def mentor_profile_detail(request, user_id):
     else:
         average_rating = 0
     
+    # Get blog posts by this mentor
+    mentor_blog_posts = BlogPost.objects.filter(
+        author=mentor_user,
+        status='published'
+    ).order_by('-published_at')[:4]
+    
     from django.conf import settings
     stripe_publishable_key = getattr(settings, "STRIPE_PUBLISHABLE_KEY", "") or ""
     return render(request, "web/mentor_profile_detail.html", {
@@ -426,6 +432,8 @@ def mentor_profile_detail(request, user_id):
         "average_rating": average_rating,
         "reviews_count": reviews.count(),
         "stripe_publishable_key": stripe_publishable_key,
+        "mentor_blog_posts": mentor_blog_posts,
+        "predefined_categories": PREDEFINED_CATEGORIES,
     })
 
 

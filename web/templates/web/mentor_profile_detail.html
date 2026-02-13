@@ -543,6 +543,163 @@
         transform: rotate(5deg);
     }
     
+    /* Author Posts Section */
+    .author-posts {
+        padding: 40px 0;
+        margin-top: 40px;
+    }
+
+    .author-posts h2 {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: #0f172a;
+        margin-bottom: 24px;
+    }
+
+    .author-posts-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+        gap: 24px;
+        margin-bottom: 32px;
+    }
+
+    .author-post-card {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        overflow: hidden;
+        text-decoration: none;
+        color: inherit;
+        display: block;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .author-post-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    .author-post-cover {
+        width: 100%;
+        height: 180px;
+        position: relative;
+        overflow: hidden;
+        border-radius: 12px 12px 0 0;
+    }
+
+    .author-post-cover img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .author-post-content {
+        padding: 20px;
+    }
+
+    .author-post-title {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: #0f172a;
+        margin: 0 0 12px 0;
+        line-height: 1.4;
+    }
+
+    .author-post-excerpt {
+        color: #64748b;
+        font-size: 0.9rem;
+        line-height: 1.6;
+        margin: 0 0 16px 0;
+    }
+
+    .author-post-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        font-size: 0.85rem;
+        color: #64748b;
+    }
+
+    .author-post-date {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .author-post-categories {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+
+    .author-category-tag {
+        background: #f3f4f6;
+        color: #0f172a;
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+
+    .author-posts-button-container {
+        text-align: center;
+        margin-top: 48px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 20px;
+    }
+
+    .author-posts-button-container::before,
+    .author-posts-button-container::after {
+        content: '';
+        flex: 1;
+        height: 1px;
+        background: #e5e7eb;
+        max-width: 200px;
+    }
+
+    .author-posts-button {
+        display: inline-block;
+        padding: 14px 32px;
+        background: white;
+        color: #0f172a;
+        border: 1px solid #e5e7eb;
+        border-radius: 50px;
+        font-weight: 600;
+        font-size: 1rem;
+        text-decoration: none;
+        transition: all 0.2s;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+
+    .author-posts-button:hover {
+        background: #f9fafb;
+        border-color: #cbd5e1;
+        color: #0f172a;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        transform: translateY(-2px);
+    }
+
+    @media (max-width: 768px) {
+        .author-posts-grid {
+            grid-template-columns: 1fr;
+            gap: 16px;
+        }
+        
+        .author-posts {
+            padding: 24px 0;
+            margin-top: 24px;
+        }
+
+        .author-posts-button {
+            padding: 12px 24px;
+            font-size: 0.95rem;
+            width: 100%;
+            max-width: 300px;
+        }
+    }
+    
     /* Community Card */
     .mp-community-promo {
         background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
@@ -915,7 +1072,7 @@
                 <div class="mp-price-display">
                     {% if mentor_profile.price_per_hour %}
                         <div class="mp-price-amount">${{ mentor_profile.price_per_hour|floatformat:0 }}</div>
-                        <div class="mp-price-label">per 60-min session</div>
+                        <div class="mp-price-label">per {{ mentor_profile.session_length|default:60 }}-min session</div>
                     {% else %}
                         <div class="mp-price-amount">Contact</div>
                         <div class="mp-price-label">for pricing</div>
@@ -998,6 +1155,61 @@
     </div>
 
 </div>
+
+<!-- More from Mentor Section -->
+{% if mentor_blog_posts %}
+    <div class="mp-container" style="margin-top: 60px;">
+        <div class="author-posts">
+            <h2>More from {{ mentor_profile.first_name }} {{ mentor_profile.last_name }}</h2>
+            <div class="author-posts-grid">
+                {% for post in mentor_blog_posts %}
+                    <a href="{% url 'web:blog_detail' post.slug %}" class="author-post-card">
+                        <div class="author-post-cover">
+                            {% if post.cover_image %}
+                                <img src="{{ post.cover_image.url }}" alt="{{ post.title }}">
+                            {% else %}
+                                <div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: #f1f5f9; color: #64748b;">
+                                    <i class="fas fa-image"></i>
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="author-post-content">
+                            <h3 class="author-post-title">{{ post.title }}</h3>
+                            {% if post.excerpt %}
+                                <p class="author-post-excerpt">{{ post.excerpt|truncatewords:20 }}</p>
+                            {% endif %}
+                            <div class="author-post-meta">
+                                <span class="author-post-date">
+                                    <i class="far fa-calendar"></i>
+                                    {{ post.published_at|date:"M d, Y" }}
+                                </span>
+                                {% if post.categories %}
+                                    <span class="author-post-categories">
+                                        {% for cat_id in post.categories|slice:":2" %}
+                                            {% for cat in predefined_categories %}
+                                                {% if cat.id == cat_id %}
+                                                    <span class="author-category-tag">{{ cat.name }}</span>
+                                                {% endif %}
+                                            {% endfor %}
+                                        {% endfor %}
+                                        {% if post.categories|length > 2 %}
+                                            <span class="author-category-tag">+{{ post.categories|length|add:"-2" }}</span>
+                                        {% endif %}
+                                    </span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </a>
+                {% endfor %}
+            </div>
+            <div class="author-posts-button-container">
+                <a href="{% url 'web:blog' %}?mentor={{ mentor_user.id }}" class="author-posts-button">
+                    See All Articles from {{ mentor_profile.first_name }} {{ mentor_profile.last_name }}
+                </a>
+            </div>
+        </div>
+    </div>
+{% endif %}
 
 <!-- Booking Modal Include -->
 {% include 'dashboard_user/popups/booking_modal.html' %}
