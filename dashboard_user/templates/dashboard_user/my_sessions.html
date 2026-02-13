@@ -746,26 +746,31 @@
   }
 
   function submitDeclineInvitation() {
-    var form = document.createElement('form');
-    form.method = 'POST';
-    form.action = declineInvitationUrl;
-    var csrfInput = document.createElement('input');
-    csrfInput.type = 'hidden';
-    csrfInput.name = 'csrfmiddlewaretoken';
-    csrfInput.value = getCsrfToken();
-    form.appendChild(csrfInput);
-    var actionInput = document.createElement('input');
-    actionInput.type = 'hidden';
-    actionInput.name = 'action';
-    actionInput.value = 'decline_invitation';
-    form.appendChild(actionInput);
-    var invIdInput = document.createElement('input');
-    invIdInput.type = 'hidden';
-    invIdInput.name = 'invitation_id';
-    invIdInput.value = acceptInvitationId;
-    form.appendChild(invIdInput);
-    document.body.appendChild(form);
-    form.submit();
+    // Use fetch to submit decline, then reload current page instead of redirecting
+    var formData = new FormData();
+    formData.append('csrfmiddlewaretoken', getCsrfToken());
+    formData.append('action', 'decline_invitation');
+    formData.append('invitation_id', acceptInvitationId);
+    
+    fetch('{% url "general:dashboard_user:session_management" %}', {
+      method: 'POST',
+      body: formData,
+      headers: {
+        'X-CSRFToken': getCsrfToken()
+      }
+    }).then(function(response) {
+      if (response.ok) {
+        // Reload current page instead of redirecting
+        window.location.reload();
+      } else {
+        // If error, still reload to show any error messages
+        window.location.reload();
+      }
+    }).catch(function(error) {
+      console.error('Error declining invitation:', error);
+      // Reload anyway
+      window.location.reload();
+    });
   }
 
   document.addEventListener('DOMContentLoaded', function() {
@@ -804,29 +809,84 @@
       });
     }
 
+    var originalSectionType = null; // 'free' or 'paid'
+
+    function showDeclineConfirmation() {
+      var freeSection = document.getElementById('acceptInvitationFreeSection');
+      var paidSection = document.getElementById('acceptInvitationPaidSection');
+      var declineSection = document.getElementById('acceptInvitationDeclineSection');
+      var freeActions = document.getElementById('acceptInvitationFreeActions');
+      var paidActions = document.getElementById('acceptInvitationPaidActions');
+      var declineActions = document.getElementById('acceptInvitationDeclineActions');
+      
+      // Store which section was originally shown
+      if (freeSection && freeSection.style.display !== 'none') {
+        originalSectionType = 'free';
+      } else if (paidSection && paidSection.style.display !== 'none') {
+        originalSectionType = 'paid';
+      }
+      
+      if (freeSection) freeSection.style.display = 'none';
+      if (paidSection) paidSection.style.display = 'none';
+      if (declineSection) declineSection.style.display = 'block';
+      if (freeActions) freeActions.style.display = 'none';
+      if (paidActions) paidActions.style.display = 'none';
+      if (declineActions) declineActions.style.display = 'flex';
+    }
+
+    function hideDeclineConfirmation() {
+      var freeSection = document.getElementById('acceptInvitationFreeSection');
+      var paidSection = document.getElementById('acceptInvitationPaidSection');
+      var declineSection = document.getElementById('acceptInvitationDeclineSection');
+      var freeActions = document.getElementById('acceptInvitationFreeActions');
+      var paidActions = document.getElementById('acceptInvitationPaidActions');
+      var declineActions = document.getElementById('acceptInvitationDeclineActions');
+      
+      if (declineSection) declineSection.style.display = 'none';
+      if (declineActions) declineActions.style.display = 'none';
+      
+      // Restore the original section
+      if (originalSectionType === 'free') {
+        if (freeSection) freeSection.style.display = 'block';
+        if (paidSection) paidSection.style.display = 'none';
+        if (freeActions) freeActions.style.display = 'flex';
+        if (paidActions) paidActions.style.display = 'none';
+      } else if (originalSectionType === 'paid') {
+        if (freeSection) freeSection.style.display = 'none';
+        if (paidSection) paidSection.style.display = 'block';
+        if (freeActions) freeActions.style.display = 'none';
+        if (paidActions) paidActions.style.display = 'flex';
+      }
+      originalSectionType = null;
+    }
+
     var declineBtn = document.getElementById('acceptInvitationDeclineBtn');
     if (declineBtn) {
       declineBtn.addEventListener('click', function() {
-        if (confirm('Are you sure you want to decline this invitation?')) {
-          submitDeclineInvitation();
-          window.closeAcceptInvitationModal();
-          setTimeout(function() {
-            window.location.reload();
-          }, 500);
-        }
+        showDeclineConfirmation();
       });
     }
 
     var declineBtnPaid = document.getElementById('acceptInvitationDeclineBtnPaid');
     if (declineBtnPaid) {
       declineBtnPaid.addEventListener('click', function() {
-        if (confirm('Are you sure you want to decline this invitation?')) {
-          submitDeclineInvitation();
-          window.closeAcceptInvitationModal();
-          setTimeout(function() {
-            window.location.reload();
-          }, 500);
-        }
+        showDeclineConfirmation();
+      });
+    }
+
+    var declineCancelBtn = document.getElementById('acceptInvitationDeclineCancelBtn');
+    if (declineCancelBtn) {
+      declineCancelBtn.addEventListener('click', function() {
+        hideDeclineConfirmation();
+      });
+    }
+
+    var declineConfirmBtn = document.getElementById('acceptInvitationDeclineConfirmBtn');
+    if (declineConfirmBtn) {
+      declineConfirmBtn.addEventListener('click', function() {
+        window.closeAcceptInvitationModal();
+        submitDeclineInvitation();
+        // submitDeclineInvitation will reload the current page
       });
     }
 
@@ -834,6 +894,33 @@
     if (payBtn) {
       payBtn.addEventListener('click', function() {
         if (acceptSelectedMethod === 'wallet') {
+          // Check if wallet has sufficient balance
+          var canWallet = walletBalanceCents >= acceptPriceCents;
+          if (!canWallet) {
+            // Show toast notification
+            if (typeof showNotification !== 'undefined') {
+              showNotification('Insufficient wallet balance. Please top up your wallet or pay with card.', 'error');
+            } else {
+              alert('Insufficient wallet balance. Please top up your wallet or pay with card.');
+            }
+            
+            // Show and highlight the insufficient balance message
+            var insufficientNote = document.getElementById('acceptInvitationInsufficientNote');
+            if (insufficientNote) {
+              insufficientNote.style.display = 'block';
+              // Blinking animation
+              var blinkCount = 0;
+              var blinkInterval = setInterval(function() {
+                insufficientNote.style.backgroundColor = blinkCount % 2 === 0 ? '#fef2f2' : '#fee2e2';
+                blinkCount++;
+                if (blinkCount >= 6) {
+                  clearInterval(blinkInterval);
+                  insufficientNote.style.backgroundColor = '';
+                }
+              }, 200);
+            }
+            return; // Don't close modal or submit
+          }
           submitAcceptInvitation({ use_wallet: '1' });
           window.closeAcceptInvitationModal();
           setTimeout(function() {

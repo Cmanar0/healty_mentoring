@@ -2485,96 +2485,16 @@
         transform: rotate(180deg);
     }
     
-    .task-filter-dropdown-menu {
-        position: absolute;
-        top: calc(100% + 8px);
-        left: 0;
-        background: white;
-        border-radius: 12px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-        padding: 0;
-        opacity: 0;
-        visibility: hidden;
-        transform: translateY(-10px);
-        transition: all 0.2s ease;
-        z-index: 10005;
-        min-width: 100%;
+    /* Task filter dropdown now uses stage-actions-menu styling */
+    .task-filter-dropdown-container {
+        position: relative;
     }
     
-    .task-filter-dropdown-container.active .task-filter-dropdown-menu:not(.session-row-dropdown-menu--fixed) {
-        opacity: 1;
-        visibility: visible;
-        transform: translateY(0);
-    }
-    
-    .task-filter-dropdown-menu .dropdown-item {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 12px 20px;
-        color: #1e293b;
-        text-decoration: none;
-        transition: background 0.2s ease;
-        border: none;
-        background: transparent;
-        width: 100%;
-        cursor: pointer;
-        font-size: 0.95rem;
-        font-weight: 400;
-        text-align: left;
-    }
-    
-    .task-filter-dropdown-menu .dropdown-item.first-item {
-        border-radius: 12px 12px 0 0;
-    }
-    
-    .task-filter-dropdown-menu .dropdown-item.last-item {
-        border-radius: 0 0 12px 12px;
-    }
-    
-    .task-filter-dropdown-menu .dropdown-item:hover {
-        background: rgba(16, 185, 129, 0.1);
-        color: #10b981;
-    }
-    
-    .task-filter-dropdown-menu .dropdown-item.first-item:hover {
-        border-radius: 12px 12px 0 0;
-    }
-    
-    .task-filter-dropdown-menu .dropdown-item.last-item:hover {
-        border-radius: 0 0 12px 12px;
-    }
-    
-    .task-filter-dropdown-menu .dropdown-item.active {
+    /* Active state indicator for task filter dropdown */
+    .stage-actions-menu .dropdown-item.active {
         background: rgba(16, 185, 129, 0.1);
         color: #10b981;
         font-weight: 500;
-    }
-    
-    /* When task filter dropdown is shown and fixed (for scrollable containers) */
-    .task-filter-dropdown-menu.show.session-row-dropdown-menu--fixed {
-        position: fixed !important;
-        z-index: 1050 !important;
-        top: 0;
-        left: 0;
-        width: max-content;
-        max-width: 280px;
-        min-width: 100%;
-        border-radius: 12px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-        background: white;
-    }
-    
-    /* When task filter dropdown is shown but not fixed (normal positioning) */
-    .task-filter-dropdown-menu.show:not(.session-row-dropdown-menu--fixed) {
-        position: absolute;
-        top: calc(100% + 8px);
-        left: 0;
-        z-index: 1000;
-        opacity: 1;
-        visibility: visible;
-        transform: translateY(0);
-        display: block;
     }
     
     .review-completed-badge {
@@ -6489,21 +6409,31 @@
             }
         }
         
-        // Get current filter value
-        // Get current filter value from dropdown
+        // Get current filter value from dropdown or pending filter
         const selectedText = document.getElementById(`taskFilterSelectedText_${stageId}`);
         let currentFilter = 'all';
-        if (selectedText) {
+        
+        // Check for pending filter first (set when task is created)
+        if (tasksSection && tasksSection.dataset.pendingFilter) {
+            currentFilter = tasksSection.dataset.pendingFilter;
+            delete tasksSection.dataset.pendingFilter; // Clear after using
+        } else if (selectedText) {
             const text = selectedText.textContent.trim();
             if (text === 'Active') currentFilter = 'active';
             else if (text === 'Not Active') currentFilter = 'not_active';
             else if (text === 'Completed') currentFilter = 'completed';
             else if (text === 'History') currentFilter = 'history';
             else currentFilter = 'all';
+        } else if (tasksSection) {
+            // Try to get from data-filter attribute on tasks list
+            const tasksList = tasksSection.querySelector('.stage-tasks-list');
+            if (tasksList && tasksList.dataset.filter) {
+                currentFilter = tasksList.dataset.filter;
+            }
         }
         
         // If this is the first load and there are completed tasks, use 'completed' as default
-        if (!selectedText && tasksSection && tasksSection.dataset.defaultFilter === 'completed') {
+        if (!selectedText && tasksSection && tasksSection.dataset.defaultFilter === 'completed' && currentFilter === 'all') {
             currentFilter = 'completed';
         }
         
@@ -6547,7 +6477,7 @@
                                 <span class="task-filter-selected-text" id="taskFilterSelectedText_${stageId}">${currentFilter === 'all' ? 'All' : currentFilter === 'active' ? 'Active' : currentFilter === 'not_active' ? 'Not Active' : currentFilter === 'completed' ? 'Completed' : 'History'}</span>
                                 <i class="fas fa-chevron-down"></i>
                             </button>
-                            <div class="task-filter-dropdown-menu" id="taskFilterMenu_${stageId}" onclick="event.stopPropagation();">
+                            <div class="dropdown-menu stage-actions-menu" id="taskFilterMenu_${stageId}" onclick="event.stopPropagation();">
                                 <button type="button" class="dropdown-item first-item ${currentFilter === 'all' ? 'active' : ''}" data-value="all" onclick="selectTaskFilter(${stageId}, 'all', event)">
                                     <span>All</span>
                                 </button>
@@ -7517,48 +7447,49 @@
                 const tasksHeader = tasksSection ? tasksSection.querySelector('.stage-tasks-title') : null;
                 const isEmptyState = tasksSection ? tasksSection.querySelector('.stage-tasks-empty') : null;
                 
+                // Get current filter value before potentially recreating header
+                let currentFilter = 'all';
+                const selectedText = document.getElementById(`taskFilterSelectedText_${stageId}`);
+                if (selectedText) {
+                    const text = selectedText.textContent.trim();
+                    if (text === 'Active') currentFilter = 'active';
+                    else if (text === 'Not Active') currentFilter = 'not_active';
+                    else if (text === 'Completed') currentFilter = 'completed';
+                    else if (text === 'History') currentFilter = 'history';
+                } else if (tasksList) {
+                    // Try to get from data-filter attribute
+                    const filterAttr = tasksList.getAttribute('data-filter');
+                    if (filterAttr) currentFilter = filterAttr;
+                }
+                
                 // Remove empty state if it exists
                 if (isEmptyState) {
                     isEmptyState.remove();
                 }
                 
-                // Create tasks header and list if they don't exist
+                // If header doesn't exist, reload tasks properly to get full header with filter
                 if (!tasksList || !tasksHeader) {
-                    tasksSection.innerHTML = `
-                        <div class="stage-tasks-header">
-                            <div class="stage-tasks-title">
-                                <div class="stage-tasks-select-all-checkbox" id="selectAllTasks_${stageId}" onclick="toggleSelectAllTasks(${stageId}, event)"></div>
-                                Tasks (1)
-                            </div>
-                            <div class="stage-tasks-header-actions">
-                                <button class="btn-sort-tasks" id="btnSortHigh_${stageId}" onclick="togglePrioritySort(${stageId}, 'high')" title="Sort Priority High to Low">
-                                    <i class="fas fa-sort-amount-down"></i>
-                                </button>
-                                <button class="btn-sort-tasks" id="btnSortLow_${stageId}" onclick="togglePrioritySort(${stageId}, 'low')" title="Sort Priority Low to High">
-                                    <i class="fas fa-sort-amount-up"></i>
-                                </button>
-                                <div class="stage-tasks-actions-select" id="actionsSelect_${stageId}">
-                                    <button class="custom-select-trigger-actions" id="btnActionsTasks_${stageId}" onclick="toggleTasksActionsDropdown(${stageId}, event)" disabled>
-                                        Actions <i class="fas fa-chevron-down"></i>
-                                    </button>
-                                    <div class="custom-select-menu-actions" id="tasksActionsMenu_${stageId}">
-                                        <button class="custom-select-item-actions first-item" onclick="activateSelectedTasks(${stageId})">
-                                            <i class="fas fa-check-circle"></i> <span>Activate</span>
-                                        </button>
-                                        <button class="custom-select-item-actions last-item" onclick="deleteSelectedTasks(${stageId})">
-                                            <i class="fas fa-trash"></i> <span>Delete</span>
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="stage-tasks-list" id="stageTasksList_${stageId}" data-filter="all"></div>
-                    `;
+                    // Reload tasks from server to get proper header with filter dropdown
+                    tasksSection.dataset.loaded = 'false';
+                    // Store filter to restore after reload
+                    tasksSection.dataset.pendingFilter = currentFilter;
+                    loadStageTasks(stageId);
+                    return; // Exit early, loadStageTasks will handle the rest
                 }
                 
                 // Get the tasks list (might have been just created)
                 const currentTasksList = tasksSection.querySelector('.stage-tasks-list');
                 const currentTasksHeader = tasksSection.querySelector('.stage-tasks-title');
+                
+                // Ensure filter dropdown exists in header - if not, reload tasks properly
+                const filterContainer = document.getElementById(`taskFilterContainer_${stageId}`);
+                if (!filterContainer && currentTasksHeader) {
+                    // Filter dropdown missing - reload tasks to get proper header
+                    tasksSection.dataset.loaded = 'false';
+                    tasksSection.dataset.pendingFilter = currentFilter;
+                    loadStageTasks(stageId);
+                    return; // Exit early, loadStageTasks will handle the rest
+                }
                 
                 // Enable sort buttons if they exist
                 const sortHighBtn = document.getElementById(`btnSortHigh_${stageId}`);
@@ -8114,24 +8045,20 @@
         const trigger = document.getElementById(`taskFilterTrigger_${stageId}`);
         if (!container || !menu || !trigger) return;
         
-        // Close all other task filter dropdowns
-        document.querySelectorAll('.task-filter-dropdown-container.active').forEach(c => {
-            if (c.id !== `taskFilterContainer_${stageId}`) {
-                c.classList.remove('active');
-                const otherMenu = c.querySelector('.task-filter-dropdown-menu');
-                if (otherMenu && typeof clearSessionDropdownFixed === 'function') {
-                    clearSessionDropdownFixed(otherMenu);
-                }
-            }
-        });
-        
-        // Close all stage action dropdowns
+        // Close all other task filter dropdowns and stage action dropdowns
         document.querySelectorAll('.dropdown-menu.show').forEach(m => {
-            if (m.classList.contains('stage-actions-menu')) {
+            if (m.classList.contains('stage-actions-menu') && m.id !== `taskFilterMenu_${stageId}`) {
                 m.classList.remove('show');
                 if (typeof clearSessionDropdownFixed === 'function') {
                     clearSessionDropdownFixed(m);
                 }
+            }
+        });
+        
+        // Remove active class from all task filter containers
+        document.querySelectorAll('.task-filter-dropdown-container.active').forEach(c => {
+            if (c.id !== `taskFilterContainer_${stageId}`) {
+                c.classList.remove('active');
             }
         });
         
@@ -8211,7 +8138,7 @@
         if (!event.target.closest('.task-filter-dropdown-container')) {
             document.querySelectorAll('.task-filter-dropdown-container.active').forEach(container => {
                 container.classList.remove('active');
-                const menu = container.querySelector('.task-filter-dropdown-menu');
+                const menu = container.querySelector('.stage-actions-menu');
                 if (menu) {
                     menu.classList.remove('show');
                     if (typeof clearSessionDropdownFixed === 'function') {

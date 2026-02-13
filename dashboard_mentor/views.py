@@ -143,10 +143,29 @@ def dashboard(request):
             except Exception:
                 mentor_tzinfo = dt_timezone.utc
             now = timezone.now()
+            # Exclude 'invited' sessions where all invitations are cancelled
+            # (confirmed sessions don't need active invitations since they're already accepted)
+            from general.models import SessionInvitation
+            invited_sessions = mentor_profile.sessions.filter(status='invited').values_list('id', flat=True)
+            invited_sessions_with_cancelled_invitations = SessionInvitation.objects.filter(
+                session_id__in=invited_sessions,
+                cancelled_at__isnull=False
+            ).values_list('session_id', flat=True).distinct()
+            # Get invited sessions that have active (non-cancelled, non-accepted) invitations
+            invited_sessions_with_active_invitations = SessionInvitation.objects.filter(
+                session_id__in=invited_sessions,
+                cancelled_at__isnull=True,
+                accepted_at__isnull=True
+            ).values_list('session_id', flat=True).distinct()
+            # Exclude invited sessions that have cancelled invitations but no active invitations
+            invited_sessions_to_exclude = set(invited_sessions_with_cancelled_invitations) - set(invited_sessions_with_active_invitations)
+            
             # Get all upcoming + ongoing sessions (exclude only when session end is in the past)
             all_upcoming = mentor_profile.sessions.filter(
                 status__in=['invited', 'confirmed'],
                 end_datetime__gte=now
+            ).exclude(
+                id__in=invited_sessions_to_exclude
             ).order_by('start_datetime').prefetch_related('attendees')
             
             # Get total count to check if there are more than 4
@@ -1861,11 +1880,30 @@ def my_sessions(request):
     except Exception:
         mentor_tzinfo = dt_timezone.utc
     
+    # Exclude 'invited' sessions where all invitations are cancelled
+    # (confirmed sessions don't need active invitations since they're already accepted)
+    from general.models import SessionInvitation
+    invited_sessions = mentor_profile.sessions.filter(status='invited').values_list('id', flat=True)
+    invited_sessions_with_cancelled_invitations = SessionInvitation.objects.filter(
+        session_id__in=invited_sessions,
+        cancelled_at__isnull=False
+    ).values_list('session_id', flat=True).distinct()
+    # Get invited sessions that have active (non-cancelled, non-accepted) invitations
+    invited_sessions_with_active_invitations = SessionInvitation.objects.filter(
+        session_id__in=invited_sessions,
+        cancelled_at__isnull=True,
+        accepted_at__isnull=True
+    ).values_list('session_id', flat=True).distinct()
+    # Exclude invited sessions that have cancelled invitations but no active invitations
+    invited_sessions_to_exclude = set(invited_sessions_with_cancelled_invitations) - set(invited_sessions_with_active_invitations)
+    
     initial_sessions = []
     try:
         all_upcoming = mentor_profile.sessions.filter(
             status__in=['invited', 'confirmed'],
             end_datetime__gte=now
+        ).exclude(
+            id__in=invited_sessions_to_exclude
         ).order_by('start_datetime').prefetch_related('attendees')
         
         sessions_queryset = all_upcoming[:10]
@@ -2017,9 +2055,28 @@ def get_sessions_paginated(request):
         except Exception:
             mentor_tzinfo = dt_timezone.utc
         
+        # Exclude 'invited' sessions where all invitations are cancelled
+        # (confirmed sessions don't need active invitations since they're already accepted)
+        from general.models import SessionInvitation
+        invited_sessions = mentor_profile.sessions.filter(status='invited').values_list('id', flat=True)
+        invited_sessions_with_cancelled_invitations = SessionInvitation.objects.filter(
+            session_id__in=invited_sessions,
+            cancelled_at__isnull=False
+        ).values_list('session_id', flat=True).distinct()
+        # Get invited sessions that have active (non-cancelled, non-accepted) invitations
+        invited_sessions_with_active_invitations = SessionInvitation.objects.filter(
+            session_id__in=invited_sessions,
+            cancelled_at__isnull=True,
+            accepted_at__isnull=True
+        ).values_list('session_id', flat=True).distinct()
+        # Exclude invited sessions that have cancelled invitations but no active invitations
+        invited_sessions_to_exclude = set(invited_sessions_with_cancelled_invitations) - set(invited_sessions_with_active_invitations)
+        
         all_upcoming = mentor_profile.sessions.filter(
             status__in=['invited', 'confirmed'],
             end_datetime__gte=now
+        ).exclude(
+            id__in=invited_sessions_to_exclude
         ).order_by('start_datetime').prefetch_related('attendees')
         
         paginator = Paginator(all_upcoming, per_page)
@@ -2086,9 +2143,28 @@ def get_dashboard_upcoming_sessions(request):
         except Exception:
             mentor_tzinfo = dt_timezone.utc
         
+        # Exclude 'invited' sessions where all invitations are cancelled
+        # (confirmed sessions don't need active invitations since they're already accepted)
+        from general.models import SessionInvitation
+        invited_sessions = mentor_profile.sessions.filter(status='invited').values_list('id', flat=True)
+        invited_sessions_with_cancelled_invitations = SessionInvitation.objects.filter(
+            session_id__in=invited_sessions,
+            cancelled_at__isnull=False
+        ).values_list('session_id', flat=True).distinct()
+        # Get invited sessions that have active (non-cancelled, non-accepted) invitations
+        invited_sessions_with_active_invitations = SessionInvitation.objects.filter(
+            session_id__in=invited_sessions,
+            cancelled_at__isnull=True,
+            accepted_at__isnull=True
+        ).values_list('session_id', flat=True).distinct()
+        # Exclude invited sessions that have cancelled invitations but no active invitations
+        invited_sessions_to_exclude = set(invited_sessions_with_cancelled_invitations) - set(invited_sessions_with_active_invitations)
+        
         all_upcoming = mentor_profile.sessions.filter(
             status__in=['invited', 'confirmed'],
             end_datetime__gte=now
+        ).exclude(
+            id__in=invited_sessions_to_exclude
         ).order_by('start_datetime').prefetch_related('attendees')
         
         total_count = all_upcoming.count()
@@ -3205,7 +3281,8 @@ def get_availability(request):
             except Exception:
                 invitation_by_session_id = {}
 
-            for s in mentor_profile.sessions.all():
+            # Exclude cancelled sessions from calendar
+            for s in mentor_profile.sessions.exclude(status='cancelled'):
                 start_dt = s.start_datetime
                 end_dt = s.end_datetime
                 # Ensure ISO strings are timezone-aware

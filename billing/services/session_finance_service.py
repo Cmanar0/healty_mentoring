@@ -70,6 +70,25 @@ def cancel_session_with_refund(session, now=None):
 
 
 @transaction.atomic()
+def decline_invitation(session, now=None):
+    """
+    Decline an invitation (status='invited') without cancellation window restriction.
+    This is different from cancel_session_with_refund which is for confirmed sessions
+    that need refunds and have cancellation window restrictions.
+    """
+    now = now or timezone.now()
+    session = Session.objects.select_for_update().select_related("payment", "created_by").get(id=session.id)
+    if session.status != "invited":
+        raise CancellationError("Only invited sessions can be declined via this function.")
+    
+    # No cancellation window check - invitations can always be declined
+    # No refund needed since payment hasn't been made yet for invited sessions
+    session.status = "cancelled"
+    session.save(update_fields=["status"])
+    return 0
+
+
+@transaction.atomic()
 def refund_completed_session(session, now=None):
     now = now or timezone.now()
     session = Session.objects.select_for_update().select_related("payment", "created_by").get(id=session.id)

@@ -84,7 +84,7 @@
             </div>
             <div class="col-actions">
               <div class="action-buttons action-buttons-vertical action-buttons-invitation">
-                <form method="post" class="action-form accept-invitation-form" data-invitation-id="{{ inv.id }}" data-session-price="{{ inv.session.session_price|default:0 }}">
+                <form method="post" class="action-form accept-invitation-form" data-invitation-id="{{ inv.id }}" data-session-price="{{ inv.session.session_price|default:0 }}" data-mentor-id="{{ inv.mentor.user.id }}" data-mentor-name="{{ inv.mentor.first_name }} {{ inv.mentor.last_name }}" data-session-date="{% if inv.session.start_datetime_local %}{{ inv.session.start_datetime_local|date:'Y-m-d' }}{% else %}{{ inv.session.start_datetime|date:'Y-m-d' }}{% endif %}" data-session-start="{% if inv.session.start_datetime_local %}{{ inv.session.start_datetime_local|date:'g:i A' }}{% else %}{{ inv.session.start_datetime|date:'g:i A' }}{% endif %}" data-session-end="{% if inv.session.end_datetime_local %}{{ inv.session.end_datetime_local|date:'g:i A' }}{% else %}{{ inv.session.end_datetime|date:'g:i A' }}{% endif %}">
                   {% csrf_token %}
                   <input type="hidden" name="action" value="confirm_invitation">
                   <input type="hidden" name="invitation_id" value="{{ inv.id }}">
@@ -883,6 +883,7 @@
 {% include 'dashboard_user/popups/wallet_topup_modal.html' %}
 {% include 'dashboard_user/popups/payment_confirmation_modal.html' %}
 {% include 'dashboard_user/popups/accept_invitation_modal.html' %}
+{% include 'dashboard_user/popups/decline_confirmation_modal.html' %}
 
 <script src="https://js.stripe.com/v3/"></script>
 <script>
@@ -919,6 +920,95 @@
     var freeSection = document.getElementById('acceptInvitationFreeSection');
     var paidSection = document.getElementById('acceptInvitationPaidSection');
     if (!acceptModalOverlay) return;
+    
+    // Extract session details from form data attributes
+    var sessionDetails = null;
+    if (form) {
+      var mentorId = form.getAttribute('data-mentor-id');
+      var mentorName = form.getAttribute('data-mentor-name');
+      var sessionDate = form.getAttribute('data-session-date');
+      var sessionStart = form.getAttribute('data-session-start');
+      var sessionEnd = form.getAttribute('data-session-end');
+      if (mentorId || mentorName || sessionDate) {
+        sessionDetails = {
+          mentorId: mentorId,
+          mentorName: mentorName,
+          sessionDate: sessionDate,
+          sessionStart: sessionStart,
+          sessionEnd: sessionEnd
+        };
+      }
+    }
+    
+    // Populate session details if provided (for both free and paid sections)
+    if (sessionDetails) {
+      // Paid section elements
+      var mentorNameEl = document.getElementById('acceptInvitationMentorName');
+      var mentorLinkEl = document.getElementById('acceptInvitationMentorLink');
+      var sessionDateEl = document.getElementById('acceptInvitationSessionDate');
+      var sessionTimeEl = document.getElementById('acceptInvitationSessionTime');
+      
+      // Free section elements
+      var mentorNameElFree = document.getElementById('acceptInvitationMentorNameFree');
+      var mentorLinkElFree = document.getElementById('acceptInvitationMentorLinkFree');
+      var sessionDateElFree = document.getElementById('acceptInvitationSessionDateFree');
+      var sessionTimeElFree = document.getElementById('acceptInvitationSessionTimeFree');
+      
+      function populateDetails(mentorNameEl, mentorLinkEl, sessionDateEl, sessionTimeEl) {
+        if (mentorNameEl) {
+          if (sessionDetails.mentorName && sessionDetails.mentorName !== '—' && sessionDetails.mentorName.trim() !== '') {
+            mentorNameEl.textContent = sessionDetails.mentorName;
+          } else {
+            mentorNameEl.textContent = '—';
+          }
+        }
+        if (mentorLinkEl) {
+          if (sessionDetails.mentorId && sessionDetails.mentorId !== '' && sessionDetails.mentorId !== 'null') {
+            mentorLinkEl.href = '/mentor/' + sessionDetails.mentorId + '/';
+            mentorLinkEl.style.pointerEvents = 'auto';
+            mentorLinkEl.style.opacity = '1';
+          } else {
+            mentorLinkEl.href = '#';
+            mentorLinkEl.style.pointerEvents = 'none';
+            mentorLinkEl.style.opacity = '0.6';
+          }
+        }
+        if (sessionDateEl && sessionDetails.sessionDate) {
+          try {
+            var dateStr = sessionDetails.sessionDate;
+            var dateObj;
+            if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+              dateObj = new Date(dateStr + 'T00:00:00');
+            } else {
+              dateObj = new Date(dateStr);
+            }
+            if (!isNaN(dateObj.getTime())) {
+              var options = { year: 'numeric', month: 'long', day: 'numeric' };
+              sessionDateEl.textContent = dateObj.toLocaleDateString('en-US', options);
+            } else {
+              sessionDateEl.textContent = sessionDetails.sessionDate || '—';
+            }
+          } catch(e) {
+            sessionDateEl.textContent = sessionDetails.sessionDate || '—';
+          }
+        } else if (sessionDateEl) {
+          sessionDateEl.textContent = '—';
+        }
+        if (sessionTimeEl && sessionDetails.sessionStart && sessionDetails.sessionEnd) {
+          sessionTimeEl.textContent = sessionDetails.sessionStart + ' - ' + sessionDetails.sessionEnd;
+        } else if (sessionTimeEl) {
+          sessionTimeEl.textContent = '—';
+        }
+      }
+      
+      populateDetails(mentorNameEl, mentorLinkEl, sessionDateEl, sessionTimeEl);
+      populateDetails(mentorNameElFree, mentorLinkElFree, sessionDateElFree, sessionTimeElFree);
+    }
+    
+    // Show/hide footer actions
+    var freeActions = document.getElementById('acceptInvitationFreeActions');
+    var paidActions = document.getElementById('acceptInvitationPaidActions');
+    
     // Update header title
     var headerTitle = document.getElementById('acceptInvitationHeaderTitle');
     if (headerTitle) {
@@ -932,36 +1022,64 @@
     if (acceptPriceCents <= 0) {
       freeSection.style.display = 'block';
       paidSection.style.display = 'none';
+      if (freeActions) freeActions.style.display = 'flex';
+      if (paidActions) paidActions.style.display = 'none';
       acceptModalOverlay.style.display = 'flex';
       return;
     }
     freeSection.style.display = 'none';
     paidSection.style.display = 'block';
-    document.getElementById('acceptInvitationAmountText').textContent = '$' + (acceptPriceCents / 100).toFixed(2);
-    document.getElementById('acceptInvitationPayAmount').textContent = '$' + (acceptPriceCents / 100).toFixed(2);
+    if (freeActions) freeActions.style.display = 'none';
+    if (paidActions) paidActions.style.display = 'flex';
+    
+    // Update price display in left column
+    var amountTextEl = document.getElementById('acceptInvitationAmountText');
+    if (amountTextEl) {
+      amountTextEl.textContent = '$' + (acceptPriceCents / 100).toFixed(2);
+    }
+    // Update pay button amount
+    var payAmountEl = document.getElementById('acceptInvitationPayAmount');
+    if (payAmountEl) {
+      payAmountEl.textContent = '$' + (acceptPriceCents / 100).toFixed(2);
+    }
+    
     var walletOption = document.getElementById('acceptPayWithWalletOption');
     var cardOption = document.getElementById('acceptPayWithCardOption');
     var cardSection = document.getElementById('acceptInvitationCardSection');
     var insufficientNote = document.getElementById('acceptInvitationInsufficientNote');
     var walletLabel = document.getElementById('acceptWalletAmountLabel');
     var canWallet = walletBalanceCents >= acceptPriceCents;
+    
+    // Always show wallet option if user is authenticated (like in other implementations)
     if (walletOption) {
-      walletOption.style.display = canWallet ? 'flex' : 'none';
-      if (walletLabel) walletLabel.textContent = ' ($' + (acceptPriceCents / 100).toFixed(2) + ' from balance)';
+      walletOption.style.display = 'flex';
+      // Always show current wallet balance
+      if (walletLabel) {
+        const walletBalance = (walletBalanceCents / 100).toFixed(2);
+        walletLabel.textContent = ' ($' + walletBalance + ' available)';
+      }
     }
-    if (insufficientNote) insufficientNote.style.display = canWallet ? 'none' : 'block';
+    
+    // Show insufficient note only when wallet is selected AND funds are insufficient
+    if (insufficientNote) {
+      insufficientNote.style.display = 'none'; // Hidden by default, shown only when wallet selected and insufficient
+    }
+    
+    // Default to wallet if sufficient funds, otherwise default to card
     if (canWallet) {
       acceptSelectedMethod = 'wallet';
       document.getElementById('acceptPaymentMethodWallet').checked = true;
       document.getElementById('acceptPaymentMethodCard').checked = false;
-      cardSection.style.display = 'none';
+      if (cardSection) cardSection.style.display = 'none';
       unmountAcceptCard();
     } else {
       acceptSelectedMethod = 'card';
       document.getElementById('acceptPaymentMethodCard').checked = true;
       document.getElementById('acceptPaymentMethodWallet').checked = false;
-      cardSection.style.display = 'block';
-      if (stripePk && typeof window.Stripe === 'function') mountAcceptCard();
+      if (cardSection) {
+        cardSection.style.display = 'block';
+        if (stripePk && typeof window.Stripe === 'function') mountAcceptCard();
+      }
     }
     var payBtn = document.getElementById('acceptInvitationPayBtn');
     if (payBtn) payBtn.disabled = false;
@@ -1032,6 +1150,22 @@
       acceptModalOverlay.addEventListener('click', function(e) {
         if (e.target === acceptModalOverlay) closeAcceptInvitationModal();
       });
+      
+      // Close modal on Escape key (only if wallet topup modal is not open)
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+          // Check if wallet topup modal is open first (it has higher z-index)
+          var walletOverlay = document.getElementById('walletTopUpModalOverlay');
+          if (walletOverlay && walletOverlay.style.display === 'flex') {
+            // Wallet topup modal will handle its own Escape key, don't close Accept Invitation
+            return;
+          }
+          // Only close Accept Invitation if it's open and wallet topup is not
+          if (acceptModalOverlay && acceptModalOverlay.style.display === 'flex') {
+            closeAcceptInvitationModal();
+          }
+        }
+      });
     }
     document.querySelectorAll('.accept-invitation-form').forEach(function(form) {
       form.addEventListener('submit', function(e) {
@@ -1049,17 +1183,57 @@
       radio.addEventListener('change', function() {
         acceptSelectedMethod = this.value;
         var cardSection = document.getElementById('acceptInvitationCardSection');
+        var insufficientNote = document.getElementById('acceptInvitationInsufficientNote');
+        var canWallet = walletBalanceCents >= acceptPriceCents;
         if (acceptSelectedMethod === 'wallet') {
-          cardSection.style.display = 'none';
+          if (cardSection) cardSection.style.display = 'none';
           unmountAcceptCard();
+          // Show insufficient note only if wallet is selected AND funds are insufficient
+          if (insufficientNote) {
+            if (!canWallet) {
+              insufficientNote.style.display = 'block';
+            } else {
+              insufficientNote.style.display = 'none';
+            }
+          }
         } else {
-          cardSection.style.display = 'block';
-          if (stripePk && typeof window.Stripe === 'function') mountAcceptCard();
+          if (cardSection) {
+            cardSection.style.display = 'block';
+            if (insufficientNote) insufficientNote.style.display = 'none';
+            if (stripePk && typeof window.Stripe === 'function') mountAcceptCard();
+          }
         }
       });
     });
     document.getElementById('acceptInvitationPayBtn').addEventListener('click', function() {
       if (acceptSelectedMethod === 'wallet') {
+        // Check if wallet has sufficient balance
+        var canWallet = walletBalanceCents >= acceptPriceCents;
+        if (!canWallet) {
+          // Show toast notification
+          if (typeof showNotification !== 'undefined') {
+            showNotification('Insufficient wallet balance. Please top up your wallet or pay with card.', 'error');
+          } else {
+            alert('Insufficient wallet balance. Please top up your wallet or pay with card.');
+          }
+          
+          // Show and highlight the insufficient balance message
+          var insufficientNote = document.getElementById('acceptInvitationInsufficientNote');
+          if (insufficientNote) {
+            insufficientNote.style.display = 'block';
+            // Blinking animation
+            var blinkCount = 0;
+            var blinkInterval = setInterval(function() {
+              insufficientNote.style.backgroundColor = blinkCount % 2 === 0 ? '#fef2f2' : '#fee2e2';
+              blinkCount++;
+              if (blinkCount >= 6) {
+                clearInterval(blinkInterval);
+                insufficientNote.style.backgroundColor = '';
+              }
+            }, 200);
+          }
+          return; // Don't close modal or submit
+        }
         submitAcceptForm({ use_wallet: '1' });
         closeAcceptInvitationModal();
         return;
@@ -1120,6 +1294,50 @@
         payBtn.innerHTML = '<span id="acceptInvitationPayBtnText">Pay <span id="acceptInvitationPayAmount">$' + (acceptPriceCents/100).toFixed(2) + '</span></span>';
       });
     });
+
+    // Intercept decline form submissions to show confirmation modal
+    function setupDeclineFormInterception() {
+      // Find all forms (not just forms with action attribute)
+      var allForms = document.querySelectorAll('form');
+      allForms.forEach(function(form) {
+        var actionInput = form.querySelector('input[name="action"][value="decline_invitation"]');
+        if (actionInput) {
+          // Check if listener already added (avoid duplicates)
+          if (form.dataset.declineListenerAdded === 'true') {
+            return;
+          }
+          form.dataset.declineListenerAdded = 'true';
+          
+          form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            // Open confirmation modal
+            if (typeof window.openDeclineConfirmationModal === 'function') {
+              window.openDeclineConfirmationModal(form);
+            } else {
+              // Fallback if modal not loaded
+              console.warn('Decline confirmation modal not available, using browser confirm');
+              if (confirm('Are you sure you want to decline this invitation?')) {
+                form.dataset.declineListenerAdded = 'false';
+                form.submit();
+              }
+            }
+          });
+        }
+      });
+    }
+    
+    // Setup form interception when DOM is ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', function() {
+        // Wait a moment for modal script to load
+        setTimeout(setupDeclineFormInterception, 50);
+      });
+    } else {
+      // DOM already loaded
+      setTimeout(setupDeclineFormInterception, 50);
+    }
 
     var params = new URLSearchParams(window.location.search);
     var paymentRequired = params.get('payment_required') === '1';

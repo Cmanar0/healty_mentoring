@@ -60,10 +60,19 @@ def dashboard(request):
             
             now = timezone.now()
             # Get all upcoming sessions (invited and confirmed)
+            # Exclude sessions with cancelled invitations for this user
+            from general.models import SessionInvitation
+            cancelled_invitation_session_ids = SessionInvitation.objects.filter(
+                invited_email=(request.user.email or '').strip().lower(),
+                cancelled_at__isnull=False
+            ).values_list('session_id', flat=True)
+            
             all_upcoming = Session.objects.filter(
                 attendees=request.user,
                 status__in=['invited', 'confirmed'],
                 start_datetime__gte=now
+            ).exclude(
+                id__in=cancelled_invitation_session_ids
             ).order_by('start_datetime').prefetch_related('attendees', 'mentors__user')
             
             # Get total count to check if there are more than 4
@@ -609,6 +618,13 @@ def my_sessions(request):
     
     now = timezone.now()
     
+    # Exclude sessions with cancelled invitations for this user
+    from general.models import SessionInvitation
+    cancelled_invitation_session_ids = SessionInvitation.objects.filter(
+        invited_email=(request.user.email or '').strip().lower(),
+        cancelled_at__isnull=False
+    ).values_list('session_id', flat=True)
+    
     # Get all upcoming sessions where user is an attendee (invited and confirmed)
     initial_sessions = []
     try:
@@ -616,6 +632,8 @@ def my_sessions(request):
             attendees=request.user,
             status__in=['invited', 'confirmed'],
             start_datetime__gte=now
+        ).exclude(
+            id__in=cancelled_invitation_session_ids
         ).order_by('start_datetime').prefetch_related('attendees', 'mentors__user')
         
         # Get first 10 sessions for initial load
@@ -716,11 +734,20 @@ def get_sessions_paginated(request):
         
         now = timezone.now()
         
+        # Exclude sessions with cancelled invitations for this user
+        from general.models import SessionInvitation
+        cancelled_invitation_session_ids = SessionInvitation.objects.filter(
+            invited_email=(request.user.email or '').strip().lower(),
+            cancelled_at__isnull=False
+        ).values_list('session_id', flat=True)
+        
         # Get all upcoming sessions where user is an attendee (invited and confirmed)
         all_upcoming = Session.objects.filter(
             attendees=request.user,
             status__in=['invited', 'confirmed'],
             start_datetime__gte=now
+        ).exclude(
+            id__in=cancelled_invitation_session_ids
         ).order_by('start_datetime').prefetch_related('attendees', 'mentors__user')
         
         # Paginate
@@ -1316,12 +1343,35 @@ def session_management(request):
                     inv.cancelled_at = timezone.now()
                     inv.save()
                     if inv.session:
-                        from billing.services.session_finance_service import cancel_session_with_refund, CancellationError
-                        try:
-                            cancel_session_with_refund(inv.session)
+                        # For invited sessions, always allow declining (no cancellation window)
+                        # For confirmed sessions, use cancellation window for refunds
+                        from billing.services.session_finance_service import decline_invitation, cancel_session_with_refund, CancellationError
+                        if inv.session.status == 'invited':
+                            # Invited sessions can always be declined - no cancellation window restriction
+                            try:
+                                decline_invitation(inv.session)
+                                messages.success(request, 'Session invitation declined.')
+                            except CancellationError as e:
+                                # Fallback: just mark as cancelled if function fails
+                                inv.session.status = 'cancelled'
+                                inv.session.save(update_fields=['status'])
+                                messages.success(request, 'Session invitation declined.')
+                        elif inv.session.status == 'confirmed':
+                            # Confirmed sessions need refund logic with cancellation window
+                            try:
+                                cancel_session_with_refund(inv.session)
+                                messages.success(request, 'Session invitation declined.')
+                            except CancellationError as e:
+                                # If cancellation window passed, still mark invitation as cancelled
+                                # but show a message about the refund
+                                inv.session.status = 'cancelled'
+                                inv.session.save(update_fields=['status'])
+                                messages.warning(request, f'Invitation declined, but {str(e)}')
+                        else:
+                            # Fallback for any other status
+                            inv.session.status = 'cancelled'
+                            inv.session.save(update_fields=['status'])
                             messages.success(request, 'Session invitation declined.')
-                        except CancellationError as e:
-                            messages.error(request, str(e))
             
             elif action == 'confirm_all':
                 # Confirm only free invitations (paid ones require per-invitation payment modal)

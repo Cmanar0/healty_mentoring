@@ -81,7 +81,7 @@
                 </div>
               </label>
             </div>
-            <p id="acceptInvitationInsufficientNote" style="display: none; font-size: 0.85rem; color: #64748b; margin-top: 8px;">
+            <p id="acceptInvitationInsufficientNote" style="display: none; font-size: 0.85rem; color: #64748b; margin-top: 8px; padding: 8px 12px; border-radius: 6px; transition: background-color 0.2s;">
               Insufficient wallet balance. <button type="button" class="accept-invitation-link" onclick="if (typeof openWalletTopUpModal === 'function') openWalletTopUpModal();">Top up wallet</button> or pay with card below.
             </p>
             <div id="acceptInvitationCardSection" class="accept-invitation-card-section" style="display: none;">
@@ -107,6 +107,13 @@
           </div>
         </div>
       </div>
+      <div id="acceptInvitationDeclineSection" class="accept-invitation-section" style="display: none;">
+        <div style="text-align: center; padding: 40px 20px;">
+          <i class="fas fa-exclamation-triangle" style="font-size: 3rem; color: #ef4444; margin-bottom: 20px;"></i>
+          <h3 style="font-size: 1.25rem; font-weight: 600; color: #1e293b; margin-bottom: 12px;">Are you sure you want to decline this invitation?</h3>
+          <p style="font-size: 0.9375rem; color: #64748b; margin-bottom: 0;">This action cannot be undone.</p>
+        </div>
+      </div>
     </div>
     <div class="accept-invitation-footer">
       <div id="acceptInvitationFreeActions" class="accept-invitation-actions" style="display: none;">
@@ -118,6 +125,10 @@
         <button type="button" id="acceptInvitationPayBtn" class="accept-invitation-btn primary" disabled>
           <span id="acceptInvitationPayBtnText">Accept & Pay <span id="acceptInvitationPayAmount">$0</span></span>
         </button>
+      </div>
+      <div id="acceptInvitationDeclineActions" class="accept-invitation-actions" style="display: none;">
+        <button type="button" id="acceptInvitationDeclineCancelBtn" class="accept-invitation-btn secondary">Cancel</button>
+        <button type="button" id="acceptInvitationDeclineConfirmBtn" class="accept-invitation-btn danger">Yes, Decline</button>
       </div>
     </div>
   </div>

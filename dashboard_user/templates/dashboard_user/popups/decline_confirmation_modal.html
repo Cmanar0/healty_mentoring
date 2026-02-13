@@ -1,0 +1,178 @@
+{# Decline Confirmation Modal #}
+<div id="declineConfirmationModalOverlay" class="decline-confirmation-overlay" style="display: none;">
+  <div class="decline-confirmation-container">
+    <div class="decline-confirmation-header">
+      <h2 class="decline-confirmation-title">Decline Invitation</h2>
+      <button type="button" class="decline-confirmation-close" onclick="if (typeof window.closeDeclineConfirmationModal === 'function') window.closeDeclineConfirmationModal();" aria-label="Close"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="decline-confirmation-body">
+      <div style="text-align: center; padding: 40px 20px;">
+        <i class="fas fa-exclamation-triangle" style="font-size: 3rem; color: #ef4444; margin-bottom: 20px;"></i>
+        <h3 style="font-size: 1.25rem; font-weight: 600; color: #1e293b; margin-bottom: 12px;">Are you sure you want to decline this invitation?</h3>
+        <p style="font-size: 0.9375rem; color: #64748b; margin-bottom: 0;">This action cannot be undone.</p>
+      </div>
+    </div>
+    <div class="decline-confirmation-footer">
+      <div class="decline-confirmation-actions">
+        <button type="button" id="declineConfirmationCancelBtn" class="decline-confirmation-btn secondary">Cancel</button>
+        <button type="button" id="declineConfirmationConfirmBtn" class="decline-confirmation-btn danger">Yes, Decline</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+.decline-confirmation-overlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(4px);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.decline-confirmation-container {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  max-width: 500px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
+}
+.decline-confirmation-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24px 24px 20px 24px;
+  border-bottom: 1px solid #e2e8f0;
+}
+.decline-confirmation-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.decline-confirmation-close {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.125rem;
+  transition: all 0.2s;
+}
+.decline-confirmation-close:hover {
+  background: #fee2e2;
+  color: #ef4444;
+  transform: rotate(90deg);
+}
+.decline-confirmation-body {
+  padding: 0;
+}
+.decline-confirmation-footer {
+  padding: 20px 24px 24px 24px;
+  border-top: 1px solid #e2e8f0;
+}
+.decline-confirmation-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+.decline-confirmation-btn {
+  padding: 10px 20px;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.decline-confirmation-btn.secondary {
+  background: #f1f5f9;
+  color: #475569;
+}
+.decline-confirmation-btn.secondary:hover {
+  background: #e2e8f0;
+}
+.decline-confirmation-btn.danger {
+  background: #ef4444;
+  color: white;
+}
+.decline-confirmation-btn.danger:hover {
+  background: #dc2626;
+}
+</style>
+
+<script>
+var declineConfirmationFormRef = null;
+
+window.openDeclineConfirmationModal = function(form) {
+  declineConfirmationFormRef = form;
+  var overlay = document.getElementById('declineConfirmationModalOverlay');
+  if (overlay) {
+    overlay.style.display = 'flex';
+  }
+};
+
+window.closeDeclineConfirmationModal = function() {
+  var overlay = document.getElementById('declineConfirmationModalOverlay');
+  if (overlay) {
+    overlay.style.display = 'none';
+  }
+  declineConfirmationFormRef = null;
+};
+
+document.addEventListener('DOMContentLoaded', function() {
+  var overlay = document.getElementById('declineConfirmationModalOverlay');
+  if (overlay) {
+    overlay.addEventListener('click', function(e) {
+      if (e.target === overlay) {
+        closeDeclineConfirmationModal();
+      }
+    });
+    
+    // Close modal on Escape key
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape' && overlay.style.display === 'flex') {
+        closeDeclineConfirmationModal();
+      }
+    });
+  }
+  
+  var cancelBtn = document.getElementById('declineConfirmationCancelBtn');
+  if (cancelBtn) {
+    cancelBtn.addEventListener('click', function() {
+      closeDeclineConfirmationModal();
+    });
+  }
+  
+  var confirmBtn = document.getElementById('declineConfirmationConfirmBtn');
+  if (confirmBtn) {
+    confirmBtn.addEventListener('click', function() {
+      if (declineConfirmationFormRef) {
+        // Store form reference before closing modal (since closeDeclineConfirmationModal sets it to null)
+        var formToSubmit = declineConfirmationFormRef;
+        // Remove the listener flag to allow submission
+        formToSubmit.dataset.declineListenerAdded = 'false';
+        // Close modal (this sets declineConfirmationFormRef to null, but we have formToSubmit)
+        closeDeclineConfirmationModal();
+        // Submit the form
+        if (formToSubmit && formToSubmit.parentNode) {
+          formToSubmit.submit();
+        }
+      }
+    });
+  }
+});
+</script>
