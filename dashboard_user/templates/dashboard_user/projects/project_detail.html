@@ -2960,6 +2960,82 @@
     </div>
 </div>
 
+<style>
+/* Project Settings Modal Styles */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.modal-overlay.active {
+    opacity: 1;
+}
+
+.modal-container {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    width: 90%;
+    max-width: 600px;
+    max-height: 90vh;
+    overflow-y: auto;
+    transform: scale(0.95);
+    transition: transform 0.3s ease;
+}
+
+.modal-overlay.active .modal-container {
+    transform: scale(1);
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 24px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.modal-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #111827;
+    margin: 0;
+}
+
+.modal-close {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: none;
+    background: transparent;
+    color: #6b7280;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.modal-close:hover {
+    background: #f3f4f6;
+    color: #111827;
+}
+
+.modal-body {
+    padding: 24px;
+}
+</style>
+
 <script>
     window.openProjectSettingsModal = function() {
         const modal = document.getElementById('projectSettingsModal');
@@ -2978,6 +3054,22 @@
             }, 300);
         }
     };
+    
+    // Get CSRF token helper
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
     
     function saveProjectSettings() {
         const title = document.getElementById('projectTitleInput').value.trim();
@@ -3045,6 +3137,126 @@
             }
         }
     });
+    
+    // Toggle project settings dropdown
+    window.toggleProjectSettingsDropdown = function(event) {
+        event.stopPropagation();
+        const container = document.getElementById('projectSettingsDropdown');
+        if (!container) return;
+        
+        const isActive = container.classList.contains('active');
+        
+        // Close all dropdowns
+        document.querySelectorAll('.project-settings-dropdown-container').forEach(dropdown => {
+            dropdown.classList.remove('active');
+        });
+        
+        if (!isActive) {
+            container.classList.add('active');
+        }
+    };
+    
+    // Close dropdown when clicking outside
+    document.addEventListener('click', function(event) {
+        if (!event.target.closest('.project-settings-dropdown-container')) {
+            document.querySelectorAll('.project-settings-dropdown-container').forEach(dropdown => {
+                dropdown.classList.remove('active');
+            });
+        }
+    });
+    
+    // Delete project function
+    window.deleteProject = function() {
+        // Close dropdown
+        const dropdown = document.getElementById('projectSettingsDropdown');
+        if (dropdown) {
+            dropdown.classList.remove('active');
+        }
+        
+        // Show confirmation modal
+        const deleteModal = document.getElementById('deleteConfirmModal');
+        if (deleteModal) {
+            deleteModal.style.display = 'flex';
+            setTimeout(() => deleteModal.classList.add('active'), 10);
+        }
+    };
+    
+    // Close delete confirmation modal
+    window.closeDeleteConfirmModal = function() {
+        const modal = document.getElementById('deleteConfirmModal');
+        if (modal) {
+            modal.classList.remove('active');
+            setTimeout(() => {
+                modal.style.display = 'none';
+            }, 300);
+        }
+    };
+    
+    // Confirm delete project
+    window.confirmDeleteProject = function() {
+        const btn = document.getElementById('confirmDeleteBtn');
+        if (!btn) return;
+        
+        const originalText = btn.textContent;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Deleting...';
+        
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+        
+        fetch('{% url "general:dashboard_user:project_detail" project.id %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                action: 'delete'
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                if (typeof showNotification !== 'undefined') {
+                    showNotification('Project deleted successfully', 'success');
+                }
+                // Redirect to projects list
+                window.location.href = '{% url "general:dashboard_user:projects_list" %}';
+            } else {
+                if (typeof showNotification !== 'undefined') {
+                    showNotification(data.error || 'Failed to delete project', 'error');
+                } else {
+                    alert(data.error || 'Failed to delete project');
+                }
+                btn.disabled = false;
+                btn.textContent = originalText;
+                window.closeDeleteConfirmModal();
+            }
+        })
+        .catch(error => {
+            console.error('Error deleting project:', error);
+            if (typeof showNotification !== 'undefined') {
+                showNotification('An error occurred. Please try again.', 'error');
+            } else {
+                alert('An error occurred. Please try again.');
+            }
+            btn.disabled = false;
+            btn.textContent = originalText;
+            window.closeDeleteConfirmModal();
+        });
+    };
 </script>
 
 <script>
@@ -3395,20 +3607,24 @@
     </div>
 </div>
 
+<!-- Delete Confirmation Modal -->
 <div id="deleteConfirmModal" class="target-date-modal-overlay" onclick="if(event.target === this) closeDeleteConfirmModal()" style="display: none;">
     <div class="target-date-modal-container" style="max-width: 460px; min-width: 420px; min-height: auto;">
         <div class="target-date-modal-header">
-            <h3 id="deleteConfirmModalTitle">Confirm Delete</h3>
+            <h3 id="deleteConfirmModalTitle">Delete Project</h3>
         </div>
         <button class="target-date-modal-close" onclick="closeDeleteConfirmModal()">
             <i class="fas fa-times"></i>
         </button>
         <div class="target-date-modal-body">
-            <p id="deleteConfirmModalMessage" class="delete-confirm-message">Are you sure you want to delete this item?</p>
+            <p class="confirm-text">Are you sure you want to delete "{{ project.title }}"? This action cannot be undone.</p>
         </div>
         <div class="target-date-modal-footer">
-            <button type="button" class="btn-cancel" onclick="closeDeleteConfirmModal()">Cancel</button>
-            <button type="button" class="btn-danger" id="deleteConfirmModalBtn" onclick="confirmDeleteConfirmModal()">Delete</button>
+            <button type="button" class="btn-cancel-confirm" onclick="closeDeleteConfirmModal()">Cancel</button>
+            <button type="button" class="btn-confirm-remove" id="confirmDeleteBtn" onclick="confirmDeleteProject()">
+                <i class="fas fa-trash"></i>
+                Delete Project
+            </button>
         </div>
     </div>
 </div>
@@ -3437,7 +3653,7 @@
                             {% if is_owner %}
                             <div class="project-info-item">
                                 <div class="project-info-label">Project Owner</div>
-                                <div class="project-info-btn" style="cursor: default; background: transparent; border: none; padding: 0;">
+                                <a href="#" class="project-info-link" style="cursor: default; pointer-events: none;">
                                     {% if project.project_owner.profile_picture %}
                                         <img src="{{ project.project_owner.profile_picture.url }}" alt="{{ project.project_owner.first_name }}" class="project-info-avatar" style="width: 24px; height: 24px;">
                                     {% else %}
@@ -3446,7 +3662,7 @@
                                         </div>
                                     {% endif %}
                                     <span>You</span>
-                                </div>
+                                </a>
                             </div>
                             {% endif %}
                             
@@ -3455,7 +3671,7 @@
                                 <div class="project-info-label">Project Supervisor</div>
                                 {% if project.supervised_by %}
                                     {% if is_owner %}
-                                        <button type="button" onclick="openSupervisorModal()" class="project-info-btn">
+                                        <button type="button" onclick="window.openSupervisorModal()" class="project-info-btn">
                                             {% if project.supervised_by.profile_picture %}
                                                 <img src="{{ project.supervised_by.profile_picture.url }}" alt="{{ project.supervised_by.first_name }}" class="project-info-avatar" style="width: 24px; height: 24px;">
                                             {% else %}
@@ -3480,7 +3696,7 @@
                                     {% endif %}
                                 {% else %}
                                     {% if is_owner %}
-                                        <button type="button" onclick="openSupervisorModal()" class="project-info-btn" style="background: #f0f9ff; border-color: #bae6fd; color: #0369a1;">
+                                        <button type="button" onclick="window.openSupervisorModal()" class="project-info-btn" style="background: #f0f9ff; border-color: #bae6fd; color: #0369a1;">
                                             <i class="fas fa-user-plus"></i>
                                             <span>Assign Supervisor</span>
                                         </button>
@@ -3512,7 +3728,7 @@
                             <!-- Target Completion Date -->
                             <div class="project-info-item">
                                 <div class="project-info-label">Target Date</div>
-                                <button type="button" onclick="openTargetDateModal()" class="project-info-btn {% if not project.target_completion_date %}target-date-warning{% endif %}">
+                                <button type="button" onclick="window.openTargetDateModal()" class="project-info-btn {% if not project.target_completion_date %}target-date-warning{% endif %}">
                                     {% if project.target_completion_date %}
                                         <i class="far fa-calendar-check" style="color: #6366f1;"></i>
                                         <span>{{ project.target_completion_date|date:"M j, Y" }}</span>
@@ -9135,7 +9351,7 @@
     }
 
     // Target Date Modal Functions
-    function openTargetDateModal() {
+    window.openTargetDateModal = function() {
         const modal = document.getElementById('targetDateModal');
         if (modal) {
             modal.style.display = 'flex';
@@ -9143,7 +9359,7 @@
         }
     }
 
-    function closeTargetDateModal() {
+    window.closeTargetDateModal = function() {
         const modal = document.getElementById('targetDateModal');
         if (modal) {
             modal.classList.remove('active');
@@ -9171,10 +9387,26 @@
             },
             body: JSON.stringify({ target_date: targetDate || null })
         })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                return response.text().then(text => {
+                    console.error('API Error Response:', text);
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                });
+            }
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+                return response.json();
+            } else {
+                return response.text().then(text => {
+                    console.error('Non-JSON response:', text.substring(0, 200));
+                    throw new Error('Server returned non-JSON response');
+                });
+            }
+        })
         .then(data => {
             if (data.success) {
-                closeTargetDateModal();
+                window.closeTargetDateModal();
                 if (typeof showNotification !== 'undefined') {
                     showNotification('Target date updated successfully', 'success');
                 }

@@ -18,7 +18,7 @@
         <span class="invitations-badge">{{ pending_count }}</span>
       </a>
       {% endif %}
-      <button type="button" onclick="openCreateProjectModal()" class="btn-create">
+      <button type="button" onclick="window.openCreateProjectModal()" class="btn-create">
         <i class="fas fa-plus"></i>
         <span>Create Project</span>
       </button>
@@ -102,7 +102,7 @@
         </div>
         <h3 class="empty-state-title">No projects yet</h3>
         <p class="empty-state-text">Create a new project or wait for assignments from your mentors</p>
-        <button type="button" onclick="openCreateProjectModal()" class="btn-create" style="margin-top: 24px;">
+        <button type="button" onclick="window.openCreateProjectModal()" class="btn-create" style="margin-top: 24px;">
           <i class="fas fa-plus"></i>
           <span>Create Project</span>
         </button>
@@ -112,15 +112,6 @@
 </div>
 
 {% include 'dashboard_user/projects/modals/create_project_modal.html' %}
-
-<script>
-function openCreateProjectModal() {
-  const modal = document.getElementById('createProjectModal');
-  if (modal) {
-    modal.style.display = 'flex';
-  }
-}
-</script>
 
 <style>
 /* Projects List Container */

@@ -1,7 +1,7 @@
 {% load static %}
 
 <style>
-/* Create Project Modal Styles */
+/* Modern Create Project Modal Styles */
 #createProjectModal {
     position: fixed;
     top: 0;
@@ -27,24 +27,31 @@
     background: white;
     border-radius: 20px;
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-    max-width: 1000px;
-    width: 90%;
-    max-height: 90vh;
+    max-width: 850px;
+    width: 95%;
+    min-height: 580px;
+    max-height: 94vh;
     overflow: hidden;
     position: relative;
     padding: 0;
     display: flex;
     flex-direction: column;
+    transform: translateY(20px);
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+#createProjectModal.active .create-project-modal-content {
+    transform: translateY(0);
 }
 
 .create-project-modal-close {
     position: absolute;
-    top: 16px;
-    right: 16px;
-    background: rgba(15, 23, 42, 0.1);
-    border: 1px solid rgba(15, 23, 42, 0.1);
+    top: 24px;
+    right: 24px;
+    background: #f1f5f9;
+    border: none;
     color: #64748b;
-    font-size: 1rem;
+    font-size: 0.9rem;
     cursor: pointer;
     width: 36px;
     height: 36px;
@@ -52,624 +59,390 @@
     align-items: center;
     justify-content: center;
     border-radius: 50%;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.2s ease;
     z-index: 20;
 }
 
 .create-project-modal-close:hover {
-    background: #ef4444;
-    border-color: #ef4444;
-    color: white;
-    transform: rotate(90deg) scale(1.1);
-    box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
+    background: #e2e8f0;
+    color: #1e293b;
+    transform: rotate(90deg);
 }
 
 .create-project-modal-header {
-    padding: 20px 24px 16px;
-    border-bottom: 1px solid #e2e8f0;
+    padding: 32px 48px 24px;
+    border-bottom: 1px solid #f1f5f9;
     background: white;
     flex-shrink: 0;
 }
 
 .create-project-modal-title {
-    font-size: 1.5rem;
-    color: #1e293b;
+    font-size: 1.75rem;
+    color: #000000;
     margin: 0;
-    font-weight: 700;
-    letter-spacing: -0.025em;
-}
-
-.create-project-modal-body-wrapper {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    flex: 1;
-    overflow: hidden;
-    min-height: 0;
-}
-
-.create-project-modal-left {
-    background: #f8fafc;
-    padding: 20px 24px;
-    border-right: 1px solid #e2e8f0;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
-}
-
-.create-project-modal-right {
-    background: white;
-    padding: 20px 24px;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    font-family: 'Inter', -apple-system, sans-serif;
 }
 
 .create-project-modal-body {
-    padding: 24px 32px 32px;
+    padding: 32px 48px 40px;
+    flex: 1;
+    min-height: 0;
 }
 
+/* Technical Stepper Indicator */
+.create-project-steps {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    margin-bottom: 40px;
+    padding: 0 4px;
+}
+
+.create-project-step-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.create-project-step {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 0.85rem;
+    background: #f1f5f9;
+    color: #94a3b8;
+    transition: all 0.3s ease;
+    border: 2px solid #e2e8f0;
+}
+
+.create-project-step-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.create-project-step.active {
+    background: #000000;
+    color: white;
+    border-color: #000000;
+}
+
+.create-project-step.active + .create-project-step-label {
+    color: #000000;
+    font-weight: 900;
+}
+
+.create-project-step-item .create-project-step.active + .create-project-step-label {
+    color: #000000;
+    font-weight: 900;
+}
+
+.create-project-step.completed {
+    background: #10b981;
+    color: white;
+    border-color: #10b981;
+}
+
+.create-project-step.completed + .create-project-step-label {
+    color: #10b981;
+}
+
+.create-project-step-connector {
+    flex: 1;
+    height: 1.5px;
+    background: #f1f5f9;
+    transition: all 0.3s ease;
+}
+
+.create-project-step-connector.completed {
+    background: #10b981;
+}
+
+/* Step Content Animation */
+.create-project-step-content {
+    display: none;
+    animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.create-project-step-content.active {
+    display: block;
+}
+
+/* Modern Form Sections */
 .create-project-section {
     margin-bottom: 20px;
 }
 
 .create-project-section-label {
     display: block;
-    font-weight: 600;
-    color: #475569;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
     margin-bottom: 6px;
-    font-size: 0.875rem;
+    padding-left: 2px;
 }
 
-/* Client Dropdown Styles */
-.client-dropdown-container {
-    position: relative;
+.create-project-section-label .required {
+    color: #ef4444;
+    margin-left: 2px;
 }
 
-.client-dropdown-trigger {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
+.create-project-input,
+.create-project-textarea {
     width: 100%;
-    padding: 10px 16px;
-    background: white;
-    border: 1px solid var(--dash-border, #e2e8f0);
-    border-radius: 8px;
-    color: var(--dash-text-main, #1e293b);
+    padding: 10px 14px;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
     font-size: 0.95rem;
-    font-weight: 400;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    text-align: left;
-}
-
-.client-dropdown-trigger:hover {
-    border-color: #cbd5e1;
-    background: #f8fafc;
-}
-
-.client-dropdown-container.active .client-dropdown-trigger {
-    border-color: #cbd5e1;
-}
-
-.client-dropdown-trigger i {
-    color: var(--dash-text-light, #94a3b8);
-    font-size: 0.85rem;
-    transition: transform 0.2s ease;
-}
-
-.client-dropdown-container.active .client-dropdown-trigger i {
-    transform: rotate(180deg);
-}
-
-.client-dropdown-menu {
-    position: fixed;
-    background: white;
-    border-radius: 12px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-    min-width: 200px;
-    padding: 0;
-    opacity: 0;
-    visibility: hidden;
-    transform: translateY(-10px);
-    transition: all 0.2s ease;
-    z-index: 10001;
-    max-height: 300px;
-    overflow-y: auto;
-}
-
-.client-dropdown-container.active .client-dropdown-menu {
-    opacity: 1;
-    visibility: visible;
-    transform: translateY(0);
-}
-
-.client-dropdown-search {
-    padding: 12px 16px;
-    border-bottom: 1px solid #e2e8f0;
-}
-
-.client-dropdown-search input {
-    width: 100%;
-    padding: 8px 12px;
-    border: 1px solid #e2e8f0;
-    border-radius: 6px;
-    font-size: 0.9rem;
-    outline: none;
-}
-
-.client-dropdown-search input:focus {
-    border-color: #10b981;
-}
-
-.client-dropdown-item {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 12px 20px;
-    color: var(--dash-text-main, #1e293b);
-    text-decoration: none;
-    transition: background 0.2s ease;
-    border: none;
-    background: transparent;
-    width: 100%;
-    cursor: pointer;
-    font-size: 0.95rem;
-    font-weight: 400;
-    text-align: left;
-}
-
-.client-dropdown-item.first-item {
-    border-radius: 12px 12px 0 0;
-}
-
-.client-dropdown-item.last-item {
-    border-radius: 0 0 12px 12px;
-}
-
-.client-dropdown-item:hover {
-    background: #f1f5f9;
-    color: #1e293b;
-}
-
-/* Project Type Selection - Two Columns */
-.project-type-selection {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-    margin-bottom: 20px;
-}
-
-.project-type-option {
-    padding: 14px 16px;
-    border: 2px solid #e2e8f0;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    text-align: center;
-    background: white;
-}
-
-.project-type-option:hover {
-    border-color: #10b981;
-    background: rgba(16, 185, 129, 0.05);
-}
-
-.project-type-option.selected {
-    border-color: #10b981;
-    background: rgba(16, 185, 129, 0.1);
-}
-
-.project-type-option-title {
-    font-weight: 600;
-    color: #1e293b;
-    margin-bottom: 4px;
-    font-size: 0.9rem;
-}
-
-.project-type-option-desc {
-    font-size: 0.8rem;
-    color: #64748b;
-}
-
-/* Template Dropdown - Using Style Guide */
-.template-dropdown-section {
-    display: none; /* Hidden by default, shown when "Choose from Templates" is selected */
-}
-
-.template-dropdown-section.active {
-    display: block;
-}
-
-.template-dropdown-wrapper {
-    position: relative;
-}
-
-.template-dropdown-trigger {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    width: 100%;
-    padding: 10px 16px;
-    background: white;
-    border: 1px solid var(--dash-border, #e2e8f0);
-    border-radius: 8px;
-    color: var(--dash-text-main, #1e293b);
-    font-size: 0.95rem;
-    font-weight: 400;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    text-align: left;
-}
-
-.template-dropdown-trigger:hover {
-    border-color: #cbd5e1;
-    background: #f8fafc;
-}
-
-.template-dropdown-wrapper.active-dropdown .template-dropdown-trigger {
-    border-color: #10b981;
-}
-
-.template-dropdown-trigger i {
-    color: var(--dash-text-light, #94a3b8);
-    font-size: 0.85rem;
-    transition: transform 0.2s ease;
-}
-
-.template-dropdown-wrapper.active-dropdown .template-dropdown-trigger i {
-    transform: rotate(180deg);
-}
-
-.template-dropdown-menu {
-    position: absolute;
-    top: calc(100% + 8px);
-    left: 0;
-    right: 0;
-    background: white;
-    border-radius: 12px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-    min-width: 200px;
-    padding: 0;
-    opacity: 0;
-    visibility: hidden;
-    transform: translateY(-10px);
-    transition: all 0.2s ease;
-    z-index: 1000;
-    max-height: 300px;
-    overflow-y: auto;
-}
-
-.template-dropdown-wrapper.active-dropdown .template-dropdown-menu {
-    opacity: 1;
-    visibility: visible;
-    transform: translateY(0);
-}
-
-.template-dropdown-item {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 12px 20px;
-    color: var(--dash-text-main, #1e293b);
-    text-decoration: none;
-    transition: background 0.2s ease;
-    border: none;
-    background: transparent;
-    width: 100%;
-    cursor: pointer;
-    font-size: 0.95rem;
-    font-weight: 400;
-    text-align: left;
-}
-
-.template-dropdown-item.first-item {
-    border-radius: 12px 12px 0 0;
-}
-
-.template-dropdown-item.last-item {
-    border-radius: 0 0 12px 12px;
-}
-
-.template-dropdown-item:hover {
-    background: #f1f5f9;
-    color: #1e293b;
-}
-
-.template-dropdown-item i {
-    width: 20px;
-    text-align: center;
-    color: inherit;
-}
-
-/* Project Title Input */
-#projectTitleInput {
-    width: 100%;
-    padding: 10px 16px;
-    border: 1px solid var(--dash-border, #e2e8f0);
-    border-radius: 8px;
-    font-size: 0.95rem;
-    outline: none;
+    color: #111827;
     transition: all 0.2s ease;
     box-sizing: border-box;
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: #fcfcfd;
 }
 
-#projectTitleInput:focus {
-    border-color: #10b981;
-    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
-}
-
-/* Project Description */
-#projectDescriptionInput {
-    width: 100%;
-    padding: 10px 16px;
-    border: 1px solid var(--dash-border, #e2e8f0);
-    border-radius: 8px;
-    font-size: 0.95rem;
+.create-project-input:focus,
+.create-project-textarea:focus {
     outline: none;
-    transition: all 0.2s ease;
-    box-sizing: border-box;
-    font-family: inherit;
-    resize: none;
-    min-height: 80px;
-    max-height: 150px;
-    overflow-y: auto;
+    border-color: #111827;
+    background: #ffffff;
+    box-shadow: 0 0 0 4px rgba(17, 24, 39, 0.05);
 }
 
-#projectDescriptionInput:focus {
-    border-color: #10b981;
-    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+.create-project-textarea {
+    resize: vertical;
+    min-height: 100px;
+    line-height: 1.6;
 }
 
-/* Module Selection */
-.module-selection-container {
-    max-height: 200px;
-    overflow-y: auto;
-    border: 1px solid #e2e8f0;
-    border-radius: 8px;
-    padding: 10px;
-    background: white;
-}
-
+/* Three Column Module Grid */
 .module-selection-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-    gap: 8px;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    max-height: 180px;
+    overflow-y: auto;
+    padding: 4px;
 }
 
 .module-selection-item {
-    padding: 10px;
-    border: 2px solid #e2e8f0;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    background: white;
     display: flex;
     align-items: center;
     gap: 8px;
+    padding: 8px 10px;
+    border: 1px solid #f1f5f9;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: #f8fafc;
 }
 
 .module-selection-item:hover {
-    border-color: #10b981;
-    background: rgba(16, 185, 129, 0.05);
+    background: #f1f5f9;
+    border-color: #e2e8f0;
 }
 
 .module-selection-item.selected {
-    border-color: #10b981;
-    background: rgba(16, 185, 129, 0.1);
+    border-color: #111827;
+    background: #ffffff;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
 }
 
 .module-selection-checkbox {
-    width: 18px;
-    height: 18px;
-    border: 2px solid #cbd5e1;
+    width: 16px;
+    height: 16px;
+    border: 2px solid #e2e8f0;
     border-radius: 4px;
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
     transition: all 0.2s ease;
+    background: white;
 }
 
 .module-selection-item.selected .module-selection-checkbox {
-    background: #10b981;
-    border-color: #10b981;
+    background: #111827;
+    border-color: #111827;
 }
 
 .module-selection-item.selected .module-selection-checkbox::after {
-    content: '✓';
+    content: '\f00c';
+    font-family: 'Font Awesome 5 Free';
+    font-weight: 900;
     color: white;
-    font-size: 12px;
-    font-weight: bold;
-}
-
-.module-selection-info {
-    flex: 1;
-    min-width: 0;
+    font-size: 8px;
 }
 
 .module-selection-name {
-    font-size: 0.8rem;
-    font-weight: 500;
-    color: #1e293b;
-    margin: 0;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #374151;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
-.module-selection-icon {
-    width: 20px;
-    height: 20px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    color: #64748b;
+.module-selection-item.selected .module-selection-name {
+    color: #111827;
 }
 
-/* Disabled template dropdown */
-.template-dropdown-wrapper.disabled .template-dropdown-trigger {
-    background: #f1f5f9;
-    color: #94a3b8;
-    cursor: not-allowed;
-    opacity: 0.6;
-}
-
-.template-dropdown-wrapper.disabled .template-dropdown-trigger:hover {
-    border-color: #e2e8f0;
-}
-
-/* Modal Footer */
+/* Footer & Buttons */
 .create-project-modal-footer {
-    padding: 16px 24px;
-    border-top: 1px solid #e2e8f0;
     display: flex;
-    gap: 12px;
-    justify-content: flex-end;
-    background: white;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 40px;
+    border-top: 1px solid #f1f5f9;
+    background: #ffffff;
     flex-shrink: 0;
 }
 
-.create-project-btn {
-    padding: 12px 24px;
-    background: #10b981;
-    border: none;
+.create-project-btn,
+.cancel-project-btn,
+.continue-project-btn,
+.back-project-btn {
+    padding: 10px 20px;
     border-radius: 10px;
-    color: white;
-    font-size: 0.95rem;
-    font-weight: 700;
-    cursor: pointer;
-    transition: all 0.2s;
-    box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.3);
-}
-
-.create-project-btn:hover:not(:disabled) {
-    background: #059669;
-    box-shadow: 0 6px 10px -1px rgba(16, 185, 129, 0.4);
-    transform: translateY(-1px);
-}
-
-.create-project-btn:disabled {
-    background: #94a3b8;
-    opacity: 0.6;
-    cursor: not-allowed;
-    box-shadow: none;
-}
-
-.cancel-project-btn {
-    padding: 12px 24px;
-    background: white;
-    border: 1px solid #e2e8f0;
-    border-radius: 10px;
-    color: #64748b;
-    font-size: 0.95rem;
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    font-size: 0.875rem;
+    font-family: inherit;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
 }
 
-.cancel-project-btn:hover {
-    background: #f8fafc;
+.cancel-project-btn,
+.back-project-btn {
+    background: transparent;
+    color: #64748b;
+    border: 1px solid #e2e8f0;
+}
+
+.cancel-project-btn:hover,
+.back-project-btn:hover {
+    background: #f1f5f9;
+    color: #111827;
     border-color: #cbd5e1;
-    color: #1e293b;
+}
+
+.continue-project-btn,
+.create-project-btn {
+    background: #111827;
+    color: white;
+    border: none;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+.continue-project-btn:hover:not(:disabled),
+.create-project-btn:hover:not(:disabled) {
+    background: #000000;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.continue-project-btn:active,
+.create-project-btn:active {
+    transform: translateY(0);
+}
+
+.continue-project-btn:disabled,
+.create-project-btn:disabled {
+    background: #94a3b8;
+    cursor: not-allowed;
+    opacity: 0.6;
+    transform: none;
+    box-shadow: none;
 }
 </style>
 
-<!-- Create Project Modal -->
-<div id="createProjectModal" class="modal-overlay">
+<div id="createProjectModal" class="modal-overlay" style="display: none;">
     <div class="create-project-modal-content">
-        <button type="button" class="create-project-modal-close" onclick="closeCreateProjectModal()">
+        <button class="create-project-modal-close" onclick="window.closeCreateProjectModal()">
             <i class="fas fa-times"></i>
         </button>
         
         <div class="create-project-modal-header">
-            <h3 class="create-project-modal-title">Create New Project</h3>
+            <h3 class="create-project-modal-title">Create a New Project</h3>
         </div>
         
-        <div class="create-project-modal-body-wrapper">
-            <!-- Left Column (Grey Background) -->
-            <div class="create-project-modal-left">
-            <!-- Project Title Input (always shown, always mandatory) -->
-            <div class="create-project-section">
-                <label class="create-project-section-label">Project Title <span style="color: #ef4444;">*</span></label>
-                <input type="text" id="projectTitleInput" name="title" placeholder="Enter project title..." maxlength="200" required>
-            </div>
-            
-            <!-- Client Assignment Section -->
-            <div class="create-project-section">
-                <label class="create-project-section-label">Assign to Client</label>
-                <div class="client-dropdown-container" id="clientDropdownContainer">
-                    <button type="button" class="client-dropdown-trigger" id="clientDropdownTrigger">
-                        <span class="dropdown-selected-text" id="clientSelectedText">Do not assign to anyone yet</span>
-                        <i class="fas fa-chevron-down"></i>
-                    </button>
-                    <input type="hidden" name="client_id" id="clientIdInput" value="">
-                    <div class="client-dropdown-menu" id="clientDropdownMenu">
-                        <div class="client-dropdown-search">
-                            <input type="text" id="clientSearchInput" placeholder="Search clients..." autocomplete="off">
-                        </div>
-                        <div id="clientDropdownItems">
-                            <!-- Client items will be populated here -->
-                        </div>
-                    </div>
+        <div class="create-project-modal-body">
+            <!-- Technical Stepper - Only 2 steps for users -->
+            <div class="create-project-steps">
+                <div class="create-project-step-item">
+                    <div class="create-project-step active" id="step1Indicator">1</div>
+                    <div class="create-project-step-label">Details</div>
+                </div>
+                <div class="create-project-step-connector" id="step1Connector"></div>
+                <div class="create-project-step-item">
+                    <div class="create-project-step" id="step2Indicator">2</div>
+                    <div class="create-project-step-label">Modules</div>
                 </div>
             </div>
             
-            <!-- Project Description -->
-            <div class="create-project-section">
-                <label class="create-project-section-label">Description</label>
-                <textarea id="projectDescriptionInput" name="description" placeholder="Enter project description (optional)..." rows="3" maxlength="1000"></textarea>
-            </div>
-            
-            <!-- Module Selection -->
-            <div class="create-project-section" style="margin-bottom: 0;">
-                <label class="create-project-section-label">Select Modules (Optional)</label>
-                <div class="module-selection-container" id="moduleSelectionContainer">
-                    <div class="module-selection-grid" id="moduleSelectionGrid">
-                        <!-- Module items will be populated here -->
-                    </div>
+            <!-- Step 1: Title and Description -->
+            <div class="create-project-step-content active" id="step1Content">
+                <div class="create-project-section">
+                    <label class="create-project-section-label">
+                        Project Title <span class="required">*</span>
+                    </label>
+                    <input type="text" id="projectTitleInput" class="create-project-input" placeholder="e.g., Strategic Expansion 2026" required>
                 </div>
-            </div>
-            </div>
-            
-            <!-- Right Column (White Background) -->
-            <div class="create-project-modal-right">
-            <!-- Project Type Selection -->
-            <div class="create-project-section">
-                <label class="create-project-section-label">Project Type</label>
-                <div class="project-type-selection">
-                    <div class="project-type-option" id="newProjectOption" data-type="new">
-                        <div class="project-type-option-title">New Project</div>
-                        <div class="project-type-option-desc">Create a project from scratch</div>
-                    </div>
-                    <div class="project-type-option" id="templateProjectOption" data-type="template">
-                        <div class="project-type-option-title">Choose from Templates</div>
-                        <div class="project-type-option-desc">Start with a template</div>
-                    </div>
+                
+                <div class="create-project-section" style="margin-bottom: 0;">
+                    <label class="create-project-section-label">Description</label>
+                    <textarea id="projectDescriptionInput" class="create-project-textarea" placeholder="Enter project description (optional)..." rows="4"></textarea>
                 </div>
             </div>
             
-            <!-- Template Dropdown (always visible, disabled when "New Project" is selected) -->
-            <div class="create-project-section">
-                <label class="create-project-section-label">Select Template</label>
-                <div class="template-dropdown-wrapper" id="templateDropdownWrapper">
-                    <button type="button" class="template-dropdown-trigger" id="templateDropdownTrigger" disabled>
-                        <span class="dropdown-selected-text" id="templateSelectedText">Select a template</span>
-                        <i class="fas fa-chevron-down"></i>
-                    </button>
-                    <input type="hidden" name="template_id" id="templateIdInput" value="">
-                    <div class="template-dropdown-menu" id="templateDropdownMenu">
-                        <div id="templateDropdownItems">
-                            <!-- Template items will be populated here -->
+            <!-- Step 2: Module Selection -->
+            <div class="create-project-step-content" id="step2Content">
+                <div class="create-project-section" style="margin-bottom: 0;">
+                    <label class="create-project-section-label">Select Modules (Optional)</label>
+                    <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 16px;">Would you like to add some modules to your project?</p>
+                    <div class="module-selection-container" id="moduleSelectionContainer">
+                        <div class="module-selection-grid" id="moduleSelectionGrid">
+                            {% if project_modules %}
+                                {% for module in project_modules %}
+                                <div class="module-selection-item" data-module-id="{{ module.id }}">
+                                    <div class="module-selection-checkbox"></div>
+                                    <div class="module-selection-name">{{ module.name }}</div>
+                                </div>
+                                {% endfor %}
+                            {% endif %}
                         </div>
                     </div>
                 </div>
-            </div>
             </div>
         </div>
         
         <div class="create-project-modal-footer">
-            <button type="button" class="cancel-project-btn" onclick="closeCreateProjectModal()">Cancel</button>
-            <button type="button" class="create-project-btn" id="createProjectBtn" onclick="submitCreateProject()" disabled>Create Project</button>
+            <div id="leftFooterGroup">
+                <button type="button" class="cancel-project-btn" onclick="window.closeCreateProjectModal()">Cancel</button>
+            </div>
+            <div style="display: flex; gap: 12px;" id="rightFooterGroup">
+                <button type="button" class="back-project-btn" id="backProjectBtn" onclick="window.goToPreviousStep()" style="display: none;">Back</button>
+                <button type="button" class="continue-project-btn" id="continueProjectBtn" onclick="window.goToNextStep()" disabled>Continue</button>
+                <button type="button" class="create-project-btn" id="createProjectBtn" onclick="window.submitCreateProject()" style="display: none;" disabled>Create Project</button>
+            </div>
         </div>
     </div>
 </div>
@@ -678,30 +451,50 @@
 (function() {
     'use strict';
     
-    let selectedClientId = null;
-    let selectedProjectType = null; // 'new' or 'template'
-    let selectedTemplateId = null;
-    let clients = [];
-    let templates = [];
+    let currentStep = 1;
+    let selectedModuleIds = [];
+    
+    // API URL - user-specific endpoint
+    const CREATE_PROJECT_URL = '{% url "general:dashboard_user:create_project" %}';
+    
+    // Initialize modules from Django-rendered HTML
+    function initializeModules() {
+        const moduleItems = document.querySelectorAll('#moduleSelectionGrid .module-selection-item');
+        moduleItems.forEach(function(item) {
+            item.addEventListener('click', function() {
+                const moduleId = parseInt(this.getAttribute('data-module-id'));
+                const index = selectedModuleIds.indexOf(moduleId);
+                if (index !== -1) {
+                    selectedModuleIds = selectedModuleIds.filter(function(id) {
+                        return id !== moduleId;
+                    });
+                    this.classList.remove('selected');
+                } else {
+                    selectedModuleIds.push(moduleId);
+                    this.classList.add('selected');
+                }
+            });
+        });
+    }
     
     // Open modal
     window.openCreateProjectModal = function() {
         const modal = document.getElementById('createProjectModal');
-        if (!modal) return;
+        if (!modal) {
+            console.error('createProjectModal element not found!');
+            return;
+        }
         
-        // Reset form
+        // Initialize modules
+        initializeModules();
+        
+        // Reset form and go to step 1
         resetCreateProjectForm();
-        
-        // Fetch clients and templates
-        fetchClients();
-        fetchTemplates();
-        
-        // Fetch modules
-        fetchModules();
+        goToStep(1);
         
         // Show modal
         modal.style.display = 'flex';
-        setTimeout(() => {
+        setTimeout(function() {
             modal.classList.add('active');
         }, 10);
     };
@@ -718,433 +511,138 @@
         }, 300);
     };
     
-    // Module selection
-    let selectedModuleIds = [];
-    let modules = [];
-    
     // Reset form
     function resetCreateProjectForm() {
-        selectedClientId = null;
-        selectedProjectType = null;
-        selectedTemplateId = null;
+        currentStep = 1;
         selectedModuleIds = [];
         
-        document.getElementById('clientSelectedText').textContent = 'Do not assign to anyone yet';
-        document.getElementById('clientIdInput').value = '';
-        document.getElementById('clientDropdownContainer').classList.remove('active');
+        // Reset inputs
+        const titleInput = document.getElementById('projectTitleInput');
+        const descInput = document.getElementById('projectDescriptionInput');
+        if (titleInput) titleInput.value = '';
+        if (descInput) descInput.value = '';
         
-        document.getElementById('newProjectOption').classList.remove('selected');
-        document.getElementById('templateProjectOption').classList.remove('selected');
-        
-        document.getElementById('projectTitleInput').value = '';
-        document.getElementById('projectDescriptionInput').value = '';
-        
-        document.getElementById('templateSelectedText').textContent = 'Select a template';
-        document.getElementById('templateIdInput').value = '';
-        document.getElementById('templateDropdownWrapper').classList.remove('active-dropdown');
-        document.getElementById('templateDropdownWrapper').classList.add('disabled');
-        document.getElementById('templateDropdownTrigger').disabled = true;
-        selectedTemplateId = null;
-        selectedProjectType = null;
-        
-        // Reset module selection
+        // Clear module selection
         document.querySelectorAll('.module-selection-item').forEach(item => {
             item.classList.remove('selected');
         });
-        
-        document.getElementById('createProjectBtn').disabled = true;
     }
     
-    // Fetch modules
-    function fetchModules() {
-        fetch('{% url "general:dashboard_mentor:project_modules_api" %}')
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                return response.json();
-            })
-            .then(data => {
-                if (data.success) {
-                    modules = data.modules || [];
-                    console.log('Fetched modules:', modules);
-                    populateModuleSelection();
-                } else {
-                    console.error('Error fetching modules:', data.error);
-                }
-            })
-            .catch(error => {
-                console.error('Error fetching modules:', error);
-            });
-    }
-    
-    // Populate module selection
-    function populateModuleSelection() {
-        const container = document.getElementById('moduleSelectionGrid');
-        if (!container) return;
+    // Go to specific step
+    function goToStep(step) {
+        currentStep = step;
         
-        container.innerHTML = '';
-        
-        modules.forEach(module => {
-            const item = document.createElement('div');
-            item.className = 'module-selection-item';
-            item.dataset.moduleId = module.id;
-            item.innerHTML = `
-                <div class="module-selection-checkbox"></div>
-                <div class="module-selection-info">
-                    <div class="module-selection-name">${module.name}</div>
-                </div>
-            `;
+        // Update step indicators (only 2 steps for users)
+        for (let i = 1; i <= 2; i++) {
+            const indicator = document.getElementById(`step${i}Indicator`);
+            const connector = document.getElementById(`step${i}Connector`);
+            const content = document.getElementById(`step${i}Content`);
             
-            item.addEventListener('click', function() {
-                const moduleId = parseInt(this.dataset.moduleId);
-                if (selectedModuleIds.includes(moduleId)) {
-                    selectedModuleIds = selectedModuleIds.filter(id => id !== moduleId);
-                    this.classList.remove('selected');
+            if (indicator) {
+                if (i < step) {
+                    indicator.classList.remove('active');
+                    indicator.classList.add('completed');
+                } else if (i === step) {
+                    indicator.classList.add('active');
+                    indicator.classList.remove('completed');
                 } else {
-                    selectedModuleIds.push(moduleId);
-                    this.classList.add('selected');
+                    indicator.classList.remove('active', 'completed');
                 }
-            });
-            
-            container.appendChild(item);
-        });
-    }
-    
-    // Fetch clients
-    function fetchClients() {
-        fetch('{% url "general:dashboard_mentor:clients_api" %}')
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    clients = data.clients || [];
-                    populateClientDropdown();
-                }
-            })
-            .catch(error => {
-                console.error('Error fetching clients:', error);
-            });
-    }
-    
-    // Populate client dropdown
-    function populateClientDropdown() {
-        const container = document.getElementById('clientDropdownItems');
-        if (!container) return;
-        
-        container.innerHTML = '';
-        
-        // Add "Do not assign" option
-        const noAssignItem = document.createElement('button');
-        noAssignItem.type = 'button';
-        noAssignItem.className = 'client-dropdown-item first-item';
-        noAssignItem.textContent = 'Do not assign to anyone yet';
-        noAssignItem.addEventListener('click', function() {
-            selectClient(null, 'Do not assign to anyone yet');
-        });
-        container.appendChild(noAssignItem);
-        
-        // Add client items
-        clients.forEach((client, index) => {
-            const item = document.createElement('button');
-            item.type = 'button';
-            item.className = 'client-dropdown-item';
-            if (index === clients.length - 1) {
-                item.classList.add('last-item');
             }
-            const name = `${client.first_name || ''} ${client.last_name || ''}`.trim() || client.email;
-            item.textContent = name;
-            item.setAttribute('data-client-id', client.id || '');
-            item.setAttribute('data-client-name', name);
-            item.setAttribute('data-client-email', client.email || '');
-            item.addEventListener('click', function() {
-                selectClient(client.id, name);
-            });
-            container.appendChild(item);
-        });
-        
-        // Update first/last item classes if only one client
-        if (clients.length === 0) {
-            const noAssignItem = container.querySelector('.client-dropdown-item');
-            if (noAssignItem) {
-                noAssignItem.classList.add('last-item');
+            
+            if (connector && i < step) {
+                connector.classList.add('completed');
+            } else if (connector) {
+                connector.classList.remove('completed');
+            }
+            
+            if (content) {
+                if (i === step) {
+                    content.classList.add('active');
+                } else {
+                    content.classList.remove('active');
+                }
             }
         }
-    }
-    
-    // Select client
-    function selectClient(clientId, displayText) {
-        selectedClientId = clientId;
-        document.getElementById('clientSelectedText').textContent = displayText;
-        document.getElementById('clientIdInput').value = clientId || '';
-        document.getElementById('clientDropdownContainer').classList.remove('active');
-        updateCreateButtonState();
-    }
-    
-    // Position dropdown menu dynamically
-    function positionClientDropdown() {
-        const container = document.getElementById('clientDropdownContainer');
-        const trigger = document.getElementById('clientDropdownTrigger');
-        const menu = document.getElementById('clientDropdownMenu');
         
-        if (!container || !trigger || !menu) return;
+        // Update buttons
+        const backBtn = document.getElementById('backProjectBtn');
+        const continueBtn = document.getElementById('continueProjectBtn');
+        const createBtn = document.getElementById('createProjectBtn');
         
-        // Reset max-height first
-        menu.style.maxHeight = '300px';
-        
-        const triggerRect = trigger.getBoundingClientRect();
-        const menuHeight = 300; // max-height
-        const spaceBelow = window.innerHeight - triggerRect.bottom;
-        const spaceAbove = triggerRect.top;
-        
-        // Calculate position
-        let top, left, width;
-        
-        if (spaceBelow >= menuHeight + 8) {
-            // Enough space below - show below
-            top = triggerRect.bottom + 8;
-        } else if (spaceAbove >= menuHeight + 8) {
-            // Not enough space below, but enough above - show above
-            top = triggerRect.top - menuHeight - 8;
-        } else {
-            // Not enough space either way - show below but limit height
-            top = triggerRect.bottom + 8;
-            menu.style.maxHeight = Math.max(100, Math.min(menuHeight, spaceBelow - 8)) + 'px';
+        if (step === 1) {
+            if (backBtn) backBtn.style.display = 'none';
+            if (continueBtn) continueBtn.style.display = 'inline-block';
+            if (createBtn) createBtn.style.display = 'none';
+        } else if (step === 2) {
+            if (backBtn) backBtn.style.display = 'inline-block';
+            if (continueBtn) continueBtn.style.display = 'none';
+            if (createBtn) createBtn.style.display = 'inline-block';
         }
         
-        left = triggerRect.left;
-        width = triggerRect.width;
-        
-        menu.style.top = top + 'px';
-        menu.style.left = left + 'px';
-        menu.style.width = width + 'px';
+        updateContinueButtonState();
     }
     
-    // Client dropdown toggle
-    document.addEventListener('click', function(e) {
-        const container = document.getElementById('clientDropdownContainer');
-        const trigger = document.getElementById('clientDropdownTrigger');
-        const menu = document.getElementById('clientDropdownMenu');
-        const searchInput = document.getElementById('clientSearchInput');
-        
-        if (container && trigger && menu) {
-            // If clicking inside search input, don't close dropdown
-            if (searchInput && searchInput.contains(e.target)) {
-                e.stopPropagation();
-                container.classList.add('active');
-                positionClientDropdown();
+    // Go to next step
+    window.goToNextStep = function() {
+        if (currentStep === 1) {
+            const title = document.getElementById('projectTitleInput').value.trim();
+            if (!title) {
+                alert('Project title is required');
                 return;
             }
-            
-            if (trigger.contains(e.target) || menu.contains(e.target)) {
-                if (e.target.closest('.client-dropdown-item')) {
-                    // Item clicked, handled by selectClient
-                    return;
-                }
-                // Don't toggle if clicking in search area
-                if (!e.target.closest('.client-dropdown-search')) {
-                    const isActive = container.classList.contains('active');
-                    container.classList.toggle('active');
-                    if (!isActive) {
-                        // Opening dropdown - position it
-                        setTimeout(positionClientDropdown, 10);
-                    }
-                }
-            } else {
-                container.classList.remove('active');
-            }
+            goToStep(2);
+        }
+    };
+    
+    // Go to previous step
+    window.goToPreviousStep = function() {
+        if (currentStep > 1) {
+            goToStep(currentStep - 1);
+        }
+    };
+    
+    // Update continue button state
+    function updateContinueButtonState() {
+        const continueBtn = document.getElementById('continueProjectBtn');
+        const createBtn = document.getElementById('createProjectBtn');
+        
+        if (currentStep === 1) {
+            const title = document.getElementById('projectTitleInput').value.trim();
+            if (continueBtn) continueBtn.disabled = !title;
+        } else if (currentStep === 2) {
+            // Step 2 doesn't require validation (modules are optional)
+            if (createBtn) createBtn.disabled = false;
+        }
+    }
+    
+    // Title input listener
+    document.addEventListener('DOMContentLoaded', function() {
+        const titleInput = document.getElementById('projectTitleInput');
+        if (titleInput) {
+            titleInput.addEventListener('input', function() {
+                updateContinueButtonState();
+            });
         }
     });
-    
-    // Client search filter
-    const clientSearchInput = document.getElementById('clientSearchInput');
-    if (clientSearchInput) {
-        clientSearchInput.addEventListener('input', function(e) {
-            const searchTerm = e.target.value.toLowerCase();
-            const items = document.querySelectorAll('#clientDropdownItems .client-dropdown-item');
-            
-            items.forEach((item, index) => {
-                const name = item.getAttribute('data-client-name') || '';
-                const email = item.getAttribute('data-client-email') || '';
-                const text = (name + ' ' + email).toLowerCase();
-                
-                if (index === 0) {
-                    // Always show "Do not assign" option
-                    item.style.display = '';
-                } else if (text.includes(searchTerm)) {
-                    item.style.display = '';
-                } else {
-                    item.style.display = 'none';
-                }
-            });
-        });
-    }
-    
-    // Fetch templates
-    function fetchTemplates() {
-        fetch('{% url "general:dashboard_mentor:project_templates_api" %}')
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    templates = data.templates || [];
-                    populateTemplateDropdown();
-                }
-            })
-            .catch(error => {
-                console.error('Error fetching templates:', error);
-            });
-    }
-    
-    // Populate template dropdown
-    function populateTemplateDropdown() {
-        const container = document.getElementById('templateDropdownItems');
-        if (!container) return;
-        
-        container.innerHTML = '';
-        
-        templates.forEach((template, index) => {
-            const item = document.createElement('button');
-            item.type = 'button';
-            item.className = 'template-dropdown-item';
-            if (index === 0) item.classList.add('first-item');
-            if (index === templates.length - 1) item.classList.add('last-item');
-            
-            const icon = template.icon ? `<i class="${template.icon}"></i>` : '';
-            item.innerHTML = `${icon}<span>${template.name}</span>`;
-            item.setAttribute('data-template-id', template.id);
-            item.setAttribute('data-template-name', template.name);
-            item.addEventListener('click', function() {
-                selectTemplate(template.id, template.name);
-            });
-            container.appendChild(item);
-        });
-    }
-    
-    // Select template
-    function selectTemplate(templateId, displayText) {
-        selectedTemplateId = templateId;
-        document.getElementById('templateSelectedText').textContent = displayText;
-        document.getElementById('templateIdInput').value = templateId;
-        document.getElementById('templateDropdownWrapper').classList.remove('active-dropdown');
-        updateCreateButtonState();
-    }
-    
-    // Template dropdown toggle
-    document.addEventListener('click', function(e) {
-        const wrapper = document.getElementById('templateDropdownWrapper');
-        const trigger = document.getElementById('templateDropdownTrigger');
-        const menu = document.getElementById('templateDropdownMenu');
-        
-        if (wrapper && trigger && menu && !trigger.disabled) {
-            if (trigger.contains(e.target) || menu.contains(e.target)) {
-                if (e.target.closest('.template-dropdown-item')) {
-                    // Item clicked, handled by selectTemplate
-                    return;
-                }
-                if (trigger.contains(e.target)) {
-                    wrapper.classList.toggle('active-dropdown');
-                }
-            } else {
-                wrapper.classList.remove('active-dropdown');
-            }
-        }
-    });
-    
-    // Project type selection
-    document.getElementById('newProjectOption').addEventListener('click', function() {
-        selectedProjectType = 'new';
-        document.getElementById('newProjectOption').classList.add('selected');
-        document.getElementById('templateProjectOption').classList.remove('selected');
-        
-        // Disable template dropdown
-        const templateWrapper = document.getElementById('templateDropdownWrapper');
-        const templateTrigger = document.getElementById('templateDropdownTrigger');
-        templateWrapper.classList.add('disabled');
-        templateTrigger.disabled = true;
-        templateWrapper.classList.remove('active-dropdown');
-        
-        selectedTemplateId = null;
-        document.getElementById('templateIdInput').value = '';
-        document.getElementById('templateSelectedText').textContent = 'Select a template';
-        updateCreateButtonState();
-    });
-    
-    document.getElementById('templateProjectOption').addEventListener('click', function() {
-        selectedProjectType = 'template';
-        document.getElementById('templateProjectOption').classList.add('selected');
-        document.getElementById('newProjectOption').classList.remove('selected');
-        
-        // Enable template dropdown
-        const templateWrapper = document.getElementById('templateDropdownWrapper');
-        const templateTrigger = document.getElementById('templateDropdownTrigger');
-        templateWrapper.classList.remove('disabled');
-        templateTrigger.disabled = false;
-        updateCreateButtonState();
-    });
-    
-    // Update create button state
-    function updateCreateButtonState() {
-        const btn = document.getElementById('createProjectBtn');
-        if (!btn) return;
-        
-        // Project title is always mandatory
-        const title = document.getElementById('projectTitleInput').value.trim();
-        let isValid = title.length > 0;
-        
-        // If template is selected, template must also be chosen
-        if (selectedProjectType === 'template') {
-            isValid = isValid && selectedTemplateId !== null;
-        }
-        
-        btn.disabled = !isValid;
-    }
-    
-    // Title input change
-    const titleInput = document.getElementById('projectTitleInput');
-    if (titleInput) {
-        titleInput.addEventListener('input', updateCreateButtonState);
-    }
     
     // Submit project creation
     window.submitCreateProject = function() {
         const btn = document.getElementById('createProjectBtn');
-        if (btn.disabled) return;
-        
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating...';
+        if (btn && btn.disabled) return;
         
         const title = document.getElementById('projectTitleInput').value.trim();
         if (!title) {
-            if (typeof showNotification !== 'undefined') {
-                showNotification('Project title is required', 'error');
-            } else {
-                alert('Project title is required');
-            }
-            btn.disabled = false;
-            btn.innerHTML = 'Create Project';
+            alert('Project title is required');
             return;
         }
         
-        const formData = {
-            title: title,
-            description: document.getElementById('projectDescriptionInput').value.trim(),
-            client_id: selectedClientId || null,
-            project_type: selectedProjectType,
-            module_ids: selectedModuleIds,
-        };
-        
-        if (selectedProjectType === 'template') {
-            if (!selectedTemplateId) {
-                if (typeof showNotification !== 'undefined') {
-                    showNotification('Please select a template', 'error');
-                } else {
-                    alert('Please select a template');
-                }
-                btn.disabled = false;
-                btn.innerHTML = 'Create Project';
-                return;
-            }
-            formData.template_id = selectedTemplateId;
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating...';
         }
+        
+        const description = document.getElementById('projectDescriptionInput').value.trim();
         
         // Get CSRF token
         function getCookie(name) {
@@ -1162,13 +660,20 @@
             return cookieValue;
         }
         
-        fetch('{% url "general:dashboard_mentor:create_project" %}', {
+        const requestData = {
+            title: title,
+            description: description,
+            module_ids: selectedModuleIds,
+            questionnaire_type: 'default', // Always use default questionnaire for users
+        };
+        
+        fetch(CREATE_PROJECT_URL, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'X-CSRFToken': getCookie('csrftoken')
             },
-            body: JSON.stringify(formData)
+            body: JSON.stringify(requestData)
         })
         .then(response => response.json())
         .then(data => {
@@ -1176,19 +681,22 @@
                 if (typeof showNotification !== 'undefined') {
                     showNotification('Project created successfully!', 'success');
                 }
-                closeCreateProjectModal();
-                // Reload page or update UI
-                setTimeout(() => {
+                window.closeCreateProjectModal();
+                if (data.redirect_url) {
+                    window.location.href = data.redirect_url;
+                } else {
                     window.location.reload();
-                }, 500);
+                }
             } else {
                 if (typeof showNotification !== 'undefined') {
                     showNotification(data.error || 'Failed to create project', 'error');
                 } else {
                     alert(data.error || 'Failed to create project');
                 }
-                btn.disabled = false;
-                btn.innerHTML = 'Create Project';
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = 'Create Project';
+                }
             }
         })
         .catch(error => {
@@ -1198,47 +706,31 @@
             } else {
                 alert('An error occurred. Please try again.');
             }
-            btn.disabled = false;
-            btn.innerHTML = 'Create Project';
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = 'Create Project';
+            }
         });
     };
     
-    // Handle ESC key
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape') {
-            const modal = document.getElementById('createProjectModal');
-            if (modal && modal.classList.contains('active')) {
-                closeCreateProjectModal();
-            }
-        }
-    });
-    
-    // Close modal when clicking outside (on overlay)
+    // Close modal when clicking outside
     const modal = document.getElementById('createProjectModal');
     if (modal) {
         modal.addEventListener('click', function(e) {
-            // Only close if clicking directly on the overlay, not on the modal content
             if (e.target === modal) {
-                closeCreateProjectModal();
+                window.closeCreateProjectModal();
             }
         });
     }
     
-    // Reposition client dropdown on window resize or scroll
-    window.addEventListener('resize', function() {
-        const clientContainer = document.getElementById('clientDropdownContainer');
-        
-        if (clientContainer && clientContainer.classList.contains('active')) {
-            positionClientDropdown();
+    // Close modal on ESC key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            const modal = document.getElementById('createProjectModal');
+            if (modal && modal.classList.contains('active')) {
+                window.closeCreateProjectModal();
+            }
         }
     });
-    
-    window.addEventListener('scroll', function() {
-        const clientContainer = document.getElementById('clientDropdownContainer');
-        
-        if (clientContainer && clientContainer.classList.contains('active')) {
-            positionClientDropdown();
-        }
-    }, true);
 })();
 </script>

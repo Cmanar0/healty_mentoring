@@ -2995,16 +2995,105 @@ def projects_list(request):
     ).count()
     
     # Get default templates for create project modal (no custom templates)
-    from dashboard_user.models import ProjectTemplate
+    from dashboard_user.models import ProjectTemplate, ProjectModule
     default_templates = ProjectTemplate.objects.filter(author__isnull=True).order_by('name')
+    
+    # Get all active modules for the create project modal
+    project_modules = ProjectModule.objects.filter(is_active=True).order_by('order', 'name')
+    if not project_modules.exists():
+        project_modules = ProjectModule.objects.all().order_by('order', 'name')
     
     context = {
         'projects': all_projects,
         'pending_count': pending_count,
         'default_templates': default_templates,
+        'project_modules': project_modules,
     }
     
     return render(request, 'dashboard_user/projects/projects_list.html', context)
+
+
+@login_required
+@require_POST
+def create_project(request):
+    """Create a new project for a user"""
+    if not hasattr(request.user, 'profile') or request.user.profile.role != 'user':
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+    
+    try:
+        from dashboard_user.models import ProjectTemplate, ProjectModule, ProjectModuleInstance
+        data = json.loads(request.body)
+        
+        user_profile = request.user.user_profile
+        
+        # Title is always required
+        title = data.get('title', '').strip()
+        if not title:
+            return JsonResponse({'success': False, 'error': 'Project title is required'}, status=400)
+        
+        description = data.get('description', '').strip()
+        module_ids = data.get('module_ids', [])  # List of module IDs to add
+        
+        # Always use default questionnaire template for users
+        try:
+            selected_template = ProjectTemplate.objects.get(
+                name='Custom (Blank)',
+                is_custom=False,
+                is_active=True
+            )
+        except ProjectTemplate.DoesNotExist:
+            selected_template = None
+        
+        # Create project
+        project = Project.objects.create(
+            title=title,
+            description=description,
+            template=selected_template,
+            project_owner=user_profile,
+            supervised_by=None,  # Users can create projects without a supervisor
+            created_by=request.user,
+            assignment_status='accepted',  # User owns it immediately
+        )
+        
+        # Add selected modules to project
+        if module_ids:
+            for order, module_id in enumerate(module_ids, start=1):
+                try:
+                    module = ProjectModule.objects.get(id=module_id, is_active=True)
+                    ProjectModuleInstance.objects.get_or_create(
+                        project=project,
+                        module=module,
+                        defaults={
+                            'is_active': True,
+                            'order': order,
+                            'module_data': {},
+                        }
+                    )
+                except ProjectModule.DoesNotExist:
+                    continue  # Skip invalid module IDs
+        
+        # Create stages from template if project was created from a template
+        if project.template:
+            project.create_stages_from_template()
+        
+        from django.urls import reverse
+        return JsonResponse({
+            'success': True,
+            'message': 'Project created successfully',
+            'redirect_url': reverse('general:dashboard_user:project_detail', args=[project.id]),
+            'project': {
+                'id': project.id,
+                'title': project.title,
+                'template_id': project.template.id if project.template else None,
+            }
+        })
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f'Error creating project: {str(e)}', exc_info=True)
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 
 @login_required
@@ -4241,6 +4330,119 @@ def create_stage(request, project_id):
         import logging
         logger = logging.getLogger(__name__)
         logger.error(f'Error creating stage: {str(e)}', exc_info=True)
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+@require_POST
+def update_project_target_date(request, project_id):
+    """Update project target completion date (for users)"""
+    if not hasattr(request.user, 'profile'):
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+    
+    project = get_object_or_404(
+        Project.objects.select_related('project_owner', 'supervised_by'),
+        id=project_id
+    )
+    
+    # Check if user is owner or supervisor
+    is_owner = False
+    is_supervisor = False
+    
+    if request.user.profile.role == 'user':
+        user_profile = request.user.user_profile
+        is_owner = (project.project_owner == user_profile)
+    elif request.user.profile.role == 'mentor':
+        mentor_profile = request.user.mentor_profile
+        is_supervisor = (project.supervised_by == mentor_profile)
+    
+    # Only allow access if user is owner or supervisor
+    if not (is_owner or is_supervisor):
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+    
+    try:
+        data = json.loads(request.body)
+        target_date_str = data.get('target_date')
+        
+        if target_date_str:
+            from datetime import datetime
+            target_date = datetime.strptime(target_date_str, '%Y-%m-%d').date()
+            project.target_completion_date = target_date
+        else:
+            project.target_completion_date = None
+        
+        project.save()
+        
+        # Update questionnaire answer if there's a target date question (same logic as mentor)
+        from dashboard_user.models import QuestionnaireResponse, Question
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        try:
+            if project.template and hasattr(project.template, 'questionnaire'):
+                questionnaire = project.template.questionnaire
+                logger.info(f'Updating target date - Project {project.id}, Template {project.template.id}, Questionnaire {questionnaire.id}')
+                
+                # Find the target date question
+                target_date_question = Question.objects.filter(
+                    questionnaire=questionnaire,
+                    is_target_date=True,
+                    question_type='date'
+                ).first()
+                
+                if target_date_question:
+                    logger.info(f'Found target date question: id={target_date_question.id}, updating answer with date={target_date_str}')
+                    
+                    # Get or create QuestionnaireResponse
+                    try:
+                        questionnaire_response = QuestionnaireResponse.objects.get(
+                            project=project,
+                            questionnaire=questionnaire
+                        )
+                        logger.info(f'Found existing QuestionnaireResponse id={questionnaire_response.id} for project {project.id}')
+                    except QuestionnaireResponse.DoesNotExist:
+                        questionnaire_response = QuestionnaireResponse.objects.create(
+                            project=project,
+                            questionnaire=questionnaire,
+                            answers={}
+                        )
+                        logger.info(f'Created new QuestionnaireResponse id={questionnaire_response.id} for project {project.id}')
+                    
+                    # Get current answers and create new dict
+                    current_answers = questionnaire_response.answers or {}
+                    new_answers = {}
+                    for key, value in current_answers.items():
+                        new_answers[str(key)] = value
+                    
+                    question_id_str = str(target_date_question.id)
+                    
+                    if target_date_str:
+                        new_answers[question_id_str] = target_date_str
+                    else:
+                        new_answers.pop(question_id_str, None)
+                    
+                    questionnaire_response.answers = new_answers
+                    questionnaire_response.save()
+                    
+                    logger.info(f'Updated QuestionnaireResponse with target date: {target_date_str}')
+                else:
+                    logger.warning(f'No target date question found for questionnaire {questionnaire.id}')
+        except Exception as e:
+            logger.error(f'Error updating questionnaire answer for target date: {str(e)}', exc_info=True)
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Target date updated successfully',
+            'target_date': project.target_completion_date.strftime('%Y-%m-%d') if project.target_completion_date else None
+        })
+    except ValueError as e:
+        return JsonResponse({'success': False, 'error': 'Invalid date format'}, status=400)
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f'Error updating target date: {str(e)}', exc_info=True)
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 
