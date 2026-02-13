@@ -2471,7 +2471,8 @@
     }
     
     .task-filter-dropdown-trigger:hover {
-        border-color: #10b981;
+        border-color: #d1d5db;
+        background: #f3f4f6 !important;
     }
     
     .task-filter-dropdown-trigger i {
@@ -7541,9 +7542,44 @@
                     // Insert at the top of the list
                     currentTasksList.insertAdjacentHTML('afterbegin', newTaskHtml);
                     
-                    // Update task count
-                    const currentCount = parseInt(currentTasksHeader.textContent.match(/\d+/)?.[0] || '0');
-                    currentTasksHeader.textContent = `Tasks (${currentCount + 1})`;
+                    // Update task count without destroying checkbox and filter dropdown
+                    // The header structure is: <checkbox> Tasks (X / Y) <filter>
+                    // We need to update only the text node between checkbox and filter
+                    const checkbox = currentTasksHeader.querySelector('.stage-tasks-select-all-checkbox');
+                    const filter = currentTasksHeader.querySelector('.stage-tasks-filter');
+                    
+                    if (checkbox && filter) {
+                        // Find text node between checkbox and filter
+                        let textNode = null;
+                        let foundCheckbox = false;
+                        for (let node of currentTasksHeader.childNodes) {
+                            if (node === checkbox) {
+                                foundCheckbox = true;
+                            } else if (foundCheckbox && node.nodeType === Node.TEXT_NODE) {
+                                textNode = node;
+                                break;
+                            } else if (node === filter) {
+                                break;
+                            }
+                        }
+                        
+                        if (textNode) {
+                            // Update the count in the text node
+                            const currentText = textNode.textContent;
+                            const match = currentText.match(/Tasks\s*\((\d+)(?:\s*\/\s*(\d+))?\)/);
+                            if (match) {
+                                const currentFiltered = parseInt(match[1]) || 0;
+                                const currentTotal = match[2] ? parseInt(match[2]) : null;
+                                const newFiltered = currentFiltered + 1;
+                                const newTotal = currentTotal ? currentTotal + 1 : null;
+                                
+                                const newText = newTotal 
+                                    ? currentText.replace(/Tasks\s*\(\d+\s*\/\s*\d+\)/, `Tasks (${newFiltered} / ${newTotal})`)
+                                    : currentText.replace(/Tasks\s*\(\d+\)/, `Tasks (${newFiltered})`);
+                                textNode.textContent = newText;
+                            }
+                        }
+                    }
                     
                     // Add fade-in animation to new task
                     const newTaskElement = currentTasksList.querySelector(`[data-task-id="${data.task_id}"]`);
