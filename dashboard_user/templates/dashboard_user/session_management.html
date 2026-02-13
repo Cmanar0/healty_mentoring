@@ -919,6 +919,16 @@
     var freeSection = document.getElementById('acceptInvitationFreeSection');
     var paidSection = document.getElementById('acceptInvitationPaidSection');
     if (!acceptModalOverlay) return;
+    // Update header title
+    var headerTitle = document.getElementById('acceptInvitationHeaderTitle');
+    if (headerTitle) {
+      if (acceptPriceCents <= 0) {
+        headerTitle.innerHTML = '<i class="fas fa-check-circle"></i> Accept invitation';
+      } else {
+        headerTitle.innerHTML = '<i class="fas fa-envelope-open-text"></i> Accept Invitation';
+      }
+    }
+    
     if (acceptPriceCents <= 0) {
       freeSection.style.display = 'block';
       paidSection.style.display = 'none';

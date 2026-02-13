@@ -2673,6 +2673,24 @@
             if (cardSection) {
                 if (selectedPaymentMethod === 'card') {
                     cardSection.style.display = 'block';
+                    // Mount Stripe card if not already mounted and Stripe is available
+                    if (paymentRequired && stripePublishableKey) {
+                        if (typeof window.Stripe === 'function' && !stripeElementsMounted) {
+                            mountStripeCard();
+                        } else if (typeof window.Stripe !== 'function') {
+                            // Wait for Stripe to load
+                            const waitForStripe = setInterval(() => {
+                                if (typeof window.Stripe === 'function') {
+                                    clearInterval(waitForStripe);
+                                    if (!stripeElementsMounted) mountStripeCard();
+                                }
+                            }, 100);
+                            setTimeout(() => {
+                                clearInterval(waitForStripe);
+                                if (typeof window.Stripe === 'function' && !stripeElementsMounted) mountStripeCard();
+                            }, 2000);
+                        }
+                    }
                 } else {
                     cardSection.style.display = 'none';
                 }
@@ -2712,7 +2730,38 @@
         const timezoneWrap = document.getElementById('bookingTimezoneSectionWrap');
         const cardSection = document.getElementById('bookingPaymentCardSection');
         const emailInput = document.getElementById('bookingEmailInput');
+        
+        // Update payment method UI first
         updateBookingPaymentMethodUI();
+        
+        // Explicitly ensure card section is visible and Stripe is mounted if card is selected by default
+        // This handles the case where card is preselected but the section wasn't shown
+        if (paymentRequired && cardSection) {
+            // Check both the variable and the actual radio button state to ensure card is selected
+            const isCardSelected = selectedPaymentMethod === 'card' || (cardRadio && cardRadio.checked);
+            if (isCardSelected && cardSection.style.display !== 'block') {
+                cardSection.style.display = 'block';
+                // Mount Stripe card if available and not already mounted
+                if (stripePublishableKey && !stripeElementsMounted) {
+                    if (typeof window.Stripe === 'function') {
+                        mountStripeCard();
+                    } else {
+                        // Wait for Stripe to load
+                        const waitForStripe = setInterval(() => {
+                            if (typeof window.Stripe === 'function') {
+                                clearInterval(waitForStripe);
+                                if (!stripeElementsMounted) mountStripeCard();
+                            }
+                        }, 100);
+                        setTimeout(() => {
+                            clearInterval(waitForStripe);
+                            if (typeof window.Stripe === 'function' && !stripeElementsMounted) mountStripeCard();
+                        }, 2000);
+                    }
+                }
+            }
+        }
+        
         if (paymentOnly) {
             if (guestWrap) guestWrap.style.display = 'none';
             if (timezoneWrap) timezoneWrap.style.display = 'none';
@@ -2721,15 +2770,6 @@
             if (submitBtn) {
                 submitBtn.innerHTML = '<i class="fas fa-lock"></i> <span>Pay and book</span>';
             }
-            if (paymentRequired && selectedPaymentMethod === 'card' && stripePublishableKey) {
-                if (typeof window.Stripe === 'function') mountStripeCard();
-                else {
-                    const waitForStripe = setInterval(() => {
-                        if (typeof window.Stripe === 'function') { clearInterval(waitForStripe); mountStripeCard(); }
-                    }, 100);
-                    setTimeout(() => { clearInterval(waitForStripe); if (typeof window.Stripe === 'function') mountStripeCard(); }, 2000);
-                }
-            }
         } else {
             if (guestWrap) guestWrap.style.display = 'flex';
             if (timezoneWrap) timezoneWrap.style.display = 'block';
@@ -2737,15 +2777,6 @@
             const submitBtn = document.getElementById('submitBookingBtn');
             if (submitBtn) {
                 submitBtn.innerHTML = '<i class="fas fa-calendar-check"></i> <span>Confirm Booking</span>';
-            }
-            if (paymentRequired && selectedPaymentMethod === 'card' && stripePublishableKey && cardSection) {
-                if (typeof window.Stripe === 'function') mountStripeCard();
-                else {
-                    const waitForStripe = setInterval(() => {
-                        if (typeof window.Stripe === 'function') { clearInterval(waitForStripe); mountStripeCard(); }
-                    }, 100);
-                    setTimeout(() => { clearInterval(waitForStripe); if (typeof window.Stripe === 'function') mountStripeCard(); }, 2000);
-                }
             }
         }
         

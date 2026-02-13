@@ -24,7 +24,7 @@
         <div class="session-timeline-container scrollable-content" id="sessionsContainer" data-user-timezone="{{ user_timezone }}">
             {% if initial_sessions %}
                 {% for session in initial_sessions %}
-                    <div class="session-item status-{{ session.status }}" data-clickable-session data-session-id="{{ session.id }}" {% if session.status == 'invited' %}data-invitation-id="{{ session.invitation_id|default:'' }}" data-session-price="{{ session.session_price|default:0 }}"{% endif %}>
+                    <div class="session-item status-{{ session.status }}" data-clickable-session data-session-id="{{ session.id }}" {% if session.status == 'invited' %}data-invitation-id="{{ session.invitation_id|default:'' }}" data-session-price="{{ session.session_price|default:0 }}" data-mentor-id="{{ session.mentor_user_id|default:'' }}" data-mentor-name="{{ session.mentor_name|default:'' }}" data-session-date="{{ session.start_datetime|date:'Y-m-d' }}" data-session-start="{{ session.start_datetime|date:'g:i A' }}" data-session-end="{{ session.end_datetime|date:'g:i A' }}"{% endif %}>
                         <div class="session-left">
                             <div class="session-date">
                                 <span class="date-day">{{ session.start_datetime|date:"d" }}</span>
@@ -49,8 +49,10 @@
                                     <i class="fas fa-ellipsis-h"></i>
                                 </button>
                                 <div class="dropdown-menu session-row-actions-menu" onclick="event.stopPropagation();">
+                                    {% if session.status == 'confirmed' %}
                                     <button type="button" class="dropdown-item first-item" onclick="if (typeof openSessionDetailModal === 'function') openSessionDetailModal({{ session.id }});"><i class="fas fa-info-circle"></i><span>View Details</span></button>
-                                    <button type="button" class="dropdown-item delete-item last-item" onclick="if (typeof openUserCancelSessionModal === 'function') openUserCancelSessionModal({{ session.id }});"><i class="fas fa-times-circle"></i><span>Cancel session</span></button>
+                                    {% endif %}
+                                    <button type="button" class="dropdown-item {% if session.status != 'confirmed' %}first-item {% endif %}delete-item last-item" onclick="if (typeof openUserCancelSessionModal === 'function') openUserCancelSessionModal({{ session.id }});"><i class="fas fa-times-circle"></i><span>Cancel session</span></button>
                                 </div>
                             </div>
                         </div>
@@ -192,21 +194,37 @@
           if (!row) return;
           // Don't trigger if clicking on dropdown menu
           if (e.target.closest('.session-right')) return;
-          const status = row.classList.contains('status-invited') ? 'invited' : 'confirmed';
-          if (status === 'invited') {
+          // Check status from class list
+          const isInvited = row.classList.contains('status-invited');
+          const isConfirmed = row.classList.contains('status-confirmed');
+          
+          if (isInvited) {
             e.preventDefault();
             e.stopPropagation();
             const invitationId = row.getAttribute('data-invitation-id');
             const sessionPrice = row.getAttribute('data-session-price') || '0';
+            const mentorId = row.getAttribute('data-mentor-id');
+            const mentorName = row.getAttribute('data-mentor-name');
+            const sessionDate = row.getAttribute('data-session-date');
+            const sessionStart = row.getAttribute('data-session-start');
+            const sessionEnd = row.getAttribute('data-session-end');
             if (invitationId && typeof window.openAcceptInvitationModalFromSession === 'function') {
-              window.openAcceptInvitationModalFromSession(invitationId, sessionPrice);
+              window.openAcceptInvitationModalFromSession(invitationId, sessionPrice, {
+                mentorId: mentorId,
+                mentorName: mentorName,
+                sessionDate: sessionDate,
+                sessionStart: sessionStart,
+                sessionEnd: sessionEnd
+              });
             }
-          } else {
+          } else if (isConfirmed) {
+            // Only open detail modal for confirmed sessions
             const sessionId = row.getAttribute('data-session-id');
             if (sessionId && typeof openSessionDetailModal === 'function') {
                 openSessionDetailModal(parseInt(sessionId, 10));
             }
           }
+          // For any other status, do nothing
       });
   }
 
@@ -320,13 +338,23 @@
     
     const invitationId = session.invitation_id || '';
     const sessionPrice = session.session_price || 0;
+    const mentorId = session.mentor_user_id || '';
+    const mentorName = session.mentor_name || '';
+    const sessionDateStr = new Intl.DateTimeFormat('en-US', { ...tzOpt, year: 'numeric', month: '2-digit', day: '2-digit' }).format(startDate);
+    const sessionDate = sessionDateStr.split('/').reverse().join('-'); // Convert MM/DD/YYYY to YYYY-MM-DD
+    
     const invitationAttrs = session.status === 'invited' && invitationId 
-      ? `data-invitation-id="${invitationId}" data-session-price="${sessionPrice}"` 
+      ? `data-invitation-id="${invitationId}" data-session-price="${sessionPrice}" data-mentor-id="${mentorId}" data-mentor-name="${escapeHtml(mentorName)}" data-session-date="${sessionDate}" data-session-start="${startTime}" data-session-end="${endTime}"` 
+      : '';
+    
+    // Only show "View Details" for confirmed sessions
+    const viewDetailsBtn = session.status === 'confirmed' 
+      ? `<button type="button" class="dropdown-item first-item" onclick="if (typeof openSessionDetailModal === 'function') openSessionDetailModal(${session.id});"><i class="fas fa-info-circle"></i><span>View Details</span></button>`
       : '';
     
     return `
       <div class="session-item status-${session.status}" data-clickable-session data-session-id="${session.id}" ${invitationAttrs}>
-        <div class="session-left" style="cursor: pointer;">
+        <div class="session-left" style="cursor: ${session.status === 'confirmed' ? 'pointer' : 'pointer'};">
           <div class="session-date">
             <span class="date-day">${day}</span>
             <span class="date-month">${month}</span>
@@ -350,8 +378,8 @@
               <i class="fas fa-ellipsis-h"></i>
             </button>
             <div class="dropdown-menu session-row-actions-menu" onclick="event.stopPropagation();">
-              <button type="button" class="dropdown-item first-item" onclick="if (typeof openSessionDetailModal === 'function') openSessionDetailModal(${session.id});"><i class="fas fa-info-circle"></i><span>View Details</span></button>
-              <button type="button" class="dropdown-item delete-item last-item" onclick="if (typeof openUserCancelSessionModal === 'function') openUserCancelSessionModal(${session.id});"><i class="fas fa-times-circle"></i><span>Cancel session</span></button>
+              ${viewDetailsBtn}
+              <button type="button" class="dropdown-item ${session.status === 'confirmed' ? '' : 'first-item '}delete-item last-item" onclick="if (typeof openUserCancelSessionModal === 'function') openUserCancelSessionModal(${session.id});"><i class="fas fa-times-circle"></i><span>Cancel session</span></button>
             </div>
           </div>
         </div>
@@ -483,23 +511,121 @@
     return '';
   }
 
-  function openAcceptInvitationModal(invitationId, sessionPriceDollars) {
+  function openAcceptInvitationModal(invitationId, sessionPriceDollars, sessionDetails) {
     acceptInvitationId = invitationId;
     acceptPriceCents = Math.round(parseFloat(sessionPriceDollars) * 100) || 0;
     acceptModalOverlay = document.getElementById('acceptInvitationModalOverlay');
     var freeSection = document.getElementById('acceptInvitationFreeSection');
     var paidSection = document.getElementById('acceptInvitationPaidSection');
     if (!acceptModalOverlay) return;
+    
+    // Populate session details if provided (for both free and paid sections)
+    if (sessionDetails) {
+      // Paid section elements
+      var mentorNameEl = document.getElementById('acceptInvitationMentorName');
+      var mentorLinkEl = document.getElementById('acceptInvitationMentorLink');
+      var sessionDateEl = document.getElementById('acceptInvitationSessionDate');
+      var sessionTimeEl = document.getElementById('acceptInvitationSessionTime');
+      
+      // Free section elements
+      var mentorNameElFree = document.getElementById('acceptInvitationMentorNameFree');
+      var mentorLinkElFree = document.getElementById('acceptInvitationMentorLinkFree');
+      var sessionDateElFree = document.getElementById('acceptInvitationSessionDateFree');
+      var sessionTimeElFree = document.getElementById('acceptInvitationSessionTimeFree');
+      
+      function populateDetails(mentorNameEl, mentorLinkEl, sessionDateEl, sessionTimeEl) {
+        if (mentorNameEl) {
+          if (sessionDetails.mentorName && sessionDetails.mentorName !== '—' && sessionDetails.mentorName.trim() !== '') {
+            mentorNameEl.textContent = sessionDetails.mentorName;
+          } else {
+            mentorNameEl.textContent = '—';
+          }
+        }
+        if (mentorLinkEl) {
+          if (sessionDetails.mentorId && sessionDetails.mentorId !== '' && sessionDetails.mentorId !== 'null') {
+            mentorLinkEl.href = '/mentor/' + sessionDetails.mentorId + '/';
+          } else {
+            mentorLinkEl.href = '#';
+            mentorLinkEl.style.pointerEvents = 'none';
+            mentorLinkEl.style.opacity = '0.6';
+          }
+        }
+        if (sessionDateEl && sessionDetails.sessionDate) {
+          // Format date: YYYY-MM-DD to readable format
+          try {
+            // Handle different date formats
+            var dateStr = sessionDetails.sessionDate;
+            var dateObj;
+            if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+              // YYYY-MM-DD format
+              dateObj = new Date(dateStr + 'T00:00:00');
+            } else {
+              // Try parsing as-is
+              dateObj = new Date(dateStr);
+            }
+            if (!isNaN(dateObj.getTime())) {
+              var options = { year: 'numeric', month: 'long', day: 'numeric' };
+              sessionDateEl.textContent = dateObj.toLocaleDateString('en-US', options);
+            } else {
+              sessionDateEl.textContent = sessionDetails.sessionDate || '—';
+            }
+          } catch(e) {
+            sessionDateEl.textContent = sessionDetails.sessionDate || '—';
+          }
+        } else if (sessionDateEl) {
+          sessionDateEl.textContent = '—';
+        }
+        if (sessionTimeEl && sessionDetails.sessionStart && sessionDetails.sessionEnd) {
+          sessionTimeEl.textContent = sessionDetails.sessionStart + ' - ' + sessionDetails.sessionEnd;
+        } else if (sessionTimeEl) {
+          sessionTimeEl.textContent = '—';
+        }
+        // Also handle missing mentor name
+        if (mentorNameEl && !sessionDetails.mentorName) {
+          mentorNameEl.textContent = '—';
+        }
+      }
+      
+      populateDetails(mentorNameEl, mentorLinkEl, sessionDateEl, sessionTimeEl);
+      populateDetails(mentorNameElFree, mentorLinkElFree, sessionDateElFree, sessionTimeElFree);
+    }
+    
+    // Show/hide footer actions
+    var freeActions = document.getElementById('acceptInvitationFreeActions');
+    var paidActions = document.getElementById('acceptInvitationPaidActions');
+    
+    // Update header title
+    var headerTitle = document.getElementById('acceptInvitationHeaderTitle');
+    if (headerTitle) {
+      if (acceptPriceCents <= 0) {
+        headerTitle.innerHTML = '<i class="fas fa-check-circle"></i> Accept invitation';
+      } else {
+        headerTitle.innerHTML = '<i class="fas fa-envelope-open-text"></i> Accept Invitation';
+      }
+    }
+    
     if (acceptPriceCents <= 0) {
       freeSection.style.display = 'block';
       paidSection.style.display = 'none';
+      if (freeActions) freeActions.style.display = 'flex';
+      if (paidActions) paidActions.style.display = 'none';
       acceptModalOverlay.style.display = 'flex';
       return;
     }
     freeSection.style.display = 'none';
     paidSection.style.display = 'block';
-    document.getElementById('acceptInvitationAmountText').textContent = '$' + (acceptPriceCents / 100).toFixed(2);
-    document.getElementById('acceptInvitationPayAmount').textContent = '$' + (acceptPriceCents / 100).toFixed(2);
+    if (freeActions) freeActions.style.display = 'none';
+    if (paidActions) paidActions.style.display = 'flex';
+    // Update price display in left column
+    var amountTextEl = document.getElementById('acceptInvitationAmountText');
+    if (amountTextEl) {
+      amountTextEl.textContent = '$' + (acceptPriceCents / 100).toFixed(2);
+    }
+    // Update pay button amount
+    var payAmountEl = document.getElementById('acceptInvitationPayAmount');
+    if (payAmountEl) {
+      payAmountEl.textContent = '$' + (acceptPriceCents / 100).toFixed(2);
+    }
     var walletOption = document.getElementById('acceptPayWithWalletOption');
     var cardOption = document.getElementById('acceptPayWithCardOption');
     var cardSection = document.getElementById('acceptInvitationCardSection');
@@ -533,8 +659,10 @@
       acceptSelectedMethod = 'card';
       document.getElementById('acceptPaymentMethodCard').checked = true;
       document.getElementById('acceptPaymentMethodWallet').checked = false;
-      cardSection.style.display = 'block';
-      if (stripePk && typeof window.Stripe === 'function') mountAcceptCard();
+      if (cardSection) {
+        cardSection.style.display = 'block';
+        if (stripePk && typeof window.Stripe === 'function') mountAcceptCard();
+      }
     }
     var payBtn = document.getElementById('acceptInvitationPayBtn');
     if (payBtn) payBtn.disabled = false;
@@ -646,6 +774,22 @@
       acceptModalOverlay.addEventListener('click', function(e) {
         if (e.target === acceptModalOverlay) window.closeAcceptInvitationModal();
       });
+      
+      // Close modal on Escape key (only if wallet topup modal is not open)
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+          // Check if wallet topup modal is open first (it has higher z-index)
+          var walletOverlay = document.getElementById('walletTopUpModalOverlay');
+          if (walletOverlay && walletOverlay.style.display === 'flex') {
+            // Wallet topup modal will handle its own Escape key, don't close Accept Invitation
+            return;
+          }
+          // Only close Accept Invitation if it's open and wallet topup is not
+          if (acceptModalOverlay && acceptModalOverlay.style.display === 'flex') {
+            window.closeAcceptInvitationModal();
+          }
+        }
+      });
     }
 
     // Modal button handlers
@@ -712,14 +856,14 @@
             if (errText) errText.textContent = data.error || 'Could not start payment.';
             if (errEl) errEl.style.display = 'flex';
             payBtn.disabled = false;
-            payBtn.innerHTML = '<span id="acceptInvitationPayBtnText">Pay <span id="acceptInvitationPayAmount">$' + (acceptPriceCents/100).toFixed(2) + '</span></span>';
+            payBtn.innerHTML = '<span id="acceptInvitationPayBtnText">Accept & Pay <span id="acceptInvitationPayAmount">$' + (acceptPriceCents/100).toFixed(2) + '</span></span>';
             return;
           }
           if (!acceptStripeInstance || !acceptCardNumber) {
             if (errText) errText.textContent = 'Card form not ready.';
             if (errEl) errEl.style.display = 'flex';
             payBtn.disabled = false;
-            payBtn.innerHTML = '<span id="acceptInvitationPayBtnText">Pay <span id="acceptInvitationPayAmount">$' + (acceptPriceCents/100).toFixed(2) + '</span></span>';
+            payBtn.innerHTML = '<span id="acceptInvitationPayBtnText">Accept & Pay <span id="acceptInvitationPayAmount">$' + (acceptPriceCents/100).toFixed(2) + '</span></span>';
             return;
           }
           acceptStripeInstance.confirmCardPayment(data.client_secret, {
@@ -729,7 +873,7 @@
               if (errText) errText.textContent = result.error.message || 'Payment failed.';
               if (errEl) errEl.style.display = 'flex';
               payBtn.disabled = false;
-              payBtn.innerHTML = '<span id="acceptInvitationPayBtnText">Pay <span id="acceptInvitationPayAmount">$' + (acceptPriceCents/100).toFixed(2) + '</span></span>';
+              payBtn.innerHTML = '<span id="acceptInvitationPayBtnText">Accept & Pay <span id="acceptInvitationPayAmount">$' + (acceptPriceCents/100).toFixed(2) + '</span></span>';
               return;
             }
             if (result.paymentIntent && result.paymentIntent.status === 'succeeded') {
@@ -747,13 +891,13 @@
             if (errText) errText.textContent = 'Payment could not be completed.';
             if (errEl) errEl.style.display = 'flex';
             payBtn.disabled = false;
-            payBtn.innerHTML = '<span id="acceptInvitationPayBtnText">Pay <span id="acceptInvitationPayAmount">$' + (acceptPriceCents/100).toFixed(2) + '</span></span>';
+            payBtn.innerHTML = '<span id="acceptInvitationPayBtnText">Accept & Pay <span id="acceptInvitationPayAmount">$' + (acceptPriceCents/100).toFixed(2) + '</span></span>';
           });
         }).catch(function() {
           if (errText) errText.textContent = 'Could not start payment. Try again.';
           if (errEl) errEl.style.display = 'flex';
           payBtn.disabled = false;
-          payBtn.innerHTML = '<span id="acceptInvitationPayBtnText">Pay <span id="acceptInvitationPayAmount">$' + (acceptPriceCents/100).toFixed(2) + '</span></span>';
+          payBtn.innerHTML = '<span id="acceptInvitationPayBtnText">Accept & Pay <span id="acceptInvitationPayAmount">$' + (acceptPriceCents/100).toFixed(2) + '</span></span>';
         });
       });
     }

@@ -102,12 +102,17 @@ def dashboard(request):
                     if invitation:
                         invitation_id = invitation.id
                 
+                mentor_user_id = None
+                if first_mentor and hasattr(first_mentor, 'user'):
+                    mentor_user_id = first_mentor.user.id
+                
                 upcoming_sessions.append({
                     'id': session.id,
                     'start_datetime': start_datetime_local,
                     'end_datetime': end_datetime_local,
                     'status': session.status,
                     'mentor_name': mentor_name,
+                    'mentor_user_id': mentor_user_id,
                     'note': session.note,
                     'invitation_id': invitation_id,
                     'session_price': float(session.session_price) if session.session_price else 0.0,
@@ -752,12 +757,17 @@ def get_sessions_paginated(request):
                 if invitation:
                     invitation_id = invitation.id
             
+            mentor_user_id = None
+            if first_mentor and hasattr(first_mentor, 'user'):
+                mentor_user_id = first_mentor.user.id
+            
             sessions_data.append({
                 'id': session.id,
                 'start_datetime': start_dt.isoformat(),
                 'end_datetime': end_dt.isoformat(),
                 'status': session.status,
                 'mentor_name': mentor_name,
+                'mentor_user_id': mentor_user_id,
                 'note': session.note or '',
                 'invitation_id': invitation_id,
                 'session_price': float(session.session_price) if session.session_price else 0.0,

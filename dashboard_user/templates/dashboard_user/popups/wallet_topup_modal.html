@@ -355,6 +355,19 @@
                 if (e.target === overlay) closeWalletTopUpModal();
             });
         }
+        
+        // Close wallet topup modal on Escape key (prioritize over other modals)
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                var walletOverlay = document.getElementById('walletTopUpModalOverlay');
+                if (walletOverlay && walletOverlay.style.display === 'flex') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    closeWalletTopUpModal();
+                    return;
+                }
+            }
+        });
         document.querySelectorAll('.wallet-preset-btn').forEach(function(btn) {
             btn.addEventListener('click', function() {
                 document.querySelectorAll('.wallet-preset-btn').forEach(function(b) { b.classList.remove('selected'); });
