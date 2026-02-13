@@ -198,6 +198,7 @@
         <div class="create-stage-modal-body">
             <form id="createStageForm">
                 {% csrf_token %}
+                <input type="hidden" id="editingStageId" name="editing_stage_id" value="">
                 <div class="create-stage-section">
                     <label class="create-stage-section-label">
                         Stage Title <span style="color: #ef4444;">*</span>
@@ -224,13 +225,29 @@
                     ></textarea>
                 </div>
                 
-                <div class="create-stage-section" style="margin-bottom: 0;">
-                    <label class="create-stage-section-label">Target Date (Optional)</label>
+                <div class="create-stage-section">
+                    <label class="create-stage-section-label">
+                        Start Date <span style="color: #ef4444;">*</span>
+                    </label>
                     <input 
                         type="date" 
-                        id="stageTargetDateInput" 
-                        name="target_date" 
+                        id="stageStartDateInput" 
+                        name="start_date" 
                         class="create-stage-input"
+                        required
+                    >
+                </div>
+                
+                <div class="create-stage-section" style="margin-bottom: 0;">
+                    <label class="create-stage-section-label">
+                        End Date <span style="color: #ef4444;">*</span>
+                    </label>
+                    <input 
+                        type="date" 
+                        id="stageEndDateInput" 
+                        name="end_date" 
+                        class="create-stage-input"
+                        required
                     >
                 </div>
             </form>
@@ -277,8 +294,35 @@
     function resetCreateStageForm() {
         document.getElementById('stageTitleInput').value = '';
         document.getElementById('stageDescriptionInput').value = '';
-        document.getElementById('stageTargetDateInput').value = '';
+        document.getElementById('stageStartDateInput').value = '';
+        document.getElementById('stageEndDateInput').value = '';
+        document.getElementById('editingStageId').value = '';
+        document.getElementById('createStageModalTitle').textContent = 'Create New Stage';
+        document.getElementById('createStageBtn').textContent = 'Create Stage';
     }
+    
+    // Open modal for editing an existing stage
+    window.openCreateStageModalForEdit = function(stage) {
+        const modal = document.getElementById('createStageModal');
+        if (!modal) return;
+        
+        // Populate form with stage data
+        document.getElementById('stageTitleInput').value = stage.title || '';
+        document.getElementById('stageDescriptionInput').value = stage.description || '';
+        document.getElementById('stageStartDateInput').value = stage.start_date || '';
+        document.getElementById('stageEndDateInput').value = stage.end_date || '';
+        document.getElementById('editingStageId').value = stage.id;
+        
+        // Update modal title and button text
+        document.getElementById('createStageModalTitle').textContent = 'Edit Stage';
+        document.getElementById('createStageBtn').textContent = 'Update Stage';
+        
+        // Show modal
+        modal.style.display = 'flex';
+        setTimeout(() => {
+            modal.classList.add('active');
+        }, 10);
+    };
     
     // Submit stage creation
     window.submitCreateStage = function() {
@@ -297,7 +341,33 @@
         }
         
         const description = document.getElementById('stageDescriptionInput').value.trim();
-        const targetDate = document.getElementById('stageTargetDateInput').value;
+        const startDate = document.getElementById('stageStartDateInput').value;
+        const endDate = document.getElementById('stageEndDateInput').value;
+        
+        // Validate that dates are provided
+        if (!startDate) {
+            alert('Start date is required');
+            btn.disabled = false;
+            btn.innerHTML = 'Create Stage';
+            return;
+        }
+        
+        if (!endDate) {
+            alert('End date is required');
+            btn.disabled = false;
+            btn.innerHTML = 'Create Stage';
+            return;
+        }
+        
+        // Validate dates: end_date should be after start_date
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        if (end < start) {
+            alert('End date must be after start date');
+            btn.disabled = false;
+            btn.innerHTML = 'Create Stage';
+            return;
+        }
         
         // Get project ID from URL
         const projectId = window.location.pathname.match(/\/projects\/(\d+)\//)?.[1];
@@ -307,6 +377,10 @@
             btn.innerHTML = 'Create Stage';
             return;
         }
+        
+        // Check if we're editing an existing stage
+        const editingStageId = document.getElementById('editingStageId').value;
+        const isEditing = editingStageId && editingStageId !== '';
         
         // Get CSRF token
         function getCookie(name) {
@@ -324,7 +398,12 @@
             return cookieValue;
         }
         
-        fetch(`/dashboard/user/projects/${projectId}/stages/create/`, {
+        // Determine URL and method based on edit/create mode
+        const url = isEditing 
+            ? `/dashboard/user/projects/${projectId}/stages/${editingStageId}/edit/`
+            : `/dashboard/user/projects/${projectId}/stages/create/`;
+        
+        fetch(url, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -333,14 +412,15 @@
             body: JSON.stringify({
                 title: title,
                 description: description,
-                target_date: targetDate || null,
+                start_date: startDate,
+                end_date: endDate,
             })
         })
         .then(response => response.json())
         .then(data => {
             if (data.success) {
                 if (typeof showNotification !== 'undefined') {
-                    showNotification('Stage created successfully!', 'success');
+                    showNotification(isEditing ? 'Stage updated successfully!' : 'Stage created successfully!', 'success');
                 }
                 closeCreateStageModal();
                 // Reload stages if loadStages function exists, otherwise reload page
@@ -353,23 +433,23 @@
                 }
             } else {
                 if (typeof showNotification !== 'undefined') {
-                    showNotification(data.error || 'Failed to create stage', 'error');
+                    showNotification(data.error || (isEditing ? 'Failed to update stage' : 'Failed to create stage'), 'error');
                 } else {
-                    alert(data.error || 'Failed to create stage');
+                    alert(data.error || (isEditing ? 'Failed to update stage' : 'Failed to create stage'));
                 }
                 btn.disabled = false;
-                btn.innerHTML = 'Create Stage';
+                btn.innerHTML = isEditing ? 'Update Stage' : 'Create Stage';
             }
         })
         .catch(error => {
-            console.error('Error creating stage:', error);
+            console.error('Error ' + (isEditing ? 'updating' : 'creating') + ' stage:', error);
             if (typeof showNotification !== 'undefined') {
                 showNotification('An error occurred. Please try again.', 'error');
             } else {
                 alert('An error occurred. Please try again.');
             }
             btn.disabled = false;
-            btn.innerHTML = 'Create Stage';
+            btn.innerHTML = isEditing ? 'Update Stage' : 'Create Stage';
         });
     };
     

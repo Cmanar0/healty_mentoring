@@ -343,6 +343,8 @@
                 <span>Create Task</span>
             </button>
             <input type="hidden" id="editTaskId" value="">
+            <input type="hidden" id="editProjectId" value="">
+            <input type="hidden" id="editStageId" value="">
         </div>
     </div>
 </div>
@@ -352,7 +354,7 @@
     'use strict';
     
     // Open modal (for create or edit)
-    window.openCreateActiveBacklogTaskModal = function(taskId = null, title = '', description = '', deadline = '', priority = 'medium') {
+    window.openCreateActiveBacklogTaskModal = function(taskId = null, title = '', description = '', deadline = '', priority = 'medium', projectId = null, stageId = null) {
         const modal = document.getElementById('createActiveBacklogTaskModal');
         const modalTitle = document.getElementById('createTaskModalTitle');
         const titleInput = document.getElementById('taskTitleInput');
@@ -360,6 +362,8 @@
         const deadlineInput = document.getElementById('taskDeadlineInput');
         const priorityInput = document.getElementById('taskPriorityInput');
         const editTaskId = document.getElementById('editTaskId');
+        const editProjectId = document.getElementById('editProjectId');
+        const editStageId = document.getElementById('editStageId');
         const submitBtn = document.getElementById('createTaskBtn');
         
         if (!modal) return;
@@ -368,6 +372,8 @@
         if (taskId) {
             // Edit mode
             editTaskId.value = taskId;
+            editProjectId.value = projectId || '';
+            editStageId.value = stageId || '';
             modalTitle.textContent = 'Edit Task';
             submitBtn.innerHTML = 'Save Changes';
             if (titleInput) titleInput.value = title;
@@ -377,6 +383,8 @@
         } else {
             // Create mode
             editTaskId.value = '';
+            editProjectId.value = '';
+            editStageId.value = '';
             modalTitle.textContent = 'Create New Active Task';
             submitBtn.innerHTML = 'Create Task';
             if (titleInput) titleInput.value = '';
@@ -419,12 +427,16 @@
         const btn = document.getElementById('createTaskBtn');
         const modalTitle = document.getElementById('createTaskModalTitle');
         const editTaskId = document.getElementById('editTaskId');
+        const editProjectId = document.getElementById('editProjectId');
+        const editStageId = document.getElementById('editStageId');
         
         if (titleInput) titleInput.value = '';
         if (descInput) descInput.value = '';
         if (deadlineInput) deadlineInput.value = '';
         if (priorityInput) priorityInput.value = 'medium';
         if (editTaskId) editTaskId.value = '';
+        if (editProjectId) editProjectId.value = '';
+        if (editStageId) editStageId.value = '';
         
         // Reset button state
         if (btn) {
@@ -475,9 +487,25 @@
             return cookieValue;
         }
         
-        const url = isEditMode
-            ? `/dashboard/user/active-backlog/tasks/${editTaskId.value}/edit/`
-            : `/dashboard/user/active-backlog/tasks/create/`;
+        // Determine URL based on task type
+        const editProjectIdInput = document.getElementById('editProjectId');
+        const editStageIdInput = document.getElementById('editStageId');
+        const editProjectId = editProjectIdInput ? editProjectIdInput.value : null;
+        const editStageId = editStageIdInput ? editStageIdInput.value : null;
+        
+        let url;
+        if (isEditMode) {
+            // If editing a stage task (has projectId and stageId), use stage task edit endpoint
+            if (editProjectId && editStageId) {
+                url = `/dashboard/user/projects/${editProjectId}/stages/${editStageId}/tasks/${editTaskId.value}/edit/`;
+            } else {
+                // Otherwise use active backlog edit endpoint
+                url = `/dashboard/user/active-backlog/tasks/${editTaskId.value}/edit/`;
+            }
+        } else {
+            // Create mode - always use active backlog create endpoint
+            url = `/dashboard/user/active-backlog/tasks/create/`;
+        }
         
         fetch(url, {
             method: 'POST',
@@ -499,10 +527,26 @@
                     showNotification(isEditMode ? 'Task updated successfully!' : 'Task created successfully!', 'success');
                 }
                 closeCreateActiveBacklogTaskModal();
-                // Reload page to show new task
-                setTimeout(() => {
-                    window.location.reload();
-                }, 500);
+                
+                // If editing a stage task, reload tasks for that stage; otherwise reload page
+                if (isEditMode && editProjectId && editStageId) {
+                    // Reload tasks for the stage if function exists
+                    if (typeof loadStageTasks === 'function') {
+                        loadStageTasks(parseInt(editStageId));
+                    } else if (typeof loadUserActiveBacklog === 'function') {
+                        // Also reload active backlog to reflect changes
+                        loadUserActiveBacklog();
+                    } else {
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 500);
+                    }
+                } else {
+                    // For active backlog tasks or create mode, reload page
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 500);
+                }
             } else {
                 if (typeof showNotification !== 'undefined') {
                     showNotification(data.error || (isEditMode ? 'Failed to update task' : 'Failed to create task'), 'error');

@@ -4281,16 +4281,37 @@ def create_stage(request, project_id):
             return JsonResponse({'success': False, 'error': 'Stage title is required'}, status=400)
         
         description = data.get('description', '').strip()
-        start_date = data.get('start_date') or None
-        end_date = data.get('end_date') or None
-        target_date = data.get('target_date') or None
+        start_date_str = data.get('start_date') or None
+        end_date_str = data.get('end_date') or None
+        target_date_str = data.get('target_date') or None
+        
+        # Convert date strings to date objects
+        from datetime import datetime
+        start_date = None
+        end_date = None
+        target_date = None
+        
+        if start_date_str:
+            try:
+                start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+            except ValueError:
+                return JsonResponse({'success': False, 'error': 'Invalid start date format'}, status=400)
+        
+        if end_date_str:
+            try:
+                end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+            except ValueError:
+                return JsonResponse({'success': False, 'error': 'Invalid end date format'}, status=400)
+        
+        if target_date_str:
+            try:
+                target_date = datetime.strptime(target_date_str, '%Y-%m-%d').date()
+            except ValueError:
+                return JsonResponse({'success': False, 'error': 'Invalid target date format'}, status=400)
         
         # Validate dates: end_date should be after start_date if both are provided
         if start_date and end_date:
-            from datetime import datetime
-            start = datetime.strptime(start_date, '%Y-%m-%d').date()
-            end = datetime.strptime(end_date, '%Y-%m-%d').date()
-            if end < start:
+            if end_date < start_date:
                 return JsonResponse({'success': False, 'error': 'End date must be after start date'}, status=400)
         
         # Get the next order value using project_id * 1000 as base
@@ -4330,6 +4351,73 @@ def create_stage(request, project_id):
         import logging
         logger = logging.getLogger(__name__)
         logger.error(f'Error creating stage: {str(e)}', exc_info=True)
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+@require_POST
+def edit_stage(request, project_id, stage_id):
+    """Edit a stage (title, description, and dates) for users"""
+    if not hasattr(request.user, 'profile'):
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+    
+    project = get_object_or_404(
+        Project.objects.select_related('project_owner', 'supervised_by'),
+        id=project_id
+    )
+    
+    # Check if user is owner or supervisor
+    is_owner = False
+    is_supervisor = False
+    
+    if request.user.profile.role == 'user':
+        user_profile = request.user.user_profile
+        is_owner = (project.project_owner == user_profile)
+    elif request.user.profile.role == 'mentor':
+        mentor_profile = request.user.mentor_profile
+        is_supervisor = (project.supervised_by == mentor_profile)
+    
+    # Only allow access if user is owner or supervisor
+    if not (is_owner or is_supervisor):
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+    
+    from dashboard_user.models import ProjectStage
+    from datetime import datetime
+    
+    stage = get_object_or_404(ProjectStage, id=stage_id, project=project)
+    
+    try:
+        data = json.loads(request.body)
+        title = data.get('title', '').strip()
+        if not title:
+            return JsonResponse({'success': False, 'error': 'Stage title is required'}, status=400)
+        
+        description = data.get('description', '').strip()
+        start_date_str = data.get('start_date')
+        end_date_str = data.get('end_date')
+        
+        start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date() if start_date_str else None
+        end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date() if end_date_str else None
+
+        if start_date and end_date and start_date > end_date:
+            return JsonResponse({'success': False, 'error': 'End date cannot be before start date'}, status=400)
+        
+        stage.title = title
+        stage.description = description
+        stage.start_date = start_date
+        stage.end_date = end_date
+        stage.save()
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Stage updated successfully'
+        })
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f'Error editing stage: {str(e)}', exc_info=True)
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 
@@ -4508,7 +4596,306 @@ def get_tasks_api(request, project_id, stage_id):
     except Exception as e:
         import logging
         logger = logging.getLogger(__name__)
-        logger.error(f'Error in get_tasks_api: {str(e)}', exc_info=True)
+        logger.error(f'Error fetching tasks: {str(e)}', exc_info=True)
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+@require_POST
+def create_task(request, project_id, stage_id):
+    """Create a new task for a stage (for users)"""
+    if not hasattr(request.user, 'profile'):
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+    
+    project = get_object_or_404(
+        Project.objects.select_related('project_owner', 'supervised_by'),
+        id=project_id
+    )
+    
+    # Check if user is owner or supervisor
+    is_owner = False
+    is_supervisor = False
+    
+    if request.user.profile.role == 'user':
+        user_profile = request.user.user_profile
+        is_owner = (project.project_owner == user_profile)
+    elif request.user.profile.role == 'mentor':
+        mentor_profile = request.user.mentor_profile
+        is_supervisor = (project.supervised_by == mentor_profile)
+    
+    # Only allow access if user is owner or supervisor
+    if not (is_owner or is_supervisor):
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+    
+    from dashboard_user.models import ProjectStage, Task
+    from decimal import Decimal
+    
+    stage = get_object_or_404(ProjectStage, id=stage_id, project=project)
+    
+    try:
+        data = json.loads(request.body)
+        title = data.get('title', '').strip()
+        if not title:
+            return JsonResponse({'success': False, 'error': 'Task title is required'}, status=400)
+        
+        description = data.get('description', '').strip()
+        priority = data.get('priority', 'medium')
+        
+        # Validate priority against Task model choices
+        valid_priorities = ['low', 'medium', 'high', 'urgent']
+        if priority not in valid_priorities:
+            priority = 'medium'  # Fallback to default if invalid
+        
+        # Calculate order for the new task
+        last_task = stage.backlog_tasks.order_by('-order').first()
+        if last_task:
+            next_order = last_task.order + Decimal('1')
+        else:
+            # Use stage order as base, then add task order
+            next_order = stage.order + Decimal('0.01')
+        
+        # Determine author role
+        author_role = 'user' if request.user.profile.role == 'user' else 'mentor'
+        author_name = f"{request.user.profile.first_name} {request.user.profile.last_name}".strip()
+        if not author_name:
+            author_name = request.user.email.split('@')[0]
+        
+        task = Task.objects.create(
+            stage=stage,
+            title=title,
+            description=description,
+            priority=priority,
+            order=next_order,
+            created_by=request.user,
+            author_name=author_name,
+            author_email=request.user.email,
+            author_role=author_role
+        )
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Task created successfully',
+            'task_id': task.id,
+            'deadline': None
+        })
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f'Error creating task: {str(e)}', exc_info=True)
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+@require_POST
+def edit_task(request, project_id, stage_id, task_id):
+    """Edit an existing task (for users)"""
+    if not hasattr(request.user, 'profile'):
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+    
+    project = get_object_or_404(
+        Project.objects.select_related('project_owner', 'supervised_by'),
+        id=project_id
+    )
+    
+    # Check if user is owner or supervisor
+    is_owner = False
+    is_supervisor = False
+    
+    if request.user.profile.role == 'user':
+        user_profile = request.user.user_profile
+        is_owner = (project.project_owner == user_profile)
+    elif request.user.profile.role == 'mentor':
+        mentor_profile = request.user.mentor_profile
+        is_supervisor = (project.supervised_by == mentor_profile)
+    
+    # Only allow access if user is owner or supervisor
+    if not (is_owner or is_supervisor):
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+    
+    from dashboard_user.models import ProjectStage, Task
+    
+    stage = get_object_or_404(ProjectStage, id=stage_id, project=project)
+    task = get_object_or_404(Task, id=task_id, stage=stage)
+    
+    try:
+        data = json.loads(request.body)
+        title = data.get('title', '').strip()
+        if not title:
+            return JsonResponse({'success': False, 'error': 'Task title is required'}, status=400)
+        
+        description = data.get('description', '').strip()
+        deadline = data.get('deadline')
+        priority = data.get('priority', 'medium')
+        status = data.get('status')
+        
+        task.title = title
+        task.description = description
+        if deadline:
+            from django.utils.dateparse import parse_date
+            parsed_deadline = parse_date(deadline) if isinstance(deadline, str) else deadline
+            if parsed_deadline:
+                task.deadline = parsed_deadline
+        else:
+            task.deadline = None
+        if priority in ['low', 'medium', 'high', 'urgent']:
+            task.priority = priority
+        if status and status in ['pending', 'active', 'completed', 'archived']:
+            task.status = status
+        task.save()
+        
+        # Format deadline for JSON (handle both date and string from DB)
+        dl = task.deadline
+        deadline_str = (dl.strftime('%Y-%m-%d') if hasattr(dl, 'strftime') else (dl[:10] if isinstance(dl, str) and len(dl) >= 10 else None)) if dl else None
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Task updated successfully',
+            'task': {
+                'id': task.id,
+                'title': task.title,
+                'description': task.description or '',
+                'deadline': deadline_str,
+                'priority': task.priority,
+                'status': task.status,
+            }
+        })
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f'Error editing task: {str(e)}', exc_info=True)
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+@require_POST
+def toggle_task_activate(request, project_id, stage_id, task_id):
+    """Toggle task activation (assign/unassign to user's active backlog)"""
+    if not hasattr(request.user, 'profile'):
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+    
+    project = get_object_or_404(
+        Project.objects.select_related('project_owner', 'supervised_by'),
+        id=project_id
+    )
+    
+    # Check if user is owner or supervisor
+    is_owner = False
+    is_supervisor = False
+    
+    if request.user.profile.role == 'user':
+        user_profile = request.user.user_profile
+        is_owner = (project.project_owner == user_profile)
+    elif request.user.profile.role == 'mentor':
+        mentor_profile = request.user.mentor_profile
+        is_supervisor = (project.supervised_by == mentor_profile)
+    
+    # Only allow access if user is owner or supervisor
+    if not (is_owner or is_supervisor):
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+    
+    from dashboard_user.models import ProjectStage, Task
+    stage = get_object_or_404(ProjectStage, id=stage_id, project=project)
+    task = get_object_or_404(Task, id=task_id, stage=stage)
+    
+    try:
+        data = json.loads(request.body)
+        activate = data.get('activate', False)
+        
+        if activate:
+            # Activate: add task to user's active backlog
+            if request.user.profile.role == 'user':
+                # For users, activate to their own active backlog
+                user_profile = request.user.user_profile
+                try:
+                    task.activate_task(user_profile)
+                except Exception as e:
+                    from django.core.exceptions import ValidationError
+                    err_msg = str(e) if isinstance(e, ValidationError) else str(e)
+                    return JsonResponse({'success': False, 'error': err_msg}, status=400)
+                message = 'Task activated and added to your active backlog'
+            else:
+                # For mentors, activate to project owner's active backlog
+                if not project.project_owner:
+                    return JsonResponse({
+                        'success': False,
+                        'error': 'Project has no assigned client. Please assign a client to the project first.'
+                    }, status=400)
+                try:
+                    task.activate_task(project.project_owner)
+                except Exception as e:
+                    from django.core.exceptions import ValidationError
+                    err_msg = str(e) if isinstance(e, ValidationError) else str(e)
+                    return JsonResponse({'success': False, 'error': err_msg}, status=400)
+                message = 'Task activated and assigned to client'
+        else:
+            # Deactivate: remove from active backlog
+            task.deactivate_task()
+            message = 'Task deactivated'
+        
+        return JsonResponse({
+            'success': True,
+            'message': message,
+            'is_active': activate
+        })
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f'Error toggling task activation: {str(e)}', exc_info=True)
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+@require_POST
+def delete_task(request, project_id, stage_id, task_id):
+    """Delete a task from a stage"""
+    if not hasattr(request.user, 'profile'):
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+    
+    project = get_object_or_404(
+        Project.objects.select_related('project_owner', 'supervised_by'),
+        id=project_id
+    )
+    
+    # Check if user is owner or supervisor
+    is_owner = False
+    is_supervisor = False
+    
+    if request.user.profile.role == 'user':
+        user_profile = request.user.user_profile
+        is_owner = (project.project_owner == user_profile)
+    elif request.user.profile.role == 'mentor':
+        mentor_profile = request.user.mentor_profile
+        is_supervisor = (project.supervised_by == mentor_profile)
+    
+    # Only allow access if user is owner or supervisor
+    if not (is_owner or is_supervisor):
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+    
+    from dashboard_user.models import ProjectStage, Task
+    stage = get_object_or_404(ProjectStage, id=stage_id, project=project)
+    task = get_object_or_404(Task, id=task_id, stage=stage)
+    
+    try:
+        task.delete()
+        
+        # Update stage completion status based on tasks
+        from dashboard_mentor.views import update_stage_completion_status
+        update_stage_completion_status(stage)
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Task deleted successfully'
+        })
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f'Error deleting task: {str(e)}', exc_info=True)
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 

@@ -3617,13 +3617,13 @@
             <i class="fas fa-times"></i>
         </button>
         <div class="target-date-modal-body">
-            <p class="confirm-text">Are you sure you want to delete "{{ project.title }}"? This action cannot be undone.</p>
+            <p class="confirm-text" id="deleteConfirmModalMessage">Are you sure you want to delete "{{ project.title }}"? This action cannot be undone.</p>
         </div>
         <div class="target-date-modal-footer">
             <button type="button" class="btn-cancel-confirm" onclick="closeDeleteConfirmModal()">Cancel</button>
-            <button type="button" class="btn-confirm-remove" id="confirmDeleteBtn" onclick="confirmDeleteProject()">
+            <button type="button" class="btn-confirm-remove" id="deleteConfirmModalBtn" onclick="if(typeof pendingDeleteAction === 'function') { confirmDeleteConfirmModal(); } else { confirmDeleteProject(); }">
                 <i class="fas fa-trash"></i>
-                Delete Project
+                <span id="deleteConfirmModalBtnText">Delete Project</span>
             </button>
         </div>
     </div>
@@ -5571,11 +5571,11 @@
                                         <i class="fas fa-ellipsis-h"></i>
                                     </button>
                                     <div class="dropdown-menu stage-actions-menu" onclick="event.stopPropagation();">
-                                        <button type="button" class="dropdown-item stage-action-item first-item" onclick="editStage(${stage.id}); event.stopPropagation();">
+                                        <button type="button" class="dropdown-item first-item" onclick="editStage(${stage.id}); event.stopPropagation();">
                                             <i class="fas fa-edit"></i>
                                             <span>Edit</span>
                                         </button>
-                                        <button type="button" class="dropdown-item stage-action-item delete-item last-item" onclick="deleteStage(${stage.id}); event.stopPropagation();">
+                                        <button type="button" class="dropdown-item delete-item last-item" onclick="deleteStage(${stage.id}); event.stopPropagation();">
                                             <i class="fas fa-trash"></i>
                                             <span>Delete</span>
                                         </button>
@@ -6133,7 +6133,7 @@
                                 ${deactivateIcon}
                             </button>
                         </div>
-                        <div class="active-backlog-task-content ${hasStage ? '' : 'has-no-activate-btn'}" onclick="editProjectBacklogTask(${task.id}, '${escapedTitle}', '${escapedDescription}', '${task.deadline || ''}', '${task.priority || 'medium'}', event)">
+                        <div class="active-backlog-task-content ${hasStage ? '' : 'has-no-activate-btn'}" onclick="editProjectBacklogTask(${task.id}, '${escapedTitle}', '${escapedDescription}', '${task.deadline || ''}', '${task.priority || 'medium'}', ${task.project_id || 'null'}, ${task.stage_id || 'null'}, event)">
                             <div class="active-backlog-task-title-row">
                                 <div class="active-backlog-task-title-text">${escapeHtml(task.title)}</div>
                                 ${deadlineHtml}
@@ -6237,10 +6237,10 @@
     };
 
     // Edit project backlog task
-    window.editProjectBacklogTask = function(taskId, title, description, deadline, priority, event) {
+    window.editProjectBacklogTask = function(taskId, title, description, deadline, priority, projectId, stageId, event) {
         event.stopPropagation();
         if (typeof openCreateActiveBacklogTaskModal === 'function') {
-            openCreateActiveBacklogTaskModal(taskId, title, description, deadline, priority);
+            openCreateActiveBacklogTaskModal(taskId, title, description, deadline, priority, projectId, stageId);
         }
     };
 
@@ -6830,13 +6830,18 @@
         const titleEl = document.getElementById('deleteConfirmModalTitle');
         const messageEl = document.getElementById('deleteConfirmModalMessage');
         const confirmBtn = document.getElementById('deleteConfirmModalBtn');
+        const confirmBtnText = document.getElementById('deleteConfirmModalBtnText');
         if (!overlay || !titleEl || !messageEl || !confirmBtn) return;
 
         const cfg = opts || {};
         pendingDeleteAction = typeof cfg.onConfirm === 'function' ? cfg.onConfirm : null;
         titleEl.textContent = cfg.title || 'Confirm Delete';
         messageEl.textContent = cfg.message || 'Are you sure you want to delete this item?';
-        confirmBtn.textContent = cfg.confirmText || 'Delete';
+        if (confirmBtnText) {
+            confirmBtnText.textContent = cfg.confirmText || 'Delete';
+        } else {
+            confirmBtn.textContent = cfg.confirmText || 'Delete';
+        }
         confirmBtn.disabled = false;
 
         overlay.style.display = 'flex';
@@ -8302,14 +8307,14 @@
                             <div class="stage-task-checkbox-container">
                                 <div class="stage-task-checkbox" onclick="toggleTaskSelection(${data.task_id}, ${stageId}, event)"></div>
                             </div>
-                            <div class="stage-task-content">
+                            <div class="stage-task-content" onclick="openCreateActiveBacklogTaskModal(${data.task_id}, '${(title || '').replace(/'/g, "\\'").replace(/\n/g, ' ')}', '${(descriptionText || '').replace(/'/g, "\\'").replace(/\n/g, '\\n')}', '${data.deadline || ''}', '${priority}', PROJECT_ID, ${stageId}, ${CLIENT_ID || 'null'}, 'pending')">
                                 <div class="stage-task-title-row">
                                     <div class="stage-task-title">${escapeHtml(title)}</div>
                                     ${(data.deadline && data.deadline !== '') ? `<div class="active-backlog-task-deadline"><i class="fas fa-calendar-alt" style="font-size: 0.7rem;"></i><span>${new Date(data.deadline).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span></div>` : ''}
                                 </div>
                                 ${descriptionText ? `<div class="stage-task-description-text">${escapeHtml(descriptionText)}</div>` : ''}
                             </div>
-                            <div class="stage-task-priority-display" onclick="openCreateActiveBacklogTaskModal(${data.task_id}, '${(title || '').replace(/'/g, "\\'").replace(/\n/g, ' ')}', '${(descriptionText || '').replace(/'/g, "\\'").replace(/\n/g, '\\n')}', '${data.deadline || ''}', '${priority}', PROJECT_ID, ${stageId}, CLIENT_ID)">
+                            <div class="stage-task-priority-display" onclick="openCreateActiveBacklogTaskModal(${data.task_id}, '${(title || '').replace(/'/g, "\\'").replace(/\n/g, ' ')}', '${(descriptionText || '').replace(/'/g, "\\'").replace(/\n/g, '\\n')}', '${data.deadline || ''}', '${priority}', PROJECT_ID, ${stageId}, ${CLIENT_ID || 'null'}, 'pending')">
                                 <span class="priority-tag priority-${priority}">${priorityLabel}</span>
                             </div>
                             <div class="stage-task-activate">
@@ -8325,8 +8330,8 @@
                                 </button>
                             </div>
                             <div class="stage-task-actions">
-                                <button class="stage-task-dropdown-trigger" onclick="toggleTaskDropdown(${data.task_id}, event)">
-                                    <i class="fas fa-ellipsis-v"></i>
+                                <button class="stage-task-delete-btn" onclick="deleteTask(${data.task_id}, ${stageId}, event)" title="Delete Task">
+                                    <i class="fas fa-trash"></i>
                                 </button>
                             </div>
                         </div>
@@ -8391,21 +8396,24 @@
                 }
                 
                 // Save DB order after task creation
-                saveDBOrder(stageId);
+                if (typeof saveDBOrder === 'function') {
+                    saveDBOrder(stageId);
+                }
                 
                 // Initialize sortable for the new task
-                initTaskSortable(stageId);
-                
-                // Reload stages to update completion status if stage was completed before
-                // Check if the stage is currently open/expanded
-                // Get tasksSection again to check if stage is expanded (works for both success paths)
-                const checkTasksSection = document.getElementById(`stageTasks_${stageId}`);
-                if (checkTasksSection && checkTasksSection.classList.contains('expanded')) {
-                    // Reload all stages to update completion status
-                    if (typeof loadStages === 'function') {
-                        loadStages();
-                    }
+                if (typeof initTaskSortable === 'function') {
+                    initTaskSortable(stageId);
                 }
+                
+                // Update max-height and offset after a short delay to allow DOM to settle
+                setTimeout(() => {
+                    if (typeof setMainContentOffset === 'function') {
+                        setMainContentOffset();
+                    }
+                    if (typeof setRoadmapContainerMaxHeight === 'function') {
+                        setRoadmapContainerMaxHeight();
+                    }
+                }, 100);
                 
                 if (typeof showNotification !== 'undefined') {
                     showNotification('Task created successfully', 'success');

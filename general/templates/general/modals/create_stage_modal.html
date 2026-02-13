@@ -225,22 +225,28 @@
                 </div>
                 
                 <div class="create-stage-section">
-                    <label class="create-stage-section-label">Start Date (Optional)</label>
+                    <label class="create-stage-section-label">
+                        Start Date <span style="color: #ef4444;">*</span>
+                    </label>
                     <input 
                         type="date" 
                         id="stageStartDateInput" 
                         name="start_date" 
                         class="create-stage-input"
+                        required
                     >
                 </div>
                 
                 <div class="create-stage-section" style="margin-bottom: 0;">
-                    <label class="create-stage-section-label">End Date (Optional)</label>
+                    <label class="create-stage-section-label">
+                        End Date <span style="color: #ef4444;">*</span>
+                    </label>
                     <input 
                         type="date" 
                         id="stageEndDateInput" 
                         name="end_date" 
                         class="create-stage-input"
+                        required
                     >
                 </div>
             </form>
@@ -338,11 +344,26 @@
         const startDate = document.getElementById('stageStartDateInput').value;
         const endDate = document.getElementById('stageEndDateInput').value;
         
-        // Validate dates: end_date should be after start_date if both are provided
-        if (startDate && endDate && new Date(endDate) < new Date(startDate)) {
+        // Validate that dates are provided
+        if (!startDate) {
+            alert('Start date is required');
+            btn.disabled = false;
+            btn.innerHTML = btn.textContent.includes('Update') ? 'Update Stage' : 'Create Stage';
+            return;
+        }
+        
+        if (!endDate) {
+            alert('End date is required');
+            btn.disabled = false;
+            btn.innerHTML = btn.textContent.includes('Update') ? 'Update Stage' : 'Create Stage';
+            return;
+        }
+        
+        // Validate dates: end_date should be after start_date
+        if (new Date(endDate) < new Date(startDate)) {
             alert('End date must be after start date');
             btn.disabled = false;
-            btn.innerHTML = 'Create Stage';
+            btn.innerHTML = btn.textContent.includes('Update') ? 'Update Stage' : 'Create Stage';
             return;
         }
         
@@ -393,8 +414,8 @@
             body: JSON.stringify({
                 title: title,
                 description: description,
-                start_date: startDate || null,
-                end_date: endDate || null,
+                start_date: startDate,
+                end_date: endDate,
             })
         })
         .then(response => response.json())
