@@ -222,7 +222,7 @@
                         <h3 class="card-title">Upcoming Sessions</h3>
                         <div style="display: flex; gap: 16px; align-items: center; white-space: nowrap;">
                             <button class="btn-link" data-open-mentor-calendar data-mentor-calendar-initial-mode="sessions" style="background: none; border: none; padding: 0; cursor: pointer; font-family: inherit; font-size: inherit;">View Calendar</button>
-                            <a href="http://localhost:8000/dashboard/mentor/my-sessions/" class="btn-link" style="color: var(--dash-text-muted);">View All Sessions</a>
+                            <a href="{% url 'general:dashboard_mentor:my_sessions' %}" class="btn-link" style="color: var(--dash-text-muted);">View All Sessions</a>
                         </div>
                     </div>
                     
