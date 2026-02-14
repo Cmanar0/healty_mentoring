@@ -58,6 +58,7 @@
                                 id="question_{{ question.id }}"
                                 class="question-input"
                                 value="{{ answers|get_item:question.id|default:'' }}"
+                                {% if date_min_today %}min="{% now 'Y-m-d' %}"{% endif %}
                                 {% if question.is_required %}required{% endif %}
                                 data-question-id="{{ question.id }}"
                                 data-initial-value="{{ answers|get_item:question.id|default:'' }}"
@@ -727,6 +728,32 @@ select.question-input {
         
         if (!validateCurrentSlide()) {
             return;
+        }
+        
+        // Validate date inputs with min (e.g. target date cannot be in the past)
+        const dateInputs = form.querySelectorAll('input[type="date"][min]');
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        for (let i = 0; i < dateInputs.length; i++) {
+            const input = dateInputs[i];
+            if (input.value) {
+                const selected = new Date(input.value + 'T00:00:00');
+                if (selected < today) {
+                    const slideEl = input.closest('.question-slide');
+                    const slideIndex = slideEl ? parseInt(slideEl.dataset.slideIndex, 10) : 0;
+                    if (!isNaN(slideIndex)) {
+                        showSlide(slideIndex);
+                    }
+                    const errorEl = slideEl ? slideEl.querySelector('.question-error') : null;
+                    if (errorEl) {
+                        errorEl.textContent = 'Date cannot be in the past.';
+                        errorEl.classList.add('show');
+                    } else {
+                        alert('Date cannot be in the past.');
+                    }
+                    return;
+                }
+            }
         }
         
         const submitBtnEl = form.querySelector('button[type="submit"]');

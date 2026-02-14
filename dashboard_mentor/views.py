@@ -7220,6 +7220,8 @@ def update_project_target_date(request, project_id):
         if target_date_str:
             from datetime import datetime
             target_date = datetime.strptime(target_date_str, '%Y-%m-%d').date()
+            if target_date < timezone.now().date():
+                return JsonResponse({'success': False, 'error': 'Target date cannot be in the past.'}, status=400)
             project.target_completion_date = target_date
         else:
             project.target_completion_date = None

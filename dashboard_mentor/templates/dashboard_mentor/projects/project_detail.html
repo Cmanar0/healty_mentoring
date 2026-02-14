@@ -3102,7 +3102,10 @@
                 // This ensures we get the fresh values that were rendered from the server
                 // For date inputs specifically, we need to ensure the value is set correctly
                 const dateInputs = form.querySelectorAll('input[type="date"]');
+                const today = new Date();
+                const todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
                 dateInputs.forEach(input => {
+                    input.setAttribute('min', todayStr);
                     // The template should have set the value, but we can verify it's there
                     // If the value is empty but the data attribute has a value, use that
                     if (!input.value && input.hasAttribute('data-initial-value')) {
@@ -3312,7 +3315,7 @@
             <div class="target-date-modal-body">
                 <div class="form-group">
                     <label class="form-label">Target Completion Date</label>
-                    <input type="date" name="target_date" id="targetDateInput" class="form-input" value="{% if project.target_completion_date %}{{ project.target_completion_date|date:'Y-m-d' }}{% endif %}">
+                    <input type="date" name="target_date" id="targetDateInput" class="form-input" value="{% if project.target_completion_date %}{{ project.target_completion_date|date:'Y-m-d' }}{% endif %}" min="">
                 </div>
             </div>
             <div class="target-date-modal-footer">
@@ -3506,7 +3509,7 @@
                         <i class="fas fa-times"></i>
                     </button>
                     <div class="questionnaire-modal-body">
-                        {% include "general/reusable/slide_questionnaire.html" with questions=questions answers=answers %}
+                        {% include "general/reusable/slide_questionnaire.html" with questions=questions answers=answers date_min_today=True %}
                     </div>
                 </div>
             </div>
@@ -8770,7 +8773,15 @@
     // Target Date Modal Functions
     function openTargetDateModal() {
         const modal = document.getElementById('targetDateModal');
+        const input = document.getElementById('targetDateInput');
         if (modal) {
+            if (input) {
+                const today = new Date();
+                const y = today.getFullYear();
+                const m = String(today.getMonth() + 1).padStart(2, '0');
+                const d = String(today.getDate()).padStart(2, '0');
+                input.setAttribute('min', y + '-' + m + '-' + d);
+            }
             modal.style.display = 'flex';
             setTimeout(() => modal.classList.add('active'), 10);
         }
@@ -8790,6 +8801,20 @@
         event.preventDefault();
         
         const targetDate = document.getElementById('targetDateInput').value;
+        if (targetDate) {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const selected = new Date(targetDate + 'T00:00:00');
+            if (selected < today) {
+                if (typeof showNotification !== 'undefined') {
+                    showNotification('Target date cannot be in the past.', 'error');
+                } else {
+                    alert('Target date cannot be in the past.');
+                }
+                return;
+            }
+        }
+        
         const submitBtn = document.getElementById('targetDateSubmitBtn');
         const originalText = submitBtn.textContent;
         
