@@ -373,9 +373,10 @@
         max-width: 900px;
         width: 90%;
         max-height: 90vh;
-        overflow: visible;
+        overflow: hidden;
         display: flex;
         flex-direction: column;
+        min-height: 0;
         transform: scale(0.95);
         transition: transform 0.3s ease;
         position: relative;
@@ -391,6 +392,7 @@
         border-bottom: 1px solid #e2e8f0;
         margin-bottom: 0;
         position: relative;
+        flex-shrink: 0;
     }
 
     .modal-header h3 {
@@ -512,6 +514,7 @@
         position: relative;
         z-index: 1;
         border-radius: 0 0 16px 16px;
+        flex-shrink: 0;
     }
 
     /* Ensure dropdown appears above footer */
@@ -529,6 +532,8 @@
         transition: all 0.2s;
         font-size: 0.875rem;
         border: none;
+        height: 40px;
+        box-sizing: border-box;
     }
 
     .btn-cancel {
@@ -750,11 +755,24 @@
         flex: 1;
     }
 
+    .question-type-hint .type-hint-content {
+        font-size: 0.875rem;
+        color: #64748b;
+        line-height: 1.5;
+        padding: 12px 14px;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+    }
+
     .options-list {
         margin-top: 8px;
         display: flex;
         flex-direction: column;
         gap: 8px;
+        max-height: 200px;
+        overflow-y: auto;
+        overflow-x: hidden;
     }
 
     .option-item {
@@ -959,17 +977,6 @@
                             <textarea name="question_text" id="questionTextInput" class="form-input" rows="3" required placeholder="Enter your question..."></textarea>
                         </div>
 
-                        <div class="form-group" id="optionsGroup" style="display: none;">
-                            <label class="form-label">Options</label>
-                            <div class="options-input-group">
-                                <input type="text" id="newOptionInput" class="form-input" placeholder="Enter option...">
-                                <button type="button" class="btn-confirm" onclick="addOption()" style="padding: 10px 16px;">
-                                    <i class="fas fa-plus"></i> Add
-                                </button>
-                            </div>
-                            <div id="optionsList" class="options-list"></div>
-                        </div>
-
                         <div class="form-group">
                             <label class="form-label">Help Text</label>
                             <input type="text" name="help_text" id="helpTextInput" class="form-input" placeholder="Optional help text for users...">
@@ -1019,6 +1026,21 @@
                                     </button>
                                 </div>
                             </div>
+                        </div>
+
+                        <div class="form-group question-type-hint" id="questionTypeHintGroup" style="display: none;">
+                            <div class="type-hint-content" id="questionTypeHintContent"></div>
+                        </div>
+
+                        <div class="form-group" id="optionsGroup" style="display: none;">
+                            <label class="form-label">Options</label>
+                            <div class="options-input-group">
+                                <input type="text" id="newOptionInput" class="form-input" placeholder="Enter option...">
+                                <button type="button" class="btn-confirm" onclick="addOption()">
+                                    <i class="fas fa-plus"></i> Add
+                                </button>
+                            </div>
+                            <div id="optionsList" class="options-list"></div>
                         </div>
 
                         <div class="form-group" id="targetDateCheckboxGroup" style="display: none;">
@@ -1090,6 +1112,7 @@
                     // Handle type-specific UI updates
                     toggleOptionsInput();
                     toggleTargetDateUI();
+                    toggleTypeHintUI();
                 });
             });
 
@@ -1119,6 +1142,24 @@
         } else {
             targetDateCheckboxGroup.style.display = 'none';
             isTargetDateInput.checked = false;
+        }
+    }
+
+    function toggleTypeHintUI() {
+        const questionType = document.getElementById('questionTypeInput').value;
+        const hintGroup = document.getElementById('questionTypeHintGroup');
+        const hintContent = document.getElementById('questionTypeHintContent');
+        if (!hintGroup || !hintContent) return;
+        const textHints = {
+            'text': 'User will enter a short text answer.',
+            'textarea': 'User will enter a longer text response.',
+            'number': 'User will enter a numeric value.'
+        };
+        if (textHints[questionType]) {
+            hintContent.textContent = textHints[questionType];
+            hintGroup.style.display = 'block';
+        } else {
+            hintGroup.style.display = 'none';
         }
     }
 
@@ -1323,6 +1364,7 @@
         document.getElementById('optionsList').innerHTML = '';
         document.getElementById('optionsGroup').style.display = 'none';
         document.getElementById('targetDateCheckboxGroup').style.display = 'none';
+        document.getElementById('questionTypeHintGroup').style.display = 'none';
         document.getElementById('isTargetDateInput').checked = false;
         
         // Reset dropdown
@@ -1398,6 +1440,7 @@
         }
         
         toggleOptionsInput();
+        toggleTypeHintUI();
     }
 
     function closeQuestionModal() {
@@ -1421,8 +1464,9 @@
             document.getElementById('optionsList').innerHTML = '';
         }
         
-        // Also toggle target date UI
+        // Also toggle target date UI and type hint
         toggleTargetDateUI();
+        toggleTypeHintUI();
     }
 
     function addOption() {
