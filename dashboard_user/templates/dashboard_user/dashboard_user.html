@@ -764,6 +764,13 @@
     align-items: center;
 }
 
+.active-backlog-task-source-label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #64748b;
+    margin-right: 2px;
+}
+
 .active-backlog-task-source-tag {
     display: inline-flex;
     align-items: center;
@@ -997,16 +1004,18 @@ function renderDashboardBacklog(tasks) {
         let sourceRowHtml = '';
         if (task.has_stage && task.project_id) {
             const projectUrl = `/dashboard/user/projects/${task.project_id}/`;
-            const stageUrl = task.stage_id ? `/dashboard/user/projects/${task.project_id}/stages/${task.stage_id}/` : projectUrl;
+            const stageUrl = task.stage_id ? `/dashboard/user/projects/${task.project_id}/?open_stage=${task.stage_id}` : projectUrl;
             
             sourceRowHtml = '<div class="active-backlog-task-source-row">';
             if (task.project_title) {
+                sourceRowHtml += '<span class="active-backlog-task-source-label">Project:</span>';
                 sourceRowHtml += `<a href="${projectUrl}" class="active-backlog-task-source-tag" onclick="event.stopPropagation();">
                     <i class="fas fa-project-diagram"></i>
                     <span>${escapeHtml(task.project_title)}</span>
                 </a>`;
             }
             if (task.stage_title && task.stage_id) {
+                sourceRowHtml += '<span class="active-backlog-task-source-label">Stage:</span>';
                 sourceRowHtml += `<a href="${stageUrl}" class="active-backlog-task-source-tag" onclick="event.stopPropagation();">
                     <i class="fas fa-layer-group"></i>
                     <span>${escapeHtml(task.stage_title)}</span>

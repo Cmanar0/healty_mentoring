@@ -8726,6 +8726,12 @@ def get_client_active_backlog_api(request, client_id):
         for task in tasks:
             dl = task.deadline
             deadline_str = (dl.strftime('%Y-%m-%d') if hasattr(dl, 'strftime') else (dl[:10] if isinstance(dl, str) and len(dl) >= 10 else None)) if dl else None
+            project_title = None
+            stage_title = None
+            if task.stage:
+                stage_title = task.stage.title
+                if task.stage.project:
+                    project_title = task.stage.project.title
             tasks_data.append({
                 'id': task.id,
                 'title': task.title,
@@ -8739,6 +8745,8 @@ def get_client_active_backlog_api(request, client_id):
                 'stage_id': task.stage.id if task.stage else None,
                 'project_id': task.stage.project.id if task.stage and task.stage.project else None,
                 'has_stage': task.stage is not None,  # True if task was created from stage
+                'project_title': project_title,
+                'stage_title': stage_title,
             })
         
         # Get total count for "more tasks" display (excluding completed tasks and filtered by supervision)

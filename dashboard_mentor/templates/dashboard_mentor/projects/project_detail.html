@@ -328,7 +328,7 @@
         min-width: 0;
         cursor: pointer;
         height: auto;
-        max-height: 135px;
+        max-height: 150px;
         display: flex;
         flex-direction: column;
         justify-content: flex-start;
@@ -342,6 +342,48 @@
     
     .active-backlog-task-content.has-no-activate-btn:hover {
         background: transparent;
+    }
+    
+    .active-backlog-task-source-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 8px;
+        align-items: center;
+    }
+    
+    .active-backlog-task-source-label {
+        font-size: 0.75rem;
+        font-weight: 500;
+        color: #64748b;
+        margin-right: 2px;
+    }
+    
+    .active-backlog-task-source-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 4px 8px;
+        background: #f1f5f9;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        font-size: 0.7rem;
+        color: #475569;
+        text-decoration: none;
+        transition: all 0.2s ease;
+        cursor: pointer;
+    }
+    
+    .active-backlog-task-source-tag:hover {
+        background: #e2e8f0;
+        border-color: #cbd5e1;
+        color: #334155;
+        text-decoration: none;
+    }
+    
+    .active-backlog-task-source-tag i {
+        font-size: 0.65rem;
+        opacity: 0.7;
     }
     
     .active-backlog-task-title.single-line {
@@ -2454,7 +2496,7 @@
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 6px 28px 6px 12px;
+        padding: 6px 12px;
         border: 1px solid #e5e7eb;
         border-radius: 6px;
         background: white;
@@ -2465,7 +2507,7 @@
         outline: none;
         transition: all 0.2s;
         min-width: 120px;
-        max-width: 110px;
+        max-width: 120px;
         height: 32px;
         margin-bottom: 0;
     }
@@ -5401,6 +5443,27 @@
                         }, 100); // Increased timeout to ensure DOM is ready
                     }
                     
+                    // If URL has open_stage, expand that stage, scroll to it, then remove param
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const openStageId = urlParams.get('open_stage');
+                    if (openStageId) {
+                        const safeFakeEvent = { target: { closest: function() { return null; } } };
+                        setTimeout(() => {
+                            const tasksSection = document.getElementById(`stageTasks_${openStageId}`);
+                            if (tasksSection && !tasksSection.classList.contains('expanded')) {
+                                if (typeof toggleStageTasks === 'function') {
+                                    toggleStageTasks(openStageId, safeFakeEvent);
+                                }
+                            }
+                            if (typeof scrollToStage === 'function') {
+                                scrollToStage(openStageId);
+                            }
+                            const u = new URL(window.location.href);
+                            u.searchParams.delete('open_stage');
+                            window.history.replaceState({}, document.title, u.pathname + (u.search || ''));
+                        }, expandedStages.length > 0 ? 350 : 150);
+                    }
+                    
                     // Check header layout after rendering
                     setTimeout(() => {
                         const headerContainer = document.querySelector('.active-backlog-header-container');
@@ -5634,6 +5697,23 @@
         const escapedTitle = (task.title || '').replace(/'/g, "\\'").replace(/\n/g, ' ');
         const escapedDescription = (task.description || '').replace(/'/g, "\\'").replace(/\n/g, ' ');
         
+        // Project/stage source row with labels (for stage-linked tasks)
+        let sourceRowHtml = '';
+        if (task.has_stage && task.project_id) {
+            const projectUrl = '/dashboard/mentor/projects/' + task.project_id + '/';
+            const stageUrl = task.stage_id ? '/dashboard/mentor/projects/' + task.project_id + '/?open_stage=' + task.stage_id : projectUrl;
+            sourceRowHtml = '<div class="active-backlog-task-source-row">';
+            if (task.project_title) {
+                sourceRowHtml += '<span class="active-backlog-task-source-label">Project:</span>';
+                sourceRowHtml += '<a href="' + projectUrl + '" class="active-backlog-task-source-tag" onclick="event.stopPropagation();"><i class="fas fa-project-diagram"></i><span>' + escapeHtml(task.project_title) + '</span></a>';
+            }
+            if (task.stage_title && task.stage_id) {
+                sourceRowHtml += '<span class="active-backlog-task-source-label">Stage:</span>';
+                sourceRowHtml += '<a href="' + stageUrl + '" class="active-backlog-task-source-tag" onclick="event.stopPropagation();"><i class="fas fa-layer-group"></i><span>' + escapeHtml(task.stage_title) + '</span></a>';
+            }
+            sourceRowHtml += '</div>';
+        }
+        
         return `
             <div class="active-backlog-task-item ${completedClass} ${fadeInClass}" 
                  data-task-id="${task.id}" 
@@ -5658,6 +5738,7 @@
                             <div class="active-backlog-task-title-text ${!hasStage ? 'single-line' : ''}">${escapeHtml(task.title)}</div>
                             ${deadlineHtml}
                         </div>
+                        ${sourceRowHtml}
                         ${descriptionHtml}
                         
                         <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 4px;">
